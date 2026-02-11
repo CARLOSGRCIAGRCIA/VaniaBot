@@ -1,0 +1,5 @@
+dist
+node_modules
+.env
+check-and-clean.sh
+package-lock.json
