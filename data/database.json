@@ -1,0 +1,135 @@
+{
+  "users": {
+    "208924405956643@lid": {
+      "jid": "208924405956643@lid",
+      "name": "Carlos G",
+      "isOwner": false,
+      "isBanned": false,
+      "level": 1,
+      "xp": 0,
+      "money": 0,
+      "totalCommands": 12,
+      "warnings": 0,
+      "createdAt": 1770755342657,
+      "updatedAt": 1770755805579
+    },
+    "120363423444611592@g.us": {
+      "jid": "120363423444611592@g.us",
+      "name": "User",
+      "isOwner": false,
+      "isBanned": false,
+      "level": 1,
+      "xp": 0,
+      "money": 0,
+      "totalCommands": 1,
+      "warnings": 0,
+      "createdAt": 1770755500808,
+      "updatedAt": 1770755500930
+    },
+    "59666323251336@lid": {
+      "jid": "59666323251336@lid",
+      "name": "DolphinBot",
+      "isOwner": false,
+      "isBanned": false,
+      "level": 1,
+      "xp": 0,
+      "money": 0,
+      "totalCommands": 15,
+      "warnings": 0,
+      "createdAt": 1770755817664,
+      "updatedAt": 1770764408096
+    }
+  },
+  "groups": {
+    "120363423444611592@g.us": {
+      "jid": "120363423444611592@g.us",
+      "name": "Group",
+      "isActive": true,
+      "welcome": {
+        "enabled": true,
+        "message": "✧･ﾟ:*  𝙚𝙮, 𝙣𝙪𝙚𝙫𝙖 𝙘𝙖𝙧𝙖  *:･ﾟ✧\n.・✦──── ⋆⋅☆⋅⋆ ────✦・.\n\nqué onda @user\n\nya estás en @group  \nahora somos @count\n\nsoy VaniaBot, la que anda por aquí echando ojo al rollo\n\nreglas rápidas:\n- respeto pa’ todos\n- nada de spam que ya me da flojera\n- si vienes con mala onda… mejor ni lo intentes\n\nespero que la pases chido y te quedes un rato\n\n.・✦──── ⋆⋅☆⋅⋆ ────✦・.\n✧･ﾟ:*  𝙑𝙖𝙣𝙞𝙖𝘽𝙤𝙩  *:･ﾟ✧"
+      },
+      "goodbye": {
+        "enabled": true,
+        "message": "✧･ﾟ:*  𝙎𝙚 𝙡@ 𝙡𝙡𝙚𝙫@ 𝙡𝙖 𝙫𝙚𝙧𝙜𝙖  *:･ﾟ✧\n.・✦──── ⋆⋅☆⋅⋆ ────✦・.\n╰┈➤\n\n@user dijo adiós\n\nqué pendejada la neta\n\n.・✦──── ⋆⋅ ───── ⋆⋅ ─────✦・.\n\n@count seguimos aquí  \nsin llorones\n\nyo estoy más que bien  \nnext\n\n╰┈➤ chau\n\n.・✦──── ⋆⋅☆⋅⋆ ────✦・.\n✧･ﾟ:*  𝙑𝙖𝙣𝙞𝙖𝘽𝙤𝙩  *:･ﾟ✧"
+      },
+      "antiSpam": {
+        "enabled": true,
+        "maxMessages": 10,
+        "timeWindow": 60
+      },
+      "antiLink": {
+        "enabled": false,
+        "allowedDomains": []
+      },
+      "antiWords": {
+        "enabled": false,
+        "words": []
+      },
+      "levels": {
+        "enabled": true,
+        "announceOnLevelUp": true
+      },
+      "economy": {
+        "enabled": true
+      },
+      "autoMod": {
+        "enabled": false,
+        "deleteLinks": false,
+        "deleteBadWords": false,
+        "warnOnViolation": true
+      },
+      "stats": {
+        "totalMessages": 0,
+        "totalCommands": 20
+      },
+      "createdAt": 1770755342658,
+      "updatedAt": 1770764408096
+    },
+    "120363404318036512@g.us": {
+      "jid": "120363404318036512@g.us",
+      "name": "Group",
+      "isActive": true,
+      "welcome": {
+        "enabled": true,
+        "message": "✧･ﾟ:*  𝙚𝙮, 𝙣𝙪𝙚𝙫𝙖 𝙘𝙖𝙧𝙖  *:･ﾟ✧\n.・✦──── ⋆⋅☆⋅⋆ ────✦・.\n\nqué onda @user\n\nya estás en @group  \nahora somos @count\n\nsoy VaniaBot, la que anda por aquí echando ojo al rollo\n\nreglas rápidas:\n- respeto pa’ todos\n- nada de spam que ya me da flojera\n- si vienes con mala onda… mejor ni lo intentes\n\nespero que la pases chido y te quedes un rato\n\n.・✦──── ⋆⋅☆⋅⋆ ────✦・.\n✧･ﾟ:*  𝙑𝙖𝙣𝙞𝙖𝘽𝙤𝙩  *:･ﾟ✧"
+      },
+      "goodbye": {
+        "enabled": true,
+        "message": "✧･ﾟ:*  𝙎𝙚 𝙡@ 𝙡𝙡𝙚𝙫@ 𝙡𝙖 𝙫𝙚𝙧𝙜𝙖  *:･ﾟ✧\n.・✦──── ⋆⋅☆⋅⋆ ────✦・.\n╰┈➤\n\n@user dijo adiós\n\nqué pendejada la neta\n\n.・✦──── ⋆⋅ ───── ⋆⋅ ─────✦・.\n\n@count seguimos aquí  \nsin llorones\n\nyo estoy más que bien  \nnext\n\n╰┈➤ chau\n\n.・✦──── ⋆⋅☆⋅⋆ ────✦・.\n✧･ﾟ:*  𝙑𝙖𝙣𝙞𝙖𝘽𝙤𝙩  *:･ﾟ✧"
+      },
+      "antiSpam": {
+        "enabled": true,
+        "maxMessages": 10,
+        "timeWindow": 60
+      },
+      "antiLink": {
+        "enabled": false,
+        "allowedDomains": []
+      },
+      "antiWords": {
+        "enabled": false,
+        "words": []
+      },
+      "levels": {
+        "enabled": true,
+        "announceOnLevelUp": true
+      },
+      "economy": {
+        "enabled": true
+      },
+      "autoMod": {
+        "enabled": false,
+        "deleteLinks": false,
+        "deleteBadWords": false,
+        "warnOnViolation": true
+      },
+      "stats": {
+        "totalMessages": 0,
+        "totalCommands": 7
+      },
+      "createdAt": 1770759850069,
+      "updatedAt": 1770759976640
+    }
+  }
+}
