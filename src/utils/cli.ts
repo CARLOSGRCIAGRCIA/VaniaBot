@@ -1,7 +1,6 @@
 import { createInterface } from "readline";
 import chalk from "chalk";
 
-// ─── Animaciones ──────────────────────────────────────────────────────────────
 const FRAMES_VANIA = [
   chalk.hex("#FF69B4")(`
 ⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
@@ -52,7 +51,6 @@ const LOADING_FRAMES = [
   "[✅] VANIABOT LISTA PARA OPERAR.",
 ];
 
-// ─── Funciones de animación ───────────────────────────────────────────────────
 async function wait(ms: number): Promise<void> {
   return new Promise((res) => setTimeout(res, ms));
 }
@@ -74,7 +72,6 @@ async function playLoadingBar(): Promise<void> {
   console.log("\n");
 }
 
-// ─── Exports públicos ─────────────────────────────────────────────────────────
 export async function mostrarBannerVania(): Promise<void> {
   console.clear();
   console.log(

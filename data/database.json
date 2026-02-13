@@ -3,41 +3,77 @@
     "208924405956643@lid": {
       "jid": "208924405956643@lid",
       "name": "Carlos G",
-      "isOwner": false,
+      "isOwner": true,
       "isBanned": false,
       "level": 1,
       "xp": 0,
       "money": 0,
-      "totalCommands": 12,
+      "totalCommands": 75,
       "warnings": 0,
-      "createdAt": 1770755342657,
-      "updatedAt": 1770755805579
+      "inventory": [],
+      "achievements": [],
+      "createdAt": 1770954080578,
+      "updatedAt": 1771001938227
     },
-    "120363423444611592@g.us": {
-      "jid": "120363423444611592@g.us",
+    "529516526675@s.whatsapp.net": {
+      "jid": "529516526675@s.whatsapp.net",
       "name": "User",
-      "isOwner": false,
+      "isOwner": true,
       "isBanned": false,
       "level": 1,
       "xp": 0,
       "money": 0,
-      "totalCommands": 1,
+      "totalCommands": 0,
       "warnings": 0,
-      "createdAt": 1770755500808,
-      "updatedAt": 1770755500930
+      "inventory": [],
+      "achievements": [],
+      "createdAt": 1770954094734,
+      "updatedAt": 1770954094734
+    },
+    "208924405956643@lid@s.whatsapp.net": {
+      "jid": "208924405956643@lid@s.whatsapp.net",
+      "name": "User",
+      "isOwner": true,
+      "isBanned": false,
+      "level": 1,
+      "xp": 0,
+      "money": 0,
+      "totalCommands": 0,
+      "warnings": 0,
+      "inventory": [],
+      "achievements": [],
+      "createdAt": 1770954445359,
+      "updatedAt": 1770954445359
+    },
+    "208924405956643@s.whatsapp.net": {
+      "jid": "208924405956643@s.whatsapp.net",
+      "name": "User",
+      "isOwner": true,
+      "isBanned": false,
+      "level": 1,
+      "xp": 0,
+      "money": 0,
+      "totalCommands": 0,
+      "warnings": 0,
+      "inventory": [],
+      "achievements": [],
+      "createdAt": 1770954445359,
+      "updatedAt": 1770954445359
     },
     "59666323251336@lid": {
       "jid": "59666323251336@lid",
       "name": "DolphinBot",
-      "isOwner": false,
+      "isOwner": true,
       "isBanned": false,
       "level": 1,
       "xp": 0,
       "money": 0,
-      "totalCommands": 15,
+      "totalCommands": 20,
       "warnings": 0,
-      "createdAt": 1770755817664,
-      "updatedAt": 1770764408096
+      "inventory": [],
+      "achievements": [],
+      "createdAt": 1770954489526,
+      "updatedAt": 1771004725515
     }
   },
   "groups": {
@@ -46,12 +82,10 @@
       "name": "Group",
       "isActive": true,
       "welcome": {
-        "enabled": true,
-        "message": "✧･ﾟ:*  𝙚𝙮, 𝙣𝙪𝙚𝙫𝙖 𝙘𝙖𝙧𝙖  *:･ﾟ✧\n.・✦──── ⋆⋅☆⋅⋆ ────✦・.\n\nqué onda @user\n\nya estás en @group  \nahora somos @count\n\nsoy VaniaBot, la que anda por aquí echando ojo al rollo\n\nreglas rápidas:\n- respeto pa’ todos\n- nada de spam que ya me da flojera\n- si vienes con mala onda… mejor ni lo intentes\n\nespero que la pases chido y te quedes un rato\n\n.・✦──── ⋆⋅☆⋅⋆ ────✦・.\n✧･ﾟ:*  𝙑𝙖𝙣𝙞𝙖𝘽𝙤𝙩  *:･ﾟ✧"
+        "enabled": false
       },
       "goodbye": {
-        "enabled": true,
-        "message": "✧･ﾟ:*  𝙎𝙚 𝙡@ 𝙡𝙡𝙚𝙫@ 𝙡𝙖 𝙫𝙚𝙧𝙜𝙖  *:･ﾟ✧\n.・✦──── ⋆⋅☆⋅⋆ ────✦・.\n╰┈➤\n\n@user dijo adiós\n\nqué pendejada la neta\n\n.・✦──── ⋆⋅ ───── ⋆⋅ ─────✦・.\n\n@count seguimos aquí  \nsin llorones\n\nyo estoy más que bien  \nnext\n\n╰┈➤ chau\n\n.・✦──── ⋆⋅☆⋅⋆ ────✦・.\n✧･ﾟ:*  𝙑𝙖𝙣𝙞𝙖𝘽𝙤𝙩  *:･ﾟ✧"
+        "enabled": false
       },
       "antiSpam": {
         "enabled": true,
@@ -81,22 +115,63 @@
       },
       "stats": {
         "totalMessages": 0,
-        "totalCommands": 20
+        "totalCommands": 93
       },
-      "createdAt": 1770755342658,
-      "updatedAt": 1770764408096
+      "createdAt": 1770954080579,
+      "updatedAt": 1771004725515
+    },
+    "120363394502592726@g.us": {
+      "jid": "120363394502592726@g.us",
+      "name": "Group",
+      "isActive": true,
+      "welcome": {
+        "enabled": false
+      },
+      "goodbye": {
+        "enabled": false
+      },
+      "antiSpam": {
+        "enabled": true,
+        "maxMessages": 10,
+        "timeWindow": 60
+      },
+      "antiLink": {
+        "enabled": false,
+        "allowedDomains": []
+      },
+      "antiWords": {
+        "enabled": false,
+        "words": []
+      },
+      "levels": {
+        "enabled": true,
+        "announceOnLevelUp": true
+      },
+      "economy": {
+        "enabled": true
+      },
+      "autoMod": {
+        "enabled": false,
+        "deleteLinks": false,
+        "deleteBadWords": false,
+        "warnOnViolation": true
+      },
+      "stats": {
+        "totalMessages": 0,
+        "totalCommands": 1
+      },
+      "createdAt": 1770957099276,
+      "updatedAt": 1770957102305
     },
     "120363404318036512@g.us": {
       "jid": "120363404318036512@g.us",
       "name": "Group",
       "isActive": true,
       "welcome": {
-        "enabled": true,
-        "message": "✧･ﾟ:*  𝙚𝙮, 𝙣𝙪𝙚𝙫𝙖 𝙘𝙖𝙧𝙖  *:･ﾟ✧\n.・✦──── ⋆⋅☆⋅⋆ ────✦・.\n\nqué onda @user\n\nya estás en @group  \nahora somos @count\n\nsoy VaniaBot, la que anda por aquí echando ojo al rollo\n\nreglas rápidas:\n- respeto pa’ todos\n- nada de spam que ya me da flojera\n- si vienes con mala onda… mejor ni lo intentes\n\nespero que la pases chido y te quedes un rato\n\n.・✦──── ⋆⋅☆⋅⋆ ────✦・.\n✧･ﾟ:*  𝙑𝙖𝙣𝙞𝙖𝘽𝙤𝙩  *:･ﾟ✧"
+        "enabled": false
       },
       "goodbye": {
-        "enabled": true,
-        "message": "✧･ﾟ:*  𝙎𝙚 𝙡@ 𝙡𝙡𝙚𝙫@ 𝙡𝙖 𝙫𝙚𝙧𝙜𝙖  *:･ﾟ✧\n.・✦──── ⋆⋅☆⋅⋆ ────✦・.\n╰┈➤\n\n@user dijo adiós\n\nqué pendejada la neta\n\n.・✦──── ⋆⋅ ───── ⋆⋅ ─────✦・.\n\n@count seguimos aquí  \nsin llorones\n\nyo estoy más que bien  \nnext\n\n╰┈➤ chau\n\n.・✦──── ⋆⋅☆⋅⋆ ────✦・.\n✧･ﾟ:*  𝙑𝙖𝙣𝙞𝙖𝘽𝙤𝙩  *:･ﾟ✧"
+        "enabled": false
       },
       "antiSpam": {
         "enabled": true,
@@ -126,10 +201,10 @@
       },
       "stats": {
         "totalMessages": 0,
-        "totalCommands": 7
+        "totalCommands": 1
       },
-      "createdAt": 1770759850069,
-      "updatedAt": 1770759976640
+      "createdAt": 1770958006971,
+      "updatedAt": 1771001350878
     }
   }
 }

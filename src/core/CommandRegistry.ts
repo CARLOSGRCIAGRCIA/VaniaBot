@@ -9,8 +9,11 @@ export class CommandRegistry {
   register(command: ICommand): void {
     this.commands.set(command.name, command);
 
+    logger.debug(`Registrando comando: ${command.name}`);
+
     command.aliases?.forEach((alias) => {
       this.aliases.set(alias, command.name);
+      logger.debug(`  - Alias registrado: ${alias} → ${command.name}`);
     });
   }
 
@@ -53,3 +56,5 @@ export class CommandRegistry {
     return this.commands.size;
   }
 }
+
+export const commandRegistry = new CommandRegistry();
