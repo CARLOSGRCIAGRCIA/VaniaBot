@@ -17,7 +17,6 @@ import {
 import { unlinkSync, readdirSync, existsSync, mkdirSync } from "fs";
 import { join } from "path";
 
-// ✅ Para código de pareamiento WhatsApp REQUIERE un browser real (Ubuntu/Chrome).
 const WA_BROWSER_PAIRING: [string, string, string] = [
   "Ubuntu",
   "Chrome",
@@ -74,7 +73,6 @@ export class AuthManager {
   }
 
   async createSocket(): Promise<WASocket> {
-    // Evitar reconexiones muy rápidas
     const timeSinceLastDisconnect = Date.now() - this.lastDisconnectTime;
     if (timeSinceLastDisconnect < 2000 && this.reconnectAttempts > 0) {
       const delay = Math.min(3_000 * this.reconnectAttempts, 15_000);
@@ -136,7 +134,6 @@ export class AuthManager {
   ): Promise<void> {
     const { connection, lastDisconnect, qr, isNewLogin } = update;
 
-    // ── QR ──────────────────────────────────────────────────────
     if (qr && !config.auth.usePairingCode) {
       this.qrRetries++;
       if (this.qrRetries > MAX_QR_RETRIES) {
@@ -149,25 +146,19 @@ export class AuthManager {
       return;
     }
 
-    // ── PAIRING CODE (MOMENTO CORRECTO) ─────────────────────────
-    // ✅ Solicitar código INMEDIATAMENTE cuando detectamos nueva sesión
-    // ANTES de que la conexión esté completamente abierta
     if (
       config.auth.usePairingCode &&
       !this.pairingCodeRequested &&
       !sock.authState.creds.registered
     ) {
-      // Solo intentar una vez
       this.pairingCodeRequested = true;
 
-      // Esperar un momento para que la conexión se estabilice
       await new Promise((resolve) => setTimeout(resolve, 1000));
 
       await this.requestPairingCode(sock);
       return;
     }
 
-    // ── CONNECTING ───────────────────────────────────────────────
     if (connection === "connecting") {
       if (!this.isConnecting) {
         this.isConnecting = true;
@@ -176,13 +167,11 @@ export class AuthManager {
       return;
     }
 
-    // ── OPEN ─────────────────────────────────────────────────────
     if (connection === "open") {
       await this.onConnectionOpen(sock);
       return;
     }
 
-    // ── CLOSE ────────────────────────────────────────────────────
     if (connection === "close") {
       this.lastDisconnectTime = Date.now();
       this.onConnectionClose(lastDisconnect);
@@ -238,7 +227,7 @@ export class AuthManager {
         this.handle515Error();
         break;
 
-      case 408: // QR timeout / Pairing timeout
+      case 408:
         if (config.auth.usePairingCode) {
           logger.error("❌ Timeout del código de pareamiento");
           logger.info(
@@ -327,7 +316,6 @@ export class AuthManager {
     }
 
     try {
-      // Validar y formatear número (sin + y sin espacios)
       const validatedPhone = validatePhoneNumber(config.auth.phoneNumber);
       const phone = validatedPhone.replace(/\D/g, "");
 

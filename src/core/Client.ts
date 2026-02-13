@@ -1,5 +1,5 @@
 import type { WASocket } from "@whiskeysockets/baileys";
-import { CommandRegistry } from "./CommandRegistry.js";
+import { commandRegistry } from "./CommandRegistry.js";
 import { PluginLoader } from "./PluginLoader.js";
 import { MessageContext } from "./MessageContext.js";
 import { AuthManager } from "./AuthManager.js";
@@ -16,13 +16,11 @@ import type { IMiddleware } from "@/types/index.js";
 
 export class WhatsAppClient {
   private sock!: WASocket;
-  private readonly registry: CommandRegistry;
   private readonly middlewares: IMiddleware[] = [];
   private readonly authManager: AuthManager;
   private isReady = false;
 
   constructor() {
-    this.registry = new CommandRegistry();
     this.authManager = new AuthManager();
   }
 
@@ -36,23 +34,37 @@ export class WhatsAppClient {
 
     AuthManager.showAuthMode();
 
+    logger.info(`📦 Comandos cargados por PluginLoader: ${commands.length}`);
+
     if (commands.length === 0) {
       logger.warn("⚠️  No se cargaron comandos");
-    }
+    } else {
+      // Registrar comandos en la instancia singleton
+      for (const cmd of commands) {
+        if (cmd?.name) {
+          logger.info(`📝 Registrando comando: ${cmd.name}`);
+          commandRegistry.register(cmd);
+        }
+      }
 
-    for (const cmd of commands) {
-      if (cmd?.name) this.registry.register(cmd);
-    }
+      logger.info(
+        `✅ ${commandRegistry.size} comandos registrados en el registry`,
+      );
 
-    logger.info(`✅ ${commands.length} comandos cargados`);
+      // Verificar que se registraron
+      const allCommands = commandRegistry.getAll();
+      logger.info(
+        `🔍 Comandos disponibles en registry: ${allCommands.map((c) => c.name).join(", ")}`,
+      );
+    }
 
     this.middlewares.push(
       new AutoRegisterMiddleware(),
       new LoggerMiddleware(),
-      new ValidationMiddleware(this.registry),
-      new PermissionMiddleware(this.registry),
+      new ValidationMiddleware(commandRegistry), // Usar singleton
+      new PermissionMiddleware(commandRegistry), // Usar singleton
       new AntiSpamMiddleware(),
-      new CooldownMiddleware(this.registry),
+      new CooldownMiddleware(commandRegistry), // Usar singleton
     );
 
     logger.info(`✅ ${this.middlewares.length} middlewares registrados`);
@@ -86,7 +98,7 @@ export class WhatsAppClient {
     const ctx = new MessageContext(this.sock, message);
     if (!ctx.command) return;
 
-    const command = this.registry.get(ctx.command);
+    const command = commandRegistry.get(ctx.command); // Usar singleton
     if (!command) return;
 
     if (command.permissions?.user || command.permissions?.bot) {
@@ -179,8 +191,8 @@ export class WhatsAppClient {
     logger.info("✅ Bot cerrado correctamente");
   }
 
-  getRegistry(): CommandRegistry {
-    return this.registry;
+  getRegistry() {
+    return commandRegistry; // Retornar singleton
   }
 
   getSocket(): WASocket {

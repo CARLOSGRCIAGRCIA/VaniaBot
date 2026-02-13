@@ -97,13 +97,11 @@ function startBot(authMode: "qr" | "code"): void {
       ),
     );
 
-    // Salida limpia
     if (signal === "SIGTERM" || signal === "SIGKILL" || code === 130) {
       console.log(chalk.green("✓ VaniaBot cerrado correctamente"));
       process.exit(0);
     }
 
-    // Si fue autenticado y salió normalmente
     if (code === 0 && isAuthenticated) {
       console.log(chalk.green("✓ VaniaBot cerrado correctamente"));
       process.exit(0);
@@ -203,7 +201,6 @@ async function promptPhoneNumber(): Promise<void> {
     process.exit(1);
   }
 
-  // Validar formato básico
   const cleaned = phone.replace(/\s/g, "");
   if (!/^\+?\d{10,15}$/.test(cleaned)) {
     console.log(chalk.red("❌ Formato de número inválido"));
@@ -212,7 +209,6 @@ async function promptPhoneNumber(): Promise<void> {
     process.exit(1);
   }
 
-  // Asegurar que tenga el +
   const formatted = cleaned.startsWith("+") ? cleaned : `+${cleaned}`;
   process.env.PHONE_NUMBER = formatted;
 
