@@ -181,14 +181,9 @@ export class HelpCommand extends Command {
 
     menu += `\n⌬ 𝗩𝗔𝗡𝗜𝗔 𝗕𝗢𝗧 💝 - Sistema ejecutado con éxito.`;
 
-    // Enviar SIN botones por ahora - solo menú bonito
     await this.sendSimpleMenu(ctx, menu);
   }
 
-  /**
-   * OPCIÓN 1: Menú sin botones pero funcional
-   * Para baileys oficial 6.7.9
-   */
   private async sendSimpleMenu(
     ctx: MessageContext,
     text: string,
@@ -208,7 +203,6 @@ export class HelpCommand extends Command {
           { quoted: ctx.message },
         );
       } else {
-        // Sin imagen, solo texto
         await ctx.sock.sendMessage(
           ctx.chat.jid,
           { text: text },
