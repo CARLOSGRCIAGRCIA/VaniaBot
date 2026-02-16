@@ -1,0 +1,138 @@
+import { Command } from "../Command.js";
+import { CommandCategory, PermissionLevel } from "@/types/index.js";
+import type { MessageContext } from "@/types/index.js";
+import { serviceManager } from "@/services/Servicemanager.js";
+import { formatNumber } from "@/utils/helpers.js";
+
+export class GrantCommand extends Command {
+  name = "grant";
+  description = "Concede recursos a un usuario (solo owners)";
+  category = CommandCategory.OWNER;
+  aliases = ["conceder", "give", "dar"];
+  usage = "!grant <money|xp|item> <@usuario> <cantidad>";
+  examples = [
+    "!grant money @5215551234567 1000",
+    "!grant xp @5215551234567 500",
+    "!grant item @5215551234567 diamond",
+  ];
+  permissions = {
+    user: [PermissionLevel.OWNER],
+  };
+
+  async execute(ctx: MessageContext): Promise<void> {
+    const args = ctx.args;
+
+    if (args.length < 3) {
+      await ctx.reply(
+        `❌ Uso incorrecto\n\n📖 Uso: ${this.usage}\n\n📝 Ejemplos:\n${this.examples.join("\n")}`,
+      );
+      return;
+    }
+
+    const type = args[0].toLowerCase();
+    const mentionedJid =
+      ctx.message.message?.extendedTextMessage?.contextInfo?.mentionedJid?.[0];
+
+    if (!mentionedJid) {
+      await ctx.reply("❌ Debes mencionar a un usuario");
+      return;
+    }
+
+    const targetUser = await serviceManager.userService.getUser(mentionedJid);
+
+    try {
+      switch (type) {
+        case "money":
+        case "dinero":
+        case "cash":
+          await this.grantMoney(ctx, mentionedJid, args[2], targetUser.name);
+          break;
+
+        case "xp":
+        case "exp":
+        case "experiencia":
+          await this.grantXP(ctx, mentionedJid, args[2], targetUser.name);
+          break;
+
+        case "item":
+        case "objeto":
+          await this.grantItem(ctx, mentionedJid, args[2], targetUser.name);
+          break;
+
+        default:
+          await ctx.reply("❌ Tipo inválido. Usa: money, xp, o item");
+      }
+    } catch (error) {
+      console.error("Error en GrantCommand:", error);
+      await ctx.reply(
+        `❌ Error: ${error instanceof Error ? error.message : "Desconocido"}`,
+      );
+    }
+  }
+
+  private async grantMoney(
+    ctx: MessageContext,
+    targetJid: string,
+    amountStr: string,
+    targetName: string,
+  ): Promise<void> {
+    const amount = parseInt(amountStr);
+
+    if (isNaN(amount) || amount <= 0) {
+      await ctx.reply("❌ La cantidad debe ser un número positivo");
+      return;
+    }
+
+    await serviceManager.userService.grantMoney(
+      ctx.sender.jid,
+      targetJid,
+      amount,
+    );
+
+    await ctx.reply(
+      `✅ Se han concedido $${formatNumber(amount)} a ${targetName}`,
+    );
+  }
+
+  private async grantXP(
+    ctx: MessageContext,
+    targetJid: string,
+    amountStr: string,
+    targetName: string,
+  ): Promise<void> {
+    const amount = parseInt(amountStr);
+
+    if (isNaN(amount) || amount <= 0) {
+      await ctx.reply("❌ La cantidad debe ser un número positivo");
+      return;
+    }
+
+    await serviceManager.userService.grantXP(ctx.sender.jid, targetJid, amount);
+
+    const updatedUser = await serviceManager.userService.getUser(targetJid);
+
+    await ctx.reply(
+      `✅ Se han concedido ${formatNumber(amount)} XP a ${targetName}\n\n🎯 Nivel alcanzado: ${updatedUser.level}`,
+    );
+  }
+
+  private async grantItem(
+    ctx: MessageContext,
+    targetJid: string,
+    item: string,
+    targetName: string,
+  ): Promise<void> {
+    if (!item || item.trim() === "") {
+      await ctx.reply("❌ Debes especificar un item válido");
+      return;
+    }
+
+    await serviceManager.userService.grantItem(
+      ctx.sender.jid,
+      targetJid,
+      item.toLowerCase(),
+    );
+
+    await ctx.reply(`✅ Se ha concedido el item "${item}" a ${targetName}`);
+  }
+}
