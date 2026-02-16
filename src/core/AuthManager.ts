@@ -27,25 +27,41 @@ const WA_BROWSER_QR: [string, string, string] = [
   "Chrome",
   "120.0.0",
 ];
-
 const SILENT_LOGGER = pino({ level: "silent" });
-const MAX_QR_RETRIES = 3;
-const MAX_RECONNECT_ATTEMPTS = 5;
+
+const MAX_QR_RETRIES = 10;
+const MAX_RECONNECT_ATTEMPTS = 15;
+const CONNECTION_TIMEOUT = 120_000;
+const RECONNECT_BASE_DELAY = 500;
+const MAX_RECONNECT_DELAY = 5_000;
+const PAIRING_CODE_TIMEOUT = 180_000;
+
+const ERROR_515_MAX_RETRIES = 3;
+const ERROR_515_WAIT_TIME = 3_000;
 
 let _cachedVersion: [number, number, number] | null = null;
 
 async function getWAVersion(): Promise<[number, number, number]> {
   if (_cachedVersion) return _cachedVersion;
-  const { version } = await fetchLatestBaileysVersion();
-  _cachedVersion = version as [number, number, number];
-  return _cachedVersion;
+
+  try {
+    const { version } = await fetchLatestBaileysVersion();
+    _cachedVersion = version as [number, number, number];
+    return _cachedVersion;
+  } catch (error) {
+    logger.warn("No se pudo obtener la última versión, usando fallback");
+    _cachedVersion = [2, 3000, 1015901307];
+    return _cachedVersion;
+  }
 }
 
 function patchStdout(): void {
   if ((process.stdout as any).__baileysPatch) return;
   (process.stdout as any).__baileysPatch = true;
+
   const _originalWrite = process.stdout.write.bind(process.stdout);
   const CLOSING_RE = /^Closing session:/;
+
   (process.stdout as any).write = function (
     chunk: string | Buffer,
     encOrCb?: any,
@@ -67,6 +83,11 @@ export class AuthManager {
   private qrRetries = 0;
   private isConnecting = false;
   private lastDisconnectTime = 0;
+  private connectionTimeout: NodeJS.Timeout | null = null;
+  private authPromise: Promise<void> | null = null;
+
+  private error515Count = 0;
+  private last515Time = 0;
 
   constructor() {
     patchStdout();
@@ -74,21 +95,23 @@ export class AuthManager {
 
   async createSocket(): Promise<WASocket> {
     const timeSinceLastDisconnect = Date.now() - this.lastDisconnectTime;
-    if (timeSinceLastDisconnect < 2000 && this.reconnectAttempts > 0) {
-      const delay = Math.min(3_000 * this.reconnectAttempts, 15_000);
-      logger.info(`⏳ Reconectando en ${delay / 1000}s...`);
+    if (timeSinceLastDisconnect < 500 && this.reconnectAttempts > 0) {
+      const delay = Math.min(
+        RECONNECT_BASE_DELAY * this.reconnectAttempts,
+        MAX_RECONNECT_DELAY,
+      );
       await new Promise((resolve) => setTimeout(resolve, delay));
     }
 
-    const version = await getWAVersion();
-    logger.info(`📱 WhatsApp Web v${version.join(".")}`);
-
+    const versionPromise = getWAVersion();
     mkdirSync(config.sessionPath, { recursive: true });
 
-    const { state, saveCreds } = await useMultiFileAuthState(
-      config.sessionPath,
-    );
+    const [version, { state, saveCreds }] = await Promise.all([
+      versionPromise,
+      useMultiFileAuthState(config.sessionPath),
+    ]);
 
+    logger.info(`📱 WhatsApp Web v${version.join(".")}`);
     logger.info(
       state.creds.registered ? "✅ Sesión existente" : "🆕 Nueva sesión",
     );
@@ -106,19 +129,24 @@ export class AuthManager {
       logger: SILENT_LOGGER,
       printQRInTerminal: false,
       browser,
-      defaultQueryTimeoutMs: undefined,
-      connectTimeoutMs: 60_000,
-      keepAliveIntervalMs: 30_000,
+      defaultQueryTimeoutMs: 60_000,
+      connectTimeoutMs: CONNECTION_TIMEOUT,
+      keepAliveIntervalMs: 20_000,
       getMessage: async () => undefined,
       syncFullHistory: false,
-      markOnlineOnConnect: false,
+      markOnlineOnConnect: true,
       generateHighQualityLinkPreview: false,
-      retryRequestDelayMs: 250,
+      retryRequestDelayMs: 150,
       shouldIgnoreJid: (jid: string) => jid?.endsWith("@broadcast"),
       emitOwnEvents: false,
+      cachedGroupMetadata: async () => undefined,
+      qrTimeout: 60_000,
     });
 
-    sock.ev.on("creds.update", saveCreds);
+    sock.ev.on("creds.update", () => {
+      saveCreds().catch(() => {});
+    });
+
     sock.ev.on("connection.update", (update) =>
       this.handleConnection(sock, update).catch((err) =>
         logError("handleConnection", err),
@@ -143,6 +171,14 @@ export class AuthManager {
       }
       logger.info(`📱 QR generado (${this.qrRetries}/${MAX_QR_RETRIES})`);
       displayQR(qr);
+
+      if (this.connectionTimeout) clearTimeout(this.connectionTimeout);
+      this.connectionTimeout = setTimeout(() => {
+        if (!this.connectionEstablished) {
+          logger.warn("⚠️ Timeout esperando escaneo de QR");
+        }
+      }, 60_000);
+
       return;
     }
 
@@ -153,9 +189,9 @@ export class AuthManager {
     ) {
       this.pairingCodeRequested = true;
 
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-
-      await this.requestPairingCode(sock);
+      if (!this.authPromise) {
+        this.authPromise = this.requestPairingCode(sock);
+      }
       return;
     }
 
@@ -179,10 +215,17 @@ export class AuthManager {
   }
 
   private async onConnectionOpen(sock: WASocket): Promise<void> {
+    if (this.connectionTimeout) {
+      clearTimeout(this.connectionTimeout);
+      this.connectionTimeout = null;
+    }
+
     this.reconnectAttempts = 0;
     this.qrRetries = 0;
     this.isConnecting = false;
-    _cachedVersion = null;
+    this.pairingCodeRequested = false;
+    this.authPromise = null;
+    this.error515Count = 0;
 
     if (!this.connectionEstablished) {
       this.connectionEstablished = true;
@@ -203,10 +246,11 @@ export class AuthManager {
     lastDisconnect: Partial<ConnectionState>["lastDisconnect"],
   ): void {
     this.isConnecting = false;
+
     const statusCode = (lastDisconnect?.error as any)?.output?.statusCode;
     const reason = lastDisconnect?.error?.message ?? "Desconocido";
 
-    logger.warn(`⚠️  Desconectado [${statusCode}]: ${reason}`);
+    logger.warn(`⚠️ Desconectado [${statusCode}]: ${reason}`);
 
     switch (statusCode) {
       case DisconnectReason.badSession:
@@ -224,36 +268,32 @@ export class AuthManager {
         break;
 
       case 515:
-        this.handle515Error();
+        this.handle515ErrorFast();
         break;
 
       case 408:
         if (config.auth.usePairingCode) {
           logger.error("❌ Timeout del código de pareamiento");
-          logger.info(
-            "💡 Asegúrate de ingresar el código en tu teléfono dentro de 1-2 minutos",
-          );
         } else {
           logger.error("❌ Timeout del código QR");
         }
-        this.clearSession();
-        process.exit(1);
+        this.scheduleReconnectFast(statusCode);
         break;
 
       case DisconnectReason.connectionReplaced:
-        logger.warn("⚠️  Conexión reemplazada por otra sesión activa");
+        logger.warn("⚠️ Conexión reemplazada");
         process.exit(0);
         break;
 
       case DisconnectReason.connectionClosed:
       case DisconnectReason.connectionLost:
       case DisconnectReason.timedOut:
-        this.scheduleReconnect(statusCode);
+        this.scheduleReconnectFast(statusCode);
         break;
 
       case DisconnectReason.restartRequired:
-        logger.info("🔄 Reinicio requerido por WhatsApp...");
-        setTimeout(() => process.exit(0), 1_000);
+        logger.info("🔄 Reinicio requerido");
+        setTimeout(() => process.exit(0), 500);
         break;
 
       default:
@@ -262,32 +302,29 @@ export class AuthManager {
     }
   }
 
-  private handle515Error(): void {
+  private handle515ErrorFast(): void {
     this.connectionEstablished = false;
-    this.reconnectAttempts++;
+    this.error515Count++;
 
-    if (this.reconnectAttempts <= MAX_RECONNECT_ATTEMPTS) {
-      const waitSec = 15 * this.reconnectAttempts;
+    if (this.error515Count <= ERROR_515_MAX_RETRIES) {
       logger.warn(
-        `⚠️  Error 515 [${this.reconnectAttempts}/${MAX_RECONNECT_ATTEMPTS}] — esperando ${waitSec}s`,
+        `⚠️ Error 515 [${this.error515Count}/${ERROR_515_MAX_RETRIES}] — reintentando en ${ERROR_515_WAIT_TIME / 1000}s`,
       );
-      setTimeout(() => process.exit(0), waitSec * 1_000);
+      setTimeout(() => process.exit(0), ERROR_515_WAIT_TIME);
     } else {
-      logger.error(
-        "❌ Error 515 persistente — cierra todas las sesiones de WhatsApp Web y espera 2 min",
-      );
+      logger.error("❌ Error 515 persistente → limpiando sesión");
       this.clearSession();
       process.exit(1);
     }
   }
 
-  private scheduleReconnect(statusCode: number): void {
+  private scheduleReconnectFast(statusCode: number): void {
     if (this.reconnectAttempts < MAX_RECONNECT_ATTEMPTS) {
       this.reconnectAttempts++;
       logger.warn(
-        `🔄 Reconexión [${this.reconnectAttempts}/${MAX_RECONNECT_ATTEMPTS}] por código ${statusCode}`,
+        `🔄 Reconexión [${this.reconnectAttempts}/${MAX_RECONNECT_ATTEMPTS}]`,
       );
-      setTimeout(() => process.exit(0), 2_000);
+      setTimeout(() => process.exit(0), 500);
     } else {
       logger.error("❌ Demasiados intentos fallidos");
       this.clearSession();
@@ -301,7 +338,7 @@ export class AuthManager {
       logger.warn(
         `🔄 Error ${statusCode} [${this.reconnectAttempts}/${MAX_RECONNECT_ATTEMPTS}]`,
       );
-      setTimeout(() => process.exit(0), 3_000);
+      setTimeout(() => process.exit(0), 1_000);
     } else {
       logger.error(`❌ Error persistente: ${statusCode}`);
       this.clearSession();
@@ -311,7 +348,7 @@ export class AuthManager {
 
   private async requestPairingCode(sock: WASocket): Promise<void> {
     if (!config.auth.phoneNumber) {
-      logger.error("❌ PHONE_NUMBER no configurado en .env");
+      logger.error("❌ PHONE_NUMBER no configurado");
       process.exit(1);
     }
 
@@ -321,39 +358,40 @@ export class AuthManager {
 
       logger.info(`📞 Solicitando código para: ${validatedPhone}`);
 
-      const code = await sock.requestPairingCode(phone);
+      const codePromise = sock.requestPairingCode(phone);
+      const timeoutPromise = new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error("Timeout")), PAIRING_CODE_TIMEOUT),
+      );
+
+      const code = await Promise.race([codePromise, timeoutPromise]);
 
       if (!code) {
-        throw new Error("No se recibió código de pareamiento");
+        throw new Error("No se recibió código");
       }
 
       displayPairingCode(code);
-      logger.info(
-        "📱 WhatsApp → Dispositivos vinculados → Vincular con número de teléfono",
-      );
-      logger.info("⏳ Esperando que ingreses el código en WhatsApp...");
+      logger.info("📱 Ingresa el código en WhatsApp");
     } catch (error: any) {
       this.pairingCodeRequested = false;
+      this.authPromise = null;
+
       const msg = error?.message ?? String(error);
 
-      if (msg.includes("Connection Closed") || msg.includes("timed out")) {
-        logger.warn(
-          "⚠️  Conexión cerrada al solicitar código — reintentando...",
-        );
-        setTimeout(() => process.exit(0), 1_500);
+      if (
+        msg.includes("Connection Closed") ||
+        msg.includes("timed out") ||
+        msg.includes("Timeout")
+      ) {
+        logger.warn("⚠️ Conexión cerrada — reintentando...");
+        setTimeout(() => process.exit(0), 500);
       } else if (msg.includes("not registered")) {
-        logger.error("❌ Este número no tiene WhatsApp activo");
-        logger.error(`   Número verificado: ${config.auth.phoneNumber}`);
+        logger.error("❌ Número sin WhatsApp");
         process.exit(1);
       } else if (msg.includes("429") || msg.includes("rate")) {
-        logger.error(
-          "❌ Demasiadas solicitudes — espera 5-10 minutos e intenta de nuevo",
-        );
+        logger.error("❌ Demasiadas solicitudes");
         process.exit(1);
       } else {
         logError("requestPairingCode", error);
-        logger.error("💡 Verifica que el número sea correcto");
-        logger.error(`   Formato correcto: +529514639799 o 529514639799`);
         process.exit(1);
       }
     }
@@ -366,7 +404,7 @@ export class AuthManager {
       const files = readdirSync(config.sessionPath);
       if (files.length === 0) return;
 
-      logger.info(`🧹 Limpiando ${files.length} archivos de sesión...`);
+      logger.info(`🧹 Limpiando ${files.length} archivos...`);
 
       for (const file of files) {
         try {

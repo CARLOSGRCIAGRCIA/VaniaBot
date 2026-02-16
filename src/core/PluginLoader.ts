@@ -47,7 +47,6 @@ export class PluginLoader {
           const fileUrl = `file://${filePath.replace(/\\/g, "/")}`;
           const module = await import(fileUrl);
 
-          // Buscar el comando con múltiples estrategias
           let CommandClass = this.findCommandClass(module, file);
 
           if (CommandClass && typeof CommandClass === "function") {
@@ -75,25 +74,18 @@ export class PluginLoader {
     }
   }
 
-  /**
-   * Busca la clase del comando en el módulo usando múltiples estrategias
-   */
   private static findCommandClass(module: any, filename: string): any {
-    // Estrategia 1: export default
     if (module.default) {
       logger.debug(`  → Encontrado como export default`);
       return module.default;
     }
 
-    // Estrategia 2: export nombrado que coincida con el nombre del archivo
-    // Por ejemplo: HelpCommand.ts → export { HelpCommand }
     const expectedName = filename.replace(/\.(ts|js)$/, "");
     if (module[expectedName]) {
       logger.debug(`  → Encontrado como export nombrado: ${expectedName}`);
       return module[expectedName];
     }
 
-    // Estrategia 3: Buscar cualquier export que sea una clase con execute
     const exports = Object.values(module);
     const commandClass = exports.find(
       (exp: any) =>
