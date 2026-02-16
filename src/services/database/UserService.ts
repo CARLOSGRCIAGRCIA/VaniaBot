@@ -25,27 +25,16 @@ export class UserService {
 
   constructor(private db: IDatabase) {}
 
-  /**
-   * Verifica si un JID es owner según la configuración Y la base de datos
-   * Soporta:
-   * - Números simples: "529516526675"
-   * - JIDs completos estándar: "529516526675@s.whatsapp.net"
-   * - JIDs de canal: "208924405956643@lid"
-   * - Owners agregados dinámicamente en la DB
-   */
   private async isOwnerJidAsync(jid: string): Promise<boolean> {
-    // 1. Verificar si el JID completo está en la lista de owners del .env
     if (config.owners.includes(jid)) {
       return true;
     }
 
-    // 2. Extraer la parte antes del @ y verificar
     const jidBase = jid.split("@")[0];
     if (config.owners.includes(jidBase)) {
       return true;
     }
 
-    // 3. Verificar si algún owner está contenido en el JID
     const inConfig = config.owners.some((owner) => {
       const cleanOwner = owner.split("@")[0];
       return jid.includes(cleanOwner) || jidBase === cleanOwner;
@@ -55,7 +44,6 @@ export class UserService {
       return true;
     }
 
-    // 4. Verificar en la base de datos (para owners agregados con !setowner)
     try {
       const existingUser = await this.db.get<User>(this.COLLECTION, jid);
       return existingUser?.isOwner || false;
@@ -64,23 +52,16 @@ export class UserService {
     }
   }
 
-  /**
-   * Versión síncrona para compatibilidad con código existente
-   * Solo verifica el .env, no la base de datos
-   */
   private isOwnerJid(jid: string): boolean {
-    // 1. Verificar si el JID completo está en la lista de owners
     if (config.owners.includes(jid)) {
       return true;
     }
 
-    // 2. Extraer la parte antes del @ y verificar
     const jidBase = jid.split("@")[0];
     if (config.owners.includes(jidBase)) {
       return true;
     }
 
-    // 3. Verificar si algún owner está contenido en el JID
     const isOwner = config.owners.some((owner) => {
       const cleanOwner = owner.split("@")[0];
       return jid.includes(cleanOwner) || jidBase === cleanOwner;
@@ -92,23 +73,19 @@ export class UserService {
   async getUser(jid: string): Promise<User> {
     const existing = await this.db.get<User>(this.COLLECTION, jid);
 
-    // Verificar si el JID está en la lista de owners O en la base de datos
     const isOwnerFromConfig = this.isOwnerJid(jid);
     const isOwnerFromDB = existing?.isOwner || false;
 
-    // Es owner si está en el config O en la base de datos
     const isOwner = isOwnerFromConfig || isOwnerFromDB;
 
     if (existing) {
-      // Asegurar que inventory y achievements existen
       const updatedUser = {
         ...existing,
-        isOwner, // Actualizar según configuración actual O base de datos
+        isOwner,
         inventory: existing.inventory || [],
         achievements: existing.achievements || [],
       };
 
-      // Si cambió el estado de owner, actualizar en la base de datos
       if (existing.isOwner !== isOwner) {
         await this.db.update<User>(this.COLLECTION, jid, { isOwner });
       }
@@ -119,7 +96,7 @@ export class UserService {
     const newUser: User = {
       jid,
       name: "User",
-      isOwner, // Establecer según configuración
+      isOwner,
       isBanned: false,
       level: 1,
       xp: 0,
@@ -146,7 +123,6 @@ export class UserService {
   async addXP(jid: string, amount: number): Promise<User> {
     const user = await this.getUser(jid);
 
-    // Los owners no necesitan XP, ya están al máximo
     if (user.isOwner) {
       return user;
     }
@@ -172,7 +148,6 @@ export class UserService {
   async removeMoney(jid: string, amount: number): Promise<boolean> {
     const user = await this.getUser(jid);
 
-    // Los owners tienen dinero ilimitado
     if (user.isOwner) {
       return true;
     }
@@ -198,7 +173,6 @@ export class UserService {
   async banUser(jid: string, reason?: string): Promise<void> {
     const user = await this.getUser(jid);
 
-    // No se puede banear a un owner
     if (user.isOwner) {
       throw new Error("No se puede banear a un owner");
     }
@@ -218,7 +192,6 @@ export class UserService {
   async addWarning(jid: string): Promise<number> {
     const user = await this.getUser(jid);
 
-    // Los owners no reciben advertencias
     if (user.isOwner) {
       return 0;
     }
@@ -273,7 +246,6 @@ export class UserService {
   async addAchievement(jid: string, achievementId: string): Promise<boolean> {
     const user = await this.getUser(jid);
 
-    // Los owners ya tienen todos los logros por defecto
     if (user.isOwner) {
       return false;
     }
@@ -293,7 +265,6 @@ export class UserService {
   async hasAchievement(jid: string, achievementId: string): Promise<boolean> {
     const user = await this.getUser(jid);
 
-    // Los owners tienen todos los logros
     if (user.isOwner) {
       return true;
     }
@@ -308,7 +279,7 @@ export class UserService {
   async getTopByXP(limit: number = 10): Promise<User[]> {
     const users = await this.getAllUsers();
     return users
-      .filter((u) => !u.isOwner) // Excluir owners de rankings
+      .filter((u) => !u.isOwner)
       .sort((a, b) => b.xp - a.xp)
       .slice(0, limit);
   }
@@ -316,7 +287,7 @@ export class UserService {
   async getTopByMoney(limit: number = 10): Promise<User[]> {
     const users = await this.getAllUsers();
     return users
-      .filter((u) => !u.isOwner) // Excluir owners de rankings
+      .filter((u) => !u.isOwner)
       .sort((a, b) => b.money - a.money)
       .slice(0, limit);
   }
@@ -324,7 +295,7 @@ export class UserService {
   async getTopByLevel(limit: number = 10): Promise<User[]> {
     const users = await this.getAllUsers();
     return users
-      .filter((u) => !u.isOwner) // Excluir owners de rankings
+      .filter((u) => !u.isOwner)
       .sort((a, b) => b.level - a.level)
       .slice(0, limit);
   }
@@ -337,16 +308,12 @@ export class UserService {
     return level ** 2 * 100;
   }
 
-  /**
-   * Establece o remueve permisos de owner a un usuario
-   */
   async setOwner(jid: string, isOwner: boolean): Promise<void> {
     await this.updateUser(jid, {
       isOwner,
     });
 
     if (isOwner) {
-      // Remover ban si existe
       await this.updateUser(jid, {
         isBanned: false,
         warnings: 0,
@@ -354,9 +321,6 @@ export class UserService {
     }
   }
 
-  /**
-   * Concede dinero a un usuario (solo owners pueden usar esto)
-   */
   async grantMoney(
     fromJid: string,
     toJid: string,
@@ -372,9 +336,6 @@ export class UserService {
     return true;
   }
 
-  /**
-   * Concede XP a un usuario (solo owners pueden usar esto)
-   */
   async grantXP(fromJid: string, toJid: string, amount: number): Promise<void> {
     const fromUser = await this.getUser(fromJid);
 
@@ -385,9 +346,6 @@ export class UserService {
     await this.addXP(toJid, amount);
   }
 
-  /**
-   * Concede items a un usuario (solo owners pueden usar esto)
-   */
   async grantItem(
     fromJid: string,
     toJid: string,
