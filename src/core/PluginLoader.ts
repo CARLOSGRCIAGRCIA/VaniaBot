@@ -19,7 +19,7 @@ export class PluginLoader {
       logger.info(`📦 ${commands.length} comandos cargados exitosamente`);
 
       if (commands.length > 0) {
-        logger.info(`✅ Comandos: ${commands.map((c) => c.name).join(", ")}`);
+        logger.info(` Comandos: ${commands.map((c) => c.name).join(", ")}`);
       }
     } catch (error) {
       logError("PluginLoader.loadCommands", error);
@@ -55,7 +55,7 @@ export class PluginLoader {
             if (commandInstance.name && commandInstance.execute) {
               commands.push(commandInstance);
               logger.info(
-                `✅ Comando cargado: ${commandInstance.name} (${file})`,
+                ` Comando cargado: ${commandInstance.name} (${file})`,
               );
             } else {
               logger.warn(
