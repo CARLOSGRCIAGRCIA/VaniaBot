@@ -1,27 +1,94 @@
-import { writeFileSync, unlinkSync, existsSync, mkdirSync } from "fs";
+import {
+  writeFileSync,
+  readFileSync,
+  unlinkSync,
+  existsSync,
+  mkdirSync,
+} from "fs";
 import { join } from "path";
 import sharp from "sharp";
-import { exec } from "child_process";
-import { promisify } from "util";
-import { logger, logError } from "@/utils/logger.js";
-
-const execAsync = promisify(exec);
+import { spawn } from "child_process";
 
 export interface StickerOptions {
   pack?: string;
   author?: string;
+  categories?: string[];
   quality?: number;
   type?: "full" | "crop" | "circle";
 }
 
 export class StickerService {
   private static readonly TEMP_DIR = "./data/temp";
-  private static readonly MAX_SIZE = 1024;
   private static readonly STICKER_SIZE = 512;
 
   constructor() {
     if (!existsSync(StickerService.TEMP_DIR)) {
       mkdirSync(StickerService.TEMP_DIR, { recursive: true });
+    }
+  }
+
+  private async getFileType(buffer: Buffer): Promise<{
+    mime: string;
+    ext: string;
+  } | null> {
+    try {
+      const fileType: any = await import("file-type");
+
+      let result: any;
+
+      if (fileType.fileTypeFromBuffer) {
+        result = await fileType.fileTypeFromBuffer(buffer);
+      } else if (fileType.fromBuffer) {
+        result = await fileType.fromBuffer(buffer);
+      } else if (fileType.default?.fromBuffer) {
+        result = await fileType.default.fromBuffer(buffer);
+      } else if (fileType.default?.fileTypeFromBuffer) {
+        result = await fileType.default.fileTypeFromBuffer(buffer);
+      } else {
+        return { mime: "image/jpeg", ext: "jpg" };
+      }
+
+      return result || null;
+    } catch {
+      return { mime: "image/jpeg", ext: "jpg" };
+    }
+  }
+
+  async createSticker(
+    buffer: Buffer,
+    options: StickerOptions = {},
+  ): Promise<Buffer> {
+    try {
+      const { Sticker } = await import("wa-sticker-formatter");
+
+      const type = await this.getFileType(buffer);
+      const isVideo = type?.mime.includes("video") || type?.ext === "gif";
+
+      const sticker = new Sticker(buffer, {
+        pack: options.pack || "VaniaBot",
+        author: options.author || "VaniaBot",
+        type: "default",
+        quality: options.quality || 100,
+      });
+
+      return await sticker.toBuffer();
+    } catch (error) {
+      console.error("Error with wa-sticker-formatter, using fallback:", error);
+      return await this.createStickerManual(buffer, options);
+    }
+  }
+
+  private async createStickerManual(
+    buffer: Buffer,
+    options: StickerOptions = {},
+  ): Promise<Buffer> {
+    const type = await this.getFileType(buffer);
+    const isVideo = type?.mime.includes("video") || type?.ext === "gif";
+
+    if (isVideo) {
+      return await this.videoToSticker(buffer, options);
+    } else {
+      return await this.imageToSticker(buffer, options);
     }
   }
 
@@ -36,42 +103,99 @@ export class StickerService {
     );
 
     try {
-      let processedBuffer: Buffer;
-
-      switch (options.type) {
-        case "circle":
-          processedBuffer = await this.createCircleSticker(buffer);
-          break;
-        case "crop":
-          processedBuffer = await this.createCroppedSticker(buffer);
-          break;
-        case "full":
-        default:
-          processedBuffer = await this.createFullSticker(buffer);
-          break;
-      }
-
-      writeFileSync(tempInput, processedBuffer);
-
-      await this.convertToWebP(tempInput, tempOutput, options);
-
-      const result = await sharp(tempOutput).toBuffer();
-
+      writeFileSync(tempInput, buffer);
+      await this.ffmpegImageProcess(tempInput, tempOutput);
+      const resultBuffer = readFileSync(tempOutput);
       this.cleanup(tempInput, tempOutput);
-
-      return result;
+      return resultBuffer;
     } catch (error) {
-      logError("StickerService.imageToSticker", error);
       this.cleanup(tempInput, tempOutput);
-      throw new Error("Error creando sticker desde imagen");
+      return await this.imageToStickerFallback(buffer, options);
     }
+  }
+
+  private ffmpegImageProcess(input: string, output: string): Promise<void> {
+    return new Promise((resolve, reject) => {
+      const args = [
+        "-y",
+        "-i",
+        input,
+        "-vf",
+        "scale=512:512:flags=lanczos:force_original_aspect_ratio=decrease,format=rgba,pad=512:512:(ow-iw)/2:(oh-ih)/2:color=#00000000,setsar=1",
+        "-f",
+        "webp",
+        "-quality",
+        "100",
+        output,
+      ];
+
+      const ffmpeg = spawn("ffmpeg", args);
+      let stderr = "";
+
+      ffmpeg.stderr.on("data", (data) => {
+        stderr += data.toString();
+      });
+
+      ffmpeg.on("close", (code) => {
+        if (code === 0) {
+          resolve();
+        } else {
+          reject(new Error(`FFmpeg failed: ${stderr}`));
+        }
+      });
+
+      ffmpeg.on("error", reject);
+    });
+  }
+
+  private async imageToStickerFallback(
+    buffer: Buffer,
+    options: StickerOptions,
+  ): Promise<Buffer> {
+    const image = sharp(buffer);
+    const metadata = await image.metadata();
+
+    let width: number, height: number;
+
+    if (metadata.width! > metadata.height!) {
+      width = StickerService.STICKER_SIZE;
+      height = Math.round(
+        (metadata.height! / metadata.width!) * StickerService.STICKER_SIZE,
+      );
+    } else {
+      height = StickerService.STICKER_SIZE;
+      width = Math.round(
+        (metadata.width! / metadata.height!) * StickerService.STICKER_SIZE,
+      );
+    }
+
+    const processedBuffer = await image
+      .resize(width, height, {
+        fit: "contain",
+        background: { r: 0, g: 0, b: 0, alpha: 0 },
+      })
+      .extend({
+        top: Math.floor((StickerService.STICKER_SIZE - height) / 2),
+        bottom: Math.ceil((StickerService.STICKER_SIZE - height) / 2),
+        left: Math.floor((StickerService.STICKER_SIZE - width) / 2),
+        right: Math.ceil((StickerService.STICKER_SIZE - width) / 2),
+        background: { r: 0, g: 0, b: 0, alpha: 0 },
+      })
+      .webp({ quality: 100, lossless: false })
+      .toBuffer();
+
+    return processedBuffer;
   }
 
   async videoToSticker(
     buffer: Buffer,
     options: StickerOptions = {},
   ): Promise<Buffer> {
-    const tempInput = join(StickerService.TEMP_DIR, `video-${Date.now()}.mp4`);
+    const type = await this.getFileType(buffer);
+    const tempInput = join(
+      StickerService.TEMP_DIR,
+      `video-${Date.now()}.${type?.ext || "mp4"}`,
+    );
     const tempOutput = join(
       StickerService.TEMP_DIR,
       `sticker-${Date.now()}.webp`,
@@ -79,113 +203,59 @@ export class StickerService {
 
     try {
       writeFileSync(tempInput, buffer);
-
-      await this.convertVideoToWebP(tempInput, tempOutput, options);
-
-      const result = await sharp(tempOutput).toBuffer();
-
+      await this.ffmpegVideoProcess(tempInput, tempOutput);
+      const resultBuffer = readFileSync(tempOutput);
       this.cleanup(tempInput, tempOutput);
-
-      return result;
+      return resultBuffer;
     } catch (error) {
-      logError("StickerService.videoToSticker", error);
       this.cleanup(tempInput, tempOutput);
-      throw new Error("Error creando sticker desde video");
+      throw error;
     }
   }
 
-  private async createFullSticker(buffer: Buffer): Promise<Buffer> {
-    const image = sharp(buffer);
-    const metadata = await image.metadata();
+  private ffmpegVideoProcess(input: string, output: string): Promise<void> {
+    return new Promise((resolve, reject) => {
+      const args = [
+        "-y",
+        "-i",
+        input,
+        "-vf",
+        "scale='min(320,iw)':min'(320,ih)':force_original_aspect_ratio=decrease,fps=15,pad=320:320:-1:-1:color=white@0.0,split [a][b]; [a] palettegen=reserve_transparent=on:transparency_color=ffffff [p]; [b][p] paletteuse",
+        "-vcodec",
+        "libwebp",
+        "-lossless",
+        "0",
+        "-qscale",
+        "75",
+        "-preset",
+        "default",
+        "-loop",
+        "0",
+        "-an",
+        "-vsync",
+        "0",
+        "-t",
+        "00:00:10",
+        output,
+      ];
 
-    const size = StickerService.STICKER_SIZE;
+      const ffmpeg = spawn("ffmpeg", args);
+      let stderr = "";
 
-    if (metadata.width! > metadata.height!) {
-      return await image
-        .resize(size, null, {
-          fit: "contain",
-          background: { r: 0, g: 0, b: 0, alpha: 0 },
-        })
-        .png()
-        .toBuffer();
-    } else {
-      return await image
-        .resize(null, size, {
-          fit: "contain",
-          background: { r: 0, g: 0, b: 0, alpha: 0 },
-        })
-        .png()
-        .toBuffer();
-    }
-  }
+      ffmpeg.stderr.on("data", (data) => {
+        stderr += data.toString();
+      });
 
-  private async createCroppedSticker(buffer: Buffer): Promise<Buffer> {
-    return await sharp(buffer)
-      .resize(StickerService.STICKER_SIZE, StickerService.STICKER_SIZE, {
-        fit: "cover",
-        position: "center",
-      })
-      .png()
-      .toBuffer();
-  }
+      ffmpeg.on("close", (code) => {
+        if (code === 0) {
+          resolve();
+        } else {
+          reject(new Error(`FFmpeg video conversion failed: ${stderr}`));
+        }
+      });
 
-  private async createCircleSticker(buffer: Buffer): Promise<Buffer> {
-    const size = StickerService.STICKER_SIZE;
-    const radius = size / 2;
-
-    const circle = Buffer.from(
-      `<svg><circle cx="${radius}" cy="${radius}" r="${radius}" /></svg>`,
-    );
-
-    return await sharp(buffer)
-      .resize(size, size, { fit: "cover", position: "center" })
-      .composite([
-        {
-          input: circle,
-          blend: "dest-in",
-        },
-      ])
-      .png()
-      .toBuffer();
-  }
-
-  private async convertToWebP(
-    input: string,
-    output: string,
-    options: StickerOptions,
-  ): Promise<void> {
-    const metadata = {
-      "sticker-pack-id": "vaniabot",
-      "sticker-pack-name": options.pack || "VaniaBot",
-      "sticker-pack-publisher": options.author || "VaniaBot",
-    };
-
-    await sharp(input)
-      .webp({ quality: options.quality || 100 })
-      .toFile(output);
-  }
-
-  private async convertVideoToWebP(
-    input: string,
-    output: string,
-    options: StickerOptions,
-  ): Promise<void> {
-    const size = StickerService.STICKER_SIZE;
-
-    const cmd = `ffmpeg -i ${input} -vf "scale=${size}:${size}:force_original_aspect_ratio=decrease,pad=${size}:${size}:(ow-iw)/2:(oh-ih)/2:color=00000000" -vcodec libwebp -lossless 0 -qscale 75 -preset default -loop 0 -an -vsync 0 -t 00:00:10 ${output}`;
-
-    try {
-      await execAsync(cmd);
-    } catch (error) {
-      logger.error("FFmpeg no está disponible, usando conversión simple");
-      await sharp(input)
-        .resize(size, size, {
-          fit: "contain",
-          background: { r: 0, g: 0, b: 0, alpha: 0 },
-        })
-        .webp({ quality: options.quality || 75 })
-        .toFile(output);
-    }
+      ffmpeg.on("error", reject);
+    });
   }
 
   private cleanup(...files: string[]): void {
@@ -194,33 +264,15 @@ export class StickerService {
         if (existsSync(file)) {
           unlinkSync(file);
         }
-      } catch (error) {
-        // Ignorar errores de limpieza
-      }
+      } catch {}
     });
   }
 
-  static async isValidImage(buffer: Buffer): Promise<boolean> {
-    try {
-      const metadata = await sharp(buffer).metadata();
-      return !!metadata.format;
-    } catch {
-      return false;
-    }
-  }
-
-  static async getImageInfo(buffer: Buffer): Promise<{
-    width: number;
-    height: number;
-    format: string;
-    size: number;
-  }> {
-    const metadata = await sharp(buffer).metadata();
-    return {
-      width: metadata.width || 0,
-      height: metadata.height || 0,
-      format: metadata.format || "unknown",
-      size: buffer.length,
-    };
+  async checkFFmpeg(): Promise<boolean> {
+    return new Promise((resolve) => {
+      const ffmpeg = spawn("ffmpeg", ["-version"]);
+      ffmpeg.on("close", (code) => resolve(code === 0));
+      ffmpeg.on("error", () => resolve(false));
+    });
   }
 }

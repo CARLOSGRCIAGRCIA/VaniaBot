@@ -1,40 +1,92 @@
-import { Command } from '../Command.js';
-import { CommandCategory, CommandContext, type MessageContext } from '@/types/index.js';
-import { downloadMediaMessage } from '@whiskeysockets/baileys';
+import { Command } from "../Command.js";
+import {
+  CommandCategory,
+  CommandContext,
+  type MessageContext,
+} from "@/types/index.js";
+import { downloadMediaMessage } from "@whiskeysockets/baileys";
+import { StickerService } from "@/services/media/StickerService.js";
 
 export class StickerCommand extends Command {
-  name = 'sticker';
-  description = 'Convierte imagen/video a sticker';
+  name = "sticker";
+  description = "Convert image/video to sticker";
   category = CommandCategory.MEDIA;
-  aliases = ['s', 'stiker'];
-  usage = '!sticker <responde a imagen/video>';
-  examples = ['!sticker', '!s'];
+  aliases = ["s", "stiker"];
+  usage = "!sticker <reply to image/video>";
+  examples = ["!sticker", "!s"];
+  contexts = [CommandContext.BOTH];
+
+  private stickerService: StickerService;
+
+  constructor() {
+    super();
+    this.stickerService = new StickerService();
+  }
 
   async execute(ctx: MessageContext): Promise<void> {
-    const quotedMsg = ctx.message.message?.extendedTextMessage?.contextInfo?.quotedMessage;
-    
-    if (!quotedMsg?.imageMessage && !quotedMsg?.videoMessage) {
-      await ctx.reply('❌ Responde a una imagen o video');
+    const quotedMsg =
+      ctx.message.message?.extendedTextMessage?.contextInfo?.quotedMessage;
+
+    if (!quotedMsg) {
+      await ctx.reply(
+        "❌ Reply to an image or video\n\n" +
+          "📖 Usage: Reply to a photo/video with !sticker\n" +
+          "💡 Videos must be less than 10 seconds",
+      );
       return;
     }
 
-    await ctx.react('⏳');
+    const hasImage = quotedMsg.imageMessage;
+    const hasVideo = quotedMsg.videoMessage;
+
+    if (!hasImage && !hasVideo) {
+      await ctx.reply(
+        "❌ Reply to an image or video\n\n" +
+          "✅ Supported: JPG, PNG, WebP, MP4, GIF\n" +
+          "⏱️ Max video: 10 seconds",
+      );
+      return;
+    }
+
+    await ctx.react("⏳");
 
     try {
       const buffer = await downloadMediaMessage(
         { message: quotedMsg } as any,
-        'buffer',
-        {}
+        "buffer",
+        {},
       );
 
-      await ctx.sock.sendMessage(ctx.chat.jid, {
-        sticker: buffer,
+      const stickerBuffer = await this.stickerService.createSticker(buffer, {
+        pack: "𝙑𝙖𝙣𝙞𝙖𝘽𝙤𝙩 💝",
+        author: "𝙑𝙖𝙣𝙞𝙖𝘽𝙤𝙩 💝 𝘾𝙖𝙧𝙡𝙤𝙨 𝙂",
+        categories: ["💝"],
       });
 
-      await ctx.react('✅');
-    } catch (error) {
-      await ctx.reply('❌ Error al crear el sticker');
-      await ctx.react('❌');
+      await ctx.sock.sendMessage(ctx.chat.jid, {
+        sticker: stickerBuffer,
+      });
+
+      await ctx.react("✅");
+    } catch (error: any) {
+      console.error("Error in StickerCommand:", error);
+
+      let errorMessage = "❌ Error creating sticker\n\n";
+
+      if (error.message?.includes("FFmpeg")) {
+        errorMessage +=
+          "⚠️ FFmpeg required for best quality\n" +
+          "Install: sudo apt install ffmpeg";
+      } else {
+        errorMessage +=
+          "💡 Tips:\n" +
+          "• Image not corrupted\n" +
+          "• Video < 10 seconds\n" +
+          "• Supported format";
+      }
+
+      await ctx.reply(errorMessage);
+      await ctx.react("❌");
     }
   }
 }
