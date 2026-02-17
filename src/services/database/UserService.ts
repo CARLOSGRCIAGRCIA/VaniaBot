@@ -22,35 +22,11 @@ export interface User {
 
 export class UserService {
   private readonly COLLECTION = "users";
+  private readonly OWNER_MONEY = 999999999;
+  private readonly OWNER_LEVEL = 999;
+  private readonly OWNER_XP = 999999;
 
   constructor(private db: IDatabase) {}
-
-  private async isOwnerJidAsync(jid: string): Promise<boolean> {
-    if (config.owners.includes(jid)) {
-      return true;
-    }
-
-    const jidBase = jid.split("@")[0];
-    if (config.owners.includes(jidBase)) {
-      return true;
-    }
-
-    const inConfig = config.owners.some((owner) => {
-      const cleanOwner = owner.split("@")[0];
-      return jid.includes(cleanOwner) || jidBase === cleanOwner;
-    });
-
-    if (inConfig) {
-      return true;
-    }
-
-    try {
-      const existingUser = await this.db.get<User>(this.COLLECTION, jid);
-      return existingUser?.isOwner || false;
-    } catch {
-      return false;
-    }
-  }
 
   private isOwnerJid(jid: string): boolean {
     if (config.owners.includes(jid)) {
@@ -79,6 +55,20 @@ export class UserService {
     const isOwner = isOwnerFromConfig || isOwnerFromDB;
 
     if (existing) {
+      if (isOwner && !existing.isOwner) {
+        await this.promoteToOwner(jid);
+        return (await this.db.get<User>(this.COLLECTION, jid)) as User;
+      }
+
+      if (isOwner && existing.money !== this.OWNER_MONEY) {
+        await this.db.update<User>(this.COLLECTION, jid, {
+          isOwner: true,
+          money: this.OWNER_MONEY,
+          level: this.OWNER_LEVEL,
+          xp: this.OWNER_XP,
+        });
+      }
+
       const updatedUser = {
         ...existing,
         isOwner,
@@ -98,9 +88,9 @@ export class UserService {
       name: "User",
       isOwner,
       isBanned: false,
-      level: 1,
-      xp: 0,
-      money: 0,
+      level: isOwner ? this.OWNER_LEVEL : 1,
+      xp: isOwner ? this.OWNER_XP : 0,
+      money: isOwner ? this.OWNER_MONEY : 0,
       totalCommands: 0,
       warnings: 0,
       inventory: [],
@@ -111,6 +101,34 @@ export class UserService {
 
     await this.db.set(this.COLLECTION, jid, newUser);
     return newUser;
+  }
+
+  private async promoteToOwner(jid: string): Promise<void> {
+    const user = await this.db.get<User>(this.COLLECTION, jid);
+    if (!user) return;
+
+    await this.db.update<User>(this.COLLECTION, jid, {
+      isOwner: true,
+      money: this.OWNER_MONEY,
+      level: this.OWNER_LEVEL,
+      xp: this.OWNER_XP,
+      isBanned: false,
+      warnings: 0,
+    });
+  }
+
+  private async demoteFromOwner(jid: string): Promise<void> {
+    const user = await this.db.get<User>(this.COLLECTION, jid);
+    if (!user) return;
+
+    await this.db.update<User>(this.COLLECTION, jid, {
+      isOwner: false,
+      money: 0,
+      level: 1,
+      xp: 0,
+      warnings: 0,
+      isBanned: false,
+    });
   }
 
   async updateUser(jid: string, updates: Partial<User>): Promise<void> {
@@ -124,7 +142,11 @@ export class UserService {
     const user = await this.getUser(jid);
 
     if (user.isOwner) {
-      return user;
+      await this.updateUser(jid, {
+        level: this.OWNER_LEVEL,
+        xp: this.OWNER_XP,
+      });
+      return { ...user, level: this.OWNER_LEVEL, xp: this.OWNER_XP };
     }
 
     const newXP = user.xp + amount;
@@ -140,6 +162,14 @@ export class UserService {
 
   async addMoney(jid: string, amount: number): Promise<void> {
     const user = await this.getUser(jid);
+
+    if (user.isOwner) {
+      await this.updateUser(jid, {
+        money: this.OWNER_MONEY,
+      });
+      return;
+    }
+
     await this.updateUser(jid, {
       money: user.money + amount,
     });
@@ -149,6 +179,9 @@ export class UserService {
     const user = await this.getUser(jid);
 
     if (user.isOwner) {
+      await this.updateUser(jid, {
+        money: this.OWNER_MONEY,
+      });
       return true;
     }
 
@@ -174,7 +207,7 @@ export class UserService {
     const user = await this.getUser(jid);
 
     if (user.isOwner) {
-      throw new Error("No se puede banear a un owner");
+      throw new Error("Cannot ban an owner");
     }
 
     await this.updateUser(jid, {
@@ -203,7 +236,7 @@ export class UserService {
     });
 
     if (newWarnings >= 3) {
-      await this.banUser(jid, "Acumulación de 3 advertencias");
+      await this.banUser(jid, "Accumulated 3 warnings");
     }
 
     return newWarnings;
@@ -309,15 +342,10 @@ export class UserService {
   }
 
   async setOwner(jid: string, isOwner: boolean): Promise<void> {
-    await this.updateUser(jid, {
-      isOwner,
-    });
-
     if (isOwner) {
-      await this.updateUser(jid, {
-        isBanned: false,
-        warnings: 0,
-      });
+      await this.promoteToOwner(jid);
+    } else {
+      await this.demoteFromOwner(jid);
     }
   }
 
@@ -329,7 +357,7 @@ export class UserService {
     const fromUser = await this.getUser(fromJid);
 
     if (!fromUser.isOwner) {
-      throw new Error("Solo los owners pueden conceder dinero");
+      throw new Error("Only owners can grant money");
     }
 
     await this.addMoney(toJid, amount);
@@ -340,7 +368,7 @@ export class UserService {
     const fromUser = await this.getUser(fromJid);
 
     if (!fromUser.isOwner) {
-      throw new Error("Solo los owners pueden conceder XP");
+      throw new Error("Only owners can grant XP");
     }
 
     await this.addXP(toJid, amount);
@@ -354,10 +382,46 @@ export class UserService {
     const fromUser = await this.getUser(fromJid);
 
     if (!fromUser.isOwner) {
-      throw new Error("Solo los owners pueden conceder items");
+      throw new Error("Only owners can grant items");
     }
 
     await this.addItem(toJid, item);
     return true;
+  }
+
+  canClaimDaily(user: User): boolean {
+    if (user.isOwner) return true;
+    if (!user.lastDaily) return true;
+    const oneDayMs = 24 * 60 * 60 * 1000;
+    return Date.now() - user.lastDaily >= oneDayMs;
+  }
+
+  canClaimWeekly(user: User): boolean {
+    if (user.isOwner) return true;
+    if (!user.lastWeekly) return true;
+    const oneWeekMs = 7 * 24 * 60 * 60 * 1000;
+    return Date.now() - user.lastWeekly >= oneWeekMs;
+  }
+
+  canClaimMonthly(user: User): boolean {
+    if (user.isOwner) return true;
+    if (!user.lastMonthly) return true;
+    const oneMonthMs = 30 * 24 * 60 * 60 * 1000;
+    return Date.now() - user.lastMonthly >= oneMonthMs;
+  }
+
+  getDailyTimeRemaining(user: User): number {
+    if (!user.lastDaily) return 0;
+    const oneDayMs = 24 * 60 * 60 * 1000;
+    const remaining = user.lastDaily + oneDayMs - Date.now();
+    return Math.max(0, remaining);
+  }
+
+  getOwnerStats() {
+    return {
+      money: this.OWNER_MONEY,
+      level: this.OWNER_LEVEL,
+      xp: this.OWNER_XP,
+    };
   }
 }
