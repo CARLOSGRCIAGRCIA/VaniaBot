@@ -6,6 +6,7 @@ let client: WhatsAppClient;
 async function main(): Promise<void> {
   logger.info("Iniciando WhatsApp Bot...");
   client = new WhatsAppClient();
+  (global as any).client = client;
   await client.initialize();
   logger.info("Bot iniciado correctamente");
 }

@@ -113,7 +113,7 @@ export class AuthManager {
 
     logger.info(`📱 WhatsApp Web v${version.join(".")}`);
     logger.info(
-      state.creds.registered ? "✅ Sesión existente" : "🆕 Nueva sesión",
+      state.creds.registered ? " Sesión existente" : "🆕 Nueva sesión",
     );
 
     const browser = config.auth.usePairingCode
@@ -229,7 +229,7 @@ export class AuthManager {
 
     if (!this.connectionEstablished) {
       this.connectionEstablished = true;
-      logger.info("✅ Conectado a WhatsApp");
+      logger.info(" Conectado a WhatsApp");
 
       if (sock.user) {
         logger.info(
@@ -412,7 +412,7 @@ export class AuthManager {
         } catch (_) {}
       }
 
-      logger.info("✅ Sesión limpiada");
+      logger.info(" Sesión limpiada");
     } catch (error) {
       logError("clearSession", error);
     }

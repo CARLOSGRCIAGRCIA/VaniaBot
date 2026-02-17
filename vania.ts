@@ -80,7 +80,7 @@ function startBot(authMode: "qr" | "code"): void {
 
   childProcess.on("message", (message) => {
     if (message === "ready") {
-      console.log(chalk.green("\n✅ Bot autenticado y listo para operar"));
+      console.log(chalk.green("\n Bot autenticado y listo para operar"));
       isAuthenticated = true;
       restartCount = 0;
       firstRestartTime = null;
@@ -157,9 +157,7 @@ async function gracefulShutdown(signal: string): Promise<void> {
 
   try {
     if (existsSync(BOOT_FLAG)) unlinkSync(BOOT_FLAG);
-  } catch (_) {
-    // ignorar
-  }
+  } catch (_) {}
 
   console.log(chalk.green("✓ VaniaBot cerrado correctamente"));
   process.exit(0);
