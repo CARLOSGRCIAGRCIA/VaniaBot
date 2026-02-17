@@ -5,10 +5,10 @@ import { serviceManager } from "@/services/Servicemanager.js";
 
 export class SetOwnerCommand extends Command {
   name = "setowner";
-  description = "Establece o remueve permisos de owner a un usuario";
+  description = "Grant or remove owner permissions";
   category = CommandCategory.OWNER;
   aliases = ["makeowner", "removeowner", "owner"];
-  usage = "!setowner <add|remove> <@usuario>";
+  usage = "!setowner <add|remove> <@user>";
   examples = [
     "!setowner add @5215551234567",
     "!setowner remove @5215551234567",
@@ -22,7 +22,9 @@ export class SetOwnerCommand extends Command {
 
     if (args.length < 2) {
       await ctx.reply(
-        `❌ Uso incorrecto\n\n📖 Uso: ${this.usage}\n\n📝 Ejemplos:\n${this.examples.join("\n")}`,
+        `❌ Incorrect usage\n\n` +
+          `📖 Usage: ${this.usage}\n\n` +
+          `📝 Examples:\n${this.examples.join("\n")}`,
       );
       return;
     }
@@ -32,12 +34,12 @@ export class SetOwnerCommand extends Command {
       ctx.message.message?.extendedTextMessage?.contextInfo?.mentionedJid?.[0];
 
     if (!mentionedJid) {
-      await ctx.reply("❌ Debes mencionar a un usuario");
+      await ctx.reply("❌ You must mention a user");
       return;
     }
 
     if (mentionedJid === ctx.sender.jid) {
-      await ctx.reply("❌ No puedes modificar tus propios permisos de owner");
+      await ctx.reply("❌ You cannot modify your own owner permissions");
       return;
     }
 
@@ -46,40 +48,75 @@ export class SetOwnerCommand extends Command {
 
       switch (action) {
         case "add":
-        case "agregar":
-        case "dar":
+        case "grant":
+        case "give":
           if (targetUser.isOwner) {
-            await ctx.reply(`⚠️ ${targetUser.name} ya es owner`);
+            await ctx.reply(`⚠️ ${targetUser.name} is already an owner`);
             return;
           }
 
+          const oldStats = {
+            level: targetUser.level,
+            xp: targetUser.xp,
+            money: targetUser.money,
+          };
+
           await serviceManager.userService.setOwner(mentionedJid, true);
+
+          const updatedUser =
+            await serviceManager.userService.getUser(mentionedJid);
+
           await ctx.reply(
-            `✅ ${targetUser.name} ahora es owner\n\n👑 Privilegios concedidos:\n• Permisos ilimitados\n• Recursos infinitos\n• Bypass de restricciones`,
+            `✅ ${targetUser.name} is now an owner\n\n` +
+              `👑 *Granted privileges:*\n` +
+              `• Unlimited permissions\n` +
+              `• Infinite resources\n` +
+              `• Max stats\n` +
+              `• Bypass all restrictions\n` +
+              `• Cannot be banned or warned\n\n` +
+              `📊 *Stats upgrade:*\n` +
+              `• Level: ${oldStats.level} → ${updatedUser.level}\n` +
+              `• XP: ${oldStats.xp.toLocaleString()} → ${updatedUser.xp.toLocaleString()}\n` +
+              `• Money: $${oldStats.money.toLocaleString()} → $${updatedUser.money.toLocaleString()}`,
           );
           break;
 
         case "remove":
-        case "remover":
-        case "quitar":
+        case "revoke":
+        case "take":
           if (!targetUser.isOwner) {
-            await ctx.reply(`⚠️ ${targetUser.name} no es owner`);
+            await ctx.reply(`⚠️ ${targetUser.name} is not an owner`);
             return;
           }
 
+          const beforeRemoval = {
+            level: targetUser.level,
+            xp: targetUser.xp,
+            money: targetUser.money,
+          };
+
           await serviceManager.userService.setOwner(mentionedJid, false);
+
+          const demotedUser =
+            await serviceManager.userService.getUser(mentionedJid);
+
           await ctx.reply(
-            `✅ Permisos de owner removidos de ${targetUser.name}`,
+            `✅ Owner permissions removed from ${targetUser.name}\n\n` +
+              `📊 *Stats reset:*\n` +
+              `• Level: ${beforeRemoval.level} → ${demotedUser.level}\n` +
+              `• XP: ${beforeRemoval.xp.toLocaleString()} → ${demotedUser.xp.toLocaleString()}\n` +
+              `• Money: $${beforeRemoval.money.toLocaleString()} → $${demotedUser.money.toLocaleString()}\n\n` +
+              `⚠️ User has been reset to default values`,
           );
           break;
 
         default:
-          await ctx.reply("❌ Acción inválida. Usa: add o remove");
+          await ctx.reply("❌ Invalid action. Use: add or remove");
       }
     } catch (error) {
-      console.error("Error en SetOwnerCommand:", error);
+      console.error("Error in SetOwnerCommand:", error);
       await ctx.reply(
-        `❌ Error: ${error instanceof Error ? error.message : "Desconocido"}`,
+        `❌ Error: ${error instanceof Error ? error.message : "Unknown"}`,
       );
     }
   }
