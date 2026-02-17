@@ -234,9 +234,7 @@ export class ConverterService {
         if (existsSync(file)) {
           unlinkSync(file);
         }
-      } catch {
-        // Ignorar errores
-      }
+      } catch {}
     });
   }
 
