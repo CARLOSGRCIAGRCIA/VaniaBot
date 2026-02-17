@@ -1,0 +1,87 @@
+import { Command } from "../Command.js";
+import { CommandCategory, PermissionLevel } from "@/types/index.js";
+import type { MessageContext } from "@/types/index.js";
+import { cacheManager } from "@/core/CacheManager.js";
+import { serviceManager } from "@/services/Servicemanager.js";
+import { JsonDatabase } from "@/services/database/JsonDatabase.js";
+
+export class StatsCommand extends Command {
+  name = "stats";
+  description = "Displays real-time bot statistics";
+  category = CommandCategory.UTILITY;
+  aliases = ["status"];
+  usage = "!stats";
+  permissions = {
+    user: [PermissionLevel.OWNER],
+  };
+
+  async execute(ctx: MessageContext): Promise<void> {
+    const client = (global as any).client;
+    const clientStats = client.getStats();
+    const cacheStats = cacheManager.getStats();
+
+    let dbStats: { hitRate: string; size: number | string } = {
+      hitRate: "N/A",
+      size: "N/A",
+    };
+
+    if (serviceManager.db instanceof JsonDatabase) {
+      const stats = serviceManager.db.getCacheStats();
+      dbStats = {
+        hitRate: stats.hitRate,
+        size: stats.size,
+      };
+    }
+
+    const uptime = this.formatUptime(process.uptime() * 1000);
+    const memUsage = process.memoryUsage();
+    const memUsed = (memUsage.heapUsed / 1024 / 1024).toFixed(2);
+    const memTotal = (memUsage.heapTotal / 1024 / 1024).toFixed(2);
+
+    const message = `
+*BOT STATISTICS*
+
+**Uptime**
+${uptime}
+
+**Memory Usage**
+${memUsed} MB used / ${memTotal} MB total
+
+**Messages**
+• Received: ${clientStats.messagesReceived}
+• Processed: ${clientStats.messagesProcessed}
+• Commands executed: ${clientStats.commandsExecuted}
+• Spam blocked: ${clientStats.spamBlocked}
+
+**Performance**
+• Average processing time: ${clientStats.avgProcessingTime.toFixed(0)} ms
+• Queue: ${clientStats.queue.queued} queued, ${clientStats.queue.processing} processing
+
+**Cache**
+• Hit rate: ${cacheStats.hitRate}
+• Users: ${cacheStats.sizes.users}
+• Permissions: ${cacheStats.sizes.permissions}
+• Metadata: ${cacheStats.sizes.metadata}
+• Messages: ${cacheStats.sizes.messages}
+
+**Database**
+• Hit rate: ${dbStats.hitRate}
+• Cache size: ${dbStats.size}
+
+**Errors**
+${clientStats.errorsCount}
+    `.trim();
+
+    await ctx.reply(message);
+  }
+
+  private formatUptime(ms: number): string {
+    const days = Math.floor(ms / (24 * 60 * 60 * 1000));
+    const hours = Math.floor((ms % (24 * 60 * 60 * 1000)) / (60 * 60 * 1000));
+    const minutes = Math.floor((ms % (60 * 60 * 1000)) / (60 * 1000));
+
+    if (days > 0) return `${days}d ${hours}h ${minutes}m`;
+    if (hours > 0) return `${hours}h ${minutes}m`;
+    return `${minutes}m`;
+  }
+}
