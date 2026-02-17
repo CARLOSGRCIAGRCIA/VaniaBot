@@ -9,10 +9,10 @@ import path from "path";
 
 export class ProfileCommand extends Command {
   name = "profile";
-  description = "Muestra el perfil de un usuario";
+  description = "Show user profile";
   category = CommandCategory.UTILITY;
   aliases = ["perfil", "me", "stats"];
-  usage = "!profile [@usuario]";
+  usage = "!profile [@user]";
   examples = ["!profile", "!profile @5215551234567", "!me"];
 
   private static logoBuffer: Buffer | null = null;
@@ -25,6 +25,14 @@ export class ProfileCommand extends Command {
     const isSelf = targetJid === ctx.sender.jid;
 
     try {
+      const botJid = ctx.sock.user?.id;
+      const isBotProfile = this.isBotJid(targetJid, botJid);
+
+      if (isBotProfile) {
+        await this.sendBotProfile(ctx);
+        return;
+      }
+
       const [userData, progress] = await Promise.all([
         serviceManager.userService.getUser(targetJid),
         serviceManager.levelService.getLevelProgress(targetJid),
@@ -39,18 +47,87 @@ export class ProfileCommand extends Command {
         isSelf,
       );
 
-      await ctx.reply(message);
-
-      this.sendProfileImageInBackground(ctx, targetJid, message).catch(
-        () => {},
-      );
+      await this.sendProfileWithImage(ctx, targetJid, message);
     } catch (error) {
-      console.error("Error en ProfileCommand:", error);
-      await ctx.reply("❌ Error al obtener el perfil");
+      console.error("Error in ProfileCommand:", error);
+      await ctx.reply("❌ Error retrieving profile");
     }
   }
 
-  private async sendProfileImageInBackground(
+  private isBotJid(targetJid: string, botJid?: string): boolean {
+    if (!botJid) return false;
+
+    const normalizeJid = (jid: string) => {
+      return jid.split("@")[0].split(":")[0];
+    };
+
+    const targetNumber = normalizeJid(targetJid);
+    const botNumber = normalizeJid(botJid);
+
+    return targetNumber === botNumber;
+  }
+
+  private async sendBotProfile(ctx: MessageContext): Promise<void> {
+    const uptime = this.formatUptime(process.uptime() * 1000);
+    const client = (global as any).client;
+    const stats = client?.getStats() || {
+      messagesReceived: 0,
+      commandsExecuted: 0,
+      messagesProcessed: 0,
+    };
+
+    const message = `
+✦━━━━━━━━━━━━━━━━━━✦
+   🤖 *VANIABOT PROFILE*
+✦━━━━━━━━━━━━━━━━━━✦
+
+🆔 *Bot Information*
+   • Name: ${ctx.sock.user?.name || "VaniaBot"}
+   • Status: 🟢 Online
+   • Uptime: ${uptime}
+
+📊 *Statistics*
+   • Messages: ${formatNumber(stats.messagesReceived)}
+   • Commands: ${formatNumber(stats.commandsExecuted)}
+   • Processed: ${formatNumber(stats.messagesProcessed)}
+
+⚡ *Performance*
+   • Avg Time: ${stats.avgProcessingTime?.toFixed(0) || 0}ms
+   • Queue: ${stats.queue?.queued || 0}
+
+🎯 *Features*
+   • Economy System ✅
+   • Games ✅
+   • Moderation ✅
+   • Leveling ✅
+
+✦━━━━━━━━━━━━━━━━━━✦
+   💝 Use !help for commands
+✦━━━━━━━━━━━━━━━━━━✦
+    `.trim();
+
+    const logoBuffer = this.getDefaultLogo();
+    if (logoBuffer) {
+      await ctx.sock.sendMessage(ctx.chat.jid, {
+        image: logoBuffer,
+        caption: message,
+      });
+    } else {
+      await ctx.reply(message);
+    }
+  }
+
+  private formatUptime(ms: number): string {
+    const days = Math.floor(ms / (24 * 60 * 60 * 1000));
+    const hours = Math.floor((ms % (24 * 60 * 60 * 1000)) / (60 * 60 * 1000));
+    const minutes = Math.floor((ms % (60 * 60 * 1000)) / (60 * 1000));
+
+    if (days > 0) return `${days}d ${hours}h ${minutes}m`;
+    if (hours > 0) return `${hours}h ${minutes}m`;
+    return `${minutes}m`;
+  }
+
+  private async sendProfileWithImage(
     ctx: MessageContext,
     targetJid: string,
     message: string,
@@ -66,9 +143,11 @@ export class ProfileCommand extends Command {
           image: imageBuffer,
           caption: message,
         });
+      } else {
+        await ctx.reply(message);
       }
-    } catch {
-      // Silenciosamente ignorar errores
+    } catch (error) {
+      await ctx.reply(message);
     }
   }
 
@@ -77,7 +156,14 @@ export class ProfileCommand extends Command {
     targetJid: string,
   ): Promise<Buffer | null> {
     try {
-      const url = await ctx.sock.profilePictureUrl(targetJid, "image");
+      let normalizedJid = targetJid;
+
+      if (targetJid.includes("@lid")) {
+        const phoneNumber = targetJid.split("@")[0];
+        normalizedJid = `${phoneNumber}@s.whatsapp.net`;
+      }
+
+      const url = await ctx.sock.profilePictureUrl(normalizedJid, "image");
       if (url) {
         const response = await fetch(url, {
           signal: AbortSignal.timeout(1500),
@@ -86,9 +172,7 @@ export class ProfileCommand extends Command {
           return Buffer.from(await response.arrayBuffer());
         }
       }
-    } catch {
-      // Ignorar errores
-    }
+    } catch (error) {}
 
     return this.getDefaultLogo();
   }
@@ -106,7 +190,7 @@ export class ProfileCommand extends Command {
         return ProfileCommand.logoBuffer;
       }
     } catch (err) {
-      console.error("Error al cargar logo:", err);
+      console.error("Error loading logo:", err);
     }
 
     ProfileCommand.logoLoaded = true;
@@ -138,18 +222,19 @@ export class ProfileCommand extends Command {
 
     const registeredTime = this.getTimeSince(userData.createdAt);
 
-    const canDaily = this.canClaimDaily(userData);
-    const canWeekly = this.canClaimWeekly(userData);
-    const canMonthly = this.canClaimMonthly(userData);
+    const canDaily = serviceManager.userService.canClaimDaily(userData);
+    const canWeekly = serviceManager.userService.canClaimWeekly(userData);
+    const canMonthly = serviceManager.userService.canClaimMonthly(userData);
 
     let dailyInfo = "";
     if (!canDaily && !userData.isOwner) {
-      const remaining = this.getDailyTimeRemaining(userData);
+      const remaining =
+        serviceManager.userService.getDailyTimeRemaining(userData);
       if (remaining > 0) dailyInfo = `\n     ⏰ ${formatTime(remaining)}`;
     }
 
     const xpDisplay = userData.isOwner
-      ? "∞ INFINITO"
+      ? "∞ INFINITE"
       : `${formatNumber(progress.currentXP)} / ${formatNumber(progress.requiredXP)}`;
 
     const percentageDisplay = userData.isOwner
@@ -164,43 +249,43 @@ export class ProfileCommand extends Command {
 `;
 
     if (userData.isBanned) {
-      card += `   ⚠️ Estado: BANEADO\n\n`;
+      card += `   ⚠️ Status: BANNED\n\n`;
     } else {
       const roleIcon = this.getRoleIcon(displayData);
       card += `   ${roleIcon} ${this.getUserRole(displayData)}
-   ⏱️ Miembro ${registeredTime}
+   ⏱️ Member for ${registeredTime}
 
 `;
     }
 
     card += `✦━━━━━━━━━━━━━━✦
-✦ *NIVEL ${displayData.level}*
+✦ *LEVEL ${displayData.level}*
    ${progressBar} ${percentageDisplay}
    XP: ${xpDisplay}
 
 ✦━━━━━━━━━━━━━━✦
-💰 *Economía*
+💰 *Economy*
    💵 $${formatNumber(displayData.money)}
    🎒 ${displayData.inventory?.length || 0} items
-   🏆 ${displayData.achievements?.length || 0} logros
+   🏆 ${displayData.achievements?.length || 0} achievements
 
 ✦━━━━━━━━━━━━━━✦
-📊 *Estadísticas*
-   ⚡ ${formatNumber(displayData.totalCommands)} comandos
+📊 *Statistics*
+   ⚡ ${formatNumber(displayData.totalCommands)} commands
    ⚠️ ${displayData.warnings}/3 warns
-   🕐 Activo ${this.getTimeSince(userData.updatedAt)}
+   🕐 Active ${this.getTimeSince(userData.updatedAt)}
 
 ✦━━━━━━━━━━━━━━✦
-🎁 *Recompensas*
+🎁 *Rewards*
 `;
 
     if (userData.isOwner) {
-      card += `   ✨ Daily: ∞ Ilimitado
-   ✨ Weekly: ∞ Ilimitado
-   ✨ Monthly: ∞ Ilimitado
+      card += `   ✨ Daily: ∞ Unlimited
+   ✨ Weekly: ∞ Unlimited
+   ✨ Monthly: ∞ Unlimited
 
 ✦━━━━━━━━━━━━━━✦
-   ♛ *Privilegios Owner* ♛
+   ♛ *Owner Privileges* ♛
 > _*VaniaBot*_`;
     } else {
       card += `   ${canDaily ? "✅" : "❌"} Daily${dailyInfo}
@@ -211,8 +296,8 @@ export class ProfileCommand extends Command {
       if (isSelf) {
         card += `
 ✦━━━━━━━━━━━━━━✦
-   💝 Usa !daily, !weekly
-      o !monthly para reclamar`;
+   💝 Use !daily, !weekly
+      or !monthly to claim`;
       }
     }
 
@@ -221,39 +306,19 @@ export class ProfileCommand extends Command {
     return card.trim();
   }
 
-  private canClaimDaily(user: User): boolean {
-    if (!user.lastDaily) return true;
-    const oneDayMs = 24 * 60 * 60 * 1000;
-    return Date.now() - user.lastDaily >= oneDayMs;
-  }
-
-  private canClaimWeekly(user: User): boolean {
-    if (!user.lastWeekly) return true;
-    const oneWeekMs = 7 * 24 * 60 * 60 * 1000;
-    return Date.now() - user.lastWeekly >= oneWeekMs;
-  }
-
-  private canClaimMonthly(user: User): boolean {
-    if (!user.lastMonthly) return true;
-    const oneMonthMs = 30 * 24 * 60 * 60 * 1000;
-    return Date.now() - user.lastMonthly >= oneMonthMs;
-  }
-
-  private getDailyTimeRemaining(user: User): number {
-    if (!user.lastDaily) return 0;
-    const oneDayMs = 24 * 60 * 60 * 1000;
-    const remaining = user.lastDaily + oneDayMs - Date.now();
-    return Math.max(0, remaining);
-  }
-
   private createProgressBar(
     current: number,
     total: number,
     length: number = 10,
   ): string {
-    const percentage = Math.min(current / total, 1);
+    if (total <= 0 || current < 0) {
+      return "★".repeat(length);
+    }
+
+    const percentage = Math.min(Math.max(current / total, 0), 1);
     const filled = Math.floor(percentage * length);
-    const empty = length - filled;
+    const empty = Math.max(0, length - filled);
+
     return "★".repeat(filled) + "☆".repeat(empty);
   }
 
@@ -268,13 +333,13 @@ export class ProfileCommand extends Command {
   }
 
   private getUserRole(user: User): string {
-    if (user.isOwner) return "Owner Suprem@";
-    if (user.isBanned) return "Baneado";
-    if (user.level >= 100) return "Leyenda";
-    if (user.level >= 50) return "Veterana";
-    if (user.level >= 25) return "Experta";
-    if (user.level >= 10) return "Intermedia";
-    return "Novata";
+    if (user.isOwner) return "Supreme Owner";
+    if (user.isBanned) return "Banned";
+    if (user.level >= 100) return "Legend";
+    if (user.level >= 50) return "Veteran";
+    if (user.level >= 25) return "Expert";
+    if (user.level >= 10) return "Intermediate";
+    return "Novice";
   }
 
   private getTimeSince(timestamp: number): string {
@@ -286,14 +351,14 @@ export class ProfileCommand extends Command {
 
     if (days > 30) {
       const months = Math.floor(days / 30);
-      return `hace ${months} ${months === 1 ? "mes" : "meses"}`;
+      return `${months} ${months === 1 ? "month" : "months"} ago`;
     }
     if (days > 0) {
-      return `hace ${days} ${days === 1 ? "día" : "días"}`;
+      return `${days} ${days === 1 ? "day" : "days"} ago`;
     }
     if (hours > 0) {
-      return `hace ${hours} ${hours === 1 ? "hora" : "horas"}`;
+      return `${hours} ${hours === 1 ? "hour" : "hours"} ago`;
     }
-    return "hace minutos";
+    return "minutes ago";
   }
 }
