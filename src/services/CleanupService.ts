@@ -53,10 +53,10 @@ export class CleanupService {
 
       if (removedCount > 0) {
         logger.info(
-          `✅ Limpieza completada: ${removedCount} usuario(s) eliminado(s)`,
+          ` Limpieza completada: ${removedCount} usuario(s) eliminado(s)`,
         );
       } else {
-        logger.info("✅ Limpieza completada: Sin usuarios para eliminar");
+        logger.info(" Limpieza completada: Sin usuarios para eliminar");
       }
     } catch (error) {
       logError("Error en limpieza de usuarios:", error);
@@ -82,7 +82,7 @@ export class CleanupService {
     }
 
     logger.info(
-      `✅ Limpieza manual completada: ${removedCount} usuario(s) eliminado(s)`,
+      ` Limpieza manual completada: ${removedCount} usuario(s) eliminado(s)`,
     );
     return removedCount;
   }

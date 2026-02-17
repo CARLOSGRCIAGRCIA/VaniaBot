@@ -35,7 +35,7 @@ export class ServiceManager {
       this.groupService = new GroupService(this.db);
       this.levelService = new LevelService(this.db, this.userService);
       cleanupService.start();
-      logger.info("✅ Servicios inicializados correctamente");
+      logger.info(" Servicios inicializados correctamente");
     } catch (error) {
       logError("ServiceManager.initialize", error);
       throw error;
@@ -74,7 +74,7 @@ export class ServiceManager {
         await this.db.disconnect();
       }
 
-      logger.info("✅ Servicios cerrados correctamente");
+      logger.info(" Servicios cerrados correctamente");
     } catch (error) {
       logError("ServiceManager.shutdown", error);
     }
