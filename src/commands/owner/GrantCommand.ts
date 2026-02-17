@@ -90,7 +90,7 @@ export class GrantCommand extends Command {
     );
 
     await ctx.reply(
-      `✅ Se han concedido $${formatNumber(amount)} a ${targetName}`,
+      ` Se han concedido $${formatNumber(amount)} a ${targetName}`,
     );
   }
 
@@ -112,7 +112,7 @@ export class GrantCommand extends Command {
     const updatedUser = await serviceManager.userService.getUser(targetJid);
 
     await ctx.reply(
-      `✅ Se han concedido ${formatNumber(amount)} XP a ${targetName}\n\n🎯 Nivel alcanzado: ${updatedUser.level}`,
+      ` Se han concedido ${formatNumber(amount)} XP a ${targetName}\n\n🎯 Nivel alcanzado: ${updatedUser.level}`,
     );
   }
 
@@ -133,6 +133,6 @@ export class GrantCommand extends Command {
       item.toLowerCase(),
     );
 
-    await ctx.reply(`✅ Se ha concedido el item "${item}" a ${targetName}`);
+    await ctx.reply(` Se ha concedido el item "${item}" a ${targetName}`);
   }
 }
