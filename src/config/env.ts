@@ -40,6 +40,8 @@ const envSchema = z.object({
     .string()
     .transform((val) => val === "true")
     .default("true"),
+
+  GROQ_API_KEY: z.string().optional(),
 });
 
 export const env = envSchema.parse(process.env);

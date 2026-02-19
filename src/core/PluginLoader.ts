@@ -12,11 +12,11 @@ export class PluginLoader {
     const commands: ICommand[] = [];
     const commandsPath = join(__dirname, "../commands");
 
-    logger.info(`📂 Buscando comandos en: ${commandsPath}`);
+    logger.info(`Buscando comandos en: ${commandsPath}`);
 
     try {
       await this.loadFromDirectory(commandsPath, commands);
-      logger.info(`📦 ${commands.length} comandos cargados exitosamente`);
+      logger.info(`${commands.length} comandos cargados exitosamente`);
 
       if (commands.length > 0) {
         logger.info(` Comandos: ${commands.map((c) => c.name).join(", ")}`);
@@ -59,16 +59,16 @@ export class PluginLoader {
               );
             } else {
               logger.warn(
-                `❌ Comando inválido en ${file}: ${!commandInstance.name ? "falta 'name'" : ""} ${!commandInstance.execute ? "falta 'execute'" : ""}`,
+                `Comando inválido en ${file}: ${!commandInstance.name ? "falta 'name'" : ""} ${!commandInstance.execute ? "falta 'execute'" : ""}`,
               );
             }
           } else {
-            logger.warn(`❌ No se encontró clase de comando en ${file}`);
+            logger.warn(`No se encontró clase de comando en ${file}`);
           }
         } catch (error) {
           const pluginError = new PluginLoadError(filePath, error);
           logError("PluginLoader.loadFromDirectory", pluginError);
-          logger.warn(`⚠️  Comando omitido: ${file}`);
+          logger.warn(`Comando omitido: ${file}`);
         }
       }
     }

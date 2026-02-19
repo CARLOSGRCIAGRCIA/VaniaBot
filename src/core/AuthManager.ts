@@ -111,10 +111,8 @@ export class AuthManager {
       useMultiFileAuthState(config.sessionPath),
     ]);
 
-    logger.info(`📱 WhatsApp Web v${version.join(".")}`);
-    logger.info(
-      state.creds.registered ? " Sesión existente" : "🆕 Nueva sesión",
-    );
+    logger.info(`WhatsApp Web v${version.join(".")}`);
+    logger.info(state.creds.registered ? " Sesión existente" : "Nueva sesión");
 
     const browser = config.auth.usePairingCode
       ? WA_BROWSER_PAIRING
@@ -169,7 +167,7 @@ export class AuthManager {
         this.clearSession();
         process.exit(1);
       }
-      logger.info(`📱 QR generado (${this.qrRetries}/${MAX_QR_RETRIES})`);
+      logger.info(`QR generado (${this.qrRetries}/${MAX_QR_RETRIES})`);
       displayQR(qr);
 
       if (this.connectionTimeout) clearTimeout(this.connectionTimeout);
@@ -233,12 +231,12 @@ export class AuthManager {
 
       if (sock.user) {
         logger.info(
-          `👤 ${sock.user.name ?? "Usuario"} | 📱 ${sock.user.id.split(":")[0]}`,
+          `${sock.user.name ?? "Usuario"} | ${sock.user.id.split(":")[0]}`,
         );
       }
 
       if (process.send) process.send("ready");
-      logger.info("🤖 Bot operativo");
+      logger.info("Bot operativo");
     }
   }
 
@@ -370,7 +368,7 @@ export class AuthManager {
       }
 
       displayPairingCode(code);
-      logger.info("📱 Ingresa el código en WhatsApp");
+      logger.info("Ingresa el código en WhatsApp");
     } catch (error: any) {
       this.pairingCodeRequested = false;
       this.authPromise = null;
@@ -404,7 +402,7 @@ export class AuthManager {
       const files = readdirSync(config.sessionPath);
       if (files.length === 0) return;
 
-      logger.info(`🧹 Limpiando ${files.length} archivos...`);
+      logger.info(`Limpiando ${files.length} archivos...`);
 
       for (const file of files) {
         try {
@@ -422,10 +420,10 @@ export class AuthManager {
     const mode = config.auth.usePairingCode
       ? "Código de pareamiento"
       : "Código QR";
-    logger.info(`🔐 Modo: ${mode}`);
+    logger.info(`Modo: ${mode}`);
 
     if (config.auth.usePairingCode && config.auth.phoneNumber) {
-      logger.info(`📱 Número: ${config.auth.phoneNumber}`);
+      logger.info(`Número: ${config.auth.phoneNumber}`);
     }
   }
 }
