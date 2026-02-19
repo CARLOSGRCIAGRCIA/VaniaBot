@@ -1,0 +1,205 @@
+import type { IDatabase } from "../database/Database";
+
+export interface ModerationAction {
+  userId: string;
+  userName: string;
+  action: "ban" | "kick" | "mute" | "warn";
+  reason: string;
+  moderator: string;
+  timestamp: number;
+  duration?: number;
+  expiresAt?: number;
+}
+
+export interface BanRecord {
+  userId: string;
+  userName: string;
+  bannedBy: string;
+  reason: string;
+  timestamp: number;
+  groupId: string;
+}
+
+export interface MuteRecord {
+  userId: string;
+  userName: string;
+  mutedBy: string;
+  reason: string;
+  timestamp: number;
+  duration: number;
+  expiresAt: number;
+  groupId: string;
+}
+
+export class ModerationService {
+  private db: IDatabase;
+  private readonly BANS_COLLECTION = "bans";
+  private readonly MUTES_COLLECTION = "mutes";
+  private readonly MODERATION_LOG_COLLECTION = "moderation_logs";
+
+  constructor(db: IDatabase) {
+    this.db = db;
+  }
+
+  async banUser(
+    groupId: string,
+    userId: string,
+    userName: string,
+    moderator: string,
+    reason: string,
+  ): Promise<void> {
+    const banKey = `${groupId}:${userId}`;
+
+    const banRecord: BanRecord = {
+      userId,
+      userName,
+      bannedBy: moderator,
+      reason,
+      timestamp: Date.now(),
+      groupId,
+    };
+
+    await this.db.set(this.BANS_COLLECTION, banKey, banRecord);
+
+    await this.logAction({
+      userId,
+      userName,
+      action: "ban",
+      reason,
+      moderator,
+      timestamp: Date.now(),
+    });
+  }
+
+  async unbanUser(groupId: string, userId: string): Promise<boolean> {
+    const banKey = `${groupId}:${userId}`;
+    const ban = await this.db.get<BanRecord>(this.BANS_COLLECTION, banKey);
+
+    if (!ban) return false;
+
+    await this.db.delete(this.BANS_COLLECTION, banKey);
+    return true;
+  }
+
+  async isBanned(groupId: string, userId: string): Promise<boolean> {
+    const banKey = `${groupId}:${userId}`;
+    const ban = await this.db.get<BanRecord>(this.BANS_COLLECTION, banKey);
+    return ban !== null;
+  }
+
+  async getBanInfo(groupId: string, userId: string): Promise<BanRecord | null> {
+    const banKey = `${groupId}:${userId}`;
+    return await this.db.get<BanRecord>(this.BANS_COLLECTION, banKey);
+  }
+
+  async getGroupBans(groupId: string): Promise<BanRecord[]> {
+    const allBans = await this.db.getAll<BanRecord>(this.BANS_COLLECTION);
+    return allBans.filter((ban) => ban.groupId === groupId);
+  }
+
+  async muteUser(
+    groupId: string,
+    userId: string,
+    userName: string,
+    moderator: string,
+    reason: string,
+    duration: number,
+  ): Promise<void> {
+    const muteKey = `${groupId}:${userId}`;
+    const now = Date.now();
+
+    const muteRecord: MuteRecord = {
+      userId,
+      userName,
+      mutedBy: moderator,
+      reason,
+      timestamp: now,
+      duration,
+      expiresAt: now + duration,
+      groupId,
+    };
+
+    await this.db.set(this.MUTES_COLLECTION, muteKey, muteRecord);
+
+    await this.logAction({
+      userId,
+      userName,
+      action: "mute",
+      reason,
+      moderator,
+      timestamp: now,
+      duration,
+      expiresAt: now + duration,
+    });
+  }
+
+  async unmuteUser(groupId: string, userId: string): Promise<boolean> {
+    const muteKey = `${groupId}:${userId}`;
+    const mute = await this.db.get<MuteRecord>(this.MUTES_COLLECTION, muteKey);
+
+    if (!mute) return false;
+
+    await this.db.delete(this.MUTES_COLLECTION, muteKey);
+    return true;
+  }
+
+  async isMuted(groupId: string, userId: string): Promise<boolean> {
+    const muteKey = `${groupId}:${userId}`;
+    const mute = await this.db.get<MuteRecord>(this.MUTES_COLLECTION, muteKey);
+
+    if (!mute) return false;
+
+    if (Date.now() > mute.expiresAt) {
+      await this.unmuteUser(groupId, userId);
+      return false;
+    }
+
+    return true;
+  }
+
+  async getMuteInfo(
+    groupId: string,
+    userId: string,
+  ): Promise<MuteRecord | null> {
+    const muteKey = `${groupId}:${userId}`;
+    const mute = await this.db.get<MuteRecord>(this.MUTES_COLLECTION, muteKey);
+
+    if (!mute) return null;
+
+    if (Date.now() > mute.expiresAt) {
+      await this.unmuteUser(groupId, userId);
+      return null;
+    }
+
+    return mute;
+  }
+
+  async getMuteTimeRemaining(groupId: string, userId: string): Promise<number> {
+    const mute = await this.getMuteInfo(groupId, userId);
+    if (!mute) return 0;
+
+    const remaining = mute.expiresAt - Date.now();
+    return remaining > 0 ? remaining : 0;
+  }
+
+  async logAction(action: ModerationAction): Promise<void> {
+    const logKey = `${action.userId}:${Date.now()}`;
+    await this.db.set(this.MODERATION_LOG_COLLECTION, logKey, action);
+  }
+
+  async getUserHistory(userId: string): Promise<ModerationAction[]> {
+    const allLogs = await this.db.getAll<ModerationAction>(
+      this.MODERATION_LOG_COLLECTION,
+    );
+    return allLogs
+      .filter((log) => log.userId === userId)
+      .sort((a, b) => b.timestamp - a.timestamp);
+  }
+
+  async getRecentActions(limit: number = 50): Promise<ModerationAction[]> {
+    const allLogs = await this.db.getAll<ModerationAction>(
+      this.MODERATION_LOG_COLLECTION,
+    );
+    return allLogs.sort((a, b) => b.timestamp - a.timestamp).slice(0, limit);
+  }
+}
