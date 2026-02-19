@@ -1,0 +1,90 @@
+import { Command } from "../Command.js";
+import {
+  CommandCategory,
+  CommandContext,
+  type MessageContext,
+} from "@/types/index.js";
+import { createCanvas } from "canvas";
+
+export class QrCommand extends Command {
+  name = "qr";
+  description = "Genera un código QR de cualquier texto o URL.";
+  category = CommandCategory.UTILITY;
+  aliases = ["qrcode", "genqr"];
+  usage = "!qr <texto o URL>";
+  examples = [
+    "!qr https://github.com/VaniaBot",
+    "!qr Hola, este es mi contacto: +52 1234567890",
+    "!qr https://wa.me/521234567890",
+  ];
+  cooldown = 5000;
+  contexts = [CommandContext.BOTH];
+
+  private isValidUrl(text: string): boolean {
+    try {
+      new URL(text);
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  async execute(ctx: MessageContext): Promise<void> {
+    if (!ctx.args.length) {
+      await ctx.reply(
+        `📱 *Generador de QR*\n\n` +
+          `*Uso:* !qr <texto o URL>\n\n` +
+          `*Ejemplos:*\n` +
+          `  !qr https://google.com\n` +
+          `  !qr Mi número: +52 123 456 7890\n` +
+          `  !qr Texto secreto 🤫`,
+      );
+      return;
+    }
+
+    const content = ctx.args.join(" ");
+
+    if (content.length > 500) {
+      await ctx.reply(
+        "❌ El contenido es demasiado largo (máx. 500 caracteres).",
+      );
+      return;
+    }
+
+    await ctx.react("⏳");
+
+    try {
+      const qrUrl =
+        `https://api.qrserver.com/v1/create-qr-code/` +
+        `?size=400x400` +
+        `&margin=10` +
+        `&ecc=H` +
+        `&format=png` +
+        `&data=${encodeURIComponent(content)}`;
+
+      const res = await fetch(qrUrl);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+
+      const buffer = Buffer.from(await res.arrayBuffer());
+
+      const isUrl = this.isValidUrl(content);
+      const caption =
+        `📱 *Código QR generado*\n` +
+        `━━━━━━━━━━━━━━\n` +
+        `${isUrl ? "🔗" : "📝"} *Contenido:* ${content.length > 60 ? content.substring(0, 57) + "..." : content}\n` +
+        `📐 *Tamaño:* 400×400px\n` +
+        `🛡️ *Corrección de error:* Alta (30%)`;
+
+      await ctx.sock.sendMessage(ctx.chat.jid, {
+        image: buffer,
+        caption,
+        mimetype: "image/png",
+      });
+
+      await ctx.react("✅");
+    } catch (error) {
+      await ctx.react("❌");
+      await ctx.reply("❌ Error al generar el QR. Intenta más tarde.");
+    }
+  }
+}
