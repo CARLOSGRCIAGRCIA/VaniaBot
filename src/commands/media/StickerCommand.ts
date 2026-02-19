@@ -29,8 +29,8 @@ export class StickerCommand extends Command {
 
     if (!quotedMsg) {
       await ctx.reply(
-        "❌ Reply to an image or video\n\n" +
-          "📖 Usage: Reply to a photo/video with !sticker\n" +
+        " Reply to an image or video\n\n" +
+          "Usage: Reply to a photo/video with !sticker\n" +
           "💡 Videos must be less than 10 seconds",
       );
       return;
@@ -41,7 +41,7 @@ export class StickerCommand extends Command {
 
     if (!hasImage && !hasVideo) {
       await ctx.reply(
-        "❌ Reply to an image or video\n\n" +
+        " Reply to an image or video\n\n" +
           "✅ Supported: JPG, PNG, WebP, MP4, GIF\n" +
           "⏱️ Max video: 10 seconds",
       );
@@ -71,7 +71,7 @@ export class StickerCommand extends Command {
     } catch (error: any) {
       console.error("Error in StickerCommand:", error);
 
-      let errorMessage = "❌ Error creating sticker\n\n";
+      let errorMessage = " Error creating sticker\n\n";
 
       if (error.message?.includes("FFmpeg")) {
         errorMessage +=
@@ -86,7 +86,7 @@ export class StickerCommand extends Command {
       }
 
       await ctx.reply(errorMessage);
-      await ctx.react("❌");
+      await ctx.react("");
     }
   }
 }

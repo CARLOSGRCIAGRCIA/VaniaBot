@@ -94,9 +94,9 @@ export class NotaCommand extends Command {
     } catch (error: any) {
       console.error("Error in NotaCommand:", error);
       await ctx.reply(
-        `❌ Error: ${error.message || "Could not generate sticker"}`,
+        ` Error: ${error.message || "Could not generate sticker"}`,
       );
-      await ctx.react("❌");
+      await ctx.react("");
     }
   }
 

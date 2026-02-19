@@ -50,10 +50,8 @@ export class TakeCommand extends Command {
       await ctx.react("✅");
     } catch (error: any) {
       console.error("Error in TakeCommand:", error);
-      await ctx.reply(
-        `❌ Error: ${error.message || "Could not modify sticker"}`,
-      );
-      await ctx.react("❌");
+      await ctx.reply(` Error: ${error.message || "Could not modify sticker"}`);
+      await ctx.react("");
     }
   }
 }
