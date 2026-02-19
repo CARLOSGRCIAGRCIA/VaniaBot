@@ -46,7 +46,7 @@ function scheduleRestart(authMode: "qr" | "code", delayMs: number): void {
 
 function scheduleDelayedRestartAfterFlood(authMode: "qr" | "code"): void {
   console.log(
-    chalk.red(`\n❌ Demasiados reinicios (${restartCount}) en poco tiempo`),
+    chalk.red(`\n Demasiados reinicios (${restartCount}) en poco tiempo`),
   );
   console.log(
     chalk.yellow(
@@ -122,7 +122,7 @@ function startBot(authMode: "qr" | "code"): void {
   });
 
   childProcess.on("error", (err) => {
-    console.error(chalk.red("❌ Error en proceso hijo:"), err);
+    console.error(chalk.red(" Error en proceso hijo:"), err);
     isRunning = false;
     childProcess = null;
 
@@ -170,19 +170,19 @@ if (!shutdownRegistered) {
 }
 
 process.on("uncaughtException", (err) => {
-  console.error(chalk.red("❌ Error no capturado:"), err);
+  console.error(chalk.red(" Error no capturado:"), err);
   if (childProcess) childProcess.kill("SIGTERM");
   process.exit(1);
 });
 
 process.on("unhandledRejection", (reason) => {
-  console.error(chalk.red("❌ Promesa rechazada no manejada:"), reason);
+  console.error(chalk.red(" Promesa rechazada no manejada:"), reason);
 });
 
 async function promptPhoneNumber(): Promise<void> {
   const rl = createInterface({ input: process.stdin, output: process.stdout });
 
-  console.log(chalk.yellow("\n📱 Configuración de número de teléfono"));
+  console.log(chalk.yellow("\nConfiguración de número de teléfono"));
   console.log(chalk.gray("   Formato: +[código país][número]"));
   console.log(chalk.gray("   Ejemplo: +529514639799\n"));
 
@@ -195,13 +195,13 @@ async function promptPhoneNumber(): Promise<void> {
   rl.close();
 
   if (!phone) {
-    console.log(chalk.red("❌ No se ingresó número. Saliendo..."));
+    console.log(chalk.red(" No se ingresó número. Saliendo..."));
     process.exit(1);
   }
 
   const cleaned = phone.replace(/\s/g, "");
   if (!/^\+?\d{10,15}$/.test(cleaned)) {
-    console.log(chalk.red("❌ Formato de número inválido"));
+    console.log(chalk.red(" Formato de número inválido"));
     console.log(chalk.yellow("   Debe contener entre 10-15 dígitos"));
     console.log(chalk.yellow("   Puede incluir + al inicio"));
     process.exit(1);
@@ -230,7 +230,7 @@ async function main(): Promise<void> {
   } else if (cliAuthMode) {
     console.log(
       chalk.red(
-        `\n❌ Argumento inválido: "${cliAuthMode}"\n\n` +
+        `\n Argumento inválido: "${cliAuthMode}"\n\n` +
           "Uso correcto:\n" +
           "   npm start qr     → Usar código QR\n" +
           "   npm start code   → Usar código de pareamiento\n" +
@@ -268,6 +268,6 @@ async function main(): Promise<void> {
 }
 
 main().catch((error) => {
-  console.error(chalk.red("❌ Error fatal:"), error);
+  console.error(chalk.red(" Error fatal:"), error);
   process.exit(1);
 });
