@@ -123,9 +123,7 @@ export async function seleccionarMetodoAuth(): Promise<"qr" | "code"> {
       output: process.stdout,
     });
 
-    console.log(
-      chalk.bold.cyan("\n🔐 Selecciona el método de autenticación:\n"),
-    );
+    console.log(chalk.bold.cyan("\nSelecciona el método de autenticación:\n"));
     console.log(
       chalk.white("  1) 📱 ") +
         chalk.bold.green("Código QR") +
@@ -173,7 +171,7 @@ export function mostrarAyuda(): void {
   const g = chalk.gray;
 
   console.log(c("\n╔═══════════════════════════════════════════╗"));
-  console.log(c("║") + "    📖 VANIABOT - COMANDOS DISPONIBLES    " + c("║"));
+  console.log(c("║") + "    VANIABOT - COMANDOS DISPONIBLES    " + c("║"));
   console.log(c("╚═══════════════════════════════════════════╝\n"));
 
   console.log(w("Inicio:"));

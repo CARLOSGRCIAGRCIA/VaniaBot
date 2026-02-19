@@ -5,3 +5,4 @@ check-and-clean.sh
 package-lock.json
 vaniasession
 .vscode
+data/database.json
