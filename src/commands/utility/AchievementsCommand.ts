@@ -199,7 +199,7 @@ ${user.isOwner ? "\n👑 Todos disponibles" : isSelf && locked.length > 3 ? `\n�
       await ctx.reply(message);
     } catch (error) {
       console.error("Error en AchievementsCommand:", error);
-      await ctx.reply("❌ Error al obtener los logros");
+      await ctx.reply(" Error al obtener los logros");
     }
   }
 

@@ -17,7 +17,7 @@ export class AutoRegisterMiddleware extends Middleware {
           name: ctx.sender.pushName,
         });
 
-        logger.debug(`👤 Usuario auto-registrado: ${ctx.sender.pushName}`);
+        logger.debug(`Usuario auto-registrado: ${ctx.sender.pushName}`);
       } else {
         await serviceManager.userService.updateUser(ctx.sender.jid, {
           updatedAt: Date.now(),
@@ -30,7 +30,7 @@ export class AutoRegisterMiddleware extends Middleware {
 
         if (!groupExists) {
           await serviceManager.groupService.getGroup(ctx.chat.jid);
-          logger.debug(`📱 Grupo auto-registrado: ${ctx.chat.jid}`);
+          logger.debug(`Grupo auto-registrado: ${ctx.chat.jid}`);
         }
       }
 
