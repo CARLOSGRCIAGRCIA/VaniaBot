@@ -32,12 +32,12 @@ export class QcCommand extends Command {
       text =
         ctx.quoted.conversation || ctx.quoted.extendedTextMessage?.text || "";
     } else {
-      await ctx.reply("❌ Missing text!\n\n📖 Usage: !qc <text>");
+      await ctx.reply(" Missing text!\n\nUsage: !qc <text>");
       return;
     }
 
     if (!text) {
-      await ctx.reply("❌ Missing text!");
+      await ctx.reply(" Missing text!");
       return;
     }
 
@@ -53,7 +53,7 @@ export class QcCommand extends Command {
     const cleanText = text.replace(mentionRegex, "").trim();
 
     if (cleanText.length > 40) {
-      await ctx.reply("❌ Text cannot exceed 40 characters");
+      await ctx.reply(" Text cannot exceed 40 characters");
       return;
     }
 
@@ -126,9 +126,9 @@ export class QcCommand extends Command {
     } catch (error: any) {
       console.error("Error in QcCommand:", error);
       await ctx.reply(
-        `❌ Error: ${error.message || "Could not generate sticker"}`,
+        ` Error: ${error.message || "Could not generate sticker"}`,
       );
-      await ctx.react("❌");
+      await ctx.react("");
     }
   }
 }
