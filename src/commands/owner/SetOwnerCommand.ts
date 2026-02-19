@@ -22,8 +22,8 @@ export class SetOwnerCommand extends Command {
 
     if (args.length < 2) {
       await ctx.reply(
-        `❌ Incorrect usage\n\n` +
-          `📖 Usage: ${this.usage}\n\n` +
+        ` Incorrect usage\n\n` +
+          `Usage: ${this.usage}\n\n` +
           `📝 Examples:\n${this.examples.join("\n")}`,
       );
       return;
@@ -34,12 +34,12 @@ export class SetOwnerCommand extends Command {
       ctx.message.message?.extendedTextMessage?.contextInfo?.mentionedJid?.[0];
 
     if (!mentionedJid) {
-      await ctx.reply("❌ You must mention a user");
+      await ctx.reply(" You must mention a user");
       return;
     }
 
     if (mentionedJid === ctx.sender.jid) {
-      await ctx.reply("❌ You cannot modify your own owner permissions");
+      await ctx.reply(" You cannot modify your own owner permissions");
       return;
     }
 
@@ -111,12 +111,12 @@ export class SetOwnerCommand extends Command {
           break;
 
         default:
-          await ctx.reply("❌ Invalid action. Use: add or remove");
+          await ctx.reply(" Invalid action. Use: add or remove");
       }
     } catch (error) {
       console.error("Error in SetOwnerCommand:", error);
       await ctx.reply(
-        `❌ Error: ${error instanceof Error ? error.message : "Unknown"}`,
+        ` Error: ${error instanceof Error ? error.message : "Unknown"}`,
       );
     }
   }

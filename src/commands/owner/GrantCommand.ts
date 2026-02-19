@@ -24,7 +24,7 @@ export class GrantCommand extends Command {
 
     if (args.length < 3) {
       await ctx.reply(
-        `❌ Uso incorrecto\n\n📖 Uso: ${this.usage}\n\n📝 Ejemplos:\n${this.examples.join("\n")}`,
+        ` Uso incorrecto\n\nUso: ${this.usage}\n\nEjemplos:\n${this.examples.join("\n")}`,
       );
       return;
     }
@@ -34,7 +34,7 @@ export class GrantCommand extends Command {
       ctx.message.message?.extendedTextMessage?.contextInfo?.mentionedJid?.[0];
 
     if (!mentionedJid) {
-      await ctx.reply("❌ Debes mencionar a un usuario");
+      await ctx.reply(" Debes mencionar a un usuario");
       return;
     }
 
@@ -60,12 +60,12 @@ export class GrantCommand extends Command {
           break;
 
         default:
-          await ctx.reply("❌ Tipo inválido. Usa: money, xp, o item");
+          await ctx.reply(" Tipo inválido. Usa: money, xp, o item");
       }
     } catch (error) {
       console.error("Error en GrantCommand:", error);
       await ctx.reply(
-        `❌ Error: ${error instanceof Error ? error.message : "Desconocido"}`,
+        ` Error: ${error instanceof Error ? error.message : "Desconocido"}`,
       );
     }
   }
@@ -79,7 +79,7 @@ export class GrantCommand extends Command {
     const amount = parseInt(amountStr);
 
     if (isNaN(amount) || amount <= 0) {
-      await ctx.reply("❌ La cantidad debe ser un número positivo");
+      await ctx.reply(" La cantidad debe ser un número positivo");
       return;
     }
 
@@ -103,7 +103,7 @@ export class GrantCommand extends Command {
     const amount = parseInt(amountStr);
 
     if (isNaN(amount) || amount <= 0) {
-      await ctx.reply("❌ La cantidad debe ser un número positivo");
+      await ctx.reply(" La cantidad debe ser un número positivo");
       return;
     }
 
@@ -123,7 +123,7 @@ export class GrantCommand extends Command {
     targetName: string,
   ): Promise<void> {
     if (!item || item.trim() === "") {
-      await ctx.reply("❌ Debes especificar un item válido");
+      await ctx.reply(" Debes especificar un item válido");
       return;
     }
 
