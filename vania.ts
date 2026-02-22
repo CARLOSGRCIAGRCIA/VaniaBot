@@ -4,7 +4,7 @@ import chalk from "chalk";
 import { createInterface } from "readline";
 import { mostrarBannerVania, seleccionarMetodoAuth } from "./src/utils/cli.js";
 
-const SESSION_DIR = "./data/vaniasession";
+const SESSION_DIR = "./vaniasession";
 const SESSION_CREDS = `${SESSION_DIR}/creds.json`;
 const BOOT_FLAG = "./.vania-session";
 const MAX_QUICK_RESTARTS = 5;

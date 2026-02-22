@@ -1,19 +1,43 @@
+/**
+ * @fileoverview AI Service for VaniaBot — powered by Groq SDK.
+ *
+ * Handles conversational AI with per-user session history,
+ * one-shot text generation, and audio transcription.
+ *
+ * @module AIService
+ * @author Carlos Garcia
+ * @see {@link https://github.com/CARLOSGRCIAGRCIA} GitHub
+ * @see {@link https://www.tiktok.com/@carlos.grcia0} TikTok
+ */
+
 import Groq from "groq-sdk";
 import { env } from "@/config/env.js";
 import fs from "fs";
 import path from "path";
 
+/**
+ * Represents a single message in an AI conversation.
+ */
 export interface AIMessage {
+  /** The role of the message author. */
   role: "user" | "assistant" | "system";
   content: string;
 }
 
+/**
+ * Unified response object returned by all AI operations.
+ */
 export interface AIResponse {
   success: boolean;
   text?: string;
   error?: string;
 }
 
+/**
+ * Represents an active conversation session scoped to a
+ * (chat, sender) pair. Sessions expire after {@link SESSION_TTL_MS}
+ * of inactivity and are cleaned up by an internal timer.
+ */
 export interface ConversationSession {
   chatJid: string;
   senderJid: string;
@@ -22,17 +46,35 @@ export interface ConversationSession {
   lastActivity: number;
 }
 
+/**
+ * Available Groq model identifiers used by the service.
+ *
+ * - `chat` — Full-size model for deep reasoning and longer responses.
+ * - `fast` — Lightweight model for quick, low-latency replies.
+ * - `transcribe` — Whisper model for audio-to-text transcription.
+ */
 export const GROQ_MODELS = {
   chat: "llama-3.3-70b-versatile",
   fast: "llama-3.1-8b-instant",
   transcribe: "whisper-large-v3-turbo",
 } as const;
 
+/** Maximum number of messages retained per session history. */
 const MAX_HISTORY_MESSAGES = 20;
+
+/** Session inactivity TTL — 30 minutes. */
 const SESSION_TTL_MS = 30 * 60 * 1000;
+
+/** How often the cleanup sweep runs — every 5 minutes. */
 const CLEANUP_INTERVAL_MS = 5 * 60 * 1000;
+
+/** Temporary directory for audio files before transcription. */
 const TEMP_DIR = "./data/temp/audio";
 
+/**
+ * System prompt that defines VaniaBot's personality and response format.
+ * Injected as the first message in every chat completion request.
+ */
 const SYSTEM_PROMPT = `Eres VaniaBot, un bot super dotada de este grupo de WhatsApp.
 
 Personalidad:
@@ -53,11 +95,47 @@ Formato para WhatsApp:
 - Máximo 3-4 párrafos salvo que pidan algo extenso
 - > pie de pagina con la leyenda _*VaniaBot💝*_ para que todos te conozcan`;
 
+/**
+ * Singleton service that manages all AI interactions for VaniaBot.
+ *
+ * Responsibilities:
+ * - Maintaining per-user conversation sessions with automatic expiry.
+ * - Sending chat completions to Groq with full conversation history.
+ * - Generating one-shot responses without session context.
+ * - Transcribing WhatsApp voice notes via Whisper.
+ *
+ * @example
+ * ```ts
+ * // Chat with history
+ * const response = await aiService.chat(chatJid, senderJid, "Hola!");
+ * if (response.success) console.log(response.text);
+ *
+ * // Transcribe a voice note buffer
+ * const transcription = await aiService.transcribeAudio(buffer, "ogg");
+ * ```
+ *
+ * @author Carlos Garcia
+ * @see {@link https://github.com/CARLOSGRCIAGRCIA} GitHub
+ * @see {@link https://www.tiktok.com/@carlos.grcia0} TikTok
+ */
 export class AIService {
+  /** Groq SDK client instance. */
   private client: Groq;
+
+  /**
+   * In-memory session store.
+   * Key format: `"chatJid::senderJid"`
+   */
   private sessions: Map<string, ConversationSession> = new Map();
+
+  /** Reference to the session cleanup interval timer. */
   private cleanupTimer: NodeJS.Timeout;
 
+  /**
+   * Creates and initializes the AIService.
+   *
+   * @throws {Error} If `GROQ_API_KEY` is not set in the environment.
+   */
   constructor() {
     if (!env.GROQ_API_KEY) {
       throw new Error(
@@ -84,10 +162,24 @@ export class AIService {
     console.log(`   Voice:  ${GROQ_MODELS.transcribe}`);
   }
 
+  /**
+   * Builds the internal map key for a (chat, sender) pair.
+   *
+   * @param chatJid - WhatsApp JID of the chat.
+   * @param senderJid - WhatsApp JID of the sender.
+   * @returns Composite string key used in {@link sessions}.
+   */
   private sessionKey(chatJid: string, senderJid: string): string {
     return `${chatJid}::${senderJid}`;
   }
 
+  /**
+   * Retrieves an existing session or creates a new one if none exists.
+   *
+   * @param chatJid - WhatsApp JID of the chat.
+   * @param senderJid - WhatsApp JID of the sender.
+   * @returns The active {@link ConversationSession} for this pair.
+   */
   getSession(chatJid: string, senderJid: string): ConversationSession {
     const key = this.sessionKey(chatJid, senderJid);
     let session = this.sessions.get(key);
@@ -106,20 +198,43 @@ export class AIService {
     return session;
   }
 
+  /**
+   * Deletes the conversation history for a specific (chat, sender) pair.
+   * Typically triggered by the `!aiclear` command.
+   *
+   * @param chatJid - WhatsApp JID of the chat.
+   * @param senderJid - WhatsApp JID of the sender.
+   */
   clearSession(chatJid: string, senderJid: string): void {
     this.sessions.delete(this.sessionKey(chatJid, senderJid));
   }
 
+  /**
+   * Deletes all sessions belonging to a specific group chat.
+   * Useful when the bot leaves a group or an admin resets the AI.
+   *
+   * @param chatJid - WhatsApp JID of the group.
+   */
   clearGroupSessions(chatJid: string): void {
     for (const key of this.sessions.keys()) {
       if (key.startsWith(`${chatJid}::`)) this.sessions.delete(key);
     }
   }
 
+  /**
+   * Returns the total number of active sessions currently in memory.
+   *
+   * @returns Count of stored {@link ConversationSession} entries.
+   */
   getSessionCount(): number {
     return this.sessions.size;
   }
 
+  /**
+   * Iterates all sessions and removes those that have exceeded
+   * the inactivity TTL ({@link SESSION_TTL_MS}).
+   * Called automatically on the {@link cleanupTimer} interval.
+   */
   private cleanupExpiredSessions(): void {
     const now = Date.now();
     let cleaned = 0;
@@ -133,6 +248,26 @@ export class AIService {
       console.log(`[AI] ${cleaned} sesiones expiradas eliminadas`);
   }
 
+  /**
+   * Sends a user message to the AI and returns a response,
+   * maintaining full conversation history for the session.
+   *
+   * History is automatically trimmed to the last {@link MAX_HISTORY_MESSAGES}
+   * entries to stay within token limits.
+   *
+   * @param chatJid - WhatsApp JID of the chat (used for session scoping).
+   * @param senderJid - WhatsApp JID of the sender (used for session scoping).
+   * @param userMessage - The user's input text.
+   * @param fast - If `true`, uses the faster {@link GROQ_MODELS.fast} model
+   *               instead of the default {@link GROQ_MODELS.chat}. Defaults to `false`.
+   * @returns A promise resolving to an {@link AIResponse}.
+   *
+   * @example
+   * ```ts
+   * const res = await aiService.chat(chatJid, senderJid, "¿Qué es TypeScript?");
+   * if (res.success) await ctx.reply(res.text!);
+   * ```
+   */
   async chat(
     chatJid: string,
     senderJid: string,
@@ -174,6 +309,20 @@ export class AIService {
     }
   }
 
+  /**
+   * Generates a one-shot AI response without session context.
+   * Useful for internal bot operations that need AI output
+   * but don't belong to a user conversation.
+   *
+   * @param prompt - The input prompt to send to the model.
+   * @param maxTokens - Maximum tokens in the response. Defaults to `512`.
+   * @returns A promise resolving to an {@link AIResponse}.
+   *
+   * @example
+   * ```ts
+   * const res = await aiService.generate("Resume este texto: ...", 256);
+   * ```
+   */
   async generate(prompt: string, maxTokens = 512): Promise<AIResponse> {
     try {
       const completion = await this.client.chat.completions.create({
@@ -194,6 +343,27 @@ export class AIService {
     }
   }
 
+  /**
+   * Transcribes a WhatsApp voice note buffer to plain text using Whisper.
+   *
+   * The audio buffer is written to a temporary file under {@link TEMP_DIR},
+   * sent to the Groq transcription API, and the temp file is deleted
+   * immediately after regardless of success or failure.
+   *
+   * @param audioBuffer - Raw audio data as a Node.js `Buffer`.
+   * @param extension - File extension indicating the audio format (e.g. `"ogg"`, `"mp3"`).
+   *                    Defaults to `"ogg"` (WhatsApp voice note format).
+   * @param language - Optional BCP-47 language hint (e.g. `"es"`, `"en"`) to
+   *                   improve transcription accuracy. Auto-detected if omitted.
+   * @returns A promise resolving to an {@link AIResponse} with the transcribed text.
+   *
+   * @example
+   * ```ts
+   * const buffer = await downloadMediaMessage(msg, "buffer", {});
+   * const res = await aiService.transcribeAudio(buffer as Buffer, "ogg", "es");
+   * if (res.success) await ctx.reply(`📝 ${res.text}`);
+   * ```
+   */
   async transcribeAudio(
     audioBuffer: Buffer,
     extension: string = "ogg",
@@ -222,6 +392,13 @@ export class AIService {
     }
   }
 
+  /**
+   * Maps Groq API errors to human-readable Spanish messages
+   * suitable for sending directly to WhatsApp users.
+   *
+   * @param error - The raw error thrown by the Groq SDK or fetch layer.
+   * @returns A user-friendly error string.
+   */
   private friendlyError(error: any): string {
     const msg: string = error?.message ?? "";
     const status: number = error?.status ?? 0;
@@ -238,4 +415,14 @@ export class AIService {
   }
 }
 
+/**
+ * Shared singleton instance of {@link AIService}.
+ * Import this directly instead of instantiating a new service.
+ *
+ * @example
+ * ```ts
+ * import { aiService } from "@/services/external/AIService.js";
+ * const response = await aiService.chat(chatJid, senderJid, "Hola");
+ * ```
+ */
 export const aiService = new AIService();

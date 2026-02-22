@@ -32,17 +32,22 @@ export class InventoryCommand extends Command {
         return;
       }
 
-      const itemCounts = new Map<string, number>();
-      inventory.forEach((item: string) => {
-        itemCounts.set(item, (itemCounts.get(item) || 0) + 1);
+      const itemCounts = new Map<string, { count: number; name: string }>();
+      inventory.forEach((item) => {
+        const existing = itemCounts.get(item.itemId);
+        if (existing) {
+          existing.count++;
+        } else {
+          itemCounts.set(item.itemId, { count: 1, name: item.name });
+        }
       });
 
       let itemsList = "";
       let index = 1;
 
-      for (const [item, count] of itemCounts) {
-        const emoji = this.getItemEmoji(item);
-        const displayName = this.getItemDisplayName(item);
+      for (const [itemId, { count, name }] of itemCounts) {
+        const emoji = this.getItemEmoji(itemId);
+        const displayName = this.getItemDisplayName(itemId) || name;
         itemsList += `┃ ${index}. ${emoji} ${displayName}`;
 
         if (count > 1) {
@@ -54,16 +59,16 @@ export class InventoryCommand extends Command {
       }
 
       const message = `
-┏━━━━━━━━━━━━━━━━━━━━━
+┏━━━━━━━━━━━━━━━
 ┃ 🎒 *INVENTARIO*
-┣━━━━━━━━━━━━━━━━━━━━━
+┣━━━━━━━━━━━━━━━
 ┃
 ┃ ${user.name}
 ┃
 ${itemsList}┃
 ┃ Total: ${inventory.length}
 ┃ Únicos: ${itemCounts.size}
-┗━━━━━━━━━━━━━━━━━━━━━
+┗━━━━━━━━━━━━━━━
 ${isSelf ? "\n💡 !use [item] para usar" : ""}
       `.trim();
 

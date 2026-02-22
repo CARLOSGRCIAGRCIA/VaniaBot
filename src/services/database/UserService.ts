@@ -12,9 +12,16 @@ export interface User {
   lastDaily?: number;
   lastWeekly?: number;
   lastMonthly?: number;
+  weeklyStreak?: number;
   totalCommands: number;
   warnings: number;
-  inventory: string[];
+  inventory: Array<{
+    itemId: string;
+    name: string;
+    type: string;
+    purchasedAt: number;
+    expiresAt?: number;
+  }>;
   achievements: string[];
   createdAt: number;
   updatedAt: number;
@@ -26,7 +33,7 @@ export class UserService {
   private readonly OWNER_LEVEL = 999;
   private readonly OWNER_XP = 999999;
 
-  constructor(private db: IDatabase) {}
+  constructor(private db: IDatabase) { }
 
   private isOwnerJid(jid: string): boolean {
     if (config.owners.includes(jid)) {
@@ -242,20 +249,32 @@ export class UserService {
     return newWarnings;
   }
 
-  async addItem(jid: string, item: string): Promise<void> {
+  async addItem(jid: string, itemId: string): Promise<void> {
     const user = await this.getUser(jid);
 
-    if (!user.inventory.includes(item)) {
-      const newInventory = [...user.inventory, item];
+    const exists = user.inventory.some((i) => i.itemId === itemId);
+
+    if (!exists) {
+      const newItem = {
+        itemId,
+        name: itemId,
+        type: "legacy",
+        purchasedAt: Date.now(),
+      };
+
+      const newInventory = [...user.inventory, newItem];
+
       await this.updateUser(jid, {
         inventory: newInventory,
       });
     }
   }
 
-  async removeItem(jid: string, item: string): Promise<boolean> {
+
+  async removeItem(jid: string, itemId: string): Promise<boolean> {
     const user = await this.getUser(jid);
-    const index = user.inventory.indexOf(item);
+
+    const index = user.inventory.findIndex((i) => i.itemId === itemId);
 
     if (index === -1) {
       return false;
@@ -271,9 +290,9 @@ export class UserService {
     return true;
   }
 
-  async hasItem(jid: string, item: string): Promise<boolean> {
+  async hasItem(jid: string, itemId: string): Promise<boolean> {
     const user = await this.getUser(jid);
-    return user.inventory.includes(item);
+    return user.inventory.some((i) => i.itemId === itemId);
   }
 
   async addAchievement(jid: string, achievementId: string): Promise<boolean> {
@@ -423,5 +442,39 @@ export class UserService {
       level: this.OWNER_LEVEL,
       xp: this.OWNER_XP,
     };
+  }
+
+  async addItemToInventory(
+    jid: string,
+    item: {
+      itemId: string;
+      name: string;
+      type: string;
+      purchasedAt: number;
+      expiresAt?: number;
+    }
+  ): Promise<void> {
+    const user = await this.getUser(jid);
+
+    const newInventory = [...user.inventory, item];
+
+    await this.db.update<User>(this.COLLECTION, jid, {
+      inventory: newInventory,
+    });
+  }
+
+  getWeeklyTimeRemaining(user: User): number {
+    if (!user.lastWeekly) return 0;
+
+    const weekInMs = 7 * 24 * 60 * 60 * 1000;
+    const elapsed = Date.now() - user.lastWeekly;
+    return Math.max(0, weekInMs - elapsed);
+  }
+
+  async updateWeeklyClaim(jid: string, streak: number): Promise<void> {
+    await this.db.update<User>(this.COLLECTION, jid, {
+      lastWeekly: Date.now(),
+      weeklyStreak: streak,
+    });
   }
 }

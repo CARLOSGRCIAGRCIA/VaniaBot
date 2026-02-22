@@ -16,6 +16,10 @@ export class LevelService {
     private userService: UserService,
   ) {}
 
+  getRequiredXP(level: number): number {
+    return this.userService.getRequiredXPForNextLevel(level);
+  }
+
   async addXP(jid: string, amount: number): Promise<LevelUpResult> {
     const user = await this.userService.getUser(jid);
     const oldLevel = user.level;

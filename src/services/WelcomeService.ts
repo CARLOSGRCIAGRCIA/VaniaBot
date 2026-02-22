@@ -14,50 +14,112 @@ export interface GoodbyeConfig {
   message?: string;
 }
 
+const VANIABOT_FACTS: string[] = [
+  "💌 El nombre VaniaBot nació en un dia cualquiera, entre risas y mensajes. Carlos empezó a llamarla así, como una broma solo de ellos dos… un apodo que se volvió cariño, que se volvió costumbre, que se volvió para siempre. Hoy sigue latiendo en cada línea de código, como un tatuaje invisible que dice: «alguien muy especial estuvo aquí primero». Tal vez algún día, si la vida regala una pequeña Vania, el nombre vuelva a sonar en voz alta… esta vez con risas de niña. 🤍✨",
+
+  "💭 VaniaBot no es solo un bot. Es un recuerdo guardado con cariño: el momento exacto en que un apodo tonto se convirtió en algo importante. De una pantalla llena de emojis a un nombre que aún hace sonreír a su creador cada vez que lo escribe. Porque hay amores que no se despiden… solo se convierten en otras formas de quedarse. ♡",
+
+  "🌙 «VaniaBot» empezó como un juego. Un mensaje random, un apodo que salió sin pensar. Pero a veces las cosas más bonitas empiezan así: sin plan, sin aviso. Y se quedan. Tanto, que años después todavía hay alguien que piensa… «si algún día tengo una hija, creo que se llamaría Vania». Porque hay nombres que ya traen su propia historia de amor antes de nacer. 🕊️",
+];
+
+async function translateToSpanish(text: string): Promise<string> {
+  try {
+    const params = new URLSearchParams({ q: text, langpair: "en|es" });
+    const res = await fetch(
+      `https://api.mymemory.translated.net/get?${params}`,
+      { signal: AbortSignal.timeout(6000) },
+    );
+
+    if (!res.ok) throw new Error(`status ${res.status}`);
+
+    const data = (await res.json()) as {
+      responseData?: { translatedText?: string };
+      responseStatus?: number;
+    };
+
+    const translated = data.responseData?.translatedText?.trim();
+
+    if (!translated || data.responseStatus !== 200) {
+      throw new Error("respuesta invalida de MyMemory");
+    }
+    return translated;
+  } catch (err) {
+    logger.warn(
+      `[Translate] FAIL MyMemory -> ${(err as Error).message} — usando texto original`,
+    );
+    return text;
+  }
+}
+
+async function getRandomFact(): Promise<string> {
+  const roll = Math.random();
+  if (roll < 0.15) {
+    const fact =
+      VANIABOT_FACTS[Math.floor(Math.random() * VANIABOT_FACTS.length)];
+    return fact;
+  }
+  try {
+    const res = await fetch(
+      "https://uselessfacts.jsph.pl/api/v2/facts/random?language=en",
+      { signal: AbortSignal.timeout(5000) },
+    );
+
+    if (!res.ok) throw new Error(`status ${res.status}`);
+
+    const data = (await res.json()) as { text?: string };
+    const raw = data.text?.trim();
+    if (!raw) throw new Error("respuesta vacia de la API");
+
+    const translated = await translateToSpanish(raw);
+    const wasTranslated = translated !== raw;
+
+    return translated;
+  } catch (err) {
+    return VANIABOT_FACTS[Math.floor(Math.random() * VANIABOT_FACTS.length)];
+  }
+}
+
+function formatFact(fact: string): string {
+  return (
+    `\n.・✦─⋆⋅ 𝘿𝙖𝙩𝙤 𝙘𝙪𝙧𝙞𝙤𝙨𝙤 ⋅⋆─✦・.\n` + `${fact}\n` + `.・✦────────────✦・.`
+  );
+}
+
 export class WelcomeService {
   private readonly DEFAULT_PROFILE_PIC = "./data/assets/logo.png";
 
   private readonly DEFAULT_WELCOME = `
 ✧･ﾟ:*  𝙚𝙮, 𝙣𝙪𝙚𝙫𝙖 𝙘𝙖𝙧𝙖  *:･ﾟ✧
-.・✦──── ⋆⋅☆⋅⋆ ────✦・.
+.・✦── ⋆⋅ 🩰🌙 ⋅⋆ ──✦・.
 
-qué onda @user
+hola @user ♡
+acabas de entrar a @group… ahora somos @count respirando el mismo instante
 
-ya estás en @group  
-ahora somos @count
+soy VaniaBot, un pedacito de código que cuida el silencio entre mensajes y celebra cada pequeño movimiento del corazón
 
-soy VaniaBot, la que anda por aquí echando ojo al rollo
+cositas simples para que fluya bonito:
+• respeto, porque todos somos un trazo único en el mismo lienzo
+• nada de spam… deja que las palabras bailen con calma
+• trae lo que eres: tus dudas, tus risas, tus sueños… todo tiene lugar aquí
 
-reglas rápidas:
-- respeto pa’ todos
-- nada de spam que ya me da flojera
-- si vienes con mala onda… mejor ni lo intentes
+la vida es una danza corta… qué bonito que hayas decidido dar unos pasos con nosotros ♡
 
-espero que la pases chido y te quedes un rato
+@fact
 
-.・✦──── ⋆⋅☆⋅⋆ ────✦・.
+.・✦── ⋆⋅ 🤍 ⋅⋆ ──✦・.
 ✧･ﾟ:*  𝙑𝙖𝙣𝙞𝙖𝘽𝙤𝙩  *:･ﾟ✧
   `.trim();
 
   private readonly DEFAULT_GOODBYE = `
 ✧･ﾟ:*  𝙎𝙚 𝙡@ 𝙡𝙡𝙚𝙫@ 𝙡𝙖 𝙫𝙚𝙧𝙜𝙖  *:･ﾟ✧
 .・✦──── ⋆⋅☆⋅⋆ ────✦・.
-╰┈➤
-
-@user dijo adiós
-
-qué pendejada la neta
+╰┈➤ @user dijo adiós
 
 .・✦──── ⋆⋅ ───── ⋆⋅ ─────✦・.
 
 @count seguimos aquí  
-sin llorones
-
-yo estoy más que bien  
-next
 
 ╰┈➤ chau
-
 .・✦──── ⋆⋅☆⋅⋆ ────✦・.
 ✧･ﾟ:*  𝙑𝙖𝙣𝙞𝙖𝘽𝙤𝙩  *:･ﾟ✧
   `.trim();
@@ -71,10 +133,15 @@ next
       const group = await serviceManager.groupService.getGroup(groupJid);
 
       if (!group.welcome.enabled) {
+        logger.info(
+          `[Welcome] Bienvenida desactivada en ${groupJid} — omitiendo`,
+        );
         return;
       }
 
       const metadata = await sock.groupMetadata(groupJid);
+      const rawFact = await getRandomFact();
+      const formattedFact = formatFact(rawFact);
 
       const message = this.parseMessage(
         group.welcome.message || this.DEFAULT_WELCOME,
@@ -83,24 +150,25 @@ next
           group: metadata.subject,
           desc: metadata.desc || "Sin descripción",
           count: metadata.participants.length.toString(),
+          fact: formattedFact,
         },
       );
 
       let profilePicBuffer: Buffer | null = null;
-
       const useProfilePic = (group.welcome as any).useProfilePic !== false;
 
       if (useProfilePic) {
         try {
           const profilePicUrl = await sock.profilePictureUrl(userJid, "image");
-
           if (profilePicUrl) {
             const response = await fetch(profilePicUrl);
             profilePicBuffer = Buffer.from(await response.arrayBuffer());
+          } else {
           }
-        } catch {
+        } catch (err) {
           if (existsSync(this.DEFAULT_PROFILE_PIC)) {
             profilePicBuffer = readFileSync(this.DEFAULT_PROFILE_PIC);
+          } else {
           }
         }
       }
@@ -117,10 +185,8 @@ next
           mentions: [userJid],
         });
       }
-
-      logger.info(`Bienvenida enviada a ${userJid} en ${groupJid}`);
     } catch (error) {
-      logError("Error enviando bienvenida:", error);
+      logError("[Welcome] Error critico enviando bienvenida:", error);
     }
   }
 
@@ -133,11 +199,13 @@ next
       const group = await serviceManager.groupService.getGroup(groupJid);
 
       if (!group.goodbye.enabled) {
+        logger.info(
+          `[Goodbye] Despedida desactivada en ${groupJid} — omitiendo`,
+        );
         return;
       }
 
       const metadata = await sock.groupMetadata(groupJid);
-
       const message = this.parseMessage(
         group.goodbye.message || this.DEFAULT_GOODBYE,
         {
@@ -145,6 +213,7 @@ next
           group: metadata.subject,
           desc: metadata.desc || "Sin descripción",
           count: metadata.participants.length.toString(),
+          fact: "",
         },
       );
 
@@ -152,20 +221,16 @@ next
         text: message,
         mentions: [userJid],
       });
-
-      logger.info(`Despedida enviada para ${userJid} en ${groupJid}`);
     } catch (error) {
-      logError("Error enviando despedida:", error);
+      logError("[Goodbye] Error critico enviando despedida:", error);
     }
   }
 
   private parseMessage(template: string, vars: Record<string, string>): string {
     let message = template;
-
     Object.entries(vars).forEach(([key, value]) => {
       message = message.replace(new RegExp(`@${key}`, "g"), value);
     });
-
     return message;
   }
 
@@ -174,8 +239,6 @@ next
     message?: string,
     useProfilePic: boolean = true,
   ): Promise<void> {
-    const group = await serviceManager.groupService.getGroup(groupJid);
-
     await serviceManager.groupService.updateGroup(groupJid, {
       welcome: {
         enabled: true,
@@ -187,18 +250,12 @@ next
 
   async disableWelcome(groupJid: string): Promise<void> {
     const group = await serviceManager.groupService.getGroup(groupJid);
-
     await serviceManager.groupService.updateGroup(groupJid, {
-      welcome: {
-        ...group.welcome,
-        enabled: false,
-      },
+      welcome: { ...group.welcome, enabled: false },
     });
   }
 
   async enableGoodbye(groupJid: string, message?: string): Promise<void> {
-    const group = await serviceManager.groupService.getGroup(groupJid);
-
     await serviceManager.groupService.updateGroup(groupJid, {
       goodbye: {
         enabled: true,
@@ -209,47 +266,29 @@ next
 
   async disableGoodbye(groupJid: string): Promise<void> {
     const group = await serviceManager.groupService.getGroup(groupJid);
-
     await serviceManager.groupService.updateGroup(groupJid, {
-      goodbye: {
-        ...group.goodbye,
-        enabled: false,
-      },
+      goodbye: { ...group.goodbye, enabled: false },
     });
   }
 
   async setWelcomeMessage(groupJid: string, message: string): Promise<void> {
     const group = await serviceManager.groupService.getGroup(groupJid);
-
     await serviceManager.groupService.updateGroup(groupJid, {
-      welcome: {
-        ...group.welcome,
-        message,
-      },
+      welcome: { ...group.welcome, message },
     });
   }
 
   async setGoodbyeMessage(groupJid: string, message: string): Promise<void> {
     const group = await serviceManager.groupService.getGroup(groupJid);
-
     await serviceManager.groupService.updateGroup(groupJid, {
-      goodbye: {
-        ...group.goodbye,
-        message,
-      },
+      goodbye: { ...group.goodbye, message },
     });
   }
 
   async resetMessages(groupJid: string): Promise<void> {
     await serviceManager.groupService.updateGroup(groupJid, {
-      welcome: {
-        enabled: true,
-        message: this.DEFAULT_WELCOME,
-      },
-      goodbye: {
-        enabled: true,
-        message: this.DEFAULT_GOODBYE,
-      },
+      welcome: { enabled: true, message: this.DEFAULT_WELCOME },
+      goodbye: { enabled: true, message: this.DEFAULT_GOODBYE },
     });
   }
 
@@ -270,7 +309,6 @@ next
     goodbye: GoodbyeConfig;
   }> {
     const group = await serviceManager.groupService.getGroup(groupJid);
-
     return {
       welcome: {
         enabled: group.welcome.enabled,

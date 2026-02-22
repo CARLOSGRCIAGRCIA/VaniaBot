@@ -61,8 +61,8 @@ export class Group implements IGroup {
     this.isActive = data.isActive !== undefined ? data.isActive : true;
 
     this.settings = {
-      welcome: data.settings?.welcome || { enabled: false },
-      goodbye: data.settings?.goodbye || { enabled: false },
+      welcome: data.settings?.welcome || { enabled: true },
+      goodbye: data.settings?.goodbye || { enabled: true },
       antiSpam: data.settings?.antiSpam || {
         enabled: true,
         maxMessages: 10,

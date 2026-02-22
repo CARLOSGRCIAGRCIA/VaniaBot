@@ -73,10 +73,10 @@ export class GroupService {
       name: "Group",
       isActive: true,
       welcome: {
-        enabled: false,
+        enabled: true,
       },
       goodbye: {
-        enabled: false,
+        enabled: true,
       },
       antiSpam: {
         enabled: true,

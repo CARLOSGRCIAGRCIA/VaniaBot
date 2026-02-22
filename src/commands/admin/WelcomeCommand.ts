@@ -12,7 +12,7 @@ export class WelcomeCommand extends Command {
   description = "Configura mensajes de bienvenida";
   category = CommandCategory.ADMIN;
   aliases = ["bienvenida"];
-  usage = "!welcome [on/off/set/test/reset]";
+  usage = "!welcome [on/off/set/test/reset/pic/nopic]";
   examples = [
     "!welcome",
     "!welcome on",
@@ -21,7 +21,6 @@ export class WelcomeCommand extends Command {
     "!welcome test",
     "!welcome reset",
   ];
-
   contexts = [CommandContext.GROUP];
   permissions = {
     user: [PermissionLevel.ADMIN],
@@ -45,27 +44,26 @@ export class WelcomeCommand extends Command {
       case "off":
       case "desactivar":
         await welcomeService.disableWelcome(ctx.chat.jid);
-        await ctx.reply("Bienvenida desactivada");
+        await ctx.reply("🔕 Bienvenida desactivada");
         break;
 
       case "set":
-      case "establecer":
+      case "establecer": {
         const message = ctx.args.slice(1).join(" ");
-
         if (!message) {
           await ctx.reply(
-            "Falta el mensaje\n\n" +
+            "⚠️ Falta el mensaje\n\n" +
               "Ejemplo:\n" +
               "!welcome set qué onda @user, bienvenid@ a @group\n\n" +
-              "Variables:\n" +
-              "@user  @group  @desc  @count",
+              "Variables disponibles:\n" +
+              "@user  @group  @desc  @count  @fact",
           );
           return;
         }
-
         await welcomeService.setWelcomeMessage(ctx.chat.jid, message);
-        await ctx.reply("Mensaje de bienvenida guardado");
+        await ctx.reply("✅ Mensaje de bienvenida guardado");
         break;
+      }
 
       case "test":
       case "probar":
@@ -79,36 +77,40 @@ export class WelcomeCommand extends Command {
       case "reset":
       case "restablecer":
         await welcomeService.resetMessages(ctx.chat.jid);
-        await ctx.reply("Mensajes restablecidos a los por defecto");
+        await ctx.reply("Mensajes restablecidos a los valores por defecto");
         break;
 
-      case "nopic":
+      case "nopic": {
         const config = await welcomeService.getConfig(ctx.chat.jid);
         const msgNoPic =
           config.welcome.message || welcomeService.getDefaultWelcome();
         await welcomeService.enableWelcome(ctx.chat.jid, msgNoPic, false);
         await ctx.reply("Foto de perfil desactivada en bienvenidas");
         break;
+      }
 
-      case "pic":
+      case "pic": {
         const cfg = await welcomeService.getConfig(ctx.chat.jid);
         const msgWithPic =
           cfg.welcome.message || welcomeService.getDefaultWelcome();
         await welcomeService.enableWelcome(ctx.chat.jid, msgWithPic, true);
         await ctx.reply("Foto de perfil activada en bienvenidas");
         break;
+      }
 
       default:
         await ctx.reply(
-          "Comando no reconocido\n\n" +
-            "Opciones:\n" +
-            "on       → activar\n" +
-            "off      → desactivar\n" +
-            "set      → cambiar mensaje\n" +
-            "test     → probar\n" +
-            "reset    → volver a defecto\n" +
-            "pic      → activar foto\n" +
-            "nopic    → quitar foto",
+          "❓ Comando no reconocido\n\n" +
+            "Opciones disponibles:\n" +
+            "on      → activar bienvenida\n" +
+            "off     → desactivar bienvenida\n" +
+            "set     → cambiar mensaje\n" +
+            "test    → probar bienvenida\n" +
+            "reset   → volver al mensaje por defecto\n" +
+            "pic     → activar foto de perfil\n" +
+            "nopic   → quitar foto de perfil\n\n" +
+            "Variables en el mensaje:\n" +
+            "@user  @group  @desc  @count  @fact",
         );
     }
   }
@@ -121,21 +123,20 @@ export class WelcomeCommand extends Command {
     const text = `
 ✧･ﾟ:*  𝘾𝙊𝙉𝙁𝙄𝙂 𝘽𝙄𝙀𝙉𝙑𝙀𝙉𝙄𝘿𝘼  *:･ﾟ✧
 
-Estado: ${config.welcome.enabled ? "activado" : "desactivado"}
-Foto: ${config.welcome.useProfilePic ? "sí" : "no"}
+Estado : ${config.welcome.enabled ? "✅ activado" : "❌ desactivado"}
+Foto   : ${config.welcome.useProfilePic ? "✅ sí" : "❌ no"}
 
 Mensaje actual:
 ${welcomeMsg}
 
 Comandos:
-!welcome on
-!welcome off
+!welcome on / off
 !welcome set [texto]
 !welcome test
 !welcome reset
 !welcome pic / nopic
 
-Variables: @user  @group  @desc  @count
+Variables: @user  @group  @desc  @count  @fact
     `.trim();
 
     await ctx.reply(text);

@@ -15,7 +15,7 @@ const envSchema = z.object({
     .optional()
     .default("208924405956643@lid")
     .transform((val) => (val ? val.split(",").filter(Boolean) : [])),
-  SESSION_PATH: z.string().default("./data/vaniasession"),
+  SESSION_PATH: z.string().default("./vaniasession"),
   USE_PAIRING_CODE: z
     .string()
     .transform((val) => val === "true")

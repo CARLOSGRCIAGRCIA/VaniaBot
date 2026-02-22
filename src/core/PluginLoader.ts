@@ -16,7 +16,6 @@ export class PluginLoader {
 
     try {
       await this.loadFromDirectory(commandsPath, commands);
-      logger.info(`${commands.length} comandos cargados exitosamente`);
 
       if (commands.length > 0) {
         logger.info(` Comandos: ${commands.map((c) => c.name).join(", ")}`);
@@ -54,9 +53,6 @@ export class PluginLoader {
 
             if (commandInstance.name && commandInstance.execute) {
               commands.push(commandInstance);
-              logger.info(
-                ` Comando cargado: ${commandInstance.name} (${file})`,
-              );
             } else {
               logger.warn(
                 `Comando inválido en ${file}: ${!commandInstance.name ? "falta 'name'" : ""} ${!commandInstance.execute ? "falta 'execute'" : ""}`,
