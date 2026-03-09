@@ -1,0 +1,68 @@
+name: vaniabot
+
+services:
+  vaniabot:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: runner
+
+    container_name: vaniabot
+
+    restart: unless-stopped
+
+    stdin_open: true
+    tty: true
+
+    env_file:
+      - .env
+
+    environment:
+      - NODE_ENV=production
+      - TZ=America/Mexico_City
+      - AUTH_MODE=${AUTH_MODE:-qr}
+
+    volumes:
+      - vaniabot_session:/app/vaniasession
+      - vaniabot_temp:/app/data/temp
+      - ./data/assets:/app/data/assets:ro
+
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: "1.0"
+        reservations:
+          memory: 128M
+          cpus: "0.25"
+
+    healthcheck:
+      test: ["CMD", "pgrep", "-f", "tsx vania.ts"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "5"
+
+    stop_signal: SIGTERM
+    stop_grace_period: 15s
+
+volumes:
+  vaniabot_session:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: ./vaniasession
+    labels:
+      description: "Baileys WhatsApp session credentials"
+
+  vaniabot_temp:
+    driver: local
+    labels:
+      description: "Temporary files for media downloads"
