@@ -6,3 +6,4 @@ package-lock.json
 vaniasession
 .vscode
 data/database.json
+dest

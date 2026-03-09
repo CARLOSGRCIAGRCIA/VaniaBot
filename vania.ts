@@ -70,7 +70,7 @@ function startBot(authMode: "qr" | "code"): void {
   isRunning = true;
   console.log(chalk.cyan("▶ Iniciando VaniaBot...\n"));
 
-  childProcess = spawn("tsx", ["src/index.ts"], {
+  childProcess = spawn("node_modules/.bin/tsx", ["src/index.ts"], {
     stdio: "inherit",
     env: {
       ...process.env,
