@@ -32,7 +32,9 @@ export class MuteCommand extends Command {
       return;
     }
 
-    if (!ctx.args.length) {
+    const cleanArgs = ctx.args.filter((arg) => !arg.startsWith("@"));
+
+    if (!cleanArgs.length) {
       await ctx.reply(
         "❌ You must specify a duration\n\n" +
           "Usage: !mute @user <duration> [reason]\n" +
@@ -52,7 +54,7 @@ export class MuteCommand extends Command {
       return;
     }
 
-    const durationStr = ctx.args[0];
+    const durationStr = cleanArgs[0];
     const duration = this.parseDuration(durationStr);
 
     if (duration === null) {
@@ -66,7 +68,7 @@ export class MuteCommand extends Command {
       return;
     }
 
-    const reason = ctx.args.slice(1).join(" ") || "No reason provided";
+    const reason = cleanArgs.slice(1).join(" ") || "No reason provided";
 
     await ctx.react("⏳");
 
