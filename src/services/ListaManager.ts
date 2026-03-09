@@ -1,0 +1,415 @@
+import type { WASocket } from "@whiskeysockets/baileys";
+import { logger, logError } from "@/utils/logger.js";
+
+export type ListaTipo =
+  | "clk"
+  | "vv2"
+  | "cuadrilatero"
+  | "trilatero"
+  | "hexagonal"
+  | "ascenso"
+  | "scrim";
+
+interface Jugador {
+  jid: string;
+  nombre: string;
+}
+
+interface Escuadra {
+  jugadores: Jugador[];
+  capacidad: number;
+}
+
+interface Lista {
+  tipo: ListaTipo;
+  chatJid: string;
+  messageId: string;
+  horaTexto: string;
+  horaMex: string;
+  horaCol: string;
+  liga?: string;
+  color?: string;
+  escuadras: Escuadra[];
+  suplentes: Jugador[];
+  maxSuplentes: number;
+  creadoEn: number;
+  activa: boolean;
+}
+
+const LISTA_TTL_MS = 12 * 60 * 60 * 1000;
+
+function parsearHora(horaTexto: string): { mex: string; col: string } | null {
+  const match = horaTexto
+    .trim()
+    .toLowerCase()
+    .match(/^(\d{1,2})(?::(\d{2}))?\s*(am|pm)?$/);
+
+  if (!match) return null;
+
+  let horas = parseInt(match[1]);
+  const minutos = parseInt(match[2] ?? "0");
+  const meridiem = match[3];
+
+  if (meridiem === "pm" && horas !== 12) horas += 12;
+  if (meridiem === "am" && horas === 12) horas = 0;
+
+  if (horas < 0 || horas > 23 || minutos < 0 || minutos > 59) return null;
+
+  const pad = (n: number) => String(n).padStart(2, "0");
+  const mexH = horas;
+  const colH = (horas + 1) % 24;
+
+  return {
+    mex: `${pad(mexH)}:${pad(minutos)}`,
+    col: `${pad(colH)}:${pad(minutos)}`,
+  };
+}
+
+function crearEscuadras(tipo: ListaTipo): Escuadra[] {
+  const crearEscuadra = (cap: number): Escuadra => ({
+    jugadores: [],
+    capacidad: cap,
+  });
+
+  switch (tipo) {
+    case "clk":
+      return [crearEscuadra(4)];
+    case "vv2":
+      return [crearEscuadra(6)];
+    case "cuadrilatero":
+      return [
+        crearEscuadra(4),
+        crearEscuadra(4),
+        crearEscuadra(4),
+        crearEscuadra(4),
+      ];
+    case "trilatero":
+      return [
+        crearEscuadra(4),
+        crearEscuadra(4),
+        crearEscuadra(4),
+        crearEscuadra(4),
+      ];
+    case "hexagonal":
+      return [crearEscuadra(4), crearEscuadra(4)];
+    case "ascenso":
+    case "scrim":
+      return [crearEscuadra(4)];
+    default:
+      return [crearEscuadra(4)];
+  }
+}
+
+function nombreTipo(tipo: ListaTipo, liga?: string, color?: string): string {
+  const base: Record<ListaTipo, string> = {
+    clk: liga ? "Liga CLK" : "CLK",
+    vv2: "VV2",
+    cuadrilatero: "Cuadrilátero",
+    trilatero: "Trilátero",
+    hexagonal: "Hexagonal",
+    ascenso: "Ascenso",
+    scrim: "Scrim",
+  };
+
+  let nombre = base[tipo];
+  if (
+    (tipo === "cuadrilatero" || tipo === "trilatero" || tipo === "hexagonal") &&
+    color
+  ) {
+    nombre += ` ${color}`;
+  }
+  return nombre;
+}
+
+function renderizarLista(lista: Lista): string {
+  const modo = nombreTipo(lista.tipo, lista.liga, lista.color);
+  const lineas: string[] = [];
+
+  lineas.push(`_*${modo}*_`);
+  if (lista.liga) lineas.push(`    _*Liga: ${lista.liga}*_`);
+  if (
+    lista.color &&
+    (lista.tipo === "cuadrilatero" ||
+      lista.tipo === "trilatero" ||
+      lista.tipo === "hexagonal")
+  ) {
+    lineas.push(`    _*COLOR: ${lista.color}*_`);
+  }
+
+  lineas.push("");
+  lineas.push(`    HORARIO`);
+  lineas.push(`    🇲🇽 MEX : ${lista.horaMex}`);
+  lineas.push(`    🇨🇴 COL : ${lista.horaCol}`);
+  lineas.push("");
+  lineas.push(`    ¬ JUGADORES PRESENTES`);
+
+  const tieneVariasEscuadras = lista.escuadras.length > 1;
+
+  for (let i = 0; i < lista.escuadras.length; i++) {
+    const escuadra = lista.escuadras[i];
+
+    if (tieneVariasEscuadras) {
+      lineas.push(`          ESCUADRA ${i + 1}`);
+    } else {
+      lineas.push(`          ESCUADRA`);
+    }
+
+    for (let j = 0; j < escuadra.capacidad; j++) {
+      const jugador = escuadra.jugadores[j];
+      const icono = j === 0 ? "👑" : "🥷🏻";
+      const nombre = jugador ? `@${jugador.jid.split("@")[0]}` : "";
+      lineas.push(`    ${icono} ┇ ${nombre}`);
+    }
+
+    if (tieneVariasEscuadras && i < lista.escuadras.length - 1) {
+      lineas.push("");
+    }
+  }
+
+  lineas.push("");
+  lineas.push(`    ᅠʚ SUPLENTE:`);
+  for (let i = 0; i < lista.maxSuplentes; i++) {
+    const suplente = lista.suplentes[i];
+    const nombre = suplente ? `@${suplente.jid.split("@")[0]}` : "";
+    lineas.push(`    🥷🏻 ┇ ${nombre}`);
+  }
+
+  return lineas.join("\n");
+}
+
+function getMenciones(lista: Lista): string[] {
+  const jids: string[] = [];
+  for (const escuadra of lista.escuadras) {
+    for (const j of escuadra.jugadores) jids.push(j.jid);
+  }
+  for (const s of lista.suplentes) jids.push(s.jid);
+  return jids;
+}
+
+function estaEnLista(lista: Lista, jid: string): boolean {
+  for (const e of lista.escuadras) {
+    if (e.jugadores.some((j) => j.jid === jid)) return true;
+  }
+  return lista.suplentes.some((s) => s.jid === jid);
+}
+
+function agregarJugador(lista: Lista, jid: string, nombre: string): boolean {
+  if (estaEnLista(lista, jid)) {
+    logger.info(`[LISTA] ${jid} ya está en la lista, ignorando`);
+    return false;
+  }
+
+  for (const escuadra of lista.escuadras) {
+    if (escuadra.jugadores.length < escuadra.capacidad) {
+      escuadra.jugadores.push({ jid, nombre });
+      logger.info(`[LISTA] ${jid} (${nombre}) agregado a escuadra`);
+      return true;
+    }
+  }
+
+  if (lista.suplentes.length < lista.maxSuplentes) {
+    lista.suplentes.push({ jid, nombre });
+    logger.info(`[LISTA] ${jid} (${nombre}) agregado como suplente`);
+    return true;
+  }
+
+  logger.info(`[LISTA] Lista llena, no se pudo agregar ${jid}`);
+  return false;
+}
+
+function removerJugador(lista: Lista, jid: string): boolean {
+  for (const escuadra of lista.escuadras) {
+    const idx = escuadra.jugadores.findIndex((j) => j.jid === jid);
+    if (idx !== -1) {
+      escuadra.jugadores.splice(idx, 1);
+      logger.info(`[LISTA] ${jid} removido de escuadra`);
+      if (lista.suplentes.length > 0) {
+        const promovido = lista.suplentes.shift()!;
+        escuadra.jugadores.push(promovido);
+        logger.info(
+          `[LISTA] ${promovido.jid} promovido de suplente a escuadra`,
+        );
+      }
+      return true;
+    }
+  }
+
+  const idxSup = lista.suplentes.findIndex((s) => s.jid === jid);
+  if (idxSup !== -1) {
+    lista.suplentes.splice(idxSup, 1);
+    logger.info(`[LISTA] ${jid} removido de suplentes`);
+    return true;
+  }
+
+  logger.info(`[LISTA] ${jid} no encontrado en la lista para remover`);
+  return false;
+}
+
+export class ListaManager {
+  private listas = new Map<string, Lista>();
+  private cleanupInterval: NodeJS.Timeout;
+
+  constructor() {
+    this.cleanupInterval = setInterval(
+      () => this.limpiarExpiradas(),
+      30 * 60 * 1000,
+    );
+  }
+
+  crearLista(params: {
+    tipo: ListaTipo;
+    chatJid: string;
+    messageId: string;
+    horaTexto?: string;
+    liga?: string;
+    color?: string;
+  }): Lista {
+    let horaMex = "00:00";
+    let horaCol = "00:00";
+
+    if (params.horaTexto) {
+      const parsed = parsearHora(params.horaTexto);
+      if (parsed) {
+        horaMex = parsed.mex;
+        horaCol = parsed.col;
+      }
+    }
+
+    const lista: Lista = {
+      tipo: params.tipo,
+      chatJid: params.chatJid,
+      messageId: params.messageId,
+      horaTexto: params.horaTexto ?? "00:00",
+      horaMex,
+      horaCol,
+      liga: params.liga,
+      color: params.color,
+      escuadras: crearEscuadras(params.tipo),
+      suplentes: [],
+      maxSuplentes: 2,
+      creadoEn: Date.now(),
+      activa: true,
+    };
+
+    this.listas.set(params.messageId, lista);
+    logger.info(
+      `[LISTA] Creada: tipo=${params.tipo} messageId=${params.messageId} chatJid=${params.chatJid}`,
+    );
+    return lista;
+  }
+
+  getLista(messageId: string): Lista | undefined {
+    const lista = this.listas.get(messageId);
+    logger.info(
+      `[LISTA] getLista(${messageId}) → ${lista ? `encontrada (activa=${lista.activa})` : "NO encontrada"}`,
+    );
+    logger.info(
+      `[LISTA] Listas registradas: [${Array.from(this.listas.keys()).join(", ")}]`,
+    );
+    return lista;
+  }
+
+  getListaByChat(chatJid: string): Lista | undefined {
+    for (const lista of this.listas.values()) {
+      if (lista.chatJid === chatJid && lista.activa) return lista;
+    }
+    return undefined;
+  }
+
+  async onReaccion(
+    sock: WASocket,
+    reaccion: {
+      chatJid: string;
+      messageId: string;
+      senderJid: string;
+      senderNombre: string;
+      emoji: string;
+    },
+  ): Promise<void> {
+    logger.info(
+      `[LISTA REACCION] messageId=${reaccion.messageId} sender=${reaccion.senderJid} emoji="${reaccion.emoji}"`,
+    );
+
+    const lista = this.getLista(reaccion.messageId);
+
+    if (!lista) {
+      logger.info(`[LISTA REACCION] No hay lista con ese messageId, ignorando`);
+      return;
+    }
+
+    if (!lista.activa) {
+      logger.info(`[LISTA REACCION] Lista inactiva, ignorando`);
+      return;
+    }
+
+    const eliminado = reaccion.emoji === "";
+
+    if (eliminado) {
+      logger.info(`[LISTA REACCION] Emoji vacío → removiendo jugador`);
+      const removido = removerJugador(lista, reaccion.senderJid);
+      if (!removido) return;
+    } else {
+      logger.info(
+        `[LISTA REACCION] Emoji "${reaccion.emoji}" → agregando jugador`,
+      );
+      const agregado = agregarJugador(
+        lista,
+        reaccion.senderJid,
+        reaccion.senderNombre,
+      );
+      if (!agregado) return;
+    }
+
+    await this.editarMensaje(sock, lista);
+  }
+
+  async editarMensaje(sock: WASocket, lista: Lista): Promise<void> {
+    try {
+      const texto = renderizarLista(lista);
+      const menciones = getMenciones(lista);
+
+      logger.info(
+        `[LISTA EDITAR] Editando mensaje ${lista.messageId} en ${lista.chatJid}`,
+      );
+      logger.info(`[LISTA EDITAR] Menciones: ${menciones.join(", ")}`);
+
+      await sock.sendMessage(lista.chatJid, {
+        text: texto,
+        mentions: menciones,
+        edit: { id: lista.messageId, remoteJid: lista.chatJid, fromMe: true },
+      } as any);
+
+      logger.info(`[LISTA EDITAR] Mensaje editado OK`);
+    } catch (error) {
+      logError("[LISTA EDITAR ERROR]", error);
+    }
+  }
+
+  desactivarLista(messageId: string): void {
+    const lista = this.listas.get(messageId);
+    if (lista) {
+      lista.activa = false;
+      logger.info(`[LISTA] Desactivada: ${messageId}`);
+    }
+  }
+
+  private limpiarExpiradas(): void {
+    const now = Date.now();
+    for (const [id, lista] of this.listas.entries()) {
+      if (now - lista.creadoEn > LISTA_TTL_MS) {
+        this.listas.delete(id);
+        logger.info(`[LISTA] Expirada y eliminada: ${id}`);
+      }
+    }
+  }
+
+  renderizar(lista: Lista): string {
+    return renderizarLista(lista);
+  }
+
+  destroy(): void {
+    clearInterval(this.cleanupInterval);
+  }
+}
+
+export const listaManager = new ListaManager();
