@@ -7,6 +7,16 @@ import { PluginLoadError } from "@/utils/errors.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
+function isValidCommand(cmd: unknown): cmd is ICommand {
+  return (
+    typeof cmd === "object" &&
+    cmd !== null &&
+    typeof (cmd as any).name === "string" &&
+    (cmd as any).name.length > 0 &&
+    typeof (cmd as any).execute === "function"
+  );
+}
+
 export class PluginLoader {
   static async loadCommands(): Promise<ICommand[]> {
     const commands: ICommand[] = [];
@@ -46,20 +56,15 @@ export class PluginLoader {
           const fileUrl = `file://${filePath.replace(/\\/g, "/")}`;
           const module = await import(fileUrl);
 
-          let CommandClass = this.findCommandClass(module, file);
+          const loaded = this.extractCommands(module, file);
 
-          if (CommandClass && typeof CommandClass === "function") {
-            const commandInstance = new (CommandClass as any)();
-
-            if (commandInstance.name && commandInstance.execute) {
-              commands.push(commandInstance);
-            } else {
-              logger.warn(
-                `Comando inválido en ${file}: ${!commandInstance.name ? "falta 'name'" : ""} ${!commandInstance.execute ? "falta 'execute'" : ""}`,
-              );
-            }
-          } else {
+          if (loaded.length === 0) {
             logger.warn(`No se encontró clase de comando en ${file}`);
+            continue;
+          }
+
+          for (const cmd of loaded) {
+            commands.push(cmd);
           }
         } catch (error) {
           const pluginError = new PluginLoadError(filePath, error);
@@ -70,32 +75,40 @@ export class PluginLoader {
     }
   }
 
-  private static findCommandClass(module: any, filename: string): any {
-    if (module.default) {
-      logger.debug(`  → Encontrado como export default`);
-      return module.default;
+  private static extractCommands(module: any, filename: string): ICommand[] {
+    const results: ICommand[] = [];
+
+    for (const [key, value] of Object.entries(module)) {
+      if (!value) continue;
+
+      if (typeof value === "object" && isValidCommand(value)) {
+        logger.debug(`  → Instancia encontrada: ${key}`);
+        results.push(value);
+        continue;
+      }
+
+      if (
+        typeof value === "function" &&
+        (value as any).prototype &&
+        typeof (value as any).prototype.execute === "function"
+      ) {
+        try {
+          const instance = new (value as any)();
+          if (isValidCommand(instance)) {
+            logger.debug(`  → Clase instanciada: ${key}`);
+            results.push(instance);
+          } else {
+            logger.warn(
+              `Comando inválido en ${filename}: ${!(instance as any).name ? "falta 'name'" : ""} ${!(instance as any).execute ? "falta 'execute'" : ""}`,
+            );
+          }
+        } catch (_) {
+          logger.debug(`  → Clase ${key} requiere argumentos, omitida`);
+        }
+        continue;
+      }
     }
 
-    const expectedName = filename.replace(/\.(ts|js)$/, "");
-    if (module[expectedName]) {
-      logger.debug(`  → Encontrado como export nombrado: ${expectedName}`);
-      return module[expectedName];
-    }
-
-    const exports = Object.values(module);
-    const commandClass = exports.find(
-      (exp: any) =>
-        typeof exp === "function" &&
-        exp.prototype &&
-        "execute" in exp.prototype,
-    );
-
-    if (commandClass) {
-      logger.debug(`  → Encontrado en exports: ${(commandClass as any).name}`);
-    } else {
-      logger.debug(`  → No se encontró clase de comando`);
-    }
-
-    return commandClass;
+    return results;
   }
 }

@@ -9,11 +9,13 @@ import { ValidationMiddleware } from "@/middlewares/ValidationMiddleware.js";
 import { PermissionMiddleware } from "@/middlewares/PermissionMiddleware.js";
 import { LoggerMiddleware } from "@/middlewares/LoggerMiddleware.js";
 import { AntiSpamMiddleware } from "@/middlewares/AntiSpamMiddleware.js";
+import { MuteMiddleware } from "@/middlewares/MuteMiddleware.js";
 import { serviceManager } from "@/services/Servicemanager.js";
 import { logger, logError } from "@/utils/logger.js";
 import { CommandExecutionError } from "@/utils/errors.js";
 import { cacheManager } from "@/core/CacheManager.js";
 import { aiService } from "@/services/external/AIService.js";
+import { handleReaccion } from "@/handlers/ReaccionHandler.js";
 import type { IMiddleware } from "@/types/index.js";
 import { EventEmitter } from "events";
 
@@ -186,25 +188,34 @@ export class WhatsAppClient {
         priority: 1,
         canRunParallel: false,
       },
-      { middleware: new LoggerMiddleware(), priority: 2, canRunParallel: true },
       {
-        middleware: new ValidationMiddleware(commandRegistry),
+        middleware: new MuteMiddleware(),
+        priority: 2,
+        canRunParallel: false,
+      },
+      {
+        middleware: new LoggerMiddleware(),
         priority: 3,
         canRunParallel: true,
       },
       {
-        middleware: new PermissionMiddleware(commandRegistry),
+        middleware: new ValidationMiddleware(commandRegistry),
         priority: 4,
-        canRunParallel: false,
+        canRunParallel: true,
       },
       {
-        middleware: new AntiSpamMiddleware(),
+        middleware: new PermissionMiddleware(commandRegistry),
         priority: 5,
         canRunParallel: false,
       },
       {
-        middleware: new CooldownMiddleware(commandRegistry),
+        middleware: new AntiSpamMiddleware(),
         priority: 6,
+        canRunParallel: false,
+      },
+      {
+        middleware: new CooldownMiddleware(commandRegistry),
+        priority: 7,
         canRunParallel: false,
       },
     );
@@ -221,7 +232,17 @@ export class WhatsAppClient {
   private registerSocketListeners(): void {
     this.sock.ev.on("messages.upsert", ({ messages, type }) => {
       if (type !== "notify") return;
-      for (const msg of messages) this.handleMessageRealTime(msg);
+
+      for (const msg of messages) {
+        if (msg.message?.reactionMessage) {
+          handleReaccion(this.sock, msg).catch((err) =>
+            logError("handleReaccion", err),
+          );
+          continue;
+        }
+
+        this.handleMessageRealTime(msg);
+      }
     });
 
     this.sock.ev.on("group-participants.update", (update) => {
@@ -250,6 +271,26 @@ export class WhatsAppClient {
       await this.messageProcessor.process(messageId, async () => {
         try {
           const ctx = new MessageContext(this.sock, message);
+
+          if (ctx.chat.isGroup) {
+            const isMuted = await serviceManager.moderationService.isMuted(
+              ctx.chat.jid,
+              ctx.sender.jid,
+            );
+
+            if (isMuted) {
+              await ctx.loadBotPermissions();
+              if (ctx.chat.isBotAdmin) {
+                try {
+                  await this.sock.sendMessage(ctx.chat.jid, {
+                    delete: message.key,
+                  });
+                } catch (_) {}
+              }
+              cacheManager.markMessageProcessed(messageId);
+              return;
+            }
+          }
 
           if (ctx.chat.isGroup && !ctx.command) {
             const botJid = this.sock.user?.id ?? "";

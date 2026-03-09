@@ -69,6 +69,8 @@ export interface MessageContext {
   reply(text: string): Promise<void>;
   react(emoji: string): Promise<void>;
   sendMessage(content: any): Promise<void>;
+  loadSenderPermissions(): Promise<void>;
+  loadBotPermissions(): Promise<void>;
 }
 
 export interface IMiddleware {
