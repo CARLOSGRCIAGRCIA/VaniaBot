@@ -18,6 +18,7 @@ import { aiService } from "@/services/external/AIService.js";
 import { handleReaccion } from "@/handlers/ReaccionHandler.js";
 import type { IMiddleware } from "@/types/index.js";
 import { EventEmitter } from "events";
+import { welcomeService } from "@/services/WelcomeService.js";
 
 class RealTimeAntiSpam {
   private userMessages = new Map<string, number[]>();
@@ -311,9 +312,17 @@ export class WhatsAppClient {
             return;
           }
 
-          const command = commandRegistry.get(ctx.command);
-          if (!command) return;
+          const fullCommand =
+            ctx.args.length > 0 ? `${ctx.command} ${ctx.args[0]}` : null;
 
+          const command =
+            (fullCommand ? commandRegistry.get(fullCommand) : null) ??
+            commandRegistry.get(ctx.command);
+
+          if (!command) return;
+          if (fullCommand && commandRegistry.get(fullCommand)) {
+            ctx.args.shift();
+          }
           if (command.permissions?.user || command.permissions?.bot) {
             if (ctx.chat.isGroup) {
               await Promise.all([
@@ -417,27 +426,19 @@ export class WhatsAppClient {
       cacheManager.invalidateGroupMetadata(groupJid);
       const group = await serviceManager.groupService.getGroup(groupJid);
 
-      if (action === "add" && group.welcome.enabled) {
+      if (action === "add") {
         for (const participant of participants) {
-          const text = (group.welcome.message ?? "¡Bienvenido/a! 👋").replace(
-            "@user",
-            `@${participant.split("@")[0]}`,
-          );
-          this.sock
-            .sendMessage(groupJid, { text, mentions: [participant] })
-            .catch(() => {});
+          welcomeService
+            .handleNewParticipant(this.sock, groupJid, participant)
+            .catch((err) => logError("handleNewParticipant", err));
         }
       }
 
-      if (action === "remove" && group.goodbye.enabled) {
+      if (action === "remove") {
         for (const participant of participants) {
-          const text = (group.goodbye.message ?? "Adiós @user 👋").replace(
-            "@user",
-            `@${participant.split("@")[0]}`,
-          );
-          this.sock
-            .sendMessage(groupJid, { text, mentions: [participant] })
-            .catch(() => {});
+          welcomeService
+            .handleParticipantLeft(this.sock, groupJid, participant)
+            .catch((err) => logError("handleParticipantLeft", err));
         }
       }
     } catch (error) {

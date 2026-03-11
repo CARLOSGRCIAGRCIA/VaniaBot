@@ -93,8 +93,6 @@ export class WelcomeService {
 .・✦── ⋆⋅ 🩰🌙 ⋅⋆ ──✦・.
 
 hola @user ♡
-acabas de entrar a @group… ahora somos @count respirando el mismo instante
-
 soy VaniaBot, un pedacito de código que cuida el silencio entre mensajes y celebra cada pequeño movimiento del corazón
 
 cositas simples para que fluya bonito:
@@ -146,7 +144,7 @@ la vida es una danza corta… qué bonito que hayas decidido dar unos pasos con 
       const message = this.parseMessage(
         group.welcome.message || this.DEFAULT_WELCOME,
         {
-          user: userJid.split("@")[0],
+          user: `@${userJid.split("@")[0]}`,
           group: metadata.subject,
           desc: metadata.desc || "Sin descripción",
           count: metadata.participants.length.toString(),
@@ -209,7 +207,7 @@ la vida es una danza corta… qué bonito que hayas decidido dar unos pasos con 
       const message = this.parseMessage(
         group.goodbye.message || this.DEFAULT_GOODBYE,
         {
-          user: userJid.split("@")[0],
+          user: `@${userJid.split("@")[0]}`,
           group: metadata.subject,
           desc: metadata.desc || "Sin descripción",
           count: metadata.participants.length.toString(),

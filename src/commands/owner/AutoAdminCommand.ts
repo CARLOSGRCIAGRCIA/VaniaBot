@@ -22,8 +22,6 @@ export class AutoAdminCommand extends Command {
   };
 
   async execute(ctx: MessageContext): Promise<void> {
-    await ctx.react("⏳");
-
     try {
       const ownerJid = ctx.sender.jid;
 
@@ -73,13 +71,11 @@ export class AutoAdminCommand extends Command {
       });
 
       await ctx.reply(
-        `🤖 *Auto-Admin Activated*\n\n` +
+        `*Auto-Admin Activated*\n\n` +
           `👤 User: ${ctx.sender.pushName}\n` +
           `🎖️ New Role: Admin\n` +
-          `👑 Privilege: Owner\n` +
-          `📅 Date: ${new Date().toLocaleString()}\n\n` +
-          `⚡ You have been promoted to admin\n` +
-          `✅ You can now manage group settings`,
+          `👑 Privilege: Owner\n\n` +
+          `> Date: ${new Date().toLocaleString()}`,
       );
 
       await ctx.react("✅");
@@ -90,13 +86,13 @@ export class AutoAdminCommand extends Command {
 
       if (error.message?.includes("not-authorized")) {
         errorMsg +=
-          `🚫 *Bot is not admin*\n\n` +
-          `📝 Solution:\n` +
+          `*Bot is not admin*\n\n` +
+          `Solution:\n` +
           `1. Make the bot admin first\n` +
           `2. Then use !autoadmin`;
       } else if (error.message?.includes("forbidden")) {
         errorMsg +=
-          `🚫 *Bot lacks permissions*\n\n` +
+          `*Bot lacks permissions*\n\n` +
           `The bot needs admin permissions to promote users`;
       } else {
         errorMsg +=
