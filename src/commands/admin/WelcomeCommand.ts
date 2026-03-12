@@ -1,25 +1,21 @@
-import { Command } from "../Command.js";
-import {
-  CommandCategory,
-  CommandContext,
-  PermissionLevel,
-} from "@/types/index.js";
-import type { MessageContext } from "@/types/index.js";
-import { welcomeService } from "@/services/system/WelcomeService.js";
+import { Command } from '../Command.js';
+import { CommandCategory, CommandContext, PermissionLevel } from '@/types/index.js';
+import type { MessageContext } from '@/types/index.js';
+import { welcomeService } from '@/services/system/WelcomeService.js';
 
 export class WelcomeCommand extends Command {
-  name = "welcome";
-  description = "Configura mensajes de bienvenida";
+  name = 'welcome';
+  description = 'Configura mensajes de bienvenida';
   category = CommandCategory.ADMIN;
-  aliases = ["bienvenida"];
-  usage = "!welcome [on/off/set/test/reset/pic/nopic]";
+  aliases = ['bienvenida'];
+  usage = '!welcome [on/off/set/test/reset/pic/nopic]';
   examples = [
-    "!welcome",
-    "!welcome on",
-    "!welcome off",
-    "!welcome set Hola @user!",
-    "!welcome test",
-    "!welcome reset",
+    '!welcome',
+    '!welcome on',
+    '!welcome off',
+    '!welcome set Hola @user!',
+    '!welcome test',
+    '!welcome reset',
   ];
   contexts = [CommandContext.GROUP];
   permissions = {
@@ -35,96 +31,89 @@ export class WelcomeCommand extends Command {
     }
 
     switch (action) {
-      case "on":
-      case "activar":
+      case 'on':
+      case 'activar':
         await welcomeService.enableWelcome(ctx.chat.jid);
-        await ctx.reply("Bienvenida activada con mensaje por defecto");
+        await ctx.reply('Bienvenida activada con mensaje por defecto');
         break;
 
-      case "off":
-      case "desactivar":
+      case 'off':
+      case 'desactivar':
         await welcomeService.disableWelcome(ctx.chat.jid);
-        await ctx.reply("🔕 Bienvenida desactivada");
+        await ctx.reply('🔕 Bienvenida desactivada');
         break;
 
-      case "set":
-      case "establecer": {
-        const message = ctx.args.slice(1).join(" ");
+      case 'set':
+      case 'establecer': {
+        const message = ctx.args.slice(1).join(' ');
         if (!message) {
           await ctx.reply(
-            "⚠️ Falta el mensaje\n\n" +
-              "Ejemplo:\n" +
-              "!welcome set qué onda @user, bienvenid@ a @group\n\n" +
-              "Variables disponibles:\n" +
-              "@user  @group  @desc  @count  @fact",
+            '⚠️ Falta el mensaje\n\n' +
+              'Ejemplo:\n' +
+              '!welcome set qué onda @user, bienvenid@ a @group\n\n' +
+              'Variables disponibles:\n' +
+              '@user  @group  @desc  @count  @fact',
           );
           return;
         }
         await welcomeService.setWelcomeMessage(ctx.chat.jid, message);
-        await ctx.reply("✅ Mensaje de bienvenida guardado");
+        await ctx.reply('✅ Mensaje de bienvenida guardado');
         break;
       }
 
-      case "test":
-      case "probar":
-        await welcomeService.handleNewParticipant(
-          ctx.sock,
-          ctx.chat.jid,
-          ctx.sender.jid,
-        );
+      case 'test':
+      case 'probar':
+        await welcomeService.handleNewParticipant(ctx.sock, ctx.chat.jid, ctx.sender.jid);
         break;
 
-      case "reset":
-      case "restablecer":
+      case 'reset':
+      case 'restablecer':
         await welcomeService.resetMessages(ctx.chat.jid);
-        await ctx.reply("Mensajes restablecidos a los valores por defecto");
+        await ctx.reply('Mensajes restablecidos a los valores por defecto');
         break;
 
-      case "nopic": {
+      case 'nopic': {
         const config = await welcomeService.getConfig(ctx.chat.jid);
-        const msgNoPic =
-          config.welcome.message || welcomeService.getDefaultWelcome();
+        const msgNoPic = config.welcome.message || welcomeService.getDefaultWelcome();
         await welcomeService.enableWelcome(ctx.chat.jid, msgNoPic, false);
-        await ctx.reply("Foto de perfil desactivada en bienvenidas");
+        await ctx.reply('Foto de perfil desactivada en bienvenidas');
         break;
       }
 
-      case "pic": {
+      case 'pic': {
         const cfg = await welcomeService.getConfig(ctx.chat.jid);
-        const msgWithPic =
-          cfg.welcome.message || welcomeService.getDefaultWelcome();
+        const msgWithPic = cfg.welcome.message || welcomeService.getDefaultWelcome();
         await welcomeService.enableWelcome(ctx.chat.jid, msgWithPic, true);
-        await ctx.reply("Foto de perfil activada en bienvenidas");
+        await ctx.reply('Foto de perfil activada en bienvenidas');
         break;
       }
 
       default:
         await ctx.reply(
-          "❓ Comando no reconocido\n\n" +
-            "Opciones disponibles:\n" +
-            "on      → activar bienvenida\n" +
-            "off     → desactivar bienvenida\n" +
-            "set     → cambiar mensaje\n" +
-            "test    → probar bienvenida\n" +
-            "reset   → volver al mensaje por defecto\n" +
-            "pic     → activar foto de perfil\n" +
-            "nopic   → quitar foto de perfil\n\n" +
-            "Variables en el mensaje:\n" +
-            "@user  @group  @desc  @count  @fact",
+          '❓ Comando no reconocido\n\n' +
+            'Opciones disponibles:\n' +
+            'on      → activar bienvenida\n' +
+            'off     → desactivar bienvenida\n' +
+            'set     → cambiar mensaje\n' +
+            'test    → probar bienvenida\n' +
+            'reset   → volver al mensaje por defecto\n' +
+            'pic     → activar foto de perfil\n' +
+            'nopic   → quitar foto de perfil\n\n' +
+            'Variables en el mensaje:\n' +
+            '@user  @group  @desc  @count  @fact',
         );
     }
   }
 
   private async showConfig(ctx: MessageContext): Promise<void> {
     const config = await welcomeService.getConfig(ctx.chat.jid);
-    const welcomeMsg =
-      config.welcome.message || welcomeService.getDefaultWelcome();
+    const welcomeMsg = config.welcome.message || welcomeService.getDefaultWelcome();
 
     const text = `
 ✧･ﾟ:*  𝘾𝙊𝙉𝙁𝙄𝙂 𝘽𝙄𝙀𝙉𝙑𝙀𝙉𝙄𝘿𝘼  *:･ﾟ✧
 
-Estado : ${config.welcome.enabled ? "✅ activado" : "❌ desactivado"}
-Foto   : ${config.welcome.useProfilePic ? "✅ sí" : "❌ no"}
+Estado : ${config.welcome.enabled ? '✅ activado' : '❌ desactivado'}
+Foto   : ${config.welcome.useProfilePic ? '✅ sí' : '❌ no'}
 
 Mensaje actual:
 ${welcomeMsg}

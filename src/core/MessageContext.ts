@@ -1,12 +1,8 @@
-import type { WASocket, proto } from "@whiskeysockets/baileys";
-import type { MessageContext as IMessageContext } from "@/types/index.js";
-import { config } from "@/config/index.js";
-import {
-  PermissionService,
-  getBotJid,
-  normalizeJid,
-} from "@/services/PermissionService.js";
-import { cacheManager } from "@/core/CacheManager.js";
+import type { WASocket, proto, AnyMessageContent } from '@whiskeysockets/baileys';
+import type { MessageContext as IMessageContext } from '@/types/index.js';
+import { config } from '@/config/index.js';
+import { PermissionService, getBotJid, normalizeJid } from '@/services/PermissionService.js';
+import { cacheManager } from '@/core/CacheManager.js';
 
 export class MessageContext implements IMessageContext {
   public text: string;
@@ -33,23 +29,24 @@ export class MessageContext implements IMessageContext {
       msg?.extendedTextMessage?.text ||
       msg?.imageMessage?.caption ||
       msg?.videoMessage?.caption ||
-      ""
+      ''
     );
   }
 
   private parseCommand() {
     if (!this.text.startsWith(config.prefix)) {
-      return { command: "", args: [] };
+      return { command: '', args: [] };
     }
     const args = this.text.slice(config.prefix.length).trim().split(/\s+/);
-    const command = args.shift()?.toLowerCase() || "";
+    const command = args.shift()?.toLowerCase() || '';
     return { command, args };
   }
 
   get sender() {
-    const rawJid = this.message.key.participant || this.message.key.remoteJid!;
+    // remoteJid is always present on a message we're processing
+    const rawJid = this.message.key.participant ?? this.message.key.remoteJid ?? '';
     const jid = normalizeJid(rawJid);
-    const pushName = this.message.pushName || "User";
+    const pushName = this.message.pushName || 'User';
     const isOwner = PermissionService.isOwner(jid);
 
     return {
@@ -61,8 +58,8 @@ export class MessageContext implements IMessageContext {
   }
 
   get chat() {
-    const jid = this.message.key.remoteJid!;
-    const isGroup = jid.endsWith("@g.us");
+    const jid = this.message.key.remoteJid ?? '';
+    const isGroup = jid.endsWith('@g.us');
 
     return {
       jid,
@@ -85,11 +82,7 @@ export class MessageContext implements IMessageContext {
       }
     }
 
-    const perms = await PermissionService.getUserPermissions(
-      this.sock,
-      groupJid,
-      this.sender.jid,
-    );
+    const perms = await PermissionService.getUserPermissions(this.sock, groupJid, this.sender.jid);
 
     this._senderPermissions = {
       isAdmin: perms.isAdmin,
@@ -115,27 +108,17 @@ export class MessageContext implements IMessageContext {
       return;
     }
 
-    const perms = await PermissionService.getBotPermissions(
-      this.sock,
-      this.chat.jid,
-    );
+    const perms = await PermissionService.getBotPermissions(this.sock, this.chat.jid);
     this._botPermissions = { isAdmin: perms.isAdmin };
     cacheManager.setPermissions(this.chat.jid, botJid, perms);
   }
 
   get quoted(): proto.IMessage | undefined {
-    return (
-      this.message.message?.extendedTextMessage?.contextInfo?.quotedMessage ||
-      undefined
-    );
+    return this.message.message?.extendedTextMessage?.contextInfo?.quotedMessage || undefined;
   }
 
   async reply(text: string): Promise<void> {
-    await this.sock.sendMessage(
-      this.chat.jid,
-      { text },
-      { quoted: this.message },
-    );
+    await this.sock.sendMessage(this.chat.jid, { text }, { quoted: this.message });
   }
 
   async react(emoji: string): Promise<void> {
@@ -144,7 +127,7 @@ export class MessageContext implements IMessageContext {
     });
   }
 
-  async sendMessage(content: any): Promise<void> {
+  async sendMessage(content: AnyMessageContent): Promise<void> {
     await this.sock.sendMessage(this.chat.jid, content);
   }
 

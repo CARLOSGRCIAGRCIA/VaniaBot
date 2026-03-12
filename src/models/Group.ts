@@ -50,14 +50,14 @@ export class Group implements IGroup {
   jid: string;
   name: string;
   isActive: boolean;
-  settings: IGroup["settings"];
-  stats: IGroup["stats"];
+  settings: IGroup['settings'];
+  stats: IGroup['stats'];
   createdAt: number;
   updatedAt: number;
 
   constructor(data: Partial<IGroup> & { jid: string }) {
     this.jid = data.jid;
-    this.name = data.name || "Group";
+    this.name = data.name || 'Group';
     this.isActive = data.isActive !== undefined ? data.isActive : true;
 
     this.settings = {
@@ -160,9 +160,7 @@ export class Group implements IGroup {
     if (!this.settings.antiWords.enabled) return false;
 
     const lowerText = text.toLowerCase();
-    return this.settings.antiWords.words.some((word) =>
-      lowerText.includes(word),
-    );
+    return this.settings.antiWords.words.some(word => lowerText.includes(word));
   }
 
   hasLinks(text: string): boolean {
@@ -177,12 +175,10 @@ export class Group implements IGroup {
       return true;
     }
 
-    return matches.some((url) => {
+    return matches.some(url => {
       try {
         const domain = new URL(url).hostname;
-        return !this.settings.antiLink.allowedDomains.some((allowed) =>
-          domain.includes(allowed),
-        );
+        return !this.settings.antiLink.allowedDomains.some(allowed => domain.includes(allowed));
       } catch {
         return true;
       }

@@ -1,19 +1,18 @@
-import { Command } from "../Command.js";
-import { CommandCategory, type MessageContext } from "@/types/index.js";
-import { serviceManager } from "@/services/system/Servicemanager.js";
+import { Command } from '../Command.js';
+import { CommandCategory, type MessageContext } from '@/types/index.js';
+import { serviceManager } from '@/services/system/Servicemanager.js';
 
 export class BalanceCommand extends Command {
-  name = "balance";
+  name = 'balance';
   description = "Check your or someone else's balance";
   category = CommandCategory.ECONOMY;
-  aliases = ["bal", "money", "cash", "dinero"];
-  usage = "!balance [@user]";
-  examples = ["!balance", "!balance @user", "!bal"];
+  aliases = ['bal', 'money', 'cash', 'dinero'];
+  usage = '!balance [@user]';
+  examples = ['!balance', '!balance @user', '!bal'];
   cooldown = 3000;
 
   async execute(ctx: MessageContext): Promise<void> {
-    const mentionedJid =
-      ctx.message.message?.extendedTextMessage?.contextInfo?.mentionedJid?.[0];
+    const mentionedJid = ctx.message.message?.extendedTextMessage?.contextInfo?.mentionedJid?.[0];
 
     const targetJid = mentionedJid || ctx.sender.jid;
     const targetUser = await serviceManager.userService.getUser(targetJid);
@@ -21,7 +20,7 @@ export class BalanceCommand extends Command {
     const isSelf = targetJid === ctx.sender.jid;
     const isOwner = targetUser.isOwner;
 
-    let message = "";
+    let message = '';
 
     if (isSelf) {
       message = `💰 *Your Balance*\n\n`;
@@ -39,11 +38,9 @@ export class BalanceCommand extends Command {
     }
 
     const allUsers = await serviceManager.userService.getAllUsers();
-    const sortedByMoney = allUsers
-      .filter((u) => !u.isOwner)
-      .sort((a, b) => b.money - a.money);
+    const sortedByMoney = allUsers.filter(u => !u.isOwner).sort((a, b) => b.money - a.money);
 
-    const rank = sortedByMoney.findIndex((u) => u.jid === targetJid) + 1;
+    const rank = sortedByMoney.findIndex(u => u.jid === targetJid) + 1;
 
     if (rank > 0) {
       message += `📊 Rank: #${rank} of ${sortedByMoney.length}`;
@@ -51,11 +48,10 @@ export class BalanceCommand extends Command {
 
     const canClaimDaily = serviceManager.userService.canClaimDaily(targetUser);
 
-    message += `\n\n💎 *Daily Reward:* ${canClaimDaily ? "✅ Available" : "⏳ Claimed"}`;
+    message += `\n\n💎 *Daily Reward:* ${canClaimDaily ? '✅ Available' : '⏳ Claimed'}`;
 
     if (!canClaimDaily && isSelf) {
-      const remaining =
-        serviceManager.userService.getDailyTimeRemaining(targetUser);
+      const remaining = serviceManager.userService.getDailyTimeRemaining(targetUser);
       const hours = Math.floor(remaining / (1000 * 60 * 60));
       const minutes = Math.floor((remaining % (1000 * 60 * 60)) / (1000 * 60));
 

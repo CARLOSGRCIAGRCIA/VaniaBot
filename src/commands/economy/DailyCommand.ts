@@ -1,15 +1,15 @@
-import { Command } from "../Command.js";
-import { CommandCategory } from "@/types/index.js";
-import type { MessageContext } from "@/types/index.js";
-import { serviceManager } from "@/services/system/Servicemanager.js";
-import { formatNumber, formatTime } from "@/utils/helpers.js";
+import { Command } from '../Command.js';
+import { CommandCategory } from '@/types/index.js';
+import type { MessageContext } from '@/types/index.js';
+import { serviceManager } from '@/services/system/Servicemanager.js';
+import { formatNumber, formatTime } from '@/utils/helpers.js';
 
 export class DailyCommand extends Command {
-  name = "daily";
-  description = "Claim your daily reward";
+  name = 'daily';
+  description = 'Claim your daily reward';
   category = CommandCategory.ECONOMY;
-  aliases = ["daily"];
-  usage = "!daily";
+  aliases = ['daily'];
+  usage = '!daily';
   cooldown = 1000;
 
   async execute(ctx: MessageContext): Promise<void> {
@@ -36,9 +36,7 @@ export class DailyCommand extends Command {
 
     await serviceManager.levelService.addXP(ctx.sender.jid, 50);
 
-    const updatedUser = await serviceManager.userService.getUser(
-      ctx.sender.jid,
-    );
+    const updatedUser = await serviceManager.userService.getUser(ctx.sender.jid);
 
     await ctx.reply(
       `*DAILY REWARD*\n\n` +
@@ -65,9 +63,7 @@ export class DailyCommand extends Command {
   private calculateStreak(lastDaily?: number): number {
     if (!lastDaily) return 1;
 
-    const daysSince = Math.floor(
-      (Date.now() - lastDaily) / (24 * 60 * 60 * 1000),
-    );
+    const daysSince = Math.floor((Date.now() - lastDaily) / (24 * 60 * 60 * 1000));
 
     if (daysSince > 2) return 1;
 

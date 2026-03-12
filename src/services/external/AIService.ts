@@ -10,17 +10,17 @@
  * @see {@link https://www.tiktok.com/@carlos.grcia0} TikTok
  */
 
-import Groq from "groq-sdk";
-import { env } from "@/config/env.js";
-import fs from "fs";
-import path from "path";
+import Groq from 'groq-sdk';
+import { env } from '@/config/env.js';
+import fs from 'fs';
+import path from 'path';
 
 /**
  * Represents a single message in an AI conversation.
  */
 export interface AIMessage {
   /** The role of the message author. */
-  role: "user" | "assistant" | "system";
+  role: 'user' | 'assistant' | 'system';
   content: string;
 }
 
@@ -54,9 +54,9 @@ export interface ConversationSession {
  * - `transcribe` — Whisper model for audio-to-text transcription.
  */
 export const GROQ_MODELS = {
-  chat: "llama-3.3-70b-versatile",
-  fast: "llama-3.1-8b-instant",
-  transcribe: "whisper-large-v3-turbo",
+  chat: 'llama-3.3-70b-versatile',
+  fast: 'llama-3.1-8b-instant',
+  transcribe: 'whisper-large-v3-turbo',
 } as const;
 
 /** Maximum number of messages retained per session history. */
@@ -69,7 +69,7 @@ const SESSION_TTL_MS = 30 * 60 * 1000;
 const CLEANUP_INTERVAL_MS = 5 * 60 * 1000;
 
 /** Temporary directory for audio files before transcription. */
-const TEMP_DIR = "./data/temp/audio";
+const TEMP_DIR = './data/temp/audio';
 
 /**
  * System prompt that defines VaniaBot's personality and response format.
@@ -94,6 +94,15 @@ Formato para WhatsApp:
 - Respuestas concisas en grupos; más detalladas en privado
 - Máximo 3-4 párrafos salvo que pidan algo extenso
 - > pie de pagina con la leyenda _*VaniaBot💝*_ para que todos te conozcan`;
+
+interface GroqError {
+  message?: string;
+  status?: number;
+  error?: {
+    message?: string;
+    code?: string;
+  };
+}
 
 /**
  * Singleton service that manages all AI interactions for VaniaBot.
@@ -139,8 +148,8 @@ export class AIService {
   constructor() {
     if (!env.GROQ_API_KEY) {
       throw new Error(
-        "GROQ_API_KEY no está configurada en el .env\n" +
-          "Obtén tu key gratis en: https://console.groq.com/keys",
+        'GROQ_API_KEY no está configurada en el .env\n' +
+          'Obtén tu key gratis en: https://console.groq.com/keys',
       );
     }
 
@@ -150,10 +159,7 @@ export class AIService {
       fs.mkdirSync(TEMP_DIR, { recursive: true });
     }
 
-    this.cleanupTimer = setInterval(
-      () => this.cleanupExpiredSessions(),
-      CLEANUP_INTERVAL_MS,
-    );
+    this.cleanupTimer = setInterval(() => this.cleanupExpiredSessions(), CLEANUP_INTERVAL_MS);
     this.cleanupTimer.unref();
 
     console.log(`[AI] AIService iniciado con Groq`);
@@ -244,8 +250,7 @@ export class AIService {
         cleaned++;
       }
     }
-    if (cleaned > 0)
-      console.log(`[AI] ${cleaned} sesiones expiradas eliminadas`);
+    if (cleaned > 0) console.log(`[AI] ${cleaned} sesiones expiradas eliminadas`);
   }
 
   /**
@@ -278,9 +283,9 @@ export class AIService {
     session.lastActivity = Date.now();
 
     const messages: AIMessage[] = [
-      { role: "system", content: SYSTEM_PROMPT },
+      { role: 'system', content: SYSTEM_PROMPT },
       ...session.history,
-      { role: "user", content: userMessage },
+      { role: 'user', content: userMessage },
     ];
 
     try {
@@ -291,11 +296,11 @@ export class AIService {
         temperature: 0.7,
       });
 
-      const text = completion.choices[0]?.message?.content?.trim() ?? "";
+      const text = completion.choices[0]?.message?.content?.trim() ?? '';
 
       session.history.push(
-        { role: "user", content: userMessage },
-        { role: "assistant", content: text },
+        { role: 'user', content: userMessage },
+        { role: 'assistant', content: text },
       );
 
       if (session.history.length > MAX_HISTORY_MESSAGES) {
@@ -303,9 +308,10 @@ export class AIService {
       }
 
       return { success: true, text };
-    } catch (error: any) {
-      console.error("❌ [AI] chat error:", error.message);
-      return { success: false, error: this.friendlyError(error) };
+    } catch (error) {
+      const groqError = error as GroqError;
+      console.error('❌ [AI] chat error:', groqError.message);
+      return { success: false, error: this.friendlyError(groqError) };
     }
   }
 
@@ -328,18 +334,19 @@ export class AIService {
       const completion = await this.client.chat.completions.create({
         model: GROQ_MODELS.chat,
         messages: [
-          { role: "system", content: SYSTEM_PROMPT },
-          { role: "user", content: prompt },
+          { role: 'system', content: SYSTEM_PROMPT },
+          { role: 'user', content: prompt },
         ],
         max_tokens: maxTokens,
         temperature: 0.7,
       });
 
-      const text = completion.choices[0]?.message?.content?.trim() ?? "";
+      const text = completion.choices[0]?.message?.content?.trim() ?? '';
       return { success: true, text };
-    } catch (error: any) {
-      console.error("❌ [AI] generate error:", error.message);
-      return { success: false, error: this.friendlyError(error) };
+    } catch (error) {
+      const groqError = error as GroqError;
+      console.error('❌ [AI] generate error:', groqError.message);
+      return { success: false, error: this.friendlyError(groqError) };
     }
   }
 
@@ -366,7 +373,7 @@ export class AIService {
    */
   async transcribeAudio(
     audioBuffer: Buffer,
-    extension: string = "ogg",
+    extension: string = 'ogg',
     language?: string,
   ): Promise<AIResponse> {
     const tmpPath = path.join(TEMP_DIR, `voice_${Date.now()}.${extension}`);
@@ -378,17 +385,20 @@ export class AIService {
         file: fs.createReadStream(tmpPath),
         model: GROQ_MODELS.transcribe,
         ...(language ? { language } : {}),
-        response_format: "text",
+        response_format: 'text',
       });
 
       return { success: true, text: String(transcription).trim() };
-    } catch (error: any) {
-      console.error("❌ [AI] transcribeAudio error:", error.message);
-      return { success: false, error: this.friendlyError(error) };
+    } catch (error) {
+      const groqError = error as GroqError;
+      console.error('❌ [AI] transcribeAudio error:', groqError.message);
+      return { success: false, error: this.friendlyError(groqError) };
     } finally {
       try {
         fs.unlinkSync(tmpPath);
-      } catch {}
+      } catch {
+        // Ignorar errores de limpieza
+      }
     }
   }
 
@@ -399,19 +409,19 @@ export class AIService {
    * @param error - The raw error thrown by the Groq SDK or fetch layer.
    * @returns A user-friendly error string.
    */
-  private friendlyError(error: any): string {
-    const msg: string = error?.message ?? "";
+  private friendlyError(error: GroqError): string {
+    const msg: string = error?.message ?? '';
     const status: number = error?.status ?? 0;
 
-    if (status === 401 || msg.includes("401"))
-      return "API key inválida. Revisa GROQ_API_KEY en .env";
-    if (status === 429 || msg.includes("rate_limit"))
-      return "Límite de uso alcanzado. Intenta en unos segundos.";
-    if (status === 503 || msg.includes("503"))
-      return "Groq no disponible temporalmente. Intenta de nuevo.";
-    if (msg.includes("model")) return "Modelo no disponible.";
+    if (status === 401 || msg.includes('401'))
+      return 'API key inválida. Revisa GROQ_API_KEY en .env';
+    if (status === 429 || msg.includes('rate_limit'))
+      return 'Límite de uso alcanzado. Intenta en unos segundos.';
+    if (status === 503 || msg.includes('503'))
+      return 'Groq no disponible temporalmente. Intenta de nuevo.';
+    if (msg.includes('model')) return 'Modelo no disponible.';
 
-    return msg || "Error desconocido";
+    return msg || 'Error desconocido';
   }
 }
 

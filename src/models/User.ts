@@ -37,7 +37,7 @@ export class User implements IUser {
 
   constructor(data: Partial<IUser> & { jid: string }) {
     this.jid = data.jid;
-    this.name = data.name || "User";
+    this.name = data.name || 'User';
     this.isOwner = data.isOwner || false;
     this.isBanned = data.isBanned || false;
     this.level = data.level || 1;

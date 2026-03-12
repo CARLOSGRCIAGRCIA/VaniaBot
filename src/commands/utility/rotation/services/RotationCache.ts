@@ -1,5 +1,4 @@
-import type { TacticalAnalysis, ScoredRoute } from "./RotationSimulator.js";
-import { NODES } from "../map/Purgatoriomap.js";
+import type { TacticalAnalysis, ScoredRoute } from './RotationSimulator.js';
 
 interface CacheEntry<T> {
   value: T;
@@ -8,7 +7,7 @@ interface CacheEntry<T> {
 }
 
 export class RotationCache {
-  private store = new Map<string, CacheEntry<any>>();
+  private store = new Map<string, CacheEntry<unknown>>();
   private readonly ttlMs: number;
   private readonly maxSize: number;
 
@@ -30,9 +29,7 @@ export class RotationCache {
 
   set<T>(key: string, value: T): void {
     if (this.store.size >= this.maxSize) {
-      const oldest = [...this.store.entries()].sort(
-        (a, b) => a[1].expiresAt - b[1].expiresAt,
-      )[0];
+      const oldest = [...this.store.entries()].sort((a, b) => a[1].expiresAt - b[1].expiresAt)[0];
       if (oldest) this.store.delete(oldest[0]);
     }
     this.store.set(key, { value, expiresAt: Date.now() + this.ttlMs, hits: 0 });
@@ -45,24 +42,24 @@ export class RotationCache {
 
 export const rotationCache = new RotationCache();
 
-const MEDALS = ["🥇", "🥈", "🥉"];
+const MEDALS = ['🥇', '🥈', '🥉'];
 const RISK_ICONS: Record<string, string> = {
-  bajo: "🟢",
-  medio: "🟡",
-  alto: "🟠",
-  "muy alto": "🔴",
+  bajo: '🟢',
+  medio: '🟡',
+  alto: '🟠',
+  'muy alto': '🔴',
 };
 const EDGE_ICONS: Record<string, string> = {
-  road: "🛣️",
-  bridge: "🌉",
-  zipline: "🪂",
-  river_crossing: "🌊",
-  start: "📍",
+  road: '🛣️',
+  bridge: '🌉',
+  zipline: '🪂',
+  river_crossing: '🌊',
+  start: '📍',
 };
 const PHASE_ICONS: Record<string, string> = {
-  early: "🌅",
-  mid: "⚡",
-  late: "🔥",
+  early: '🌅',
+  mid: '⚡',
+  late: '🔥',
 };
 
 export function formatAnalysis(
@@ -74,7 +71,7 @@ export function formatAnalysis(
   aiExplanation: string,
 ): string {
   const lines: string[] = [];
-  const phaseIcon = PHASE_ICONS[analysis.circlePhase] ?? "⏱️";
+  const phaseIcon = PHASE_ICONS[analysis.circlePhase] ?? '⏱️';
 
   lines.push(`*ROTACIÓN TÁCTICA — Purgatorio*`);
   lines.push(`*Inicio:* ${myStartName} (Zona ${myZone})`);
@@ -86,8 +83,8 @@ export function formatAnalysis(
 
   lines.push(`*Amenazas enemigas:*`);
   for (const enemy of analysis.enemyRotations) {
-    const eta = enemy.fastestEta < 999 ? `~${enemy.fastestEta}s` : "sin ruta";
-    const routeCount = enemy.probableRoutes.filter((r) => r.path.found).length;
+    const eta = enemy.fastestEta < 999 ? `~${enemy.fastestEta}s` : 'sin ruta';
+    const routeCount = enemy.probableRoutes.filter(r => r.path.found).length;
     lines.push(
       `• Zona *${enemy.zone}* desde ${enemy.startNodeName} → ETA *${eta}* ` +
         `(${routeCount} rutas probables)`,
@@ -101,22 +98,19 @@ export function formatAnalysis(
     for (const cz of topConflicts) {
       const riskPct = Math.round(cz.risk * 100);
       lines.push(
-        `• ${cz.nodeName} — riesgo *${riskPct}%* ` +
-          `(${cz.proximityTeamCount} equipos en radio)`,
+        `• ${cz.nodeName} — riesgo *${riskPct}%* ` + `(${cz.proximityTeamCount} equipos en radio)`,
       );
     }
     lines.push(``);
   }
 
-  const validRoutes = scoredRoutes.filter((r) => r.path.found).slice(0, 3);
+  const validRoutes = scoredRoutes.filter(r => r.path.found).slice(0, 3);
   for (let i = 0; i < validRoutes.length; i++) {
     const sr = validRoutes[i];
     const medal = MEDALS[i] ?? `${i + 1}.`;
-    const riskIcon = RISK_ICONS[sr.riskLevel] ?? "⚪";
+    const riskIcon = RISK_ICONS[sr.riskLevel] ?? '⚪';
 
-    lines.push(
-      `${medal} *Ruta ${i + 1} — ${Math.round(sr.score)}/100* ${riskIcon}`,
-    );
+    lines.push(`${medal} *Ruta ${i + 1} — ${Math.round(sr.score)}/100* ${riskIcon}`);
 
     const steps = sr.path.steps;
     const show =
@@ -125,9 +119,9 @@ export function formatAnalysis(
         : [
             ...steps.slice(0, 2),
             {
-              nodeId: "...",
-              nodeName: "···",
-              edgeType: "",
+              nodeId: '...',
+              nodeName: '···',
+              edgeType: '',
               costFromStart: 0,
               exposure: 0,
             },
@@ -136,26 +130,26 @@ export function formatAnalysis(
 
     const pathStr = show
       .map((s, idx) => {
-        if (s.nodeId === "...") return "···";
-        const icon = idx === 0 ? "📍" : (EDGE_ICONS[s.edgeType] ?? "➡️");
+        if (s.nodeId === '...') return '···';
+        const icon = idx === 0 ? '📍' : (EDGE_ICONS[s.edgeType] ?? '➡️');
         return `${icon}${s.nodeName}`;
       })
-      .join(" → ");
+      .join(' → ');
 
     lines.push(`• ${pathStr}`);
     lines.push(`• ETA: ~${sr.eta}s | ${riskIcon} Riesgo: *${sr.riskLevel}*`);
 
     if (sr.highGroundNodes.length > 0) {
-      lines.push(`• High ground: ${sr.highGroundNodes.join(", ")}`);
+      lines.push(`• High ground: ${sr.highGroundNodes.join(', ')}`);
     }
     if (sr.path.chokepoints.length > 0) {
-      lines.push(`• Cuellos de botella: ${sr.path.chokepoints.join(", ")}`);
+      lines.push(`• Cuellos de botella: ${sr.path.chokepoints.join(', ')}`);
     }
     if (sr.conflictsOnPath.length > 0) {
-      lines.push(`• Conflictos directos: ${sr.conflictsOnPath.join(", ")}`);
+      lines.push(`• Conflictos directos: ${sr.conflictsOnPath.join(', ')}`);
     }
     if (sr.enemyZonesCrossed.length > 0) {
-      lines.push(`• Cruza zona activa: ${sr.enemyZonesCrossed.join(", ")}`);
+      lines.push(`• Cruza zona activa: ${sr.enemyZonesCrossed.join(', ')}`);
     }
     lines.push(``);
   }
@@ -171,5 +165,5 @@ export function formatAnalysis(
   lines.push(`💡 *Análisis:*`);
   lines.push(aiExplanation.trim());
 
-  return lines.join("\n");
+  return lines.join('\n');
 }

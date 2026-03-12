@@ -1,10 +1,16 @@
-import { DownloadService, DownloadResult } from "./DownloadService.js";
-import fs from "fs";
+import type { DownloadResult } from './DownloadService.js';
+import { DownloadService } from './DownloadService.js';
+import fs from 'fs';
 
 export interface FacebookVideo {
   title: string;
   author: string;
   url: string;
+}
+
+// Tipo para error de comando
+interface CommandError extends Error {
+  message: string;
 }
 
 export class FacebookDownloader extends DownloadService {
@@ -19,58 +25,47 @@ export class FacebookDownloader extends DownloadService {
 
   async getVideoInfo(url: string): Promise<FacebookVideo | null> {
     try {
-      const output = await this.runCommand(
-        "yt-dlp",
-        ["--dump-json", "--no-download", url],
-        30000,
-      );
-      const info = JSON.parse(output.trim().split("\n")[0]);
+      const output = await this.runCommand('yt-dlp', ['--dump-json', '--no-download', url], 30000);
+      const info = JSON.parse(output.trim().split('\n')[0]);
       return {
-        title: info.title ?? "Facebook video",
-        author: info.uploader ?? info.channel ?? "unknown",
+        title: info.title ?? 'Facebook video',
+        author: info.uploader ?? info.channel ?? 'unknown',
         url,
       };
     } catch (error) {
-      console.error("Facebook getVideoInfo error:", error);
+      console.error('Facebook getVideoInfo error:', error);
       return null;
     }
   }
 
   async downloadVideo(url: string): Promise<DownloadResult> {
-    const outputPath = this.generateOutputPath("facebook", "mp4");
+    const outputPath = this.generateOutputPath('facebook', 'mp4');
 
     const methods = [
       {
-        name: "yt-dlp HD",
-        cmd: "yt-dlp",
-        args: [
-          "-f",
-          "best[height<=720]",
-          "--no-check-certificate",
-          "-o",
-          outputPath,
-          url,
-        ],
+        name: 'yt-dlp HD',
+        cmd: 'yt-dlp',
+        args: ['-f', 'best[height<=720]', '--no-check-certificate', '-o', outputPath, url],
       },
       {
-        name: "yt-dlp SD",
-        cmd: "yt-dlp",
-        args: ["-f", "worst", "--no-check-certificate", "-o", outputPath, url],
+        name: 'yt-dlp SD',
+        cmd: 'yt-dlp',
+        args: ['-f', 'worst', '--no-check-certificate', '-o', outputPath, url],
       },
       {
-        name: "yt-dlp (fallback)",
-        cmd: "yt-dlp",
-        args: ["--no-check-certificate", "-o", outputPath, url],
+        name: 'yt-dlp (fallback)',
+        cmd: 'yt-dlp',
+        args: ['--no-check-certificate', '-o', outputPath, url],
       },
     ];
 
-    return await this.tryDownloadMethods(methods, outputPath, "video");
+    return await this.tryDownloadMethods(methods, outputPath, 'video');
   }
 
   private async tryDownloadMethods(
     methods: Array<{ name: string; cmd: string; args: string[] }>,
     outputPath: string,
-    type: "audio" | "video",
+    type: 'audio' | 'video',
   ): Promise<DownloadResult> {
     for (const method of methods) {
       try {
@@ -89,9 +84,7 @@ export class FacebookDownloader extends DownloadService {
             };
           }
 
-          console.log(
-            `✅ [Facebook] ${method.name} succeeded: ${sizeCheck.sizeMB}MB`,
-          );
+          console.log(`✅ [Facebook] ${method.name} succeeded: ${sizeCheck.sizeMB}MB`);
 
           return {
             success: true,
@@ -100,8 +93,9 @@ export class FacebookDownloader extends DownloadService {
             source: method.name,
           };
         }
-      } catch (error: any) {
-        console.log(`❌ [Facebook] ${method.name} failed:`, error.message);
+      } catch (error) {
+        const commandError = error as CommandError;
+        console.log(`❌ [Facebook] ${method.name} failed:`, commandError.message);
         continue;
       }
     }
@@ -109,8 +103,8 @@ export class FacebookDownloader extends DownloadService {
     return {
       success: false,
       error:
-        "Download failed. Note: private Facebook videos cannot be downloaded.\n" +
-        "Make sure yt-dlp is updated: yt-dlp -U",
+        'Download failed. Note: private Facebook videos cannot be downloaded.\n' +
+        'Make sure yt-dlp is updated: yt-dlp -U',
     };
   }
 }

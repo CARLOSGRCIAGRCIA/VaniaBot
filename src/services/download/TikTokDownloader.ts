@@ -1,10 +1,16 @@
-import { DownloadService, DownloadResult } from "./DownloadService.js";
-import fs from "fs";
+import type { DownloadResult } from './DownloadService.js';
+import { DownloadService } from './DownloadService.js';
+import fs from 'fs';
 
 export interface TikTokVideo {
   title: string;
   author: string;
   url: string;
+}
+
+// Tipo para error de comando
+interface CommandError extends Error {
+  message: string;
 }
 
 export class TikTokDownloader extends DownloadService {
@@ -14,70 +20,66 @@ export class TikTokDownloader extends DownloadService {
 
   async getVideoInfo(url: string): Promise<TikTokVideo | null> {
     try {
-      const output = await this.runCommand(
-        "yt-dlp",
-        ["--dump-json", "--no-download", url],
-        30000,
-      );
-      const info = JSON.parse(output.trim().split("\n")[0]);
+      const output = await this.runCommand('yt-dlp', ['--dump-json', '--no-download', url], 30000);
+      const info = JSON.parse(output.trim().split('\n')[0]);
       return {
-        title: info.title ?? "TikTok video",
-        author: info.uploader ?? info.creator ?? "unknown",
+        title: info.title ?? 'TikTok video',
+        author: info.uploader ?? info.creator ?? 'unknown',
         url,
       };
     } catch (error) {
-      console.error("TikTok getVideoInfo error:", error);
+      console.error('TikTok getVideoInfo error:', error);
       return null;
     }
   }
 
   async downloadVideo(url: string): Promise<DownloadResult> {
-    const outputPath = this.generateOutputPath("tiktok", "mp4");
+    const outputPath = this.generateOutputPath('tiktok', 'mp4');
 
     const methods = [
       {
-        name: "yt-dlp (no watermark)",
-        cmd: "yt-dlp",
-        args: ["-f", "best", "--no-check-certificate", "-o", outputPath, url],
+        name: 'yt-dlp (no watermark)',
+        cmd: 'yt-dlp',
+        args: ['-f', 'best', '--no-check-certificate', '-o', outputPath, url],
       },
       {
-        name: "yt-dlp (fallback)",
-        cmd: "yt-dlp",
-        args: ["-o", outputPath, url],
+        name: 'yt-dlp (fallback)',
+        cmd: 'yt-dlp',
+        args: ['-o', outputPath, url],
       },
     ];
 
-    return await this.tryDownloadMethods(methods, outputPath, "video");
+    return await this.tryDownloadMethods(methods, outputPath, 'video');
   }
 
   async downloadAudio(url: string): Promise<DownloadResult> {
-    const outputPath = this.generateOutputPath("tiktok_audio", "mp3");
+    const outputPath = this.generateOutputPath('tiktok_audio', 'mp3');
 
     const methods = [
       {
-        name: "yt-dlp audio",
-        cmd: "yt-dlp",
+        name: 'yt-dlp audio',
+        cmd: 'yt-dlp',
         args: [
-          "-x",
-          "--audio-format",
-          "mp3",
-          "--audio-quality",
-          "0",
-          "--no-check-certificate",
-          "-o",
+          '-x',
+          '--audio-format',
+          'mp3',
+          '--audio-quality',
+          '0',
+          '--no-check-certificate',
+          '-o',
           outputPath,
           url,
         ],
       },
     ];
 
-    return await this.tryDownloadMethods(methods, outputPath, "audio");
+    return await this.tryDownloadMethods(methods, outputPath, 'audio');
   }
 
   private async tryDownloadMethods(
     methods: Array<{ name: string; cmd: string; args: string[] }>,
     outputPath: string,
-    type: "audio" | "video",
+    type: 'audio' | 'video',
   ): Promise<DownloadResult> {
     for (const method of methods) {
       try {
@@ -96,9 +98,7 @@ export class TikTokDownloader extends DownloadService {
             };
           }
 
-          console.log(
-            `✅ [TikTok] ${method.name} succeeded: ${sizeCheck.sizeMB}MB`,
-          );
+          console.log(`✅ [TikTok] ${method.name} succeeded: ${sizeCheck.sizeMB}MB`);
 
           return {
             success: true,
@@ -107,16 +107,16 @@ export class TikTokDownloader extends DownloadService {
             source: method.name,
           };
         }
-      } catch (error: any) {
-        console.log(`❌ [TikTok] ${method.name} failed:`, error.message);
+      } catch (error) {
+        const commandError = error as CommandError;
+        console.log(`❌ [TikTok] ${method.name} failed:`, commandError.message);
         continue;
       }
     }
 
     return {
       success: false,
-      error:
-        "Download failed. Make sure yt-dlp is installed: sudo apt install yt-dlp ffmpeg",
+      error: 'Download failed. Make sure yt-dlp is installed: sudo apt install yt-dlp ffmpeg',
     };
   }
 }

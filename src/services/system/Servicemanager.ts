@@ -1,13 +1,13 @@
-import { Database } from "../database/Database.js";
-import { JsonDatabase } from "../database/JsonDatabase.js";
-import { MongoDatabase } from "../database/MongoDatabase.js";
-import { UserService } from "../database/UserService.js";
-import { GroupService } from "../database/GroupService.js";
-import { LevelService } from "../database/LevelService.js";
-import { ModerationService } from "../moderation/ModerationService.js";
-import { config } from "@/config/index.js";
-import { logger, logError } from "@/utils/logger.js";
-import { cleanupService } from "./CleanupService.js";
+import type { Database } from '../database/Database.js';
+import { JsonDatabase } from '../database/JsonDatabase.js';
+import { MongoDatabase } from '../database/MongoDatabase.js';
+import { UserService } from '../database/UserService.js';
+import { GroupService } from '../database/GroupService.js';
+import { LevelService } from '../database/LevelService.js';
+import { ModerationService } from '../moderation/ModerationService.js';
+import { config } from '@/config/index.js';
+import { logger, logError } from '@/utils/logger.js';
+import { cleanupService } from './CleanupService.js';
 
 export class ServiceManager {
   private static instance: ServiceManager;
@@ -29,7 +29,7 @@ export class ServiceManager {
 
   async initialize(): Promise<void> {
     try {
-      logger.info("🔧 Inicializando servicios...");
+      logger.info('🔧 Inicializando servicios...');
 
       await this.initializeDatabase();
 
@@ -40,9 +40,9 @@ export class ServiceManager {
 
       cleanupService.start();
 
-      logger.info("Servicios inicializados correctamente");
+      logger.info('Servicios inicializados correctamente');
     } catch (error) {
-      logError("ServiceManager.initialize", error);
+      logError('ServiceManager.initialize', error);
       throw error;
     }
   }
@@ -51,16 +51,16 @@ export class ServiceManager {
     const dbType = config.database.type;
 
     switch (dbType) {
-      case "json":
-        logger.info("Usando base de datos JSON");
+      case 'json':
+        logger.info('Usando base de datos JSON');
         this.db = new JsonDatabase(config.database.path);
         break;
 
-      case "mongodb":
+      case 'mongodb':
         if (!config.database.uri) {
-          throw new Error("MongoDB URI no configurada");
+          throw new Error('MongoDB URI no configurada');
         }
-        logger.info("Usando base de datos MongoDB");
+        logger.info('Usando base de datos MongoDB');
         this.db = new MongoDatabase(config.database.uri);
         break;
 
@@ -73,15 +73,15 @@ export class ServiceManager {
 
   async shutdown(): Promise<void> {
     try {
-      logger.info("Cerrando servicios...");
+      logger.info('Cerrando servicios...');
       cleanupService.stop();
       if (this.db) {
         await this.db.disconnect();
       }
 
-      logger.info("Servicios cerrados correctamente");
+      logger.info('Servicios cerrados correctamente');
     } catch (error) {
-      logError("ServiceManager.shutdown", error);
+      logError('ServiceManager.shutdown', error);
     }
   }
 

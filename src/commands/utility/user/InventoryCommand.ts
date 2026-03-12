@@ -1,20 +1,19 @@
-import { Command } from "../../Command.js";
-import { CommandCategory } from "@/types/index.js";
-import type { MessageContext } from "@/types/index.js";
-import { serviceManager } from "@/services/system/Servicemanager.js";
-import type { User } from "@/services/database/UserService.js";
+import { Command } from '../../Command.js';
+import { CommandCategory } from '@/types/index.js';
+import type { MessageContext } from '@/types/index.js';
+import { serviceManager } from '@/services/system/Servicemanager.js';
+// import type { User } from '@/services/database/UserService.js';
 
 export class InventoryCommand extends Command {
-  name = "inventory";
-  description = "Muestra tu inventario de items";
+  name = 'inventory';
+  description = 'Muestra tu inventario de items';
   category = CommandCategory.UTILITY;
-  aliases = ["inv", "inventario", "mochila", "bag"];
-  usage = "!inventory [@usuario]";
-  examples = ["!inventory", "!inv", "!inventory @5215551234567"];
+  aliases = ['inv', 'inventario', 'mochila', 'bag'];
+  usage = '!inventory [@usuario]';
+  examples = ['!inventory', '!inv', '!inventory @5215551234567'];
 
   async execute(ctx: MessageContext): Promise<void> {
-    const mentionedJid =
-      ctx.message.message?.extendedTextMessage?.contextInfo?.mentionedJid?.[0];
+    const mentionedJid = ctx.message.message?.extendedTextMessage?.contextInfo?.mentionedJid?.[0];
     const targetJid = mentionedJid || ctx.sender.jid;
     const isSelf = targetJid === ctx.sender.jid;
 
@@ -26,14 +25,14 @@ export class InventoryCommand extends Command {
       if (inventory.length === 0) {
         await ctx.reply(
           isSelf
-            ? "🎒 Tu inventario está vacío\n\n💡 Usa comandos como !daily, !work para conseguir items"
+            ? '🎒 Tu inventario está vacío\n\n💡 Usa comandos como !daily, !work para conseguir items'
             : `🎒 ${user.name} no tiene items en su inventario`,
         );
         return;
       }
 
       const itemCounts = new Map<string, { count: number; name: string }>();
-      inventory.forEach((item) => {
+      inventory.forEach(item => {
         const existing = itemCounts.get(item.itemId);
         if (existing) {
           existing.count++;
@@ -42,7 +41,7 @@ export class InventoryCommand extends Command {
         }
       });
 
-      let itemsList = "";
+      let itemsList = '';
       let index = 1;
 
       for (const [itemId, { count, name }] of itemCounts) {
@@ -54,7 +53,7 @@ export class InventoryCommand extends Command {
           itemsList += ` x${count}`;
         }
 
-        itemsList += "\n";
+        itemsList += '\n';
         index++;
       }
 
@@ -69,84 +68,81 @@ ${itemsList}┃
 ┃ Total: ${inventory.length}
 ┃ Únicos: ${itemCounts.size}
 ┗━━━━━━━━━━━━━━━
-${isSelf ? "\n💡 !use [item] para usar" : ""}
+${isSelf ? '\n💡 !use [item] para usar' : ''}
       `.trim();
 
       await ctx.reply(message);
     } catch (error) {
-      console.error("Error en InventoryCommand:", error);
-      await ctx.reply("❌ Error al obtener el inventario");
+      console.error('Error en InventoryCommand:', error);
+      await ctx.reply('❌ Error al obtener el inventario');
     }
   }
 
   private getItemEmoji(item: string): string {
     const emojiMap: Record<string, string> = {
-      apple: "🍎",
-      bread: "🍞",
-      fish: "🐟",
-      meat: "🥩",
-      cookie: "🍪",
+      apple: '🍎',
+      bread: '🍞',
+      fish: '🐟',
+      meat: '🥩',
+      cookie: '🍪',
 
-      pickaxe: "⛏️",
-      axe: "🪓",
-      sword: "⚔️",
-      shield: "🛡️",
-      bow: "🏹",
+      pickaxe: '⛏️',
+      axe: '🪓',
+      sword: '⚔️',
+      shield: '🛡️',
+      bow: '🏹',
 
-      wood: "🪵",
-      stone: "🪨",
-      iron: "⚙️",
-      gold: "🪙",
-      diamond: "💎",
+      wood: '🪵',
+      stone: '🪨',
+      iron: '⚙️',
+      gold: '🪙',
+      diamond: '💎',
 
-      health_potion: "❤️",
-      mana_potion: "💙",
-      speed_potion: "⚡",
+      health_potion: '❤️',
+      mana_potion: '💙',
+      speed_potion: '⚡',
 
-      key: "🔑",
-      map: "🗺️",
-      compass: "🧭",
-      book: "📖",
-      scroll: "📜",
+      key: '🔑',
+      map: '🗺️',
+      compass: '🧭',
+      book: '📖',
+      scroll: '📜',
     };
 
-    return emojiMap[item.toLowerCase()] || "📦";
+    return emojiMap[item.toLowerCase()] || '📦';
   }
 
   private getItemDisplayName(item: string): string {
     const nameMap: Record<string, string> = {
-      apple: "Manzana",
-      bread: "Pan",
-      fish: "Pescado",
-      meat: "Carne",
-      cookie: "Galleta",
+      apple: 'Manzana',
+      bread: 'Pan',
+      fish: 'Pescado',
+      meat: 'Carne',
+      cookie: 'Galleta',
 
-      pickaxe: "Pico",
-      axe: "Hacha",
-      sword: "Espada",
-      shield: "Escudo",
-      bow: "Arco",
+      pickaxe: 'Pico',
+      axe: 'Hacha',
+      sword: 'Espada',
+      shield: 'Escudo',
+      bow: 'Arco',
 
-      wood: "Madera",
-      stone: "Piedra",
-      iron: "Hierro",
-      gold: "Oro",
-      diamond: "Diamante",
+      wood: 'Madera',
+      stone: 'Piedra',
+      iron: 'Hierro',
+      gold: 'Oro',
+      diamond: 'Diamante',
 
-      health_potion: "Poción de Vida",
-      mana_potion: "Poción de Maná",
-      speed_potion: "Poción de Velocidad",
+      health_potion: 'Poción de Vida',
+      mana_potion: 'Poción de Maná',
+      speed_potion: 'Poción de Velocidad',
 
-      key: "Llave",
-      map: "Mapa",
-      compass: "Brújula",
-      book: "Libro",
-      scroll: "Pergamino",
+      key: 'Llave',
+      map: 'Mapa',
+      compass: 'Brújula',
+      book: 'Libro',
+      scroll: 'Pergamino',
     };
 
-    return (
-      nameMap[item.toLowerCase()] ||
-      item.charAt(0).toUpperCase() + item.slice(1)
-    );
+    return nameMap[item.toLowerCase()] || item.charAt(0).toUpperCase() + item.slice(1);
   }
 }

@@ -1,4 +1,4 @@
-import type { WASocket, proto } from "@whiskeysockets/baileys";
+import type { WASocket, proto, AnyMessageContent } from '@whiskeysockets/baileys';
 
 export interface ICommand {
   name: string;
@@ -17,16 +17,16 @@ export interface ICommand {
 }
 
 export enum CommandCategory {
-  UTILITY = "utility",
-  FUN = "fun",
-  ECONOMY = "economy",
-  MODERATION = "moderation",
-  MEDIA = "media",
-  GAME = "game",
-  INFORMATION = "information",
-  ADMIN = "admin",
-  OWNER = "owner",
-  RPG = "rpg",
+  UTILITY = 'utility',
+  FUN = 'fun',
+  ECONOMY = 'economy',
+  MODERATION = 'moderation',
+  MEDIA = 'media',
+  GAME = 'game',
+  INFORMATION = 'information',
+  ADMIN = 'admin',
+  OWNER = 'owner',
+  RPG = 'rpg',
 }
 
 export enum PermissionLevel {
@@ -36,15 +36,15 @@ export enum PermissionLevel {
 }
 
 export enum BotPermission {
-  ADMIN = "admin",
-  SEND_MESSAGES = "send_messages",
-  DELETE_MESSAGES = "delete_messages",
+  ADMIN = 'admin',
+  SEND_MESSAGES = 'send_messages',
+  DELETE_MESSAGES = 'delete_messages',
 }
 
 export enum CommandContext {
-  GROUP = "group",
-  PRIVATE = "private",
-  BOTH = "both",
+  GROUP = 'group',
+  PRIVATE = 'private',
+  BOTH = 'both',
 }
 
 export interface MessageContext {
@@ -68,7 +68,7 @@ export interface MessageContext {
   media?: Buffer;
   reply(text: string): Promise<void>;
   react(emoji: string): Promise<void>;
-  sendMessage(content: any): Promise<void>;
+  sendMessage(content: AnyMessageContent): Promise<void>;
   loadSenderPermissions(): Promise<void>;
   loadBotPermissions(): Promise<void>;
 }
@@ -79,7 +79,7 @@ export interface IMiddleware {
 }
 
 export interface DatabaseConfig {
-  type: "json" | "mongodb";
+  type: 'json' | 'mongodb';
   uri?: string;
   path?: string;
 }
@@ -90,12 +90,10 @@ export interface BotConfig {
   owners: string[];
   ownerJids: string[];
   sessionPath: string;
-
   auth: {
     usePairingCode: boolean;
     phoneNumber?: string;
   };
-
   features: {
     antiSpam: boolean;
     autoRead: boolean;

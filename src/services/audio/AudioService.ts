@@ -1,27 +1,18 @@
-import fs from "fs";
-import path from "path";
-import { exec } from "child_process";
-import { promisify } from "util";
-import { aiService } from "@/services/external/AIService.js";
+import fs from 'fs';
+import path from 'path';
+import { exec } from 'child_process';
+import { promisify } from 'util';
+import { aiService } from '@/services/external/AIService.js';
 
 const execAsync = promisify(exec);
-const TEMP_DIR = "./data/temp/audio";
+const TEMP_DIR = './data/temp/audio';
 
-export type AudioTipo = "voz" | "musica" | "silencio" | "ruido" | "desconocido";
-export type AudioFormato =
-  | "ogg"
-  | "mp3"
-  | "mp4"
-  | "wav"
-  | "m4a"
-  | "aac"
-  | "flac"
-  | "webm"
-  | "opus";
+export type AudioTipo = 'voz' | 'musica' | 'silencio' | 'ruido' | 'desconocido';
+export type AudioFormato = 'ogg' | 'mp3' | 'mp4' | 'wav' | 'm4a' | 'aac' | 'flac' | 'webm' | 'opus';
 
 export interface AudioInfo {
   valido: boolean;
-  formato: AudioFormato | "desconocido";
+  formato: AudioFormato | 'desconocido';
   tamañoKB: number;
   esNotaDeVoz: boolean;
   comprimido: boolean;
@@ -67,15 +58,15 @@ function matchesMagic(buf: Buffer, key: string): boolean {
   return m.bytes.every((b, i) => buf[m.offset + i] === b);
 }
 
-function detectarFormato(buf: Buffer): AudioFormato | "desconocido" {
-  if (matchesMagic(buf, "ogg")) return "ogg";
-  if (matchesMagic(buf, "mp3")) return "mp3";
-  if (matchesMagic(buf, "mp3id3")) return "mp3";
-  if (matchesMagic(buf, "mp4")) return "mp4";
-  if (matchesMagic(buf, "wav")) return "wav";
-  if (matchesMagic(buf, "flac")) return "flac";
-  if (matchesMagic(buf, "webm")) return "webm";
-  return "desconocido";
+function detectarFormato(buf: Buffer): AudioFormato | 'desconocido' {
+  if (matchesMagic(buf, 'ogg')) return 'ogg';
+  if (matchesMagic(buf, 'mp3')) return 'mp3';
+  if (matchesMagic(buf, 'mp3id3')) return 'mp3';
+  if (matchesMagic(buf, 'mp4')) return 'mp4';
+  if (matchesMagic(buf, 'wav')) return 'wav';
+  if (matchesMagic(buf, 'flac')) return 'flac';
+  if (matchesMagic(buf, 'webm')) return 'webm';
+  return 'desconocido';
 }
 
 function estimarDuracion(tamañoKB: number, formato: string): string {
@@ -97,7 +88,7 @@ function estimarDuracion(tamañoKB: number, formato: string): string {
 
 async function ffmpegDisponible(): Promise<boolean> {
   try {
-    await execAsync("ffmpeg -version");
+    await execAsync('ffmpeg -version');
     return true;
   } catch {
     return false;
@@ -112,18 +103,18 @@ class AudioService {
     if (buffer.length < MIN_SIZE_BYTES) {
       return {
         valido: false,
-        formato: "desconocido",
+        formato: 'desconocido',
         tamañoKB,
         esNotaDeVoz,
         comprimido: false,
-        error: "El archivo es demasiado pequeño para ser audio válido.",
+        error: 'El archivo es demasiado pequeño para ser audio válido.',
       };
     }
 
     if (tamañoMB > MAX_SIZE_MB) {
       return {
         valido: false,
-        formato: "desconocido",
+        formato: 'desconocido',
         tamañoKB,
         esNotaDeVoz,
         comprimido: false,
@@ -153,7 +144,7 @@ class AudioService {
     }
 
     if (!(await ffmpegDisponible())) {
-      console.log("[AudioService] ffmpeg no disponible, saltando compresión");
+      console.log('[AudioService] ffmpeg no disponible, saltando compresión');
       return { buffer, comprimido: false, extension: extensionOrigen };
     }
 
@@ -177,9 +168,9 @@ class AudioService {
         `[AudioService] Compresión: ${tamañoMB.toFixed(1)}MB → ${(compressed.length / 1024 / 1024).toFixed(1)}MB (-${ratio}%)`,
       );
 
-      return { buffer: compressed, comprimido: true, extension: "ogg" };
+      return { buffer: compressed, comprimido: true, extension: 'ogg' };
     } catch (err) {
-      console.error("[AudioService] Error en compresión:", err);
+      console.error('[AudioService] Error en compresión:', err);
       return { buffer, comprimido: false, extension: extensionOrigen };
     } finally {
       try {
@@ -191,16 +182,13 @@ class AudioService {
     }
   }
 
-  async analizarTipo(
-    transcripcion: string,
-    duracionEst: string,
-  ): Promise<AudioAnalisis> {
+  async analizarTipo(transcripcion: string, duracionEst: string): Promise<AudioAnalisis> {
     if (!transcripcion || transcripcion.trim().length < 3) {
       return {
-        tipo: "silencio",
+        tipo: 'silencio',
         confianza: 0.9,
-        descripcion: "No se detectó contenido de voz.",
-        recomendacion: "Verifica que el audio contenga voz clara.",
+        descripcion: 'No se detectó contenido de voz.',
+        recomendacion: 'Verifica que el audio contenga voz clara.',
       };
     }
 
@@ -214,36 +202,34 @@ class AudioService {
 
     if (!response.success || !response.text) {
       return {
-        tipo: "voz",
+        tipo: 'voz',
         confianza: 0.5,
-        descripcion: "Audio con contenido de voz.",
-        recomendacion: "Transcripción disponible.",
+        descripcion: 'Audio con contenido de voz.',
+        recomendacion: 'Transcripción disponible.',
       };
     }
 
     try {
-      const clean = response.text.replace(/```json|```/g, "").trim();
+      const clean = response.text.replace(/```json|```/g, '').trim();
       const parsed = JSON.parse(clean);
       return {
-        tipo: parsed.tipo ?? "voz",
+        tipo: parsed.tipo ?? 'voz',
         confianza: parsed.confianza ?? 0.7,
-        descripcion: parsed.descripcion ?? "",
-        recomendacion: parsed.recomendacion ?? "",
+        descripcion: parsed.descripcion ?? '',
+        recomendacion: parsed.recomendacion ?? '',
       };
     } catch {
       return {
-        tipo: "voz",
+        tipo: 'voz',
         confianza: 0.6,
-        descripcion: "Audio procesado.",
-        recomendacion: "Transcripción disponible.",
+        descripcion: 'Audio procesado.',
+        recomendacion: 'Transcripción disponible.',
       };
     }
   }
 
-  async resumir(
-    transcripcion: string,
-  ): Promise<{ resumen: string; puntosClave: string[] }> {
-    if (transcripcion.split(" ").length < 20) {
+  async resumir(transcripcion: string): Promise<{ resumen: string; puntosClave: string[] }> {
+    if (transcripcion.split(' ').length < 20) {
       return { resumen: transcripcion, puntosClave: [] };
     }
 
@@ -260,10 +246,10 @@ class AudioService {
     }
 
     try {
-      const clean = response.text.replace(/```json|```/g, "").trim();
+      const clean = response.text.replace(/```json|```/g, '').trim();
       const parsed = JSON.parse(clean);
       return {
-        resumen: parsed.resumen ?? "",
+        resumen: parsed.resumen ?? '',
         puntosClave: parsed.puntosClave ?? [],
       };
     } catch {
@@ -285,22 +271,15 @@ class AudioService {
 
     const duracionEst = estimarDuracion(info.tamañoKB, opts.extension);
 
-    const { buffer, comprimido, extension } = await this.comprimir(
-      opts.buffer,
-      opts.extension,
-    );
+    const { buffer, comprimido, extension } = await this.comprimir(opts.buffer, opts.extension);
     info.comprimido = comprimido;
 
-    const transcResponse = await aiService.transcribeAudio(
-      buffer,
-      extension,
-      opts.idioma,
-    );
+    const transcResponse = await aiService.transcribeAudio(buffer, extension, opts.idioma);
 
     if (!transcResponse.success || !transcResponse.text) {
       return {
         success: false,
-        error: transcResponse.error ?? "No pude transcribir el audio.",
+        error: transcResponse.error ?? 'No pude transcribir el audio.',
         info,
       };
     }
@@ -310,8 +289,7 @@ class AudioService {
     if (!texto) {
       return {
         success: false,
-        error:
-          "No se detectó voz en el audio. Asegúrate de que haya voz clara.",
+        error: 'No se detectó voz en el audio. Asegúrate de que haya voz clara.',
         info,
         duracionEst,
       };
@@ -334,7 +312,7 @@ class AudioService {
 
   formatearResultado(
     result: TranscripcionCompleta,
-    modo: "simple" | "completo" | "resumen",
+    modo: 'simple' | 'completo' | 'resumen',
   ): string {
     if (!result.success) {
       return `❌ ${result.error}`;
@@ -343,11 +321,11 @@ class AudioService {
     const info = result.info;
     const analisis = result.analisis;
 
-    if (modo === "simple") {
+    if (modo === 'simple') {
       return `🎙️ *Transcripción:*\n\n${result.texto}`;
     }
 
-    if (modo === "resumen") {
+    if (modo === 'resumen') {
       let msg = `📋 *Resumen del audio*\n━━━━━━━━━━\n\n`;
 
       if (result.resumen) {
@@ -356,10 +334,10 @@ class AudioService {
 
       if (result.puntosClave?.length) {
         msg += `🔑 *Puntos clave:*\n`;
-        result.puntosClave.forEach((p) => {
+        result.puntosClave.forEach(p => {
           msg += `• ${p}\n`;
         });
-        msg += "\n";
+        msg += '\n';
       }
 
       msg += `📄 *Transcripción completa:*\n${result.texto}\n\n`;
@@ -369,27 +347,26 @@ class AudioService {
 
     let msg = `🎙️ *Transcripción*\n━━━━━━━━\n\n`;
     msg += result.texto;
-    msg += "\n\n━━━━━━━━\n";
+    msg += '\n\n━━━━━━━━\n';
 
     const tipoEmoji: Record<string, string> = {
-      voz: "🗣️",
-      musica: "🎵",
-      silencio: "🔇",
-      ruido: "🔊",
-      desconocido: "❓",
+      voz: '🗣️',
+      musica: '🎵',
+      silencio: '🔇',
+      ruido: '🔊',
+      desconocido: '❓',
     };
 
     if (analisis) {
-      msg += `${tipoEmoji[analisis.tipo] ?? "🎵"} Tipo: *${analisis.tipo}*`;
-      if (analisis.confianza > 0)
-        msg += ` (${Math.round(analisis.confianza * 100)}%)`;
-      msg += "\n";
+      msg += `${tipoEmoji[analisis.tipo] ?? '🎵'} Tipo: *${analisis.tipo}*`;
+      if (analisis.confianza > 0) msg += ` (${Math.round(analisis.confianza * 100)}%)`;
+      msg += '\n';
     }
 
     if (result.duracionEst) msg += `⏱️ Duración: ${result.duracionEst}\n`;
     if (info?.tamañoKB) msg += `💾 Tamaño: ${info.tamañoKB.toFixed(0)} KB`;
     if (info?.comprimido) msg += ` _(comprimido)_`;
-    msg += "\n";
+    msg += '\n';
 
     msg += `\n> _VaniaBot🎙️ — Transcriptor IA_`;
     return msg;

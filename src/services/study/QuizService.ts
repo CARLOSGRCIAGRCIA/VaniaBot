@@ -1,20 +1,15 @@
-import { questionGenerator } from "./QuestionGenerator.js";
-import { answerValidator } from "./AnswerValidator.js";
-import {
-  difficultyEngine,
-  QUESTION_TIMEOUT_SECS,
-  HINT_OFFER_SECS,
-} from "./DifficultyEngine.js";
+import { questionGenerator } from './QuestionGenerator.js';
+import { answerValidator } from './AnswerValidator.js';
+import { difficultyEngine, QUESTION_TIMEOUT_SECS, HINT_OFFER_SECS } from './DifficultyEngine.js';
+import type { QuizDifficulty } from './QuizTypes.js';
 import {
   QuizSessionState,
-  QuizDifficulty,
   type QuizSession,
   type QuizPlayer,
   type QuizQuestion,
   type AnswerResult,
   type UserQuizStats,
-  type QuestionLogEntry,
-} from "./QuizTypes.js";
+} from './QuizTypes.js';
 
 export type SendFn = (groupId: string, text: string) => Promise<void>;
 
@@ -31,7 +26,6 @@ export interface StartQuizOptions {
   awardXP: (jid: string, amount: number) => Promise<void>;
 }
 
-const DEFAULT_QUESTIONS = 5;
 const MAX_QUESTIONS = 15;
 
 export class QuizService {
@@ -54,8 +48,7 @@ export class QuizService {
     if (this.sessions.has(opts.groupId)) {
       return {
         success: false,
-        error:
-          "Ya hay un quiz activo en este grupo. Usa *!quiz stop* para detenerlo.",
+        error: 'Ya hay un quiz activo en este grupo. Usa *!quiz stop* para detenerlo.',
       };
     }
 
@@ -79,22 +72,14 @@ export class QuizService {
     this.sessions.set(opts.groupId, session);
 
     const starterStats = await opts.getUserStats(opts.startedBy);
-    const difficulty = difficultyEngine.calculate(
-      starterStats,
-      opts.category,
-      0,
-    );
-    const question = await questionGenerator.getQuestion(
-      opts.category,
-      difficulty,
-      [],
-    );
+    const difficulty = difficultyEngine.calculate(starterStats, opts.category, 0);
+    const question = await questionGenerator.getQuestion(opts.category, difficulty, []);
 
     if (!question) {
       this.sessions.delete(opts.groupId);
       return {
         success: false,
-        error: "No pude generar preguntas. Intenta de nuevo.",
+        error: 'No pude generar preguntas. Intenta de nuevo.',
       };
     }
 
@@ -119,7 +104,7 @@ export class QuizService {
     text: string,
     opts: Pick<
       StartQuizOptions,
-      "getUserStats" | "updateStats" | "awardCoins" | "awardXP" | "sendFn"
+      'getUserStats' | 'updateStats' | 'awardCoins' | 'awardXP' | 'sendFn'
     >,
   ): Promise<AnswerResult | null> {
     const session = this.sessions.get(groupId);
@@ -144,22 +129,22 @@ export class QuizService {
         usedHint: false,
       });
     }
-    const player = session.players.get(senderJid)!;
+
+    // Safe access with type guard
+    const player = session.players.get(senderJid);
+    if (!player) return null; // This should never happen, but TypeScript is happy
+
     const isFirst =
       player.correct === 0 ||
-      !Array.from(session.players.values()).some(
-        (p) => p.correct > 0 && p.jid !== senderJid,
-      );
+      !Array.from(session.players.values()).some(p => p.correct > 0 && p.jid !== senderJid);
 
     player.streak++;
     player.correct++;
     player.answeredAt = Date.now();
 
-    const userStats = await opts.getUserStats(senderJid);
     const difficulty = session.currentQuestion.difficulty;
     const coins =
-      difficultyEngine.calculateCoins(difficulty, player.streak) *
-      (player.usedHint ? 0.5 : 1);
+      difficultyEngine.calculateCoins(difficulty, player.streak) * (player.usedHint ? 0.5 : 1);
     const xp = difficultyEngine.calculateXP(difficulty);
 
     player.score += Math.round(coins);
@@ -220,6 +205,7 @@ export class QuizService {
 
     return session.currentQuestion.hint;
   }
+
   async stopSession(groupId: string, sendFn: SendFn): Promise<boolean> {
     const session = this.sessions.get(groupId);
     if (!session) return false;
@@ -243,10 +229,10 @@ export class QuizService {
   private _startTimers(
     session: QuizSession,
     sendFn: SendFn,
-    getUserStats: StartQuizOptions["getUserStats"],
-    updateStats: StartQuizOptions["updateStats"],
-    awardCoins: StartQuizOptions["awardCoins"],
-    awardXP: StartQuizOptions["awardXP"],
+    getUserStats: StartQuizOptions['getUserStats'],
+    updateStats: StartQuizOptions['updateStats'],
+    awardCoins: StartQuizOptions['awardCoins'],
+    awardXP: StartQuizOptions['awardXP'],
   ): void {
     session.hintTimer = setTimeout(async () => {
       if (session.state !== QuizSessionState.WAITING_ANSWER) return;
@@ -308,7 +294,7 @@ export class QuizService {
     session: QuizSession,
     opts: Pick<
       StartQuizOptions,
-      "getUserStats" | "updateStats" | "awardCoins" | "awardXP" | "sendFn"
+      'getUserStats' | 'updateStats' | 'awardCoins' | 'awardXP' | 'sendFn'
     >,
   ): Promise<void> {
     session.currentIndex++;
@@ -318,7 +304,7 @@ export class QuizService {
       player.usedHint = false;
     }
 
-    const usedQuestions = session.questionLog.map((l) => l.question);
+    const usedQuestions = session.questionLog.map(l => l.question);
 
     const topPlayer = this._getTopPlayer(session);
     const topStats = topPlayer ? await opts.getUserStats(topPlayer.jid) : null;
@@ -337,7 +323,7 @@ export class QuizService {
     if (!question) {
       await opts.sendFn(
         session.groupId,
-        "❌ No pude generar la siguiente pregunta. Finalizando quiz.",
+        '❌ No pude generar la siguiente pregunta. Finalizando quiz.',
       );
       await this._endSession(session, opts.sendFn);
       return;
@@ -368,20 +354,14 @@ export class QuizService {
     );
   }
 
-  private async _endSession(
-    session: QuizSession,
-    sendFn: SendFn,
-    forced = false,
-  ): Promise<void> {
+  private async _endSession(session: QuizSession, sendFn: SendFn, forced = false): Promise<void> {
     this._clearTimers(session);
     session.state = QuizSessionState.FINISHED;
 
     const duration = Math.round((Date.now() - session.startedAt) / 1000);
-    const players = Array.from(session.players.values()).sort(
-      (a, b) => b.score - a.score,
-    );
+    const players = Array.from(session.players.values()).sort((a, b) => b.score - a.score);
 
-    let summary = `*Quiz Finalizado${forced ? " (detenido)" : ""}*\n`;
+    let summary = `*Quiz Finalizado${forced ? ' (detenido)' : ''}*\n`;
     summary += `━━━━━━━━━━━\n`;
     summary += `Categoría: *${session.category}*\n`;
     summary += `Preguntas: ${session.questionLog.length}/${session.totalQuestions}\n`;
@@ -389,7 +369,7 @@ export class QuizService {
 
     if (players.length > 0) {
       summary += `*Resultados:*\n`;
-      const medals = ["🥇", "🥈", "🥉"];
+      const medals = ['🥇', '🥈', '🥉'];
       players.forEach((p, i) => {
         const medal = medals[i] ?? `${i + 1}.`;
         summary += `${medal} *${p.pushName}* — ${p.score} pts (${p.correct}✅ ${p.wrong}❌)\n`;
@@ -398,10 +378,10 @@ export class QuizService {
       summary += `_Nadie respondió ninguna pregunta_ 😔\n`;
     }
 
-    const unanswered = session.questionLog.filter((q) => q.noAnswer);
+    const unanswered = session.questionLog.filter(q => q.noAnswer);
     if (unanswered.length > 0) {
       summary += `\n📖 *Respuestas que nadie supo:*\n`;
-      unanswered.forEach((q) => {
+      unanswered.forEach(q => {
         summary += `• ${q.question}\n  ↳ *${q.answer}*\n`;
       });
     }
@@ -418,7 +398,7 @@ export class QuizService {
     difficulty: QuizDifficulty,
     category: string,
     streak: number,
-    updateFn: StartQuizOptions["updateStats"],
+    updateFn: StartQuizOptions['updateStats'],
   ): Promise<void> {
     await updateFn(jid, {
       totalAnswered: 1,
@@ -438,19 +418,16 @@ export class QuizService {
 
   formatStatsMessage(stats: UserQuizStats, pushName: string): string {
     const accuracy =
-      stats.totalAnswered > 0
-        ? Math.round((stats.totalCorrect / stats.totalAnswered) * 100)
-        : 0;
+      stats.totalAnswered > 0 ? Math.round((stats.totalCorrect / stats.totalAnswered) * 100) : 0;
 
     const categories = Object.entries(stats.byCategory ?? {})
       .sort(([, a], [, b]) => b.correct - a.correct)
       .slice(0, 5)
       .map(([cat, s]) => {
-        const acc =
-          s.answered > 0 ? Math.round((s.correct / s.answered) * 100) : 0;
+        const acc = s.answered > 0 ? Math.round((s.correct / s.answered) * 100) : 0;
         return `  • *${cat}*: ${s.correct}/${s.answered} (${acc}%)`;
       })
-      .join("\n");
+      .join('\n');
 
     return (
       `*Stats de Quiz — ${pushName}*\n` +
@@ -460,7 +437,7 @@ export class QuizService {
       `Precisión: ${accuracy}%\n` +
       `Mejor racha: ${stats.bestStreak}\n` +
       `Sesiones:  ${stats.sessionsPlayed}\n` +
-      (categories ? `\n *Por categoría:*\n${categories}\n` : "") +
+      (categories ? `\n *Por categoría:*\n${categories}\n` : '') +
       `\n> _VaniaBot💝 — Modo Estudio_`
     );
   }

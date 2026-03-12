@@ -1,18 +1,18 @@
-import { Command } from "../../Command.js";
-import { poesiaService } from "@/services/creative/PoesiaService.js";
+import { Command } from '../../Command.js';
+import { poesiaService } from '@/services/creative/PoesiaService.js';
 import {
   parsePoesiaArgs,
   HELP_TEXTS,
   ESTILOS_LIST,
   TEMAS_LIST,
-} from "@/services/creative/PoesiaParser.js";
-import { ContenidoTipo } from "@/services/creative/PoesiaTypes.js";
+} from '@/services/creative/PoesiaParser.js';
+import { ContenidoTipo } from '@/services/creative/PoesiaTypes.js';
 import {
   CommandCategory,
   CommandContext,
   PermissionLevel,
   type MessageContext,
-} from "@/types/index.js";
+} from '@/types/index.js';
 
 async function ejecutarPoesia(
   ctx: MessageContext,
@@ -21,47 +21,41 @@ async function ejecutarPoesia(
 ): Promise<void> {
   const args = [...rawArgs];
 
-  if (args[0]?.toLowerCase() === "help") {
+  if (args[0]?.toLowerCase() === 'help') {
     await ctx.reply(HELP_TEXTS[tipo]);
     return;
   }
 
   const { opts } = parsePoesiaArgs(tipo, args);
 
-  await ctx.react("✍️");
+  await ctx.react('✍️');
 
   const result = await poesiaService.generar(
     opts,
     ctx.sender.jid,
-    ctx.sender.pushName ?? "Alguien",
+    ctx.sender.pushName ?? 'Alguien',
     ctx.chat.jid,
   );
 
   if (!result.success || !result.entry) {
-    await ctx.react("❌");
-    await ctx.reply(
-      `❌ ${result.error ?? "No pude generar el contenido. Intenta de nuevo."}`,
-    );
+    await ctx.react('❌');
+    await ctx.reply(`❌ ${result.error ?? 'No pude generar el contenido. Intenta de nuevo.'}`);
     return;
   }
 
-  await ctx.react("💝");
+  await ctx.react('💝');
   await ctx.reply(poesiaService.formatEntry(result.entry));
 }
 
 export class PoemaCommand extends Command {
-  name = "poema";
-  description = "Genera un poema sobre cualquier tema";
+  name = 'poema';
+  description = 'Genera un poema sobre cualquier tema';
   category = CommandCategory.FUN;
-  aliases = ["poem", "poesia", "poesía", "verso"];
+  aliases = ['poem', 'poesia', 'poesía', 'verso'];
   cooldown = 5000;
   contexts = [CommandContext.BOTH];
-  usage = "!poema [tema] [estilo] [para:nombre]";
-  examples = [
-    "!poema amor",
-    "!poema desamor melancólico",
-    "!poema luna para:valeria",
-  ];
+  usage = '!poema [tema] [estilo] [para:nombre]';
+  examples = ['!poema amor', '!poema desamor melancólico', '!poema luna para:valeria'];
   permissions = { user: [PermissionLevel.USER], bot: [] };
 
   async execute(ctx: MessageContext): Promise<void> {
@@ -69,14 +63,14 @@ export class PoemaCommand extends Command {
   }
 }
 export class FrasesCommand extends Command {
-  name = "frases";
-  description = "Genera 5 frases hermosas sobre un tema";
+  name = 'frases';
+  description = 'Genera 5 frases hermosas sobre un tema';
   category = CommandCategory.FUN;
-  aliases = ["frase", "cita", "quote", "quotes"];
+  aliases = ['frase', 'cita', 'quote', 'quotes'];
   cooldown = 5000;
   contexts = [CommandContext.BOTH];
-  usage = "!frases [tema] [estilo]";
-  examples = ["!frases amor", "!frases vida apasionado", "!frases nostalgia"];
+  usage = '!frases [tema] [estilo]';
+  examples = ['!frases amor', '!frases vida apasionado', '!frases nostalgia'];
   permissions = { user: [PermissionLevel.USER], bot: [] };
 
   async execute(ctx: MessageContext): Promise<void> {
@@ -85,39 +79,34 @@ export class FrasesCommand extends Command {
 }
 
 export class PiropopCommand extends Command {
-  name = "piropo";
-  description = "Genera piropos creativos y originales";
+  name = 'piropo';
+  description = 'Genera piropos creativos y originales';
   category = CommandCategory.FUN;
-  aliases = ["piropos", "flirt", "ligar", "requiebro"];
+  aliases = ['piropos', 'flirt', 'ligar', 'requiebro'];
   cooldown = 5000;
   contexts = [CommandContext.BOTH];
-  usage = "!piropo [estilo] [para:nombre]";
-  examples = [
-    "!piropo",
-    "!piropo pícaro",
-    "!piropo tierno para:valeria",
-    "!piropo chistoso",
-  ];
+  usage = '!piropo [estilo] [para:nombre]';
+  examples = ['!piropo', '!piropo pícaro', '!piropo tierno para:valeria', '!piropo chistoso'];
   permissions = { user: [PermissionLevel.USER], bot: [] };
 
   async execute(ctx: MessageContext): Promise<void> {
-    const args = ctx.args?.length ? ctx.args : ["romántico"];
+    const args = ctx.args?.length ? ctx.args : ['romántico'];
     await ejecutarPoesia(ctx, ContenidoTipo.PIROPO, args);
   }
 }
 
 export class DedicatoriaCommand extends Command {
-  name = "dedicatoria";
-  description = "Genera una dedicatoria emotiva y personalizada";
+  name = 'dedicatoria';
+  description = 'Genera una dedicatoria emotiva y personalizada';
   category = CommandCategory.FUN;
-  aliases = ["dedica", "dedicar", "mensaje"];
+  aliases = ['dedica', 'dedicar', 'mensaje'];
   cooldown = 5000;
   contexts = [CommandContext.BOTH];
-  usage = "!dedicatoria [tema] [estilo] [para:nombre]";
+  usage = '!dedicatoria [tema] [estilo] [para:nombre]';
   examples = [
-    "!dedicatoria para:Valeria",
-    "!dedicatoria cumpleaños para:Alejandra tierno",
-    "!dedicatoria aniversario romántico",
+    '!dedicatoria para:Valeria',
+    '!dedicatoria cumpleaños para:Alejandra tierno',
+    '!dedicatoria aniversario romántico',
   ];
   permissions = { user: [PermissionLevel.USER], bot: [] };
 
@@ -127,76 +116,68 @@ export class DedicatoriaCommand extends Command {
 }
 
 export class HaikuCommand extends Command {
-  name = "haiku";
-  description = "Genera tres haikus sobre un tema";
+  name = 'haiku';
+  description = 'Genera tres haikus sobre un tema';
   category = CommandCategory.FUN;
-  aliases = ["haikus", "hai"];
+  aliases = ['haikus', 'hai'];
   cooldown = 5000;
   contexts = [CommandContext.BOTH];
-  usage = "!haiku [tema] [estilo]";
-  examples = [
-    "!haiku amor",
-    "!haiku naturaleza místico",
-    "!haiku noche oscuro",
-  ];
+  usage = '!haiku [tema] [estilo]';
+  examples = ['!haiku amor', '!haiku naturaleza místico', '!haiku noche oscuro'];
   permissions = { user: [PermissionLevel.USER], bot: [] };
 
   async execute(ctx: MessageContext): Promise<void> {
-    const args = ctx.args?.length ? ctx.args : ["amor"];
+    const args = ctx.args?.length ? ctx.args : ['amor'];
     await ejecutarPoesia(ctx, ContenidoTipo.HAIKU, args);
   }
 }
 
 export class SonetoCommand extends Command {
-  name = "soneto";
-  description = "Genera un soneto de 14 versos";
+  name = 'soneto';
+  description = 'Genera un soneto de 14 versos';
   category = CommandCategory.FUN;
-  aliases = ["sonnet"];
+  aliases = ['sonnet'];
   cooldown = 8000;
   contexts = [CommandContext.BOTH];
-  usage = "!soneto [tema] [estilo] [para:nombre]";
-  examples = [
-    "!soneto amor",
-    "!soneto desamor clásico",
-    "!soneto vida épico para:Valeria",
-  ];
+  usage = '!soneto [tema] [estilo] [para:nombre]';
+  examples = ['!soneto amor', '!soneto desamor clásico', '!soneto vida épico para:Valeria'];
   permissions = { user: [PermissionLevel.USER], bot: [] };
 
   async execute(ctx: MessageContext): Promise<void> {
-    const args = ctx.args?.length ? ctx.args : ["amor"];
+    const args = ctx.args?.length ? ctx.args : ['amor'];
     await ejecutarPoesia(ctx, ContenidoTipo.SONETO, args);
   }
 }
 
 export class CoplaCommand extends Command {
-  name = "copla";
-  description = "Genera coplas populares al estilo latinoamericano";
+  name = 'copla';
+  description = 'Genera coplas populares al estilo latinoamericano';
   category = CommandCategory.FUN;
-  aliases = ["coplas", "trova", "estrofa"];
+  aliases = ['coplas', 'trova', 'estrofa'];
   cooldown = 5000;
   contexts = [CommandContext.BOTH];
-  usage = "!copla [tema] [estilo]";
-  examples = ["!copla amor", "!copla vida pícaro", "!copla amistad chistoso"];
+  usage = '!copla [tema] [estilo]';
+  examples = ['!copla amor', '!copla vida pícaro', '!copla amistad chistoso'];
   permissions = { user: [PermissionLevel.USER], bot: [] };
 
   async execute(ctx: MessageContext): Promise<void> {
-    const args = ctx.args?.length ? ctx.args : ["amor"];
+    const args = ctx.args?.length ? ctx.args : ['amor'];
     await ejecutarPoesia(ctx, ContenidoTipo.COPLA, args);
   }
 }
 
 export class AcrosticoCommand extends Command {
-  name = "acrostico";
-  description = "Genera un acróstico con un nombre";
+  name = 'acrostico';
+  description = 'Genera un acróstico con un nombre';
   category = CommandCategory.FUN;
-  aliases = ["acrostic", "acro"];
+  aliases = ['acrostic', 'acro'];
   cooldown = 5000;
   contexts = [CommandContext.BOTH];
-  usage = "!acrostico [NOMBRE] [tema] [estilo]";
+  usage = '!acrostico [NOMBRE] [tema] [estilo]';
   examples = [
-    "!acrostico Valeria",
-    "!acrostico Alejandra amor romántico",
-    "!acrostico Daniela vida tierno",
+    '!acrostico Valeria',
+    '!acrostico Alejandra amor romántico',
+    '!acrostico Daniela vida tierno',
   ];
   permissions = { user: [PermissionLevel.USER], bot: [] };
 
@@ -219,17 +200,17 @@ export class AcrosticoCommand extends Command {
 }
 
 export class CartaCommand extends Command {
-  name = "carta";
-  description = "Genera una carta de amor completa y emotiva";
+  name = 'carta';
+  description = 'Genera una carta de amor completa y emotiva';
   category = CommandCategory.FUN;
-  aliases = ["cartaamor", "love-letter", "cartalove"];
+  aliases = ['cartaamor', 'love-letter', 'cartalove'];
   cooldown = 8000;
   contexts = [CommandContext.BOTH];
-  usage = "!carta [motivo] [estilo] [para:nombre]";
+  usage = '!carta [motivo] [estilo] [para:nombre]';
   examples = [
-    "!carta para:valeria",
-    "!carta despedida melancólico",
-    "!carta primer amor romántico para:Alejandra",
+    '!carta para:valeria',
+    '!carta despedida melancólico',
+    '!carta primer amor romántico para:Alejandra',
   ];
   permissions = { user: [PermissionLevel.USER], bot: [] };
 
@@ -239,35 +220,35 @@ export class CartaCommand extends Command {
 }
 
 export class HistoriaCommand extends Command {
-  name = "historia";
-  description = "Genera una historia corta de amor (microficción)";
+  name = 'historia';
+  description = 'Genera una historia corta de amor (microficción)';
   category = CommandCategory.FUN;
-  aliases = ["cuento", "story", "relato", "microficcion"];
+  aliases = ['cuento', 'story', 'relato', 'microficcion'];
   cooldown = 8000;
   contexts = [CommandContext.BOTH];
-  usage = "!historia [tema] [estilo]";
+  usage = '!historia [tema] [estilo]';
   examples = [
-    "!historia amor",
-    "!historia desamor melancólico",
-    "!historia encuentro inesperado romántico",
+    '!historia amor',
+    '!historia desamor melancólico',
+    '!historia encuentro inesperado romántico',
   ];
   permissions = { user: [PermissionLevel.USER], bot: [] };
 
   async execute(ctx: MessageContext): Promise<void> {
-    const args = ctx.args?.length ? ctx.args : ["amor"];
+    const args = ctx.args?.length ? ctx.args : ['amor'];
     await ejecutarPoesia(ctx, ContenidoTipo.HISTORIA, args);
   }
 }
 
 export class PoesiaMenuCommand extends Command {
-  name = "poesia";
-  description = "Menú del sistema de poesía y contenido creativo";
+  name = 'poesia';
+  description = 'Menú del sistema de poesía y contenido creativo';
   category = CommandCategory.FUN;
-  aliases = ["poetry", "amor", "love", "creative"];
+  aliases = ['poetry', 'amor', 'love', 'creative'];
   cooldown = 3000;
   contexts = [CommandContext.BOTH];
-  usage = "!poesia";
-  examples = ["!poesia"];
+  usage = '!poesia';
+  examples = ['!poesia'];
   permissions = { user: [PermissionLevel.USER], bot: [] };
 
   async execute(ctx: MessageContext): Promise<void> {
@@ -303,14 +284,14 @@ export class PoesiaMenuCommand extends Command {
 }
 
 export class VotarPoesiaCommand extends Command {
-  name = "votar";
-  description = "Vota el último poema o contenido del grupo";
+  name = 'votar';
+  description = 'Vota el último poema o contenido del grupo';
   category = CommandCategory.FUN;
-  aliases = ["voto", "like", "heart"];
+  aliases = ['voto', 'like', 'heart'];
   cooldown = 2000;
   contexts = [CommandContext.GROUP];
-  usage = "!votar [ID?]";
-  examples = ["!votar", "!votar A1B2C3"];
+  usage = '!votar [ID?]';
+  examples = ['!votar', '!votar A1B2C3'];
   permissions = { user: [PermissionLevel.USER], bot: [] };
 
   async execute(ctx: MessageContext): Promise<void> {
@@ -319,7 +300,7 @@ export class VotarPoesiaCommand extends Command {
 
     if (!result.success) {
       if (result.alreadyVoted) {
-        await ctx.react("😅");
+        await ctx.react('😅');
         await ctx.reply(`😅 Ya votaste por ese contenido.`);
       } else {
         await ctx.reply(`❌ ${result.error}`);
@@ -327,20 +308,20 @@ export class VotarPoesiaCommand extends Command {
       return;
     }
 
-    await ctx.react("❤️");
+    await ctx.react('❤️');
     await ctx.reply(`❤️ *¡Voto registrado!* — Total: ${result.newVotes} ❤️`);
   }
 }
 
 export class PoesiaTopCommand extends Command {
-  name = "poetop";
-  description = "Ranking de los mejores poemas y contenido del grupo";
+  name = 'poetop';
+  description = 'Ranking de los mejores poemas y contenido del grupo';
   category = CommandCategory.FUN;
-  aliases = ["poesiatop", "toppoema", "toppoesia", "toppoetico"];
+  aliases = ['poesiatop', 'toppoema', 'toppoesia', 'toppoetico'];
   cooldown = 10000;
   contexts = [CommandContext.GROUP];
-  usage = "!poetop [tipo?]";
-  examples = ["!poetop", "!poetop poema", "!poetop piropo"];
+  usage = '!poetop [tipo?]';
+  examples = ['!poetop', '!poetop poema', '!poetop piropo'];
   permissions = { user: [PermissionLevel.USER], bot: [] };
 
   private readonly TIPO_MAP: Record<string, ContenidoTipo> = {
@@ -369,19 +350,19 @@ export class PoesiaTopCommand extends Command {
 }
 
 export class PoesiaStatsCommand extends Command {
-  name = "poetastats";
-  description = "Tus estadísticas de poesía en el grupo";
+  name = 'poetastats';
+  description = 'Tus estadísticas de poesía en el grupo';
   category = CommandCategory.FUN;
-  aliases = ["poestats", "mipoesia", "poetastat"];
+  aliases = ['poestats', 'mipoesia', 'poetastat'];
   cooldown = 5000;
   contexts = [CommandContext.GROUP];
-  usage = "!poetastats";
-  examples = ["!poetastats"];
+  usage = '!poetastats';
+  examples = ['!poetastats'];
   permissions = { user: [PermissionLevel.USER], bot: [] };
 
   async execute(ctx: MessageContext): Promise<void> {
     const stats = poesiaService.getUserStats(ctx.chat.jid, ctx.sender.jid);
-    const name = ctx.sender.pushName ?? "Poeta";
+    const name = ctx.sender.pushName ?? 'Poeta';
 
     if (stats.total === 0) {
       await ctx.reply(
@@ -393,7 +374,7 @@ export class PoesiaStatsCommand extends Command {
 
     const byTipoLines = Object.entries(stats.byTipo)
       .map(([tipo, n]) => `  • ${tipo}: ${n}`)
-      .join("\n");
+      .join('\n');
 
     let msg =
       `📊 *Tu Poesía — ${name}*\n` +
@@ -404,8 +385,7 @@ export class PoesiaStatsCommand extends Command {
     if (byTipoLines) msg += `📂 *Por tipo:*\n${byTipoLines}\n\n`;
 
     if (stats.topEntry) {
-      const preview =
-        stats.topEntry.contenido.split("\n")[0].slice(0, 60) + "...";
+      const preview = stats.topEntry.contenido.split('\n')[0].slice(0, 60) + '...';
       msg +=
         `🏆 *Tu mejor contenido* (${stats.topEntry.votes} ❤️):\n` +
         `_"${preview}"_\n` +

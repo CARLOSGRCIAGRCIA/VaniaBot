@@ -1,33 +1,31 @@
-import { Command } from "../Command.js";
-import { CommandCategory, type MessageContext } from "@/types/index.js";
-import { serviceManager } from "@/services/system/Servicemanager.js";
+import { Command } from '../Command.js';
+import { CommandCategory, type MessageContext } from '@/types/index.js';
+import { serviceManager } from '@/services/system/Servicemanager.js';
 
 export class SlotsCommand extends Command {
-  name = "slots";
-  description = "Play slot machine and win money";
+  name = 'slots';
+  description = 'Play slot machine and win money';
   category = CommandCategory.GAME;
-  aliases = ["slot", "tragamonedas"];
-  usage = "!slots <bet>";
-  examples = ["!slots 100", "!slots 500"];
+  aliases = ['slot', 'tragamonedas'];
+  usage = '!slots <bet>';
+  examples = ['!slots 100', '!slots 500'];
   cooldown = 5000;
 
-  private readonly SYMBOLS = ["🍒", "🍋", "🔔", "💎", "7️⃣", "⭐"];
+  private readonly SYMBOLS = ['🍒', '🍋', '🔔', '💎', '7️⃣', '⭐'];
   private readonly PAYOUTS: { [key: string]: number } = {
-    "7️⃣7️⃣7️⃣": 10,
-    "💎💎💎": 8,
-    "🔔🔔🔔": 5,
-    "⭐⭐⭐": 4,
-    "🍋🍋🍋": 3,
-    "🍒🍒🍒": 3,
+    '7️⃣7️⃣7️⃣': 10,
+    '💎💎💎': 8,
+    '🔔🔔🔔': 5,
+    '⭐⭐⭐': 4,
+    '🍋🍋🍋': 3,
+    '🍒🍒🍒': 3,
     match2: 1.5,
   };
 
   async execute(ctx: MessageContext): Promise<void> {
     if (!ctx.args.length) {
       await ctx.reply(
-        "❌ Specify your bet\n\n" +
-          "📖 Usage: !slots <amount>\n" +
-          "💡 Example: !slots 100",
+        '❌ Specify your bet\n\n' + '📖 Usage: !slots <amount>\n' + '💡 Example: !slots 100',
       );
       return;
     }
@@ -35,7 +33,7 @@ export class SlotsCommand extends Command {
     const bet = parseInt(ctx.args[0]);
 
     if (isNaN(bet) || bet <= 0) {
-      await ctx.reply("❌ Invalid bet amount");
+      await ctx.reply('❌ Invalid bet amount');
       return;
     }
 
@@ -52,12 +50,12 @@ export class SlotsCommand extends Command {
       }
 
       if (bet < 10) {
-        await ctx.reply("❌ Minimum bet is $10");
+        await ctx.reply('❌ Minimum bet is $10');
         return;
       }
     }
 
-    await ctx.react("🎰");
+    await ctx.react('🎰');
 
     const slot1 = this.getRandomSymbol();
     const slot2 = this.getRandomSymbol();
@@ -66,17 +64,17 @@ export class SlotsCommand extends Command {
     const result = `${slot1}${slot2}${slot3}`;
 
     let multiplier = 0;
-    let resultText = "";
+    let resultText = '';
 
     if (this.PAYOUTS[result]) {
       multiplier = this.PAYOUTS[result];
       resultText = this.getResultText(result);
     } else if (slot1 === slot2 || slot2 === slot3 || slot1 === slot3) {
-      multiplier = this.PAYOUTS["match2"];
-      resultText = "Two Match!";
+      multiplier = this.PAYOUTS['match2'];
+      resultText = 'Two Match!';
     } else {
       multiplier = 0;
-      resultText = "No Match";
+      resultText = 'No Match';
     }
 
     const winAmount = Math.floor(bet * multiplier);
@@ -114,16 +112,14 @@ export class SlotsCommand extends Command {
     }
 
     if (!user.isOwner) {
-      const newBalance = await serviceManager.userService.getUser(
-        ctx.sender.jid,
-      );
+      const newBalance = await serviceManager.userService.getUser(ctx.sender.jid);
       message += `\n\n💵 Balance: $${newBalance.money.toLocaleString()}`;
     }
 
     message += `\n\n> _*VaniaBot💝*_`;
 
     await ctx.reply(message);
-    await ctx.react(multiplier > 0 ? "🎉" : "💔");
+    await ctx.react(multiplier > 0 ? '🎉' : '💔');
   }
 
   private getRandomSymbol(): string {
@@ -132,20 +128,20 @@ export class SlotsCommand extends Command {
 
   private getResultText(result: string): string {
     switch (result) {
-      case "7️⃣7️⃣7️⃣":
-        return "JACKPOT! Triple 7!";
-      case "💎💎💎":
-        return "MEGA WIN! Triple Diamond!";
-      case "🔔🔔🔔":
-        return "BIG WIN! Triple Bell!";
-      case "⭐⭐⭐":
-        return "Great! Triple Star!";
-      case "🍋🍋🍋":
-        return "Nice! Triple Lemon!";
-      case "🍒🍒🍒":
-        return "Good! Triple Cherry!";
+      case '7️⃣7️⃣7️⃣':
+        return 'JACKPOT! Triple 7!';
+      case '💎💎💎':
+        return 'MEGA WIN! Triple Diamond!';
+      case '🔔🔔🔔':
+        return 'BIG WIN! Triple Bell!';
+      case '⭐⭐⭐':
+        return 'Great! Triple Star!';
+      case '🍋🍋🍋':
+        return 'Nice! Triple Lemon!';
+      case '🍒🍒🍒':
+        return 'Good! Triple Cherry!';
       default:
-        return "Win!";
+        return 'Win!';
     }
   }
 }

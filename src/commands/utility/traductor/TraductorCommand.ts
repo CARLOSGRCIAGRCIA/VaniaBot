@@ -1,15 +1,12 @@
-import { Command } from "../../Command.js";
-import { translatorService } from "@/services/translator/TranslatorService.js";
-import {
-  resolverIdioma,
-  idiomasDisponibles,
-} from "@/services/translator/TranslatorTypes.js";
+import { Command } from '../../Command.js';
+import { translatorService } from '@/services/translator/TranslatorService.js';
+import { resolverIdioma, idiomasDisponibles } from '@/services/translator/TranslatorTypes.js';
 import {
   CommandCategory,
   CommandContext,
   PermissionLevel,
   type MessageContext,
-} from "@/types/index.js";
+} from '@/types/index.js';
 
 function getQuotedText(ctx: MessageContext): string | null {
   const quoted = ctx.quoted;
@@ -53,22 +50,21 @@ function buildHelp(): string {
 }
 
 export class TraductorCommand extends Command {
-  name = "traducir";
-  description =
-    "Traductor contextual inteligente — detecta idioma y preserva tono";
+  name = 'traducir';
+  description = 'Traductor contextual inteligente — detecta idioma y preserva tono';
   category = CommandCategory.UTILITY;
-  aliases = ["translate", "trad", "tr", "traducir"];
+  aliases = ['translate', 'trad', 'tr', 'traducir'];
   cooldown = 4000;
   contexts = [CommandContext.BOTH];
-  usage = "!tr [idioma] [texto] | !tr [origen]>[destino] [texto] | !tr idiomas";
+  usage = '!tr [idioma] [texto] | !tr [origen]>[destino] [texto] | !tr idiomas';
   examples = [
-    "!tr en Hola mundo",
-    "!tr japonés (respondiendo a un mensaje)",
-    "!tr es>en Buenos días",
-    "!tr formal en Estimado cliente",
-    "!tr notas ja こんにちは",
-    "!tr detectar Bonjour tout le monde",
-    "!tr idiomas",
+    '!tr en Hola mundo',
+    '!tr japonés (respondiendo a un mensaje)',
+    '!tr es>en Buenos días',
+    '!tr formal en Estimado cliente',
+    '!tr notas ja こんにちは',
+    '!tr detectar Bonjour tout le monde',
+    '!tr idiomas',
   ];
   permissions = { user: [PermissionLevel.USER], bot: [] };
 
@@ -82,7 +78,7 @@ export class TraductorCommand extends Command {
 
     const first = args[0].toLowerCase();
 
-    if (first === "idiomas" || first === "languages" || first === "langs") {
+    if (first === 'idiomas' || first === 'languages' || first === 'langs') {
       await ctx.reply(
         `🌐 *Idiomas disponibles:*\n\n${idiomasDisponibles()}\n\n` +
           `_Puedes usar el nombre, código ISO o variantes en español/inglés._\n` +
@@ -92,9 +88,9 @@ export class TraductorCommand extends Command {
       return;
     }
 
-    if (first === "detectar" || first === "detect" || first === "detect") {
+    if (first === 'detectar' || first === 'detect') {
       args.shift();
-      let texto = args.join(" ").trim();
+      let texto = args.join(' ').trim();
 
       if (!texto) {
         const quoted = getQuotedText(ctx);
@@ -108,20 +104,20 @@ export class TraductorCommand extends Command {
         texto = quoted;
       }
 
-      await ctx.react("🔍");
+      await ctx.react('🔍');
       const result = await translatorService.detectarIdioma(texto);
 
       if (!result.success) {
-        await ctx.react("❌");
+        await ctx.react('❌');
         await ctx.reply(`❌ ${result.error}`);
         return;
       }
 
-      await ctx.react("✅");
+      await ctx.react('✅');
       await ctx.reply(
         `🔍 *Idioma detectado:*\n\n` +
           `${result.bandOrigen} *${result.idiomaOrigen}*\n\n` +
-          `_"${texto.slice(0, 100)}${texto.length > 100 ? "..." : ""}"_\n\n` +
+          `_"${texto.slice(0, 100)}${texto.length > 100 ? '...' : ''}"_\n\n` +
           `> _VaniaBot🌐 — Traductor contextual_`,
       );
       return;
@@ -129,21 +125,21 @@ export class TraductorCommand extends Command {
 
     let formal = false;
     let notas = false;
-    let modo: "literal" | "contextual" | "libre" = "contextual";
+    let modo: 'literal' | 'contextual' | 'libre' = 'contextual';
 
     while (args.length > 0) {
       const token = args[0].toLowerCase();
-      if (token === "formal") {
+      if (token === 'formal') {
         formal = true;
         args.shift();
-      } else if (token === "notas" || token === "notes") {
+      } else if (token === 'notas' || token === 'notes') {
         notas = true;
         args.shift();
-      } else if (token === "literal") {
-        modo = "literal";
+      } else if (token === 'literal') {
+        modo = 'literal';
         args.shift();
-      } else if (token === "libre" || token === "free") {
-        modo = "libre";
+      } else if (token === 'libre' || token === 'free') {
+        modo = 'libre';
         args.shift();
       } else break;
     }
@@ -157,10 +153,10 @@ export class TraductorCommand extends Command {
     let idiomaDestino: string | undefined;
     const idiomaArg = args[0];
 
-    if (idiomaArg.includes(">")) {
-      const [orig, dest] = idiomaArg.split(">");
-      const resolvedOrig = resolverIdioma(orig ?? "");
-      const resolvedDest = resolverIdioma(dest ?? "");
+    if (idiomaArg.includes('>')) {
+      const [orig, dest] = idiomaArg.split('>');
+      const resolvedOrig = resolverIdioma(orig ?? '');
+      const resolvedDest = resolverIdioma(dest ?? '');
 
       if (!resolvedDest) {
         await ctx.reply(
@@ -187,7 +183,7 @@ export class TraductorCommand extends Command {
       args.shift();
     }
 
-    let texto = args.join(" ").trim();
+    let texto = args.join(' ').trim();
 
     if (!texto) {
       const quoted = getQuotedText(ctx);
@@ -202,11 +198,16 @@ export class TraductorCommand extends Command {
       texto = quoted;
     }
 
-    await ctx.react("🔄");
+    await ctx.react('🔄');
+
+    if (!idiomaDestino) {
+      await ctx.reply('❌ Error: No se especificó idioma destino');
+      return;
+    }
 
     const result = await translatorService.traducir({
       texto,
-      idiomaDestino: idiomaDestino!,
+      idiomaDestino,
       idiomaOrigen,
       formal,
       notas,
@@ -214,14 +215,14 @@ export class TraductorCommand extends Command {
     });
 
     if (!result.success) {
-      await ctx.react("❌");
+      await ctx.react('❌');
       await ctx.reply(`❌ ${result.error}`);
       return;
     }
 
-    await ctx.react("✅");
+    await ctx.react('✅');
 
-    const textoEsQuoted = !args.length || args.join(" ").trim() === texto;
+    const textoEsQuoted = !args.length || args.join(' ').trim() === texto;
     await ctx.reply(translatorService.formatResult(result, textoEsQuoted));
   }
 }

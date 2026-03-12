@@ -1,23 +1,19 @@
-import { Command } from "../../Command.js";
-import {
-  CommandCategory,
-  CommandContext,
-  type MessageContext,
-} from "@/types/index.js";
+import { Command } from '../../Command.js';
+import { CommandCategory, CommandContext, type MessageContext } from '@/types/index.js';
 
 export class CalculatorCommand extends Command {
-  name = "calc";
-  description = "Calculadora avanzada y conversor de unidades.";
+  name = 'calc';
+  description = 'Calculadora avanzada y conversor de unidades.';
   category = CommandCategory.UTILITY;
-  aliases = ["calcular", "math", "matematica", "convertir"];
-  usage = "!calc <expresión> | !calc <valor> <unidad> a <unidad>";
+  aliases = ['calcular', 'math', 'matematica', 'convertir'];
+  usage = '!calc <expresión> | !calc <valor> <unidad> a <unidad>';
   examples = [
-    "!calc 15% de 340",
-    "!calc (25 * 4) + 100 / 2",
-    "!calc 5 km a m",
-    "!calc 100 kg a lb",
-    "!calc 37 C a F",
-    "!calc 1 gb a mb",
+    '!calc 15% de 340',
+    '!calc (25 * 4) + 100 / 2',
+    '!calc 5 km a m',
+    '!calc 100 kg a lb',
+    '!calc 37 C a F',
+    '!calc 1 gb a mb',
   ];
   cooldown = 2000;
   contexts = [CommandContext.BOTH];
@@ -65,8 +61,8 @@ export class CalculatorCommand extends Command {
       pb: 1024 ** 5,
     },
     velocidad: {
-      "m/s": 1,
-      "km/h": 1 / 3.6,
+      'm/s': 1,
+      'km/h': 1 / 3.6,
       mph: 0.44704,
       kt: 0.514444,
     },
@@ -81,25 +77,19 @@ export class CalculatorCommand extends Command {
     },
   };
 
-  private convertTemperature(
-    value: number,
-    from: string,
-    to: string,
-  ): number | null {
+  private convertTemperature(value: number, from: string, to: string): number | null {
     const f = from.toLowerCase();
     const t = to.toLowerCase();
 
     let celsius: number;
-    if (f === "c" || f === "°c" || f === "celsius") celsius = value;
-    else if (f === "f" || f === "°f" || f === "fahrenheit")
-      celsius = ((value - 32) * 5) / 9;
-    else if (f === "k" || f === "kelvin") celsius = value - 273.15;
+    if (f === 'c' || f === '°c' || f === 'celsius') celsius = value;
+    else if (f === 'f' || f === '°f' || f === 'fahrenheit') celsius = ((value - 32) * 5) / 9;
+    else if (f === 'k' || f === 'kelvin') celsius = value - 273.15;
     else return null;
 
-    if (t === "c" || t === "°c" || t === "celsius") return celsius;
-    if (t === "f" || t === "°f" || t === "fahrenheit")
-      return (celsius * 9) / 5 + 32;
-    if (t === "k" || t === "kelvin") return celsius + 273.15;
+    if (t === 'c' || t === '°c' || t === 'celsius') return celsius;
+    if (t === 'f' || t === '°f' || t === 'fahrenheit') return (celsius * 9) / 5 + 32;
+    if (t === 'k' || t === 'kelvin') return celsius + 273.15;
     return null;
   }
 
@@ -127,36 +117,34 @@ export class CalculatorCommand extends Command {
   }
 
   private safeEval(expr: string): number {
-    const sanitized = expr.replace(/\s+/g, " ").trim();
+    const sanitized = expr.replace(/\s+/g, ' ').trim();
 
     if (!/^[\d\s\+\-\*\/\(\)\.\%\^]+$/.test(sanitized)) {
-      throw new Error("Expresión inválida");
+      throw new Error('Expresión inválida');
     }
 
-    const withPow = sanitized.replace(/\^/g, "**");
+    const withPow = sanitized.replace(/\^/g, '**');
 
     const percentOfMatch = withPow.match(/^([\d.]+)%\s*de\s*([\d.]+)$/i);
     if (percentOfMatch) {
-      return (
-        (parseFloat(percentOfMatch[1]) / 100) * parseFloat(percentOfMatch[2])
-      );
+      return (parseFloat(percentOfMatch[1]) / 100) * parseFloat(percentOfMatch[2]);
     }
 
-    const exprWithPercent = withPow.replace(/([\d.]+)%/g, "($1/100)");
+    const exprWithPercent = withPow.replace(/([\d.]+)%/g, '($1/100)');
 
     const result = new Function(`"use strict"; return (${exprWithPercent})`)();
 
-    if (typeof result !== "number" || !isFinite(result)) {
-      throw new Error("Resultado inválido");
+    if (typeof result !== 'number' || !isFinite(result)) {
+      throw new Error('Resultado inválido');
     }
 
     return result;
   }
 
   private formatResult(n: number): string {
-    if (!isFinite(n)) return "∞";
-    if (Number.isInteger(n)) return n.toLocaleString("es-MX");
-    return parseFloat(n.toFixed(8)).toLocaleString("es-MX", {
+    if (!isFinite(n)) return '∞';
+    if (Number.isInteger(n)) return n.toLocaleString('es-MX');
+    return parseFloat(n.toFixed(8)).toLocaleString('es-MX', {
       minimumFractionDigits: 0,
       maximumFractionDigits: 8,
     });
@@ -187,22 +175,22 @@ export class CalculatorCommand extends Command {
       return;
     }
 
-    const input = ctx.args.join(" ").trim();
+    const input = ctx.args.join(' ').trim();
 
     const conversionMatch = input.match(/^([\d.,]+)\s+(\S+)\s+a\s+(\S+)$/i);
     if (conversionMatch) {
-      const value = parseFloat(conversionMatch[1].replace(",", "."));
+      const value = parseFloat(conversionMatch[1].replace(',', '.'));
       const fromUnit = conversionMatch[2];
       const toUnit = conversionMatch[3];
 
       if (isNaN(value)) {
-        await ctx.reply("❌ Valor numérico inválido.");
+        await ctx.reply('❌ Valor numérico inválido.');
         return;
       }
 
       const tempResult = this.convertTemperature(value, fromUnit, toUnit);
       if (tempResult !== null) {
-        await ctx.react("✅");
+        await ctx.react('✅');
         await ctx.reply(
           `🌡️ *Conversión de temperatura*\n` +
             `━━━━━━━━━━━━━━━━\n` +
@@ -214,16 +202,16 @@ export class CalculatorCommand extends Command {
       const result = this.convertUnit(value, fromUnit, toUnit);
       if (result) {
         const categoryEmojis: Record<string, string> = {
-          longitud: "📏",
-          peso: "⚖️",
-          volumen: "💧",
-          digital: "💾",
-          velocidad: "🏎️",
-          area: "📐",
+          longitud: '📏',
+          peso: '⚖️',
+          volumen: '💧',
+          digital: '💾',
+          velocidad: '🏎️',
+          area: '📐',
         };
-        const emoji = categoryEmojis[result.category] || "🔄";
+        const emoji = categoryEmojis[result.category] || '🔄';
 
-        await ctx.react("✅");
+        await ctx.react('✅');
         await ctx.reply(
           `${emoji} *Conversión de ${result.category}*\n` +
             `━━━━━━━━━━━━━━━━\n` +
@@ -242,15 +230,16 @@ export class CalculatorCommand extends Command {
     try {
       const result = this.safeEval(input);
 
-      await ctx.react("✅");
+      await ctx.react('✅');
       await ctx.reply(
         `🧮 *Calculadora*\n` +
           `━━━━━━━━━━━━━━━━\n` +
           `📝 ${input}\n` +
           `= *${this.formatResult(result)}*`,
       );
-    } catch (error: any) {
-      await ctx.react("❌");
+    } catch (error: unknown) {
+      await ctx.react('❌');
+      console.error('Error in KickCommand:', error);
       await ctx.reply(
         `❌ Expresión inválida: *${input}*\n\n` +
           `Ejemplos válidos:\n` +

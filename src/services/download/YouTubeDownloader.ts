@@ -1,6 +1,7 @@
-import { DownloadService, DownloadResult } from "./DownloadService.js";
-import yts from "yt-search";
-import fs from "fs";
+import type { DownloadResult } from './DownloadService.js';
+import { DownloadService } from './DownloadService.js';
+import yts from 'yt-search';
+import fs from 'fs';
 
 export interface YouTubeVideo {
   videoId: string;
@@ -8,6 +9,11 @@ export interface YouTubeVideo {
   duration: string;
   thumbnail: string;
   url: string;
+}
+
+// Tipo para error de comando
+interface CommandError extends Error {
+  message: string;
 }
 
 export class YouTubeDownloader extends DownloadService {
@@ -26,7 +32,7 @@ export class YouTubeDownloader extends DownloadService {
 
   async searchVideo(query: string): Promise<YouTubeVideo | null> {
     try {
-      if (query.includes("youtube.com") || query.includes("youtu.be")) {
+      if (query.includes('youtube.com') || query.includes('youtu.be')) {
         const videoId = this.extractVideoId(query);
         if (!videoId) return null;
 
@@ -54,81 +60,62 @@ export class YouTubeDownloader extends DownloadService {
         url: video.url,
       };
     } catch (error) {
-      console.error("YouTube search error:", error);
+      console.error('YouTube search error:', error);
       return null;
     }
   }
 
   async downloadAudio(videoId: string): Promise<DownloadResult> {
-    const outputPath = this.generateOutputPath(videoId, "mp3");
+    const outputPath = this.generateOutputPath(videoId, 'mp3');
 
     const methods = [
       {
-        name: "yt-dlp",
-        cmd: "yt-dlp",
+        name: 'yt-dlp',
+        cmd: 'yt-dlp',
         args: [
-          "-x",
-          "--audio-format",
-          "mp3",
-          "--audio-quality",
-          "0",
-          "-o",
+          '-x',
+          '--audio-format',
+          'mp3',
+          '--audio-quality',
+          '0',
+          '-o',
           outputPath,
           `https://youtu.be/${videoId}`,
         ],
       },
       {
-        name: "youtube-dl",
-        cmd: "youtube-dl",
-        args: [
-          "-x",
-          "--audio-format",
-          "mp3",
-          "-o",
-          outputPath,
-          `https://youtu.be/${videoId}`,
-        ],
+        name: 'youtube-dl',
+        cmd: 'youtube-dl',
+        args: ['-x', '--audio-format', 'mp3', '-o', outputPath, `https://youtu.be/${videoId}`],
       },
     ];
 
-    return await this.tryDownloadMethods(methods, outputPath, "audio");
+    return await this.tryDownloadMethods(methods, outputPath, 'audio');
   }
 
   async downloadVideo(videoId: string): Promise<DownloadResult> {
-    const outputPath = this.generateOutputPath(videoId, "mp4");
+    const outputPath = this.generateOutputPath(videoId, 'mp4');
 
     const methods = [
       {
-        name: "yt-dlp",
-        cmd: "yt-dlp",
-        args: [
-          "-f",
-          "best[height<=720]",
-          "-o",
-          outputPath,
-          `https://youtu.be/${videoId}`,
-        ],
+        name: 'yt-dlp',
+        cmd: 'yt-dlp',
+        args: ['-f', 'best[height<=720]', '-o', outputPath, `https://youtu.be/${videoId}`],
       },
       {
-        name: "youtube-dl",
-        cmd: "youtube-dl",
-        args: [
-          "-f",
-          "best[height<=480]",
-          "-o",
-          outputPath,
-          `https://youtu.be/${videoId}`,
-        ],
+        name: 'youtube-dl',
+        cmd: 'youtube-dl',
+        args: ['-f', 'best[height<=480]', '-o', outputPath, `https://youtu.be/${videoId}`],
       },
     ];
 
-    return await this.tryDownloadMethods(methods, outputPath, "video");
+    return await this.tryDownloadMethods(methods, outputPath, 'video');
   }
 
   private async tryDownloadMethods(
     methods: Array<{ name: string; cmd: string; args: string[] }>,
     outputPath: string,
-    type: "audio" | "video",
+    type: 'audio' | 'video',
   ): Promise<DownloadResult> {
     for (const method of methods) {
       try {
@@ -156,15 +143,16 @@ export class YouTubeDownloader extends DownloadService {
             source: method.name,
           };
         }
-      } catch (error: any) {
-        console.log(`❌ ${method.name} failed:`, error.message);
+      } catch (error) {
+        const commandError = error as CommandError;
+        console.log(`❌ ${method.name} failed:`, commandError.message);
         continue;
       }
     }
 
     return {
       success: false,
-      error: "Install yt-dlp: sudo apt install yt-dlp ffmpeg",
+      error: 'Install yt-dlp: sudo apt install yt-dlp ffmpeg',
     };
   }
 }

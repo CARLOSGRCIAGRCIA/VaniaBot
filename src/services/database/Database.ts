@@ -8,17 +8,10 @@ export interface IDatabase {
   delete(collection: string, key: string): Promise<boolean>;
   has(collection: string, key: string): Promise<boolean>;
 
-  find<T>(collection: string, filter: Record<string, any>): Promise<T[]>;
-  findOne<T>(
-    collection: string,
-    filter: Record<string, any>,
-  ): Promise<T | null>;
+  find<T>(collection: string, filter: Record<string, unknown>): Promise<T[]>;
+  findOne<T>(collection: string, filter: Record<string, unknown>): Promise<T | null>;
 
-  update<T>(
-    collection: string,
-    key: string,
-    updates: Partial<T>,
-  ): Promise<void>;
+  update<T>(collection: string, key: string, updates: Partial<T>): Promise<void>;
 
   getAll<T>(collection: string): Promise<T[]>;
   clear(collection: string): Promise<void>;
@@ -33,19 +26,9 @@ export abstract class Database implements IDatabase {
   abstract set<T>(collection: string, key: string, value: T): Promise<void>;
   abstract delete(collection: string, key: string): Promise<boolean>;
   abstract has(collection: string, key: string): Promise<boolean>;
-  abstract find<T>(
-    collection: string,
-    filter: Record<string, any>,
-  ): Promise<T[]>;
-  abstract findOne<T>(
-    collection: string,
-    filter: Record<string, any>,
-  ): Promise<T | null>;
-  abstract update<T>(
-    collection: string,
-    key: string,
-    updates: Partial<T>,
-  ): Promise<void>;
+  abstract find<T>(collection: string, filter: Record<string, unknown>): Promise<T[]>;
+  abstract findOne<T>(collection: string, filter: Record<string, unknown>): Promise<T | null>;
+  abstract update<T>(collection: string, key: string, updates: Partial<T>): Promise<void>;
   abstract getAll<T>(collection: string): Promise<T[]>;
   abstract clear(collection: string): Promise<void>;
 

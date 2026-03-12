@@ -1,5 +1,5 @@
-import type { IDatabase } from "./Database.js";
-import { config } from "@/config/index.js";
+import type { IDatabase } from './Database.js';
+import { config } from '@/config/index.js';
 
 export interface User {
   jid: string;
@@ -28,25 +28,25 @@ export interface User {
 }
 
 export class UserService {
-  private readonly COLLECTION = "users";
+  private readonly COLLECTION = 'users';
   private readonly OWNER_MONEY = 999999999;
   private readonly OWNER_LEVEL = 999;
   private readonly OWNER_XP = 999999;
 
-  constructor(private db: IDatabase) { }
+  constructor(private db: IDatabase) {}
 
   private isOwnerJid(jid: string): boolean {
     if (config.owners.includes(jid)) {
       return true;
     }
 
-    const jidBase = jid.split("@")[0];
+    const jidBase = jid.split('@')[0];
     if (config.owners.includes(jidBase)) {
       return true;
     }
 
-    const isOwner = config.owners.some((owner) => {
-      const cleanOwner = owner.split("@")[0];
+    const isOwner = config.owners.some(owner => {
+      const cleanOwner = owner.split('@')[0];
       return jid.includes(cleanOwner) || jidBase === cleanOwner;
     });
 
@@ -92,7 +92,7 @@ export class UserService {
 
     const newUser: User = {
       jid,
-      name: "User",
+      name: 'User',
       isOwner,
       isBanned: false,
       level: isOwner ? this.OWNER_LEVEL : 1,
@@ -210,11 +210,11 @@ export class UserService {
     });
   }
 
-  async banUser(jid: string, reason?: string): Promise<void> {
+  async banUser(jid: string, _reason?: string): Promise<void> {
     const user = await this.getUser(jid);
 
     if (user.isOwner) {
-      throw new Error("Cannot ban an owner");
+      throw new Error('Cannot ban an owner');
     }
 
     await this.updateUser(jid, {
@@ -243,7 +243,7 @@ export class UserService {
     });
 
     if (newWarnings >= 3) {
-      await this.banUser(jid, "Accumulated 3 warnings");
+      await this.banUser(jid, 'Accumulated 3 warnings');
     }
 
     return newWarnings;
@@ -252,13 +252,13 @@ export class UserService {
   async addItem(jid: string, itemId: string): Promise<void> {
     const user = await this.getUser(jid);
 
-    const exists = user.inventory.some((i) => i.itemId === itemId);
+    const exists = user.inventory.some(i => i.itemId === itemId);
 
     if (!exists) {
       const newItem = {
         itemId,
         name: itemId,
-        type: "legacy",
+        type: 'legacy',
         purchasedAt: Date.now(),
       };
 
@@ -270,11 +270,10 @@ export class UserService {
     }
   }
 
-
   async removeItem(jid: string, itemId: string): Promise<boolean> {
     const user = await this.getUser(jid);
 
-    const index = user.inventory.findIndex((i) => i.itemId === itemId);
+    const index = user.inventory.findIndex(i => i.itemId === itemId);
 
     if (index === -1) {
       return false;
@@ -292,7 +291,7 @@ export class UserService {
 
   async hasItem(jid: string, itemId: string): Promise<boolean> {
     const user = await this.getUser(jid);
-    return user.inventory.some((i) => i.itemId === itemId);
+    return user.inventory.some(i => i.itemId === itemId);
   }
 
   async addAchievement(jid: string, achievementId: string): Promise<boolean> {
@@ -331,7 +330,7 @@ export class UserService {
   async getTopByXP(limit: number = 10): Promise<User[]> {
     const users = await this.getAllUsers();
     return users
-      .filter((u) => !u.isOwner)
+      .filter(u => !u.isOwner)
       .sort((a, b) => b.xp - a.xp)
       .slice(0, limit);
   }
@@ -339,7 +338,7 @@ export class UserService {
   async getTopByMoney(limit: number = 10): Promise<User[]> {
     const users = await this.getAllUsers();
     return users
-      .filter((u) => !u.isOwner)
+      .filter(u => !u.isOwner)
       .sort((a, b) => b.money - a.money)
       .slice(0, limit);
   }
@@ -347,7 +346,7 @@ export class UserService {
   async getTopByLevel(limit: number = 10): Promise<User[]> {
     const users = await this.getAllUsers();
     return users
-      .filter((u) => !u.isOwner)
+      .filter(u => !u.isOwner)
       .sort((a, b) => b.level - a.level)
       .slice(0, limit);
   }
@@ -368,15 +367,11 @@ export class UserService {
     }
   }
 
-  async grantMoney(
-    fromJid: string,
-    toJid: string,
-    amount: number,
-  ): Promise<boolean> {
+  async grantMoney(fromJid: string, toJid: string, amount: number): Promise<boolean> {
     const fromUser = await this.getUser(fromJid);
 
     if (!fromUser.isOwner) {
-      throw new Error("Only owners can grant money");
+      throw new Error('Only owners can grant money');
     }
 
     await this.addMoney(toJid, amount);
@@ -387,21 +382,17 @@ export class UserService {
     const fromUser = await this.getUser(fromJid);
 
     if (!fromUser.isOwner) {
-      throw new Error("Only owners can grant XP");
+      throw new Error('Only owners can grant XP');
     }
 
     await this.addXP(toJid, amount);
   }
 
-  async grantItem(
-    fromJid: string,
-    toJid: string,
-    item: string,
-  ): Promise<boolean> {
+  async grantItem(fromJid: string, toJid: string, item: string): Promise<boolean> {
     const fromUser = await this.getUser(fromJid);
 
     if (!fromUser.isOwner) {
-      throw new Error("Only owners can grant items");
+      throw new Error('Only owners can grant items');
     }
 
     await this.addItem(toJid, item);
@@ -452,7 +443,7 @@ export class UserService {
       type: string;
       purchasedAt: number;
       expiresAt?: number;
-    }
+    },
   ): Promise<void> {
     const user = await this.getUser(jid);
 

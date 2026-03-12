@@ -1,5 +1,5 @@
-import type { ICommand } from "@/types/index.js";
-import { logger } from "@/utils/logger.js";
+import type { ICommand } from '@/types/index.js';
+import { logger } from '@/utils/logger.js';
 
 export class CommandRegistry {
   private commands = new Map<string, ICommand>();
@@ -11,7 +11,7 @@ export class CommandRegistry {
 
     logger.debug(`Registrando comando: ${command.name}`);
 
-    command.aliases?.forEach((alias) => {
+    command.aliases?.forEach(alias => {
       this.aliases.set(alias, command.name);
       logger.debug(`  - Alias registrado: ${alias} → ${command.name}`);
     });
@@ -26,23 +26,27 @@ export class CommandRegistry {
     return Array.from(this.commands.values());
   }
 
-  checkCooldown(
-    commandName: string,
-    userId: string,
-    cooldownTime: number,
-  ): boolean {
+  checkCooldown(commandName: string, userId: string, cooldownTime: number): boolean {
     if (!this.cooldowns.has(commandName)) {
       this.cooldowns.set(commandName, new Map());
     }
 
-    const timestamps = this.cooldowns.get(commandName)!;
+    const timestamps = this.cooldowns.get(commandName);
+    if (!timestamps) {
+      return true;
+    }
+
     const now = Date.now();
 
     if (timestamps.has(userId)) {
-      const expirationTime = timestamps.get(userId)! + cooldownTime;
+      const userTimestamp = timestamps.get(userId);
+      // This should exist because we just checked has()
+      if (userTimestamp !== undefined) {
+        const expirationTime = userTimestamp + cooldownTime;
 
-      if (now < expirationTime) {
-        return false;
+        if (now < expirationTime) {
+          return false;
+        }
       }
     }
 

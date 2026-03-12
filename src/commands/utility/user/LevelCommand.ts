@@ -1,19 +1,18 @@
-import { Command } from "../../Command.js";
-import { CommandCategory, type MessageContext } from "@/types/index.js";
-import { serviceManager } from "@/services/system/Servicemanager.js";
+import { Command } from '../../Command.js';
+import { CommandCategory, type MessageContext } from '@/types/index.js';
+import { serviceManager } from '@/services/system/Servicemanager.js';
 
 export class LevelCommand extends Command {
-  name = "level";
+  name = 'level';
   description = "Check your or someone else's level";
   category = CommandCategory.UTILITY;
-  aliases = ["lvl", "rank", "xp"];
-  usage = "!level [@user]";
-  examples = ["!level", "!level @user", "!lvl"];
+  aliases = ['lvl', 'rank', 'xp'];
+  usage = '!level [@user]';
+  examples = ['!level', '!level @user', '!lvl'];
   cooldown = 3000;
 
   async execute(ctx: MessageContext): Promise<void> {
-    const mentionedJid =
-      ctx.message.message?.extendedTextMessage?.contextInfo?.mentionedJid?.[0];
+    const mentionedJid = ctx.message.message?.extendedTextMessage?.contextInfo?.mentionedJid?.[0];
 
     const targetJid = mentionedJid || ctx.sender.jid;
     const targetUser = await serviceManager.userService.getUser(targetJid);
@@ -21,7 +20,7 @@ export class LevelCommand extends Command {
     const isSelf = targetJid === ctx.sender.jid;
     const isOwner = targetUser.isOwner;
 
-    let message = "";
+    let message = '';
 
     if (isSelf) {
       message = `📊 *Your Level Stats*\n\n`;
@@ -29,12 +28,12 @@ export class LevelCommand extends Command {
       message = `📊 *${targetUser.name}'s Level Stats*\n\n`;
     }
 
-    let roleIcon = "✨";
-    if (isOwner) roleIcon = "♛";
-    else if (targetUser.level >= 100) roleIcon = "👑";
-    else if (targetUser.level >= 50) roleIcon = "💎";
-    else if (targetUser.level >= 25) roleIcon = "🌟";
-    else if (targetUser.level >= 10) roleIcon = "⭐";
+    let roleIcon = '✨';
+    if (isOwner) roleIcon = '♛';
+    else if (targetUser.level >= 100) roleIcon = '👑';
+    else if (targetUser.level >= 50) roleIcon = '💎';
+    else if (targetUser.level >= 25) roleIcon = '🌟';
+    else if (targetUser.level >= 10) roleIcon = '⭐';
 
     message += `${roleIcon} *Level:* ${targetUser.level}\n`;
 
@@ -42,9 +41,7 @@ export class LevelCommand extends Command {
       message += `✨ *XP:* ${targetUser.xp.toLocaleString()} ♾️\n`;
       message += `\n👑 *Owner Status:* Max level`;
     } else {
-      const requiredXP = serviceManager.levelService.getRequiredXP(
-        targetUser.level,
-      );
+      const requiredXP = serviceManager.levelService.getRequiredXP(targetUser.level);
       const currentLevelXP = targetUser.xp;
       const progress = Math.min((currentLevelXP / requiredXP) * 100, 100);
 
@@ -61,10 +58,10 @@ export class LevelCommand extends Command {
 
     const allUsers = await serviceManager.userService.getAllUsers();
     const sortedByLevel = allUsers
-      .filter((u) => !u.isOwner)
+      .filter(u => !u.isOwner)
       .sort((a, b) => b.level - a.level || b.xp - a.xp);
 
-    const rank = sortedByLevel.findIndex((u) => u.jid === targetJid) + 1;
+    const rank = sortedByLevel.findIndex(u => u.jid === targetJid) + 1;
 
     if (rank > 0) {
       message += `\n📊 Rank: #${rank} of ${sortedByLevel.length}`;
@@ -78,6 +75,6 @@ export class LevelCommand extends Command {
   private createProgressBar(percentage: number, length: number = 10): string {
     const filled = Math.round((percentage / 100) * length);
     const empty = length - filled;
-    return "▰".repeat(filled) + "▱".repeat(empty);
+    return '▰'.repeat(filled) + '▱'.repeat(empty);
   }
 }

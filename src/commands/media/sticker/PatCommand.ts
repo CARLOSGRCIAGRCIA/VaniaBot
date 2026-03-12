@@ -1,16 +1,16 @@
-import { Command } from "../../Command.js";
-import { CommandCategory, type MessageContext } from "@/types/index.js";
-import { StickerService } from "@/services/media/StickerService.js";
-import sharp from "sharp";
-import path from "path";
+import { Command } from '../../Command.js';
+import { CommandCategory, type MessageContext } from '@/types/index.js';
+import { StickerService } from '@/services/media/StickerService.js';
+import sharp from 'sharp';
+import path from 'path';
 
 export class PatCommand extends Command {
-  name = "pat";
-  description = "Create a Patrick meme sticker";
+  name = 'pat';
+  description = 'Create a Patrick meme sticker';
   category = CommandCategory.MEDIA;
-  aliases = ["patrick"];
-  usage = "!pat <text>";
-  examples = ["!pat Hello 🤣", "!pat This is funny"];
+  aliases = ['patrick'];
+  usage = '!pat <text>';
+  examples = ['!pat Hello 🤣', '!pat This is funny'];
   cooldown = 5000;
 
   private stickerService: StickerService;
@@ -22,25 +22,18 @@ export class PatCommand extends Command {
 
   async execute(ctx: MessageContext): Promise<void> {
     if (!ctx.args.length) {
-      await ctx.reply(
-        "⚠️ Write something after .pat\nExample: *!pat Hello 🤣*",
-      );
+      await ctx.reply('⚠️ Write something after .pat\nExample: *!pat Hello 🤣*');
       return;
     }
 
     const words = ctx.args.slice(0, 20);
-    const text = words.join(" ");
+    const text = words.join(' ');
 
-    await ctx.react("⏳");
+    await ctx.react('⏳');
 
     try {
       const randomNum = Math.floor(Math.random() * 4) + 1;
-      const imagePath = path.join(
-        process.cwd(),
-        "data",
-        "assets",
-        `pat${randomNum}.jpg`,
-      );
+      const imagePath = path.join(process.cwd(), 'data', 'assets', `pat${randomNum}.jpg`);
 
       const image = sharp(imagePath);
       const metadata = await image.metadata();
@@ -49,8 +42,8 @@ export class PatCommand extends Command {
       const height = metadata.height || 512;
 
       const fontSize = 95;
-      const textColor = "#FFFFFF";
-      const shadowColor = "#000000";
+      const textColor = '#FFFFFF';
+      const shadowColor = '#000000';
       const shadowOffset = 4;
 
       const x = width / 2;
@@ -92,29 +85,26 @@ export class PatCommand extends Command {
         .toBuffer();
 
       const stiker = await this.stickerService.createSticker(buffer, {
-        pack: "VaniaBot",
-        author: "VaniaBot",
+        pack: 'VaniaBot',
+        author: 'VaniaBot',
       });
 
       await ctx.sock.sendMessage(ctx.chat.jid, { sticker: stiker });
-      await ctx.react("✅");
-    } catch (error: any) {
-      console.error("Error in PatCommand:", error);
-      await ctx.reply(
-        ` Error: ${error.message || "Could not generate sticker"}`,
-      );
-      await ctx.react("");
+      await ctx.react('✅');
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      await ctx.reply(`❌ Error: ${message}`);
     }
   }
 
   private wrapText(text: string, maxChars: number): string[] {
-    const words = text.split(" ");
+    const words = text.split(' ');
     const lines: string[] = [];
-    let currentLine = "";
+    let currentLine = '';
 
-    words.forEach((word) => {
+    words.forEach(word => {
       if ((currentLine + word).length <= maxChars) {
-        currentLine += (currentLine ? " " : "") + word;
+        currentLine += (currentLine ? ' ' : '') + word;
       } else {
         if (currentLine) lines.push(currentLine);
         currentLine = word;
@@ -127,10 +117,10 @@ export class PatCommand extends Command {
 
   private escapeXml(text: string): string {
     return text
-      .replace(/&/g, "&amp;")
-      .replace(/</g, "&lt;")
-      .replace(/>/g, "&gt;")
-      .replace(/"/g, "&quot;")
-      .replace(/'/g, "&apos;");
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&apos;');
   }
 }

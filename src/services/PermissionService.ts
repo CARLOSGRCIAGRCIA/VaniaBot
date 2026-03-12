@@ -1,6 +1,6 @@
-import type { WASocket } from "@whiskeysockets/baileys";
-import { config } from "@/config/index.js";
-import { logError } from "@/utils/logger.js";
+import type { WASocket, GroupParticipant } from '@whiskeysockets/baileys';
+import { config } from '@/config/index.js';
+import { logError } from '@/utils/logger.js';
 
 export interface UserPermissions {
   isOwner: boolean;
@@ -13,56 +13,64 @@ export interface BotPermissions {
   isSuperAdmin: boolean;
 }
 
+interface GroupMetadataLike {
+  participants: GroupParticipant[];
+  subject: string;
+  desc?: string;
+}
+
+interface SockUser {
+  id?: string;
+  lid?: string;
+}
+
 export function normalizeJid(jid: string): string {
   if (!jid) return jid;
-  const [user, server] = jid.split("@");
-  const phone = user.split(":")[0];
+  const [user, server] = jid.split('@');
+  const phone = user.split(':')[0];
   return `${phone}@${server}`;
 }
 
 export function getBotJid(sock: WASocket): string {
-  return normalizeJid(sock.user?.id ?? "");
+  return normalizeJid(sock.user?.id ?? '');
 }
 
 export function getBotLid(sock: WASocket): string | null {
-  const lid = (sock.user as any)?.lid;
+  const lid = (sock.user as SockUser | undefined)?.lid;
   if (!lid) return null;
   return normalizeJid(lid);
 }
 
 export function getBotPhone(sock: WASocket): string {
-  return (sock.user?.id ?? "").split(":")[0].split("@")[0];
+  return (sock.user?.id ?? '').split(':')[0].split('@')[0];
 }
 
 function isLidJid(jid: string): boolean {
-  return jid.endsWith("@lid");
+  return jid.endsWith('@lid');
 }
 
 export class PermissionService {
   private static groupMetadataCache = new Map<
     string,
-    { data: any; timestamp: number }
+    { data: GroupMetadataLike; timestamp: number }
   >();
   private static lidPhoneCache = new Map<string, string>();
-
   private static readonly CACHE_TTL = 5 * 60 * 1000;
 
   static isOwner(jid: string): boolean {
-    const phoneNumber = normalizeJid(jid).split("@")[0];
+    const phoneNumber = normalizeJid(jid).split('@')[0];
     return config.owners.includes(phoneNumber);
   }
 
   private static async getGroupMetadata(
     sock: WASocket,
     groupJid: string,
-  ): Promise<any> {
+  ): Promise<GroupMetadataLike | null> {
     const cached = this.groupMetadataCache.get(groupJid);
     const now = Date.now();
-
     if (cached && now - cached.timestamp < this.CACHE_TTL) {
       return cached.data;
     }
-
     try {
       const metadata = await sock.groupMetadata(groupJid);
       this.groupMetadataCache.set(groupJid, { data: metadata, timestamp: now });
@@ -81,25 +89,30 @@ export class PermissionService {
     if (cached) return cached;
 
     try {
-      const result = await (sock as any).onWhatsApp(lidJid);
+      // onWhatsApp is not in the public Baileys types — cast carefully
+      const onWhatsApp = (
+        sock as unknown as { onWhatsApp?: (jid: string) => Promise<Array<{ jid?: string }>> }
+      ).onWhatsApp;
+      if (!onWhatsApp) return null;
+
+      const result = await onWhatsApp.call(sock, lidJid);
       console.log(`[LID RESOLVE] ${lidJid} →`, JSON.stringify(result));
       if (result && result[0]?.jid) {
-        const phone = result[0].jid.split("@")[0].split(":")[0];
+        const phone = result[0].jid.split('@')[0].split(':')[0];
         this.lidPhoneCache.set(lidJid, phone);
         return phone;
       }
     } catch (err) {
       console.log(`[LID RESOLVE ERROR] ${lidJid}:`, err);
     }
-
     return null;
   }
 
   private static async findParticipantByPhone(
     sock: WASocket,
-    participants: any[],
+    participants: GroupParticipant[],
     phoneNumber: string,
-  ): Promise<any | null> {
+  ): Promise<GroupParticipant | null> {
     console.log(`[FIND] Buscando teléfono: ${phoneNumber}`);
     for (const p of participants) {
       if (isLidJid(p.id)) {
@@ -107,7 +120,7 @@ export class PermissionService {
         console.log(`[FIND] ${p.id} → resuelto: ${resolvedPhone}`);
         if (resolvedPhone === phoneNumber) return p;
       } else {
-        const pPhone = p.id.split("@")[0].split(":")[0];
+        const pPhone = p.id.split('@')[0].split(':')[0];
         console.log(`[FIND] ${p.id} → teléfono: ${pPhone}`);
         if (pPhone === phoneNumber) return p;
       }
@@ -142,43 +155,31 @@ export class PermissionService {
 
     try {
       const metadata = await this.getGroupMetadata(sock, groupJid);
-      if (!metadata)
-        return { isOwner: false, isAdmin: false, isSuperAdmin: false };
+      if (!metadata) return { isOwner: false, isAdmin: false, isSuperAdmin: false };
 
-      let participant: any;
+      let participant: GroupParticipant | undefined | null;
 
       if (isLidJid(userJid)) {
-        participant = metadata.participants.find(
-          (p: any) => normalizeJid(p.id) === normalizeJid(userJid),
-        );
+        participant = metadata.participants.find(p => normalizeJid(p.id) === normalizeJid(userJid));
       } else {
-        const userPhone = userJid.split("@")[0].split(":")[0];
-        participant = await this.findParticipantByPhone(
-          sock,
-          metadata.participants,
-          userPhone,
-        );
+        const userPhone = userJid.split('@')[0].split(':')[0];
+        participant = await this.findParticipantByPhone(sock, metadata.participants, userPhone);
       }
 
-      if (!participant)
-        return { isOwner: false, isAdmin: false, isSuperAdmin: false };
+      if (!participant) return { isOwner: false, isAdmin: false, isSuperAdmin: false };
 
       return {
         isOwner: false,
-        isAdmin:
-          participant.admin === "admin" || participant.admin === "superadmin",
-        isSuperAdmin: participant.admin === "superadmin",
+        isAdmin: participant.admin === 'admin' || participant.admin === 'superadmin',
+        isSuperAdmin: participant.admin === 'superadmin',
       };
     } catch (error) {
-      logError("Error obteniendo permisos de usuario:", error);
+      logError('Error obteniendo permisos de usuario:', error);
       return { isOwner: false, isAdmin: false, isSuperAdmin: false };
     }
   }
 
-  static async getBotPermissions(
-    sock: WASocket,
-    groupJid: string,
-  ): Promise<BotPermissions> {
+  static async getBotPermissions(sock: WASocket, groupJid: string): Promise<BotPermissions> {
     try {
       const metadata = await this.getGroupMetadata(sock, groupJid);
       if (!metadata) return { isAdmin: false, isSuperAdmin: false };
@@ -186,18 +187,16 @@ export class PermissionService {
       const botLid = getBotLid(sock);
       const botPhone = getBotPhone(sock);
 
-      let botParticipant: any = null;
+      let botParticipant: GroupParticipant | undefined = undefined;
 
       if (botLid) {
-        botParticipant = metadata.participants.find(
-          (p: any) => normalizeJid(p.id) === botLid,
-        );
+        botParticipant = metadata.participants.find(p => normalizeJid(p.id) === botLid);
       }
 
       if (!botParticipant && botPhone) {
-        botParticipant = metadata.participants.find((p: any) => {
+        botParticipant = metadata.participants.find(p => {
           if (!isLidJid(p.id)) {
-            return p.id.split("@")[0].split(":")[0] === botPhone;
+            return p.id.split('@')[0].split(':')[0] === botPhone;
           }
           return false;
         });
@@ -206,21 +205,16 @@ export class PermissionService {
       if (!botParticipant) return { isAdmin: false, isSuperAdmin: false };
 
       return {
-        isAdmin:
-          botParticipant.admin === "admin" ||
-          botParticipant.admin === "superadmin",
-        isSuperAdmin: botParticipant.admin === "superadmin",
+        isAdmin: botParticipant.admin === 'admin' || botParticipant.admin === 'superadmin',
+        isSuperAdmin: botParticipant.admin === 'superadmin',
       };
     } catch (error) {
-      logError("Error obteniendo permisos del bot:", error);
+      logError('Error obteniendo permisos del bot:', error);
       return { isAdmin: false, isSuperAdmin: false };
     }
   }
 
-  static async canBotModerate(
-    sock: WASocket,
-    groupJid: string,
-  ): Promise<boolean> {
+  static async canBotModerate(sock: WASocket, groupJid: string): Promise<boolean> {
     const permissions = await this.getBotPermissions(sock, groupJid);
     return permissions.isAdmin;
   }
@@ -234,46 +228,33 @@ export class PermissionService {
     return permissions.isOwner || permissions.isAdmin;
   }
 
-  static async getGroupAdmins(
-    sock: WASocket,
-    groupJid: string,
-  ): Promise<string[]> {
+  static async getGroupAdmins(sock: WASocket, groupJid: string): Promise<string[]> {
     try {
       const metadata = await this.getGroupMetadata(sock, groupJid);
       if (!metadata) return [];
       return metadata.participants
-        .filter((p: any) => p.admin === "admin" || p.admin === "superadmin")
-        .map((p: any) => p.id);
+        .filter(p => p.admin === 'admin' || p.admin === 'superadmin')
+        .map(p => p.id);
     } catch (error) {
-      logError("Error obteniendo administradores:", error);
+      logError('Error obteniendo administradores:', error);
       return [];
     }
   }
 
-  static async isUserInGroup(
-    sock: WASocket,
-    groupJid: string,
-    userJid: string,
-  ): Promise<boolean> {
+  static async isUserInGroup(sock: WASocket, groupJid: string, userJid: string): Promise<boolean> {
     try {
       const metadata = await this.getGroupMetadata(sock, groupJid);
       if (!metadata) return false;
 
       if (isLidJid(userJid)) {
-        return metadata.participants.some(
-          (p: any) => normalizeJid(p.id) === normalizeJid(userJid),
-        );
+        return metadata.participants.some(p => normalizeJid(p.id) === normalizeJid(userJid));
       }
 
-      const userPhone = userJid.split("@")[0].split(":")[0];
-      const participant = await this.findParticipantByPhone(
-        sock,
-        metadata.participants,
-        userPhone,
-      );
+      const userPhone = userJid.split('@')[0].split(':')[0];
+      const participant = await this.findParticipantByPhone(sock, metadata.participants, userPhone);
       return participant !== null;
     } catch (error) {
-      logError("Error verificando participante:", error);
+      logError('Error verificando participante:', error);
       return false;
     }
   }

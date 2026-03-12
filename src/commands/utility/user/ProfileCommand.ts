@@ -1,26 +1,42 @@
-import { Command } from "../../Command.js";
-import { CommandCategory } from "@/types/index.js";
-import type { MessageContext } from "@/types/index.js";
-import { serviceManager } from "@/services/system/Servicemanager.js";
-import { formatNumber, formatTime } from "@/utils/helpers.js";
-import type { User } from "@/services/database/UserService.js";
-import fs from "fs";
-import path from "path";
+import { Command } from '../../Command.js';
+import { CommandCategory } from '@/types/index.js';
+import type { MessageContext } from '@/types/index.js';
+import { serviceManager } from '@/services/system/Servicemanager.js';
+import { formatNumber, formatTime } from '@/utils/helpers.js';
+import type { User } from '@/services/database/UserService.js';
+import fs from 'fs';
+import path from 'path';
+
+interface LevelProgress {
+  currentXP: number;
+  requiredXP: number;
+  percentage: number;
+}
+
+interface ClientStats {
+  messagesReceived: number;
+  commandsExecuted: number;
+  messagesProcessed: number;
+  avgProcessingTime?: number;
+  queue?: {
+    queued: number;
+    processing: number;
+  };
+}
 
 export class ProfileCommand extends Command {
-  name = "profile";
-  description = "Show user profile";
+  name = 'profile';
+  description = 'Show user profile';
   category = CommandCategory.UTILITY;
-  aliases = ["perfil", "me", "stats"];
-  usage = "!profile [@user]";
-  examples = ["!profile", "!profile @5215551234567", "!me"];
+  aliases = ['perfil', 'me', 'stats'];
+  usage = '!profile [@user]';
+  examples = ['!profile', '!profile @5215551234567', '!me'];
 
   private static logoBuffer: Buffer | null = null;
   private static logoLoaded = false;
 
   async execute(ctx: MessageContext): Promise<void> {
-    const mentionedJid =
-      ctx.message.message?.extendedTextMessage?.contextInfo?.mentionedJid?.[0];
+    const mentionedJid = ctx.message.message?.extendedTextMessage?.contextInfo?.mentionedJid?.[0];
     const targetJid = mentionedJid || ctx.sender.jid;
     const isSelf = targetJid === ctx.sender.jid;
 
@@ -40,17 +56,12 @@ export class ProfileCommand extends Command {
 
       const displayData = this.prepareDisplayData(userData);
 
-      const message = this.buildProfileCard(
-        userData,
-        displayData,
-        progress,
-        isSelf,
-      );
+      const message = this.buildProfileCard(userData, displayData, progress, isSelf);
 
       await this.sendProfileWithImage(ctx, targetJid, message);
     } catch (error) {
-      console.error("Error in ProfileCommand:", error);
-      await ctx.reply("❌ Error retrieving profile");
+      console.error('Error in ProfileCommand:', error);
+      await ctx.reply('❌ Error retrieving profile');
     }
   }
 
@@ -58,7 +69,7 @@ export class ProfileCommand extends Command {
     if (!botJid) return false;
 
     const normalizeJid = (jid: string) => {
-      return jid.split("@")[0].split(":")[0];
+      return jid.split('@')[0].split(':')[0];
     };
 
     const targetNumber = normalizeJid(targetJid);
@@ -69,7 +80,7 @@ export class ProfileCommand extends Command {
 
   private async sendBotProfile(ctx: MessageContext): Promise<void> {
     const uptime = this.formatUptime(process.uptime() * 1000);
-    const client = (global as any).client;
+    const client = (global as { client?: { getStats: () => ClientStats } }).client;
     const stats = client?.getStats() || {
       messagesReceived: 0,
       commandsExecuted: 0,
@@ -82,7 +93,7 @@ export class ProfileCommand extends Command {
 ✦━━━━━━━━━━━━━━━━━━✦
 
 🆔 *Bot Information*
-   • Name: ${ctx.sock.user?.name || "VaniaBot"}
+   • Name: ${ctx.sock.user?.name || 'VaniaBot'}
    • Status: 🟢 Online
    • Uptime: ${uptime}
 
@@ -135,7 +146,7 @@ export class ProfileCommand extends Command {
     try {
       const imageBuffer = await Promise.race([
         this.getProfileImage(ctx, targetJid),
-        new Promise<null>((resolve) => setTimeout(() => resolve(null), 2000)),
+        new Promise<null>(resolve => setTimeout(() => resolve(null), 2000)),
       ]);
 
       if (imageBuffer) {
@@ -146,24 +157,21 @@ export class ProfileCommand extends Command {
       } else {
         await ctx.reply(message);
       }
-    } catch (error) {
+    } catch {
       await ctx.reply(message);
     }
   }
 
-  private async getProfileImage(
-    ctx: MessageContext,
-    targetJid: string,
-  ): Promise<Buffer | null> {
+  private async getProfileImage(ctx: MessageContext, targetJid: string): Promise<Buffer | null> {
     try {
       let normalizedJid = targetJid;
 
-      if (targetJid.includes("@lid")) {
-        const phoneNumber = targetJid.split("@")[0];
+      if (targetJid.includes('@lid')) {
+        const phoneNumber = targetJid.split('@')[0];
         normalizedJid = `${phoneNumber}@s.whatsapp.net`;
       }
 
-      const url = await ctx.sock.profilePictureUrl(normalizedJid, "image");
+      const url = await ctx.sock.profilePictureUrl(normalizedJid, 'image');
       if (url) {
         const response = await fetch(url, {
           signal: AbortSignal.timeout(1500),
@@ -172,7 +180,9 @@ export class ProfileCommand extends Command {
           return Buffer.from(await response.arrayBuffer());
         }
       }
-    } catch (error) {}
+    } catch {
+      // Ignorar errores
+    }
 
     return this.getDefaultLogo();
   }
@@ -183,14 +193,14 @@ export class ProfileCommand extends Command {
     }
 
     try {
-      const logoPath = path.join(process.cwd(), "data", "assets", "logo.png");
+      const logoPath = path.join(process.cwd(), 'data', 'assets', 'logo.png');
       if (fs.existsSync(logoPath)) {
         ProfileCommand.logoBuffer = fs.readFileSync(logoPath);
         ProfileCommand.logoLoaded = true;
         return ProfileCommand.logoBuffer;
       }
-    } catch (err) {
-      console.error("Error loading logo:", err);
+    } catch {
+      // Ignorar errores
     }
 
     ProfileCommand.logoLoaded = true;
@@ -213,11 +223,11 @@ export class ProfileCommand extends Command {
   private buildProfileCard(
     userData: User,
     displayData: User,
-    progress: any,
+    progress: LevelProgress,
     isSelf: boolean,
   ): string {
     const progressBar = userData.isOwner
-      ? "★".repeat(10)
+      ? '★'.repeat(10)
       : this.createProgressBar(progress.currentXP, progress.requiredXP, 10);
 
     const registeredTime = this.getTimeSince(userData.createdAt);
@@ -226,20 +236,17 @@ export class ProfileCommand extends Command {
     const canWeekly = serviceManager.userService.canClaimWeekly(userData);
     const canMonthly = serviceManager.userService.canClaimMonthly(userData);
 
-    let dailyInfo = "";
+    let dailyInfo = '';
     if (!canDaily && !userData.isOwner) {
-      const remaining =
-        serviceManager.userService.getDailyTimeRemaining(userData);
+      const remaining = serviceManager.userService.getDailyTimeRemaining(userData);
       if (remaining > 0) dailyInfo = `\n     ⏰ ${formatTime(remaining)}`;
     }
 
     const xpDisplay = userData.isOwner
-      ? "∞ INFINITE"
+      ? '∞ INFINITE'
       : `${formatNumber(progress.currentXP)} / ${formatNumber(progress.requiredXP)}`;
 
-    const percentageDisplay = userData.isOwner
-      ? "100%"
-      : `${progress.percentage}%`;
+    const percentageDisplay = userData.isOwner ? '100%' : `${progress.percentage}%`;
 
     let card = `✦━━━━━━━━━━━━✦
 > _*♡ VaniaBot Profile ♡*_
@@ -288,9 +295,9 @@ export class ProfileCommand extends Command {
    ♛ *Owner Privileges* ♛
 > _*VaniaBot*_`;
     } else {
-      card += `   ${canDaily ? "✅" : "❌"} Daily${dailyInfo}
-   ${canWeekly ? "✅" : "❌"} Weekly
-   ${canMonthly ? "✅" : "❌"} Monthly
+      card += `   ${canDaily ? '✅' : '❌'} Daily${dailyInfo}
+   ${canWeekly ? '✅' : '❌'} Weekly
+   ${canMonthly ? '✅' : '❌'} Monthly
 `;
 
       if (isSelf) {
@@ -306,40 +313,36 @@ export class ProfileCommand extends Command {
     return card.trim();
   }
 
-  private createProgressBar(
-    current: number,
-    total: number,
-    length: number = 10,
-  ): string {
+  private createProgressBar(current: number, total: number, length: number = 10): string {
     if (total <= 0 || current < 0) {
-      return "★".repeat(length);
+      return '★'.repeat(length);
     }
 
     const percentage = Math.min(Math.max(current / total, 0), 1);
     const filled = Math.floor(percentage * length);
     const empty = Math.max(0, length - filled);
 
-    return "★".repeat(filled) + "☆".repeat(empty);
+    return '★'.repeat(filled) + '☆'.repeat(empty);
   }
 
   private getRoleIcon(user: User): string {
-    if (user.isOwner) return "♛";
-    if (user.isBanned) return "⛔";
-    if (user.level >= 100) return "👑";
-    if (user.level >= 50) return "💎";
-    if (user.level >= 25) return "🌟";
-    if (user.level >= 10) return "⭐";
-    return "✨";
+    if (user.isOwner) return '♛';
+    if (user.isBanned) return '⛔';
+    if (user.level >= 100) return '👑';
+    if (user.level >= 50) return '💎';
+    if (user.level >= 25) return '🌟';
+    if (user.level >= 10) return '⭐';
+    return '✨';
   }
 
   private getUserRole(user: User): string {
-    if (user.isOwner) return "Supreme Owner";
-    if (user.isBanned) return "Banned";
-    if (user.level >= 100) return "Legend";
-    if (user.level >= 50) return "Veteran";
-    if (user.level >= 25) return "Expert";
-    if (user.level >= 10) return "Intermediate";
-    return "Novice";
+    if (user.isOwner) return 'Supreme Owner';
+    if (user.isBanned) return 'Banned';
+    if (user.level >= 100) return 'Legend';
+    if (user.level >= 50) return 'Veteran';
+    if (user.level >= 25) return 'Expert';
+    if (user.level >= 10) return 'Intermediate';
+    return 'Novice';
   }
 
   private getTimeSince(timestamp: number): string {
@@ -351,14 +354,14 @@ export class ProfileCommand extends Command {
 
     if (days > 30) {
       const months = Math.floor(days / 30);
-      return `${months} ${months === 1 ? "month" : "months"} ago`;
+      return `${months} ${months === 1 ? 'month' : 'months'} ago`;
     }
     if (days > 0) {
-      return `${days} ${days === 1 ? "day" : "days"} ago`;
+      return `${days} ${days === 1 ? 'day' : 'days'} ago`;
     }
     if (hours > 0) {
-      return `${hours} ${hours === 1 ? "hour" : "hours"} ago`;
+      return `${hours} ${hours === 1 ? 'hour' : 'hours'} ago`;
     }
-    return "minutes ago";
+    return 'minutes ago';
   }
 }

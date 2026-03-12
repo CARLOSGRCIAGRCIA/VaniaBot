@@ -1,6 +1,6 @@
-import { Middleware } from "./Middleware.js";
-import type { MessageContext } from "@/types/index.js";
-import { serviceManager } from "@/services/system/Servicemanager.js";
+import { Middleware } from './Middleware.js';
+import type { MessageContext } from '@/types/index.js';
+import { serviceManager } from '@/services/system/Servicemanager.js';
 
 interface UserMessageTracker {
   messages: number[];
@@ -8,14 +8,13 @@ interface UserMessageTracker {
 }
 
 export class AntiSpamMiddleware extends Middleware {
-  name = "anti-spam";
+  name = 'anti-spam';
 
   private userMessages = new Map<string, UserMessageTracker>();
   private readonly CLEANUP_INTERVAL = 60000;
 
   constructor() {
     super();
-
     setInterval(() => this.cleanup(), this.CLEANUP_INTERVAL);
   }
 
@@ -25,9 +24,7 @@ export class AntiSpamMiddleware extends Middleware {
       return;
     }
 
-    const groupSettings = await serviceManager.groupService.getGroup(
-      ctx.chat.jid,
-    );
+    const groupSettings = await serviceManager.groupService.getGroup(ctx.chat.jid);
 
     if (!groupSettings.antiSpam.enabled) {
       await next();
@@ -45,51 +42,37 @@ export class AntiSpamMiddleware extends Middleware {
       this.userMessages.set(key, tracker);
     }
 
-    tracker.messages = tracker.messages.filter(
-      (time) => now - time < timeWindow,
-    );
-
+    tracker.messages = tracker.messages.filter(time => now - time < timeWindow);
     tracker.messages.push(now);
 
     if (tracker.messages.length > maxMessages) {
       tracker.warnings++;
 
       if (tracker.warnings === 1) {
-        await ctx.reply("⚠️ *Advertencia:* No hagas spam");
+        await ctx.reply('⚠️ *Advertencia:* No hagas spam');
         return;
       }
 
       if (tracker.warnings === 2) {
-        await ctx.reply(
-          "⚠️ *Última advertencia:* Deja de hacer spam o serás expulsado",
-        );
+        await ctx.reply('⚠️ *Última advertencia:* Deja de hacer spam o serás expulsado');
         return;
       }
 
       if (tracker.warnings >= 3 && ctx.chat.isBotAdmin) {
         try {
-          await ctx.sock.groupParticipantsUpdate(
-            ctx.chat.jid,
-            [ctx.sender.jid],
-            "remove",
-          );
-
-          await ctx.sendMessage({
+          await ctx.sock.groupParticipantsUpdate(ctx.chat.jid, [ctx.sender.jid], 'remove');
+          await ctx.sock.sendMessage(ctx.chat.jid, {
             text: `❌ ${ctx.sender.pushName} fue expulsado por spam`,
           });
-
           this.userMessages.delete(key);
-
           return;
-        } catch (error) {
-          await ctx.reply("❌ No pude expulsar al usuario (falta permisos)");
+        } catch (_err) {
+          await ctx.reply('❌ No pude expulsar al usuario (falta permisos)');
         }
       }
 
       if (tracker.warnings >= 3) {
-        await ctx.reply(
-          "❌ Spam detectado. Serías expulsado si el bot fuera administrador.",
-        );
+        await ctx.reply('❌ Spam detectado. Serías expulsado si el bot fuera administrador.');
         return;
       }
     }
@@ -102,10 +85,7 @@ export class AntiSpamMiddleware extends Middleware {
     const maxAge = 5 * 60 * 1000;
 
     for (const [key, tracker] of this.userMessages.entries()) {
-      if (
-        tracker.messages.length === 0 ||
-        tracker.messages.every((time) => now - time > maxAge)
-      ) {
+      if (tracker.messages.length === 0 || tracker.messages.every(time => now - time > maxAge)) {
         this.userMessages.delete(key);
       }
     }

@@ -1,34 +1,31 @@
-import { Command } from "../Command.js";
-import { CommandCategory } from "@/types/index.js";
-import type { MessageContext } from "@/types/index.js";
-import { serviceManager } from "@/services/system/Servicemanager.js";
-import { formatNumber } from "@/utils/helpers.js";
+import { Command } from '../Command.js';
+import { CommandCategory } from '@/types/index.js';
+import type { MessageContext } from '@/types/index.js';
+import { serviceManager } from '@/services/system/Servicemanager.js';
+import { formatNumber } from '@/utils/helpers.js';
 
 export class CoinflipCommand extends Command {
-  name = "coinflip";
-  description = "Bet on a coin flip (heads or tails)";
+  name = 'coinflip';
+  description = 'Bet on a coin flip (heads or tails)';
   category = CommandCategory.GAME;
-  aliases = ["cf"];
-  usage = "!coinflip <heads|tails> <amount>";
-  examples = ["!cf heads 500", "!coinflip tails 1000"];
+  aliases = ['cf'];
+  usage = '!coinflip <heads|tails> <amount>';
+  examples = ['!cf heads 500', '!coinflip tails 1000'];
   cooldown = 5000;
 
   async execute(ctx: MessageContext): Promise<void> {
     const rawChoice = ctx.args[0]?.toLowerCase();
     const amountStr = ctx.args[1];
 
-    let userChoice: "heads" | "tails" | null = null;
-    if (["heads", "head", "h"].includes(rawChoice)) {
-      userChoice = "heads";
-    } else if (["tails", "tail", "t"].includes(rawChoice)) {
-      userChoice = "tails";
+    let userChoice: 'heads' | 'tails' | null = null;
+    if (['heads', 'head', 'h'].includes(rawChoice)) {
+      userChoice = 'heads';
+    } else if (['tails', 'tail', 't'].includes(rawChoice)) {
+      userChoice = 'tails';
     }
 
     if (!userChoice) {
-      await ctx.reply(
-        `Invalid choice. Please select heads or tails.\n\n` +
-          `Usage: ${this.usage}`,
-      );
+      await ctx.reply(`Invalid choice. Please select heads or tails.\n\n` + `Usage: ${this.usage}`);
       return;
     }
 
@@ -41,14 +38,11 @@ export class CoinflipCommand extends Command {
     const user = await serviceManager.userService.getUser(ctx.sender.jid);
 
     if (user.money < amount) {
-      await ctx.reply(
-        `You don't have enough money.\n\n` +
-          `Balance: $${formatNumber(user.money)}`,
-      );
+      await ctx.reply(`You don't have enough money.\n\n` + `Balance: $${formatNumber(user.money)}`);
       return;
     }
 
-    const result: "heads" | "tails" = Math.random() < 0.5 ? "heads" : "tails";
+    const result: 'heads' | 'tails' = Math.random() < 0.5 ? 'heads' : 'tails';
     const won = result === userChoice;
 
     if (won) {
@@ -57,14 +51,10 @@ export class CoinflipCommand extends Command {
       await serviceManager.userService.removeMoney(ctx.sender.jid, amount);
     }
 
-    const updatedUser = await serviceManager.userService.getUser(
-      ctx.sender.jid,
-    );
+    const updatedUser = await serviceManager.userService.getUser(ctx.sender.jid);
 
-    const status = won ? "YOU WON!" : "You lost.";
-    const change = won
-      ? `+$${formatNumber(amount)}`
-      : `-$${formatNumber(amount)}`;
+    const status = won ? 'YOU WON!' : 'You lost.';
+    const change = won ? `+$${formatNumber(amount)}` : `-$${formatNumber(amount)}`;
 
     await ctx.reply(
       `*COIN FLIP*\n\n` +

@@ -8,16 +8,25 @@
  * @module QuestionGenerator
  */
 
-import { aiService } from "@/services/external/AIService.js";
-import { QuizDifficulty, type QuizQuestion } from "./QuizTypes.js";
-
-const CACHE_SIZE = 10;
+import { aiService } from '@/services/external/AIService.js';
+import type { QuizDifficulty } from './QuizTypes.js';
+import type { QuizQuestion } from './QuizTypes.js';
 
 const CACHE_TTL = 2 * 60 * 60 * 1000;
 
 interface CacheEntry {
   questions: QuizQuestion[];
   createdAt: number;
+}
+
+interface RawQuestion {
+  question: string;
+  answer: string;
+  acceptableAnswers: string[];
+  explanation: string;
+  hint: string;
+  difficulty?: string;
+  category?: string;
 }
 
 export class QuestionGenerator {
@@ -40,9 +49,7 @@ export class QuestionGenerator {
     const entry = this.cache.get(key);
 
     if (entry && Date.now() - entry.createdAt < CACHE_TTL) {
-      const fresh = entry.questions.find(
-        (q) => !usedQuestions.includes(q.question),
-      );
+      const fresh = entry.questions.find(q => !usedQuestions.includes(q.question));
       if (fresh) return fresh;
     }
 
@@ -51,7 +58,7 @@ export class QuestionGenerator {
 
     this.cache.set(key, { questions: batch, createdAt: Date.now() });
 
-    return batch.find((q) => !usedQuestions.includes(q.question)) ?? batch[0];
+    return batch.find(q => !usedQuestions.includes(q.question)) ?? batch[0];
   }
 
   /** Genera un lote de N preguntas en una sola llamada a la IA */
@@ -60,19 +67,17 @@ export class QuestionGenerator {
     difficulty: QuizDifficulty,
     avoid: string[],
   ): Promise<QuizQuestion[]> {
-    const diffLabel = { easy: "fácil", medium: "intermedia", hard: "difícil" }[
-      difficulty
-    ];
+    const diffLabel = { easy: 'fácil', medium: 'intermedia', hard: 'difícil' }[difficulty];
     const avoidStr = avoid
       .slice(-10)
-      .map((q) => `- ${q}`)
-      .join("\n");
+      .map(q => `- ${q}`)
+      .join('\n');
 
     const prompt = `Eres un generador de preguntas de trivia/quiz educativo.
 
 Categoría: ${category}
 Dificultad: ${diffLabel}
-${avoid.length ? `\nNO repitas estas preguntas:\n${avoidStr}` : ""}
+${avoid.length ? `\nNO repitas estas preguntas:\n${avoidStr}` : ''}
 
 Genera EXACTAMENTE 5 preguntas diferentes. Responde ÚNICAMENTE con un array JSON válido, sin texto adicional, sin markdown, sin explicaciones fuera del JSON.
 
@@ -109,32 +114,34 @@ Reglas:
   ): QuizQuestion[] {
     try {
       const clean = raw
-        .replace(/```json\s*/gi, "")
-        .replace(/```\s*/g, "")
+        .replace(/```json\s*/gi, '')
+        .replace(/```\s*/g, '')
         .trim();
 
       const match = clean.match(/\[[\s\S]*\]/);
-      if (!match) throw new Error("No se encontró array JSON");
+      if (!match) throw new Error('No se encontró array JSON');
 
-      const parsed = JSON.parse(match[0]);
-      if (!Array.isArray(parsed)) throw new Error("Respuesta no es array");
+      const parsed = JSON.parse(match[0]) as unknown[];
+      if (!Array.isArray(parsed)) throw new Error('Respuesta no es array');
 
       return parsed
-        .filter(
-          (q: any) =>
-            typeof q.question === "string" &&
-            typeof q.answer === "string" &&
-            typeof q.explanation === "string" &&
-            typeof q.hint === "string" &&
-            Array.isArray(q.acceptableAnswers),
-        )
+        .filter((q): q is RawQuestion => {
+          if (typeof q !== 'object' || q === null) return false;
+          const obj = q as Record<string, unknown>;
+          return (
+            typeof obj.question === 'string' &&
+            typeof obj.answer === 'string' &&
+            typeof obj.explanation === 'string' &&
+            typeof obj.hint === 'string' &&
+            Array.isArray(obj.acceptableAnswers) &&
+            obj.acceptableAnswers.every((a: unknown) => typeof a === 'string')
+          );
+        })
         .map(
-          (q: any): QuizQuestion => ({
+          (q): QuizQuestion => ({
             question: q.question.trim(),
             answer: q.answer.toLowerCase().trim(),
-            acceptableAnswers: (q.acceptableAnswers as string[]).map((a) =>
-              a.toLowerCase().trim(),
-            ),
+            acceptableAnswers: q.acceptableAnswers.map(a => a.toLowerCase().trim()),
             explanation: q.explanation.trim(),
             hint: q.hint.trim(),
             difficulty,
@@ -142,7 +149,7 @@ Reglas:
           }),
         );
     } catch (err) {
-      console.error("[QuizGen] Error parseando preguntas:", err);
+      console.error('[QuizGen] Error parseando preguntas:', err);
       return [];
     }
   }

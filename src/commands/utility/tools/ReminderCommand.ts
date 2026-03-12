@@ -1,9 +1,6 @@
-import { Command } from "../../Command.js";
-import {
-  CommandCategory,
-  CommandContext,
-  type MessageContext,
-} from "@/types/index.js";
+import { Command } from '../../Command.js';
+import { CommandCategory, CommandContext, type MessageContext } from '@/types/index.js';
+import type { WASocket } from '@whiskeysockets/baileys';
 
 interface Reminder {
   id: string;
@@ -17,20 +14,20 @@ interface Reminder {
 const reminders = new Map<string, Reminder>();
 const reminderTimers = new Map<string, NodeJS.Timeout>();
 
-let globalSock: any = null;
+let globalSock: WASocket | null = null;
 
 export class ReminderCommand extends Command {
-  name = "recordatorio";
-  description = "Programa recordatorios y alarmas personales.";
+  name = 'recordatorio';
+  description = 'Programa recordatorios y alarmas personales.';
   category = CommandCategory.UTILITY;
-  aliases = ["remind", "alarma", "recordar", "timer"];
-  usage = "!recordatorio <tiempo> <mensaje>";
+  aliases = ['remind', 'alarma', 'recordar', 'timer'];
+  usage = '!recordatorio <tiempo> <mensaje>';
   examples = [
-    "!recordatorio 10m Revisar el horno",
-    "!recordatorio 2h Llamar al doctor",
-    "!recordatorio 1d Pagar la renta",
-    "!recordatorio lista",
-    "!recordatorio cancelar <id>",
+    '!recordatorio 10m Revisar el horno',
+    '!recordatorio 2h Llamar al doctor',
+    '!recordatorio 1d Pagar la renta',
+    '!recordatorio lista',
+    '!recordatorio cancelar <id>',
   ];
   cooldown = 2000;
   contexts = [CommandContext.BOTH];
@@ -76,7 +73,7 @@ export class ReminderCommand extends Command {
     return Math.random().toString(36).substring(2, 7).toUpperCase();
   }
 
-  private scheduleReminder(reminder: Reminder, sock: any): void {
+  private scheduleReminder(reminder: Reminder, sock: WASocket): void {
     const delay = reminder.triggerAt - Date.now();
     if (delay <= 0) return;
 
@@ -88,10 +85,12 @@ export class ReminderCommand extends Command {
             `━━━━━━━━━━━━━━━━\n` +
             `📝 ${reminder.message}\n` +
             `━━━━━━━━━━━━━━━━\n` +
-            `👤 @${reminder.userJid.split("@")[0]}`,
+            `👤 @${reminder.userJid.split('@')[0]}`,
           mentions: [reminder.userJid],
         });
-      } catch (_) {}
+      } catch {
+        // Ignorar errores de envío
+      }
       reminders.delete(reminder.id);
       reminderTimers.delete(reminder.id);
     }, delay);
@@ -104,17 +103,15 @@ export class ReminderCommand extends Command {
 
     const sub = ctx.args[0]?.toLowerCase();
 
-    if (sub === "lista" || sub === "list") {
-      const userReminders = [...reminders.values()].filter(
-        (r) => r.userJid === ctx.sender.jid,
-      );
+    if (sub === 'lista' || sub === 'list') {
+      const userReminders = [...reminders.values()].filter(r => r.userJid === ctx.sender.jid);
 
       if (!userReminders.length) {
-        await ctx.reply("📭 No tienes recordatorios activos.");
+        await ctx.reply('📭 No tienes recordatorios activos.');
         return;
       }
 
-      const lines = userReminders.map((r) => {
+      const lines = userReminders.map(r => {
         const left = this.formatTimeLeft(r.triggerAt - Date.now());
         return `🔔 *[${r.id}]* — ${r.message}\n   ⏳ En: ${left}`;
       });
@@ -122,17 +119,17 @@ export class ReminderCommand extends Command {
       await ctx.reply(
         `⏰ *Tus recordatorios activos*\n` +
           `━━━━━━━━━━━━━━━━\n` +
-          lines.join("\n\n") +
+          lines.join('\n\n') +
           `\n━━━━━━━━━━━━━━━━\n` +
           `Para cancelar: !recordatorio cancelar <ID>`,
       );
       return;
     }
 
-    if (sub === "cancelar" || sub === "cancel") {
+    if (sub === 'cancelar' || sub === 'cancel') {
       const id = ctx.args[1]?.toUpperCase();
       if (!id) {
-        await ctx.reply("❌ Uso: !recordatorio cancelar <ID>");
+        await ctx.reply('❌ Uso: !recordatorio cancelar <ID>');
         return;
       }
 
@@ -143,7 +140,7 @@ export class ReminderCommand extends Command {
       }
 
       if (reminder.userJid !== ctx.sender.jid && !ctx.sender.isOwner) {
-        await ctx.reply("❌ Solo puedes cancelar tus propios recordatorios.");
+        await ctx.reply('❌ Solo puedes cancelar tus propios recordatorios.');
         return;
       }
 
@@ -173,26 +170,21 @@ export class ReminderCommand extends Command {
     }
 
     const timeStr = ctx.args[0];
-    const messageText = ctx.args.slice(1).join(" ");
+    const messageText = ctx.args.slice(1).join(' ');
 
     const delayMs = this.parseTime(timeStr);
     if (!delayMs || delayMs <= 0) {
-      await ctx.reply(
-        `❌ Tiempo inválido: *${timeStr}*\n` +
-          `Ejemplos válidos: 30s, 10m, 2h, 1d`,
-      );
+      await ctx.reply(`❌ Tiempo inválido: *${timeStr}*\n` + `Ejemplos válidos: 30s, 10m, 2h, 1d`);
       return;
     }
 
     const maxMs = 7 * 24 * 60 * 60 * 1000;
     if (delayMs > maxMs) {
-      await ctx.reply("❌ El tiempo máximo para un recordatorio es *7 días*.");
+      await ctx.reply('❌ El tiempo máximo para un recordatorio es *7 días*.');
       return;
     }
 
-    const userReminders = [...reminders.values()].filter(
-      (r) => r.userJid === ctx.sender.jid,
-    );
+    const userReminders = [...reminders.values()].filter(r => r.userJid === ctx.sender.jid);
     if (userReminders.length >= this.MAX_REMINDERS_PER_USER) {
       await ctx.reply(
         `❌ Límite alcanzado (máx. ${this.MAX_REMINDERS_PER_USER} recordatorios).\n` +
@@ -216,14 +208,14 @@ export class ReminderCommand extends Command {
     reminders.set(id, reminder);
     this.scheduleReminder(reminder, ctx.sock);
 
-    await ctx.react("✅");
+    await ctx.react('✅');
     await ctx.reply(
       `⏰ *Recordatorio programado*\n` +
         `━━━━━━━━━━━━━━━━\n` +
         `🆔 ID: *${id}*\n` +
         `📝 Mensaje: ${messageText}\n` +
         `⏳ En: *${this.formatTimeLeft(delayMs)}*\n` +
-        `🕐 A las: ${new Date(triggerAt).toLocaleTimeString("es-MX")}\n` +
+        `🕐 A las: ${new Date(triggerAt).toLocaleTimeString('es-MX')}\n` +
         `━━━━━━━━━━━━━━━━\n` +
         `Para cancelar: !recordatorio cancelar ${id}`,
     );

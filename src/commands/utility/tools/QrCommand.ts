@@ -1,21 +1,17 @@
-import { Command } from "../../Command.js";
-import {
-  CommandCategory,
-  CommandContext,
-  type MessageContext,
-} from "@/types/index.js";
-import { createCanvas } from "canvas";
+import { Command } from '../../Command.js';
+import { CommandCategory, CommandContext, type MessageContext } from '@/types/index.js';
+// import { createCanvas } from 'canvas';
 
 export class QrCommand extends Command {
-  name = "qr";
-  description = "Genera un código QR de cualquier texto o URL.";
+  name = 'qr';
+  description = 'Genera un código QR de cualquier texto o URL.';
   category = CommandCategory.UTILITY;
-  aliases = ["qrcode", "genqr"];
-  usage = "!qr <texto o URL>";
+  aliases = ['qrcode', 'genqr'];
+  usage = '!qr <texto o URL>';
   examples = [
-    "!qr https://github.com/VaniaBot",
-    "!qr Hola, este es mi contacto: +52 1234567890",
-    "!qr https://wa.me/521234567890",
+    '!qr https://github.com/VaniaBot',
+    '!qr Hola, este es mi contacto: +52 1234567890',
+    '!qr https://wa.me/521234567890',
   ];
   cooldown = 5000;
   contexts = [CommandContext.BOTH];
@@ -42,16 +38,14 @@ export class QrCommand extends Command {
       return;
     }
 
-    const content = ctx.args.join(" ");
+    const content = ctx.args.join(' ');
 
     if (content.length > 500) {
-      await ctx.reply(
-        "❌ El contenido es demasiado largo (máx. 500 caracteres).",
-      );
+      await ctx.reply('❌ El contenido es demasiado largo (máx. 500 caracteres).');
       return;
     }
 
-    await ctx.react("⏳");
+    await ctx.react('⏳');
 
     try {
       const qrUrl =
@@ -71,20 +65,21 @@ export class QrCommand extends Command {
       const caption =
         `📱 *Código QR generado*\n` +
         `━━━━━━━━━━━━━━\n` +
-        `${isUrl ? "🔗" : "📝"} *Contenido:* ${content.length > 60 ? content.substring(0, 57) + "..." : content}\n` +
+        `${isUrl ? '🔗' : '📝'} *Contenido:* ${content.length > 60 ? content.substring(0, 57) + '...' : content}\n` +
         `📐 *Tamaño:* 400×400px\n` +
         `🛡️ *Corrección de error:* Alta (30%)`;
 
       await ctx.sock.sendMessage(ctx.chat.jid, {
         image: buffer,
         caption,
-        mimetype: "image/png",
+        mimetype: 'image/png',
       });
 
-      await ctx.react("✅");
+      await ctx.react('✅');
     } catch (error) {
-      await ctx.react("❌");
-      await ctx.reply("❌ Error al generar el QR. Intenta más tarde.");
+      await ctx.react('❌');
+      console.error('Error in qr command:', error);
+      await ctx.reply('❌ Error al generar el QR. Intenta más tarde.');
     }
   }
 }

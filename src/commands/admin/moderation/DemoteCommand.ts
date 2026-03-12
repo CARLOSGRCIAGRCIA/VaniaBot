@@ -1,20 +1,20 @@
-import { Command } from "../../Command.js";
+import { Command } from '../../Command.js';
 import {
   CommandCategory,
   CommandContext,
   PermissionLevel,
   BotPermission,
   type MessageContext,
-} from "@/types/index.js";
-import { serviceManager } from "@/services/system/Servicemanager.js";
+} from '@/types/index.js';
+import { serviceManager } from '@/services/system/Servicemanager.js';
 
 export class DemoteCommand extends Command {
-  name = "demote";
-  description = "Demote an admin to regular user";
+  name = 'demote';
+  description = 'Demote an admin to regular user';
   category = CommandCategory.MODERATION;
-  aliases = ["degradar", "deadmin"];
-  usage = "!demote @user";
-  examples = ["!demote @user"];
+  aliases = ['degradar', 'deadmin'];
+  usage = '!demote @user';
+  examples = ['!demote @user'];
   contexts = [CommandContext.GROUP];
   permissions = {
     user: [PermissionLevel.ADMIN],
@@ -22,61 +22,54 @@ export class DemoteCommand extends Command {
   };
 
   async execute(ctx: MessageContext): Promise<void> {
-    const mentionedJid =
-      ctx.message.message?.extendedTextMessage?.contextInfo?.mentionedJid?.[0];
+    const mentionedJid = ctx.message.message?.extendedTextMessage?.contextInfo?.mentionedJid?.[0];
 
     if (!mentionedJid) {
-      await ctx.reply("❌ You must mention a user to demote");
+      await ctx.reply('❌ You must mention a user to demote');
       return;
     }
 
     if (mentionedJid === ctx.sender.jid) {
-      await ctx.reply("❌ You cannot demote yourself");
+      await ctx.reply('❌ You cannot demote yourself');
       return;
     }
 
-    if (mentionedJid === ctx.sock.user?.id.split(":")[0] + "@s.whatsapp.net") {
-      await ctx.reply("❌ You cannot demote the bot");
+    if (mentionedJid === ctx.sock.user?.id.split(':')[0] + '@s.whatsapp.net') {
+      await ctx.reply('❌ You cannot demote the bot');
       return;
     }
 
-    await ctx.react("⏳");
+    await ctx.react('⏳');
 
     try {
       const groupMetadata = await ctx.sock.groupMetadata(ctx.chat.jid);
-      const participant = groupMetadata.participants.find(
-        (p) => p.id === mentionedJid,
-      );
+      const participant = groupMetadata.participants.find(p => p.id === mentionedJid);
 
       if (!participant) {
-        await ctx.reply("❌ User not found in group");
+        await ctx.reply('❌ User not found in group');
         return;
       }
 
       if (!participant.admin || participant.admin === null) {
-        await ctx.reply("⚠️ This user is not an admin");
+        await ctx.reply('⚠️ This user is not an admin');
         return;
       }
 
-      if (participant.admin === "superadmin") {
-        await ctx.reply("❌ You cannot demote the group creator");
+      if (participant.admin === 'superadmin') {
+        await ctx.reply('❌ You cannot demote the group creator');
         return;
       }
 
       const targetUser = await serviceManager.userService.getUser(mentionedJid);
 
-      await ctx.sock.groupParticipantsUpdate(
-        ctx.chat.jid,
-        [mentionedJid],
-        "demote",
-      );
+      await ctx.sock.groupParticipantsUpdate(ctx.chat.jid, [mentionedJid], 'demote');
 
       await serviceManager.moderationService.logAction({
         userId: mentionedJid,
         userName: targetUser.name,
-        action: "warn",
-        reason: "Demoted from admin",
-        moderator: ctx.sender.pushName || "Unknown",
+        action: 'warn',
+        reason: 'Demoted from admin',
+        moderator: ctx.sender.pushName || 'Unknown',
         timestamp: Date.now(),
       });
 
@@ -89,11 +82,12 @@ export class DemoteCommand extends Command {
           `ℹ️ User is now a regular member`,
       );
 
-      await ctx.react("✅");
-    } catch (error: any) {
-      console.error("Error in DemoteCommand:", error);
-      await ctx.reply(`❌ Error demoting user: ${error.message}`);
-      await ctx.react("❌");
+      await ctx.react('✅');
+    } catch (error: unknown) {
+      console.error('Error in DemoteCommand:', error);
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      await ctx.reply(`❌ Error demoting user: ${message}`);
+      await ctx.react('❌');
     }
   }
 }

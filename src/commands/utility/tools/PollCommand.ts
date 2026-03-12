@@ -1,9 +1,5 @@
-import { Command } from "../../Command.js";
-import {
-  CommandCategory,
-  CommandContext,
-  type MessageContext,
-} from "@/types/index.js";
+import { Command } from '../../Command.js';
+import { CommandCategory, CommandContext, type MessageContext } from '@/types/index.js';
 
 interface PollOption {
   label: string;
@@ -25,17 +21,17 @@ interface Poll {
 const polls = new Map<string, Poll>();
 
 export class PollCommand extends Command {
-  name = "encuesta";
-  description = "Crea y gestiona encuestas con múltiples opciones.";
+  name = 'encuesta';
+  description = 'Crea y gestiona encuestas con múltiples opciones.';
   category = CommandCategory.UTILITY;
-  aliases = ["poll", "votacion", "votar"];
+  aliases = ['poll', 'votacion', 'votar'];
   usage = '!encuesta "Pregunta" "Op1" "Op2" "Op3..."';
   examples = [
     '!encuesta "¿Cuál es tu color favorito?" "Rojo" "Azul" "Verde" "Amarillo"',
     '!encuesta "¿Qué comemos hoy?" "Pizza" "Tacos" "Sushi"',
-    "!encuesta votar 1",
-    "!encuesta resultado",
-    "!encuesta cerrar",
+    '!encuesta votar 1',
+    '!encuesta resultado',
+    '!encuesta cerrar',
   ];
   cooldown = 3000;
   contexts = [CommandContext.BOTH];
@@ -50,20 +46,19 @@ export class PollCommand extends Command {
     const optionLines = poll.options.map((opt, i) => {
       const count = opt.votes.size;
       const pct = totalVotes > 0 ? Math.round((count / totalVotes) * 100) : 0;
-      const bar = showBar ? this.buildBar(pct) : "";
+      const bar = showBar ? this.buildBar(pct) : '';
       return (
-        `${i + 1}️⃣ *${opt.label}*\n` +
-        `   ${bar} ${pct}% — ${count} voto${count !== 1 ? "s" : ""}`
+        `${i + 1}️⃣ *${opt.label}*\n` + `   ${bar} ${pct}% — ${count} voto${count !== 1 ? 's' : ''}`
       );
     });
 
-    return optionLines.join("\n\n");
+    return optionLines.join('\n\n');
   }
 
   private buildBar(pct: number): string {
     const filled = Math.round(pct / 10);
     const empty = 10 - filled;
-    return "▓".repeat(filled) + "░".repeat(empty);
+    return '▓'.repeat(filled) + '░'.repeat(empty);
   }
 
   private formatTimeLeft(ms: number): string {
@@ -85,27 +80,27 @@ export class PollCommand extends Command {
   async execute(ctx: MessageContext): Promise<void> {
     const sub = ctx.args[0]?.toLowerCase();
 
-    if (sub === "votar" || sub === "voto" || sub === "v") {
+    if (sub === 'votar' || sub === 'voto' || sub === 'v') {
       await this.handleVote(ctx);
       return;
     }
 
-    if (["resultado", "resultados", "result", "r", "ver"].includes(sub)) {
+    if (['resultado', 'resultados', 'result', 'r', 'ver'].includes(sub)) {
       await this.handleResults(ctx);
       return;
     }
 
-    if (["cerrar", "close", "finalizar", "fin", "end"].includes(sub)) {
+    if (['cerrar', 'close', 'finalizar', 'fin', 'end'].includes(sub)) {
       await this.handleClose(ctx);
       return;
     }
 
-    if (["cancelar", "cancel", "borrar", "delete"].includes(sub)) {
+    if (['cancelar', 'cancel', 'borrar', 'delete'].includes(sub)) {
       await this.handleCancel(ctx);
       return;
     }
 
-    if (!ctx.args.length || sub === "ayuda" || sub === "help") {
+    if (!ctx.args.length || sub === 'ayuda' || sub === 'help') {
       await ctx.reply(
         `*Encuestas — VaniaBot*\n` +
           `━━━━━━━━━━━━━━━━\n\n` +
@@ -131,7 +126,7 @@ export class PollCommand extends Command {
   }
 
   private async handleCreate(ctx: MessageContext): Promise<void> {
-    const raw = ctx.args.join(" ");
+    const raw = ctx.args.join(' ');
     const quoted = this.parseQuotedArgs(raw);
 
     if (quoted.length < 2) {
@@ -146,7 +141,7 @@ export class PollCommand extends Command {
     }
 
     if (quoted.length > 11) {
-      await ctx.reply("❌ Máximo 10 opciones por encuesta.");
+      await ctx.reply('❌ Máximo 10 opciones por encuesta.');
       return;
     }
 
@@ -163,24 +158,24 @@ export class PollCommand extends Command {
     const question = quoted[0];
     const optionLabels = quoted.slice(1);
 
-    const unique = new Set(optionLabels.map((o) => o.toLowerCase()));
+    const unique = new Set(optionLabels.map(o => o.toLowerCase()));
     if (unique.size !== optionLabels.length) {
-      await ctx.reply("❌ Las opciones no pueden repetirse.");
+      await ctx.reply('❌ Las opciones no pueden repetirse.');
       return;
     }
 
     const rawWithoutQuoted = raw
-      .replace(/"[^"]+"/g, "")
+      .replace(/"[^"]+"/g, '')
       .trim()
       .toLowerCase();
-    const allowMultiple = rawWithoutQuoted.includes("multi");
+    const allowMultiple = rawWithoutQuoted.includes('multi');
 
     let endsAt: number | undefined;
     const timeMatch = rawWithoutQuoted.match(/(\d+)(m|h)/);
     if (timeMatch) {
       const val = parseInt(timeMatch[1]);
       const unit = timeMatch[2];
-      const ms = unit === "h" ? val * 3_600_000 : val * 60_000;
+      const ms = unit === 'h' ? val * 3_600_000 : val * 60_000;
       endsAt = Date.now() + ms;
 
       setTimeout(async () => {
@@ -188,9 +183,7 @@ export class PollCommand extends Command {
         if (poll && !poll.closed) {
           poll.closed = true;
           const totalVotes = poll.options.reduce((s, o) => s + o.votes.size, 0);
-          const winner = poll.options.reduce((a, b) =>
-            b.votes.size > a.votes.size ? b : a,
-          );
+          const winner = poll.options.reduce((a, b) => (b.votes.size > a.votes.size ? b : a));
 
           await ctx.sock.sendMessage(ctx.chat.jid, {
             text:
@@ -200,9 +193,7 @@ export class PollCommand extends Command {
               `${this.buildResultsText(poll)}\n` +
               `━━━━━━━━━━━━━━━━\n` +
               `📌 *Total de votos:* ${totalVotes}\n` +
-              (totalVotes > 0
-                ? `🏆 *Ganador:* ${winner.label}`
-                : `_(sin votos)_`),
+              (totalVotes > 0 ? `🏆 *Ganador:* ${winner.label}` : `_(sin votos)_`),
           });
         }
       }, endsAt - Date.now());
@@ -213,7 +204,7 @@ export class PollCommand extends Command {
       chatJid: ctx.chat.jid,
       creatorJid: ctx.sender.jid,
       question,
-      options: optionLabels.map((label) => ({ label, votes: new Set() })),
+      options: optionLabels.map(label => ({ label, votes: new Set() })),
       allowMultiple,
       createdAt: Date.now(),
       endsAt,
@@ -222,26 +213,12 @@ export class PollCommand extends Command {
 
     polls.set(ctx.chat.jid, poll);
 
-    const numbers = [
-      "1️⃣",
-      "2️⃣",
-      "3️⃣",
-      "4️⃣",
-      "5️⃣",
-      "6️⃣",
-      "7️⃣",
-      "8️⃣",
-      "9️⃣",
-      "🔟",
-    ];
-    const optLines = poll.options
-      .map((opt, i) => `${numbers[i]} ${opt.label}`)
-      .join("\n");
+    const numbers = ['1️⃣', '2️⃣', '3️⃣', '4️⃣', '5️⃣', '6️⃣', '7️⃣', '8️⃣', '9️⃣', '🔟'];
+    const optLines = poll.options.map((opt, i) => `${numbers[i]} ${opt.label}`).join('\n');
 
     const flags = [];
-    if (allowMultiple) flags.push("✅ Múltiples votos permitidos");
-    if (endsAt)
-      flags.push(`⏰ Cierra en ${this.formatTimeLeft(endsAt - Date.now())}`);
+    if (allowMultiple) flags.push('✅ Múltiples votos permitidos');
+    if (endsAt) flags.push(`⏰ Cierra en ${this.formatTimeLeft(endsAt - Date.now())}`);
 
     const msg =
       `📊 *Nueva encuesta*\n` +
@@ -249,7 +226,7 @@ export class PollCommand extends Command {
       `❓ *${question}*\n\n` +
       `${optLines}\n` +
       `━━━━━━━━━━━━━━━━\n` +
-      (flags.length ? flags.join("\n") + "\n" : "") +
+      (flags.length ? flags.join('\n') + '\n' : '') +
       `\n*Para votar:* !encuesta votar <número>\n` +
       `*Resultados:* !encuesta resultado`;
 
@@ -260,47 +237,30 @@ export class PollCommand extends Command {
     const poll = polls.get(ctx.chat.jid);
 
     if (!poll || poll.closed) {
-      await ctx.reply("❌ No hay ninguna encuesta activa en este chat.");
+      await ctx.reply('❌ No hay ninguna encuesta activa en este chat.');
       return;
     }
 
     if (poll.endsAt && Date.now() > poll.endsAt) {
       poll.closed = true;
-      await ctx.reply("❌ La encuesta ya expiró.");
+      await ctx.reply('❌ La encuesta ya expiró.');
       return;
     }
 
     const voteArg = ctx.args[1];
     if (!voteArg) {
-      const numbers = [
-        "1️⃣",
-        "2️⃣",
-        "3️⃣",
-        "4️⃣",
-        "5️⃣",
-        "6️⃣",
-        "7️⃣",
-        "8️⃣",
-        "9️⃣",
-        "🔟",
-      ];
-      const optLines = poll.options
-        .map((opt, i) => `${numbers[i]} ${opt.label}`)
-        .join("\n");
+      const numbers = ['1️⃣', '2️⃣', '3️⃣', '4️⃣', '5️⃣', '6️⃣', '7️⃣', '8️⃣', '9️⃣', '🔟'];
+      const optLines = poll.options.map((opt, i) => `${numbers[i]} ${opt.label}`).join('\n');
 
       await ctx.reply(
-        `📊 *${poll.question}*\n\n` +
-          `${optLines}\n\n` +
-          `*Uso:* !encuesta votar <número>`,
+        `📊 *${poll.question}*\n\n` + `${optLines}\n\n` + `*Uso:* !encuesta votar <número>`,
       );
       return;
     }
 
     const voteIndex = parseInt(voteArg) - 1;
     if (isNaN(voteIndex) || voteIndex < 0 || voteIndex >= poll.options.length) {
-      await ctx.reply(
-        `❌ Número inválido. Elige entre *1* y *${poll.options.length}*.`,
-      );
+      await ctx.reply(`❌ Número inválido. Elige entre *1* y *${poll.options.length}*.`);
       return;
     }
 
@@ -308,18 +268,18 @@ export class PollCommand extends Command {
     const chosenOption = poll.options[voteIndex];
 
     if (!poll.allowMultiple) {
-      const alreadyVoted = poll.options.find((o) => o.votes.has(userJid));
+      const alreadyVoted = poll.options.find(o => o.votes.has(userJid));
 
       if (alreadyVoted) {
         if (alreadyVoted.label === chosenOption.label) {
           alreadyVoted.votes.delete(userJid);
-          await ctx.react("↩️");
+          await ctx.react('↩️');
           await ctx.reply(`↩️ Retiraste tu voto de *"${alreadyVoted.label}"*.`);
           return;
         }
         alreadyVoted.votes.delete(userJid);
         chosenOption.votes.add(userJid);
-        await ctx.react("🔄");
+        await ctx.react('🔄');
         await ctx.reply(
           `🔄 Cambiaste tu voto a *"${chosenOption.label}"*.\n` +
             `_(Voto anterior: "${alreadyVoted.label}")_`,
@@ -329,7 +289,7 @@ export class PollCommand extends Command {
     } else {
       if (chosenOption.votes.has(userJid)) {
         chosenOption.votes.delete(userJid);
-        await ctx.react("↩️");
+        await ctx.react('↩️');
         await ctx.reply(`↩️ Retiraste tu voto de *"${chosenOption.label}"*.`);
         return;
       }
@@ -338,9 +298,9 @@ export class PollCommand extends Command {
     chosenOption.votes.add(userJid);
     const totalVotes = poll.options.reduce((s, o) => s + o.votes.size, 0);
 
-    await ctx.react("✅");
+    await ctx.react('✅');
     await ctx.reply(
-      `✅ *@${ctx.sender.jid.split("@")[0]}* votó por *"${chosenOption.label}"*\n` +
+      `✅ *@${ctx.sender.jid.split('@')[0]}* votó por *"${chosenOption.label}"*\n` +
         `📊 Total de votos: ${totalVotes}`,
     );
   }
@@ -349,12 +309,12 @@ export class PollCommand extends Command {
     const poll = polls.get(ctx.chat.jid);
 
     if (!poll) {
-      await ctx.reply("❌ No hay ninguna encuesta activa en este chat.");
+      await ctx.reply('❌ No hay ninguna encuesta activa en este chat.');
       return;
     }
 
     const totalVotes = poll.options.reduce((s, o) => s + o.votes.size, 0);
-    const status = poll.closed ? "🔒 *Cerrada*" : "🟢 *En curso*";
+    const status = poll.closed ? '🔒 *Cerrada*' : '🟢 *En curso*';
 
     const msg =
       `📊 *Resultados — ${poll.question}*\n` +
@@ -365,7 +325,7 @@ export class PollCommand extends Command {
       `${status}` +
       (poll.endsAt && !poll.closed
         ? `\n⏰ *Cierra en:* ${this.formatTimeLeft(poll.endsAt - Date.now())}`
-        : "");
+        : '');
 
     await ctx.reply(msg);
   }
@@ -374,31 +334,23 @@ export class PollCommand extends Command {
     const poll = polls.get(ctx.chat.jid);
 
     if (!poll || poll.closed) {
-      await ctx.reply("❌ No hay ninguna encuesta activa para cerrar.");
+      await ctx.reply('❌ No hay ninguna encuesta activa para cerrar.');
       return;
     }
 
-    const canClose =
-      poll.creatorJid === ctx.sender.jid ||
-      ctx.sender.isAdmin ||
-      ctx.sender.isOwner;
+    const canClose = poll.creatorJid === ctx.sender.jid || ctx.sender.isAdmin || ctx.sender.isOwner;
 
     if (!canClose) {
-      await ctx.reply(
-        "❌ Solo el creador de la encuesta o un admin puede cerrarla.",
-      );
+      await ctx.reply('❌ Solo el creador de la encuesta o un admin puede cerrarla.');
       return;
     }
 
     poll.closed = true;
 
     const totalVotes = poll.options.reduce((s, o) => s + o.votes.size, 0);
-    const sorted = [...poll.options].sort(
-      (a, b) => b.votes.size - a.votes.size,
-    );
+    const sorted = [...poll.options].sort((a, b) => b.votes.size - a.votes.size);
     const winner = sorted[0];
-    const isDraw =
-      sorted.length > 1 && sorted[0].votes.size === sorted[1].votes.size;
+    const isDraw = sorted.length > 1 && sorted[0].votes.size === sorted[1].votes.size;
 
     const msg =
       `🔒 *Encuesta cerrada*\n\n` +
@@ -410,7 +362,7 @@ export class PollCommand extends Command {
       (totalVotes > 0
         ? isDraw
           ? `🤝 *Empate entre las primeras opciones*`
-          : `🏆 *Ganador:* ${winner.label} con ${winner.votes.size} voto${winner.votes.size !== 1 ? "s" : ""}`
+          : `🏆 *Ganador:* ${winner.label} con ${winner.votes.size} voto${winner.votes.size !== 1 ? 's' : ''}`
         : `_(sin votos)_`);
 
     await ctx.reply(msg);
@@ -420,24 +372,20 @@ export class PollCommand extends Command {
     const poll = polls.get(ctx.chat.jid);
 
     if (!poll) {
-      await ctx.reply("❌ No hay ninguna encuesta activa para cancelar.");
+      await ctx.reply('❌ No hay ninguna encuesta activa para cancelar.');
       return;
     }
 
     const canCancel =
-      poll.creatorJid === ctx.sender.jid ||
-      ctx.sender.isAdmin ||
-      ctx.sender.isOwner;
+      poll.creatorJid === ctx.sender.jid || ctx.sender.isAdmin || ctx.sender.isOwner;
 
     if (!canCancel) {
-      await ctx.reply(
-        "❌ Solo el creador de la encuesta o un admin puede cancelarla.",
-      );
+      await ctx.reply('❌ Solo el creador de la encuesta o un admin puede cancelarla.');
       return;
     }
 
     polls.delete(ctx.chat.jid);
-    await ctx.react("🗑️");
-    await ctx.reply("🗑️ Encuesta cancelada y eliminada.");
+    await ctx.react('🗑️');
+    await ctx.reply('🗑️ Encuesta cancelada y eliminada.');
   }
 }

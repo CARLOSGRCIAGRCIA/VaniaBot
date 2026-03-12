@@ -1,46 +1,50 @@
-import { Command } from "../../Command.js";
-import {
-  CommandCategory,
-  CommandContext,
-  type MessageContext,
-} from "@/types/index.js";
+import { Command } from '../../Command.js';
+import { CommandCategory, CommandContext, type MessageContext } from '@/types/index.js';
+
+interface FrankfurterResponse {
+  rates: Record<string, number>;
+}
+
+interface CoinGeckoResponse {
+  [key: string]: Record<string, number>;
+}
 
 export class CurrencyCommand extends Command {
-  name = "moneda";
-  description = "Convierte monedas y criptomonedas en tiempo real.";
+  name = 'moneda';
+  description = 'Convierte monedas y criptomonedas en tiempo real.';
   category = CommandCategory.UTILITY;
-  aliases = ["currency", "cambio", "crypto", "convert"];
-  usage = "!moneda <cantidad> <de> <a>";
+  aliases = ['currency', 'cambio', 'crypto', 'convert'];
+  usage = '!moneda <cantidad> <de> <a>';
   examples = [
-    "!moneda 100 USD MXN",
-    "!moneda 1 BTC USD",
-    "!moneda 50 EUR MXN",
-    "!moneda 1000 MXN USD",
+    '!moneda 100 USD MXN',
+    '!moneda 1 BTC USD',
+    '!moneda 50 EUR MXN',
+    '!moneda 1000 MXN USD',
   ];
   cooldown = 5000;
   contexts = [CommandContext.BOTH];
 
-  private readonly FIAT_API = "https://api.frankfurter.app/latest";
-  private readonly CRYPTO_API = "https://api.coingecko.com/api/v3/simple/price";
+  private readonly FIAT_API = 'https://api.frankfurter.app/latest';
+  private readonly CRYPTO_API = 'https://api.coingecko.com/api/v3/simple/price';
 
   private readonly CRYPTO_IDS: Record<string, string> = {
-    BTC: "bitcoin",
-    ETH: "ethereum",
-    BNB: "binancecoin",
-    SOL: "solana",
-    XRP: "ripple",
-    ADA: "cardano",
-    DOGE: "dogecoin",
-    MATIC: "matic-network",
-    DOT: "polkadot",
-    AVAX: "avalanche-2",
-    LINK: "chainlink",
-    UNI: "uniswap",
-    LTC: "litecoin",
-    BCH: "bitcoin-cash",
-    SHIB: "shiba-inu",
-    USDT: "tether",
-    USDC: "usd-coin",
+    BTC: 'bitcoin',
+    ETH: 'ethereum',
+    BNB: 'binancecoin',
+    SOL: 'solana',
+    XRP: 'ripple',
+    ADA: 'cardano',
+    DOGE: 'dogecoin',
+    MATIC: 'matic-network',
+    DOT: 'polkadot',
+    AVAX: 'avalanche-2',
+    LINK: 'chainlink',
+    UNI: 'uniswap',
+    LTC: 'litecoin',
+    BCH: 'bitcoin-cash',
+    SHIB: 'shiba-inu',
+    USDT: 'tether',
+    USDC: 'usd-coin',
   };
 
   private readonly CRYPTO_SYMBOLS = new Set(Object.keys(this.CRYPTO_IDS));
@@ -50,14 +54,13 @@ export class CurrencyCommand extends Command {
   }
 
   private formatNumber(n: number): string {
-    if (n >= 1_000_000)
-      return n.toLocaleString("es-MX", { maximumFractionDigits: 2 });
+    if (n >= 1_000_000) return n.toLocaleString('es-MX', { maximumFractionDigits: 2 });
     if (n >= 1)
-      return n.toLocaleString("es-MX", {
+      return n.toLocaleString('es-MX', {
         minimumFractionDigits: 2,
         maximumFractionDigits: 4,
       });
-    return n.toLocaleString("es-MX", {
+    return n.toLocaleString('es-MX', {
       minimumFractionDigits: 2,
       maximumFractionDigits: 8,
     });
@@ -65,44 +68,44 @@ export class CurrencyCommand extends Command {
 
   private getCryptoEmoji(symbol: string): string {
     const map: Record<string, string> = {
-      BTC: "₿",
-      ETH: "Ξ",
-      BNB: "🔶",
-      SOL: "◎",
-      XRP: "✕",
-      DOGE: "🐕",
-      USDT: "💵",
-      USDC: "💵",
-      SHIB: "🐕",
+      BTC: '₿',
+      ETH: 'Ξ',
+      BNB: '🔶',
+      SOL: '◎',
+      XRP: '✕',
+      DOGE: '🐕',
+      USDT: '💵',
+      USDC: '💵',
+      SHIB: '🐕',
     };
-    return map[symbol.toUpperCase()] || "🪙";
+    return map[symbol.toUpperCase()] || '🪙';
   }
 
   async execute(ctx: MessageContext): Promise<void> {
     if (ctx.args.length < 3) {
       await ctx.reply(
-        "💱 *Conversor de Monedas*\n\n" +
-          "*Uso:* !moneda <cantidad> <de> <a>\n\n" +
-          "*Fiat:* USD, EUR, MXN, ARS, COP, CLP, BRL, GBP, JPY...\n" +
-          "*Cripto:* BTC, ETH, BNB, SOL, DOGE, XRP...\n\n" +
-          "*Ejemplos:*\n" +
-          "  !moneda 100 USD MXN\n" +
-          "  !moneda 1 BTC USD\n" +
-          "  !moneda 50 EUR MXN",
+        '💱 *Conversor de Monedas*\n\n' +
+          '*Uso:* !moneda <cantidad> <de> <a>\n\n' +
+          '*Fiat:* USD, EUR, MXN, ARS, COP, CLP, BRL, GBP, JPY...\n' +
+          '*Cripto:* BTC, ETH, BNB, SOL, DOGE, XRP...\n\n' +
+          '*Ejemplos:*\n' +
+          '  !moneda 100 USD MXN\n' +
+          '  !moneda 1 BTC USD\n' +
+          '  !moneda 50 EUR MXN',
       );
       return;
     }
 
     const amount = parseFloat(ctx.args[0]);
     if (isNaN(amount) || amount <= 0) {
-      await ctx.reply("❌ La cantidad debe ser un número positivo.");
+      await ctx.reply('❌ La cantidad debe ser un número positivo.');
       return;
     }
 
     const from = ctx.args[1].toUpperCase();
     const to = ctx.args[2].toUpperCase();
 
-    await ctx.react("⏳");
+    await ctx.react('⏳');
 
     try {
       let rate: number;
@@ -117,9 +120,9 @@ export class CurrencyCommand extends Command {
         const coinId = this.CRYPTO_IDS[cryptoSymbol];
 
         if (!coinId) {
-          await ctx.react("❌");
+          await ctx.react('❌');
           await ctx.reply(
-            `❌ Cripto *${cryptoSymbol}* no soportada.\nCriptos disponibles: ${[...this.CRYPTO_SYMBOLS].join(", ")}`,
+            `❌ Cripto *${cryptoSymbol}* no soportada.\nCriptos disponibles: ${[...this.CRYPTO_SYMBOLS].join(', ')}`,
           );
           return;
         }
@@ -127,10 +130,10 @@ export class CurrencyCommand extends Command {
         const url = `${this.CRYPTO_API}?ids=${coinId}&vs_currencies=${fiatSymbol.toLowerCase()}`;
         const res = await fetch(url);
         if (!res.ok) throw new Error(`CoinGecko HTTP ${res.status}`);
-        const data: any = await res.json();
+        const data = (await res.json()) as CoinGeckoResponse;
 
         if (!data[coinId]) {
-          await ctx.react("❌");
+          await ctx.react('❌');
           await ctx.reply(
             `❌ No se pudo obtener precio de *${cryptoSymbol}* en *${fiatSymbol}*.\nVerifica los símbolos.`,
           );
@@ -139,7 +142,7 @@ export class CurrencyCommand extends Command {
 
         const pricePerCoin = data[coinId][fiatSymbol.toLowerCase()];
         if (!pricePerCoin) {
-          await ctx.react("❌");
+          await ctx.react('❌');
           await ctx.reply(
             `❌ Moneda *${fiatSymbol}* no soportada para cripto.\nUsa: USD, EUR, MXN, BRL, ARS, etc.`,
           );
@@ -147,14 +150,14 @@ export class CurrencyCommand extends Command {
         }
 
         rate = fromIsCrypto ? pricePerCoin : 1 / pricePerCoin;
-        source = "CoinGecko";
+        source = 'CoinGecko';
       } else {
         const url = `${this.FIAT_API}?from=${from}&to=${to}`;
         const res = await fetch(url);
 
         if (!res.ok) {
           if (res.status === 404 || res.status === 422) {
-            await ctx.react("❌");
+            await ctx.react('❌');
             await ctx.reply(
               `❌ Moneda *${from}* o *${to}* no soportada.\nEjemplos válidos: USD, EUR, MXN, GBP, JPY, BRL, ARS`,
             );
@@ -163,22 +166,20 @@ export class CurrencyCommand extends Command {
           throw new Error(`Frankfurter HTTP ${res.status}`);
         }
 
-        const data: any = await res.json();
+        const data = (await res.json()) as FrankfurterResponse;
         if (!data.rates?.[to]) {
-          await ctx.react("❌");
-          await ctx.reply(
-            `❌ No se encontró conversión de *${from}* a *${to}*.`,
-          );
+          await ctx.react('❌');
+          await ctx.reply(`❌ No se encontró conversión de *${from}* a *${to}*.`);
           return;
         }
 
         rate = data.rates[to];
-        source = "Frankfurter";
+        source = 'Frankfurter';
       }
 
       const result = amount * rate;
-      const fromEmoji = fromIsCrypto ? this.getCryptoEmoji(from) : "💵";
-      const toEmoji = toIsCrypto ? this.getCryptoEmoji(to) : "💰";
+      const fromEmoji = fromIsCrypto ? this.getCryptoEmoji(from) : '💵';
+      const toEmoji = toIsCrypto ? this.getCryptoEmoji(to) : '💰';
 
       const msg =
         `💱 *Conversor de Monedas*\n` +
@@ -188,16 +189,15 @@ export class CurrencyCommand extends Command {
         `${toEmoji} *${this.formatNumber(result)} ${to}*\n` +
         `━━━━━━━━━━━━━━━━\n` +
         `📊 *Tasa:* 1 ${from} = ${this.formatNumber(rate)} ${to}\n` +
-        `🕐 *Actualizado:* ${new Date().toLocaleTimeString("es-MX")}\n` +
+        `🕐 *Actualizado:* ${new Date().toLocaleTimeString('es-MX')}\n` +
         `📡 *Fuente:* ${source}`;
 
-      await ctx.react("✅");
+      await ctx.react('✅');
       await ctx.reply(msg);
     } catch (error) {
-      await ctx.react("❌");
-      await ctx.reply(
-        "❌ Error al obtener tasas de cambio. Intenta más tarde.",
-      );
+      await ctx.react('❌');
+      console.error('Error in CurrencyCommand:', error);
+      await ctx.reply('❌ Error al obtener tasas de cambio. Intenta más tarde.');
     }
   }
 }

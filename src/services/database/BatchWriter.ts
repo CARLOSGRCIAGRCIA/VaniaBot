@@ -1,7 +1,7 @@
-interface PendingWrite {
+interface PendingWrite<T = unknown> {
   collection: string;
   key: string;
-  value: any;
+  value: T;
   timestamp: number;
 }
 
@@ -13,11 +13,9 @@ export class BatchWriter {
   private readonly BATCH_INTERVAL = 3000;
   private readonly MAX_BATCH_SIZE = 100;
 
-  constructor(
-    private writeCallback: (writes: PendingWrite[]) => Promise<void>,
-  ) {}
+  constructor(private writeCallback: (writes: PendingWrite[]) => Promise<void>) {}
 
-  schedule(collection: string, key: string, value: any): void {
+  schedule(collection: string, key: string, value: unknown): void {
     const writeKey = `${collection}:${key}`;
 
     this.pendingWrites.set(writeKey, {
@@ -28,13 +26,13 @@ export class BatchWriter {
     });
 
     if (this.pendingWrites.size >= this.MAX_BATCH_SIZE) {
-      this.flushNow();
+      void this.flushNow();
       return;
     }
 
     if (!this.writeTimer) {
       this.writeTimer = setTimeout(() => {
-        this.flushNow();
+        void this.flushNow();
       }, this.BATCH_INTERVAL);
     }
   }
@@ -57,10 +55,10 @@ export class BatchWriter {
     try {
       await this.writeCallback(writes);
     } catch (error) {
-      console.error("Error en batch write:", error);
-      writes.forEach((w) => {
+      console.error('Error en batch write:', error);
+      for (const w of writes) {
         this.pendingWrites.set(`${w.collection}:${w.key}`, w);
-      });
+      }
     } finally {
       this.isWriting = false;
     }

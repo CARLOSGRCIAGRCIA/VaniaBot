@@ -1,1 +1,1 @@
-export { TraductorCommand } from "./TraductorCommand.js";
+export { TraductorCommand } from './TraductorCommand.js';

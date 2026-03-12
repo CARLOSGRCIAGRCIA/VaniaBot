@@ -1,7 +1,7 @@
-import type { WASocket, proto } from "@whiskeysockets/baileys";
-import { listaManager } from "@/services/game/ListaManager.js";
-import { normalizeJid } from "@/services/PermissionService.js";
-import { logger, logError } from "@/utils/logger.js";
+import type { WASocket, proto } from '@whiskeysockets/baileys';
+import { listaManager } from '@/services/game/ListaManager.js';
+import { normalizeJid } from '@/services/PermissionService.js';
+import { logError } from '@/utils/logger.js';
 
 export async function handleReaccion(
   sock: WASocket,
@@ -19,11 +19,14 @@ export async function handleReaccion(
     }
 
     const messageId = targetKey.id;
-    const chatJid = message.key.remoteJid!;
-    const senderRaw = message.key.participant || message.key.remoteJid!;
+    const chatJid = message.key.remoteJid ?? '';
+    const senderRaw = message.key.participant ?? message.key.remoteJid ?? '';
     const senderJid = normalizeJid(senderRaw);
-    const senderNombre = message.pushName || "Usuario";
-    const emoji = reaccionMsg.text ?? "";
+    const senderNombre = message.pushName || 'Usuario';
+    const emoji = reaccionMsg.text ?? '';
+
+    if (!chatJid || !senderJid) return;
+
     await listaManager.onReaccion(sock, {
       chatJid,
       messageId,
@@ -32,6 +35,6 @@ export async function handleReaccion(
       emoji,
     });
   } catch (error) {
-    logError("[REACCION ERROR]", error);
+    logError('[REACCION ERROR]', error);
   }
 }

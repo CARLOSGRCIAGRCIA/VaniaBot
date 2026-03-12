@@ -1,5 +1,5 @@
 export function formatNumber(num: number): string {
-  return num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+  return num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',');
 }
 
 export function formatTime(ms: number): string {
@@ -24,17 +24,13 @@ export function capitalize(str: string): string {
   return str.charAt(0).toUpperCase() + str.slice(1).toLowerCase();
 }
 
-export function truncate(
-  str: string,
-  maxLength: number,
-  suffix: string = "...",
-): string {
+export function truncate(str: string, maxLength: number, suffix: string = '...'): string {
   if (str.length <= maxLength) return str;
   return str.substring(0, maxLength - suffix.length) + suffix;
 }
 
 export function sleep(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms));
+  return new Promise(resolve => setTimeout(resolve, ms));
 }
 
 export function randomElement<T>(array: T[]): T {
@@ -82,19 +78,17 @@ export function chunk<T>(array: T[], size: number): T[][] {
 
 export function extractMentions(text: string): string[] {
   const mentions = text.match(/@(\d+)/g);
-  return mentions
-    ? mentions.map((m) => m.substring(1) + "@s.whatsapp.net")
-    : [];
+  return mentions ? mentions.map(m => m.substring(1) + '@s.whatsapp.net') : [];
 }
 
 export function sanitize(str: string): string {
-  return str.replace(/[^\w\s]/gi, "");
+  return str.replace(/[^\w\s]/gi, '');
 }
 
 export function parseKeyValueArgs(args: string[]): Record<string, string> {
   const result: Record<string, string> = {};
 
-  args.forEach((arg) => {
+  args.forEach(arg => {
     const match = arg.match(/^(\w+)=(.+)$/);
     if (match) {
       result[match[1]] = match[2];
@@ -105,14 +99,14 @@ export function parseKeyValueArgs(args: string[]): Record<string, string> {
 }
 
 export function formatBytes(bytes: number, decimals: number = 2): string {
-  if (bytes === 0) return "0 Bytes";
+  if (bytes === 0) return '0 Bytes';
 
   const k = 1024;
   const dm = decimals < 0 ? 0 : decimals;
-  const sizes = ["Bytes", "KB", "MB", "GB", "TB"];
+  const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB'];
   const i = Math.floor(Math.log(bytes) / Math.log(k));
 
-  return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + " " + sizes[i];
+  return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + ' ' + sizes[i];
 }
 
 export function isValidUrl(str: string): boolean {
@@ -126,21 +120,21 @@ export function isValidUrl(str: string): boolean {
 
 export function stripMarkdown(text: string): string {
   return text
-    .replace(/\*\*(.+?)\*\*/g, "$1")
-    .replace(/\*(.+?)\*/g, "$1")
-    .replace(/_(.+?)_/g, "$1")
-    .replace(/~~(.+?)~~/g, "$1")
-    .replace(/`(.+?)`/g, "$1")
-    .replace(/```[\s\S]+?```/g, "")
-    .replace(/\[(.+?)\]\(.+?\)/g, "$1");
+    .replace(/\*\*(.+?)\*\*/g, '$1')
+    .replace(/\*(.+?)\*/g, '$1')
+    .replace(/_(.+?)_/g, '$1')
+    .replace(/~~(.+?)~~/g, '$1')
+    .replace(/`(.+?)`/g, '$1')
+    .replace(/```[\s\S]+?```/g, '')
+    .replace(/\[(.+?)\]\(.+?\)/g, '$1');
 }
 
 export function createProgressBar(
   current: number,
   total: number,
   length: number = 10,
-  filledChar: string = "█",
-  emptyChar: string = "░",
+  filledChar: string = '█',
+  emptyChar: string = '░',
 ): string {
   const percentage = Math.min(current / total, 1);
   const filled = Math.floor(percentage * length);
@@ -154,7 +148,7 @@ export function secondsToHMS(seconds: number): string {
   const m = Math.floor((seconds % 3600) / 60);
   const s = Math.floor(seconds % 60);
 
-  return [h, m, s].map((v) => (v < 10 ? "0" + v : v)).join(":");
+  return [h, m, s].map(v => (v < 10 ? '0' + v : v)).join(':');
 }
 
 export function parseDuration(str: string): number {

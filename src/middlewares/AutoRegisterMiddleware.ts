@@ -1,14 +1,14 @@
-import { Middleware } from "./Middleware.js";
-import type { MessageContext } from "@/types/index.js";
-import { serviceManager } from "@/services/system/Servicemanager.js";
-import { logger, logError } from "@/utils/logger.js";
+import { Middleware } from './Middleware.js';
+import type { MessageContext } from '@/types/index.js';
+import { serviceManager } from '@/services/system/Servicemanager.js';
+import { logger, logError } from '@/utils/logger.js';
 
 export class AutoRegisterMiddleware extends Middleware {
-  name = "auto-register";
+  name = 'auto-register';
 
   async execute(ctx: MessageContext, next: () => Promise<void>): Promise<void> {
     try {
-      const userExists = await serviceManager.db.has("users", ctx.sender.jid);
+      const userExists = await serviceManager.db.has('users', ctx.sender.jid);
 
       if (!userExists) {
         await serviceManager.userService.getUser(ctx.sender.jid);
@@ -26,7 +26,7 @@ export class AutoRegisterMiddleware extends Middleware {
       }
 
       if (ctx.chat.isGroup) {
-        const groupExists = await serviceManager.db.has("groups", ctx.chat.jid);
+        const groupExists = await serviceManager.db.has('groups', ctx.chat.jid);
 
         if (!groupExists) {
           await serviceManager.groupService.getGroup(ctx.chat.jid);
@@ -36,7 +36,7 @@ export class AutoRegisterMiddleware extends Middleware {
 
       await next();
     } catch (error) {
-      logError("Error en AutoRegisterMiddleware:", error);
+      logError('Error en AutoRegisterMiddleware:', error);
       await next();
     }
   }

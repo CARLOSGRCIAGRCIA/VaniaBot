@@ -1,9 +1,9 @@
-import type { IDatabase } from "../database/Database";
+import type { IDatabase } from '../database/Database';
 
 export interface ModerationAction {
   userId: string;
   userName: string;
-  action: "ban" | "kick" | "mute" | "warn";
+  action: 'ban' | 'kick' | 'mute' | 'warn';
   reason: string;
   moderator: string;
   timestamp: number;
@@ -33,9 +33,9 @@ export interface MuteRecord {
 
 export class ModerationService {
   private db: IDatabase;
-  private readonly BANS_COLLECTION = "bans";
-  private readonly MUTES_COLLECTION = "mutes";
-  private readonly MODERATION_LOG_COLLECTION = "moderation_logs";
+  private readonly BANS_COLLECTION = 'bans';
+  private readonly MUTES_COLLECTION = 'mutes';
+  private readonly MODERATION_LOG_COLLECTION = 'moderation_logs';
 
   constructor(db: IDatabase) {
     this.db = db;
@@ -64,7 +64,7 @@ export class ModerationService {
     await this.logAction({
       userId,
       userName,
-      action: "ban",
+      action: 'ban',
       reason,
       moderator,
       timestamp: Date.now(),
@@ -94,7 +94,7 @@ export class ModerationService {
 
   async getGroupBans(groupId: string): Promise<BanRecord[]> {
     const allBans = await this.db.getAll<BanRecord>(this.BANS_COLLECTION);
-    return allBans.filter((ban) => ban.groupId === groupId);
+    return allBans.filter(ban => ban.groupId === groupId);
   }
 
   async muteUser(
@@ -124,7 +124,7 @@ export class ModerationService {
     await this.logAction({
       userId,
       userName,
-      action: "mute",
+      action: 'mute',
       reason,
       moderator,
       timestamp: now,
@@ -157,10 +157,7 @@ export class ModerationService {
     return true;
   }
 
-  async getMuteInfo(
-    groupId: string,
-    userId: string,
-  ): Promise<MuteRecord | null> {
+  async getMuteInfo(groupId: string, userId: string): Promise<MuteRecord | null> {
     const muteKey = `${groupId}:${userId}`;
     const mute = await this.db.get<MuteRecord>(this.MUTES_COLLECTION, muteKey);
 
@@ -188,18 +185,12 @@ export class ModerationService {
   }
 
   async getUserHistory(userId: string): Promise<ModerationAction[]> {
-    const allLogs = await this.db.getAll<ModerationAction>(
-      this.MODERATION_LOG_COLLECTION,
-    );
-    return allLogs
-      .filter((log) => log.userId === userId)
-      .sort((a, b) => b.timestamp - a.timestamp);
+    const allLogs = await this.db.getAll<ModerationAction>(this.MODERATION_LOG_COLLECTION);
+    return allLogs.filter(log => log.userId === userId).sort((a, b) => b.timestamp - a.timestamp);
   }
 
   async getRecentActions(limit: number = 50): Promise<ModerationAction[]> {
-    const allLogs = await this.db.getAll<ModerationAction>(
-      this.MODERATION_LOG_COLLECTION,
-    );
+    const allLogs = await this.db.getAll<ModerationAction>(this.MODERATION_LOG_COLLECTION);
     return allLogs.sort((a, b) => b.timestamp - a.timestamp).slice(0, limit);
   }
 }

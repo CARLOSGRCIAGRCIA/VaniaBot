@@ -1,14 +1,13 @@
 import {
   NODES,
-  ZONE_NODES,
   GRAPH,
   zoneCenter,
   manhattanDistance,
   type ZoneId,
   type CirclePhase,
-} from "../map/Purgatoriomap.js";
-export type { ZoneId, CirclePhase } from "../map/Purgatoriomap.js";
-import { findTopKPaths, type PathResult } from "../pathfinding/Pathfinding.js";
+} from '../map/Purgatoriomap.js';
+export type { ZoneId, CirclePhase } from '../map/Purgatoriomap.js';
+import { findTopKPaths, type PathResult } from '../pathfinding/Pathfinding.js';
 
 export interface EnemyRotation {
   zone: ZoneId;
@@ -31,7 +30,7 @@ export interface ScoredRoute {
   path: PathResult;
   score: number;
   label: string;
-  riskLevel: "bajo" | "medio" | "alto" | "muy alto";
+  riskLevel: 'bajo' | 'medio' | 'alto' | 'muy alto';
   eta: number;
   conflictsOnPath: string[];
   highGroundNodes: string[];
@@ -49,7 +48,7 @@ export interface TacticalAnalysis {
 }
 
 function neighborNodeIds(nodeId: string): string[] {
-  return (GRAPH.adjacency[nodeId] ?? []).map((e) => e.to);
+  return (GRAPH.adjacency[nodeId] ?? []).map(e => e.to);
 }
 
 export function simulateEnemyRotations(
@@ -57,14 +56,12 @@ export function simulateEnemyRotations(
   goalNodeId: string,
   phase: CirclePhase,
 ): EnemyRotation[] {
-  const enemyZones: ZoneId[] = (["A", "B", "C", "D"] as ZoneId[]).filter(
-    (z) => z !== myZone,
-  );
+  const enemyZones: ZoneId[] = (['A', 'B', 'C', 'D'] as ZoneId[]).filter(z => z !== myZone);
   const rotations: EnemyRotation[] = [];
 
   for (const zone of enemyZones) {
     const startId = zoneCenter(zone);
-    const k = phase === "early" ? 2 : 3;
+    const k = phase === 'early' ? 2 : 3;
     const topRoutes = findTopKPaths(startId, goalNodeId, k);
 
     const probs = [0.5, 0.3, 0.2];
@@ -124,10 +121,7 @@ export function detectConflictZones(
     }
   }
 
-  const allNodeIds = new Set([
-    ...Object.keys(exactCount),
-    ...Object.keys(proximityCount),
-  ]);
+  const allNodeIds = new Set([...Object.keys(exactCount), ...Object.keys(proximityCount)]);
 
   const result: ConflictZone[] = [];
 
@@ -142,18 +136,11 @@ export function detectConflictZones(
     const chokePenalty = node.isChokepoint ? 0.25 : 0;
     const hotspotBonus = node.isHotspot ? 0.15 : 0;
     const coverPenalty = 1 - node.cover;
-    const degreeBonus = Math.max(
-      0,
-      (4 - (GRAPH.nodeDegree[nodeId] ?? 4)) * 0.05,
-    );
+    const degreeBonus = Math.max(0, (4 - (GRAPH.nodeDegree[nodeId] ?? 4)) * 0.05);
 
     const risk = Math.min(
       1,
-      (prox / 4) * 0.5 +
-        chokePenalty +
-        hotspotBonus +
-        coverPenalty * 0.1 +
-        degreeBonus,
+      (prox / 4) * 0.5 + chokePenalty + hotspotBonus + coverPenalty * 0.1 + degreeBonus,
     );
 
     result.push({
@@ -191,7 +178,7 @@ export function scoreRoutes(
           path,
           score: 0,
           label: `Ruta ${i + 1}`,
-          riskLevel: "muy alto" as const,
+          riskLevel: 'muy alto' as const,
           eta: 999,
           conflictsOnPath: [],
           highGroundNodes: [],
@@ -216,10 +203,7 @@ export function scoreRoutes(
 
       const enemyZonesCrossed: string[] = [];
       for (const step of path.steps) {
-        if (
-          enemyThreatNodes.has(step.nodeId) &&
-          NODES[step.nodeId]?.zone !== "CENTER"
-        ) {
+        if (enemyThreatNodes.has(step.nodeId) && NODES[step.nodeId]?.zone !== 'CENTER') {
           const zoneName = `Zona ${NODES[step.nodeId]?.zone}`;
           if (!enemyZonesCrossed.includes(zoneName)) {
             enemyZonesCrossed.push(zoneName);
@@ -229,17 +213,10 @@ export function scoreRoutes(
       const enemyZonePenalty = enemyZonesCrossed.length * 10;
 
       const etaBonus =
-        eta < fastestEnemy
-          ? 20
-          : eta < fastestEnemy + 5
-            ? 10
-            : eta < fastestEnemy + 10
-              ? 5
-              : 0;
+        eta < fastestEnemy ? 20 : eta < fastestEnemy + 5 ? 10 : eta < fastestEnemy + 10 ? 5 : 0;
 
       const avgCover =
-        path.steps.reduce((s, st) => s + (NODES[st.nodeId]?.cover ?? 0.5), 0) /
-        path.steps.length;
+        path.steps.reduce((s, st) => s + (NODES[st.nodeId]?.cover ?? 0.5), 0) / path.steps.length;
       const coverBonus = avgCover * 12;
 
       const highGroundNodes: string[] = [];
@@ -252,11 +229,7 @@ export function scoreRoutes(
       const highGroundBonus = (elevSum / path.steps.length) * 10;
 
       const phaseBonus =
-        phase === "early"
-          ? etaBonus * 0.5
-          : phase === "late"
-            ? coverBonus * 0.3
-            : 0;
+        phase === 'early' ? etaBonus * 0.5 : phase === 'late' ? coverBonus * 0.3 : 0;
 
       const score = Math.max(
         0,
@@ -274,14 +247,8 @@ export function scoreRoutes(
         ),
       );
 
-      const riskLevel: ScoredRoute["riskLevel"] =
-        score >= 65
-          ? "bajo"
-          : score >= 45
-            ? "medio"
-            : score >= 25
-              ? "alto"
-              : "muy alto";
+      const riskLevel: ScoredRoute['riskLevel'] =
+        score >= 65 ? 'bajo' : score >= 45 ? 'medio' : score >= 25 ? 'alto' : 'muy alto';
 
       return {
         path,
@@ -297,26 +264,22 @@ export function scoreRoutes(
     .sort((a, b) => b.score - a.score);
 }
 
-export function detectCirclePhase(
-  myStartNodeId: string,
-  goalNodeId: string,
-): CirclePhase {
-  const centerCoord = NODES["brasilia"]?.coord ?? { row: 6, col: 4 };
-  const goalCoord = NODES[goalNodeId]?.coord ??
-    NODES["brasilia"]?.coord ?? { row: 6, col: 4 };
+export function detectCirclePhase(myStartNodeId: string, goalNodeId: string): CirclePhase {
+  const centerCoord = NODES['brasilia']?.coord ?? { row: 6, col: 4 };
+  const goalCoord = NODES[goalNodeId]?.coord ?? NODES['brasilia']?.coord ?? { row: 6, col: 4 };
   const dist = manhattanDistance(goalCoord, centerCoord);
 
-  if (dist >= 5) return "early";
-  if (dist >= 2) return "mid";
-  return "late";
+  if (dist >= 5) return 'early';
+  if (dist >= 2) return 'mid';
+  return 'late';
 }
 
 export function phaseAdvice(phase: CirclePhase): string {
   const map: Record<CirclePhase, string> = {
     early:
-      "Círculo amplio — prioriza velocidad. Aún hay tiempo para posicionarte antes que los enemigos.",
-    mid: "Círculo intermedio — equilibra velocidad y cobertura. Los enemigos ya rotan activamente.",
-    late: "Círculo final — prioriza cobertura y high ground. El posicionamiento vale más que la velocidad.",
+      'Círculo amplio — prioriza velocidad. Aún hay tiempo para posicionarte antes que los enemigos.',
+    mid: 'Círculo intermedio — equilibra velocidad y cobertura. Los enemigos ya rotan activamente.',
+    late: 'Círculo final — prioriza cobertura y high ground. El posicionamiento vale más que la velocidad.',
   };
   return map[phase];
 }
@@ -336,17 +299,16 @@ export function runTacticalAnalysis(
     for (const cp of r.chokepoints) {
       chokeCounts[cp] = (chokeCounts[cp] ?? 0) + 1;
     }
-  const worstChokepoint =
-    Object.entries(chokeCounts).sort((a, b) => b[1] - a[1])[0]?.[0] ?? null;
+  const worstChokepoint = Object.entries(chokeCounts).sort((a, b) => b[1] - a[1])[0]?.[0] ?? null;
 
-  const conflictIds = new Set(conflictZones.map((c) => c.nodeId));
-  const bestRoute = myRoutes.find((r) => r.found);
+  const conflictIds = new Set(conflictZones.map(c => c.nodeId));
+  const bestRoute = myRoutes.find(r => r.found);
   let safeApproach: string | null = null;
   if (bestRoute && bestRoute.steps.length >= 2) {
     const pre = bestRoute.steps
       .slice(0, -1)
       .reverse()
-      .find((s) => !conflictIds.has(s.nodeId));
+      .find(s => !conflictIds.has(s.nodeId));
     safeApproach = pre?.nodeName ?? null;
   }
 

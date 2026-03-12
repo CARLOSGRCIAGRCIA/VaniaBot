@@ -1,9 +1,4 @@
-import {
-  ContenidoTipo,
-  EstiloPoema,
-  TemaPoema,
-  type GenerarOpts,
-} from "./PoesiaTypes.js";
+import { ContenidoTipo, EstiloPoema, TemaPoema, type GenerarOpts } from './PoesiaTypes.js';
 
 export const ESTILO_ALIASES: Record<string, EstiloPoema> = {
   romantico: EstiloPoema.ROMANTICO,
@@ -95,26 +90,21 @@ export interface ParsedArgs {
   rawText: string;
 }
 
-export function parsePoesiaArgs(
-  tipo: ContenidoTipo,
-  args: string[],
-): ParsedArgs {
-  const raw = args.join(" ").trim();
+export function parsePoesiaArgs(tipo: ContenidoTipo, args: string[]): ParsedArgs {
+  const raw = args.join(' ').trim();
   const opts: GenerarOpts = { tipo };
   let nombre: string | undefined;
 
   if (!raw) return { opts, rawText: raw };
 
-  const tokens = args.map((a) => a.toLowerCase());
+  const tokens = args.map(a => a.toLowerCase());
 
-  const paraIdx = tokens.findIndex(
-    (t) => t.startsWith("para:") || t === "para",
-  );
+  const paraIdx = tokens.findIndex(t => t.startsWith('para:') || t === 'para');
   if (paraIdx !== -1) {
-    if (tokens[paraIdx].startsWith("para:")) {
-      opts.dedicado = args[paraIdx].slice(5).replace(/^@/, "");
+    if (tokens[paraIdx].startsWith('para:')) {
+      opts.dedicado = args[paraIdx].slice(5).replace(/^@/, '');
     } else if (args[paraIdx + 1]) {
-      opts.dedicado = args[paraIdx + 1].replace(/^@/, "");
+      opts.dedicado = args[paraIdx + 1].replace(/^@/, '');
       args.splice(paraIdx + 1, 1);
     }
     args.splice(paraIdx, 1);
@@ -155,11 +145,11 @@ export function parsePoesiaArgs(
   }
 
   if (!temaEncontrado && args.length > 0) {
-    const temaLibre = args.join(" ").trim();
+    const temaLibre = args.join(' ').trim();
     if (temaLibre) opts.tema = temaLibre;
     args.length = 0;
   } else if (temaEncontrado && args.length > 0) {
-    opts.contexto = args.join(" ").trim();
+    opts.contexto = args.join(' ').trim();
   }
 
   return { opts, nombre, rawText: raw };
@@ -240,34 +230,34 @@ _!historia [tema] [estilo]_
 };
 
 export const ESTILOS_LIST = [
-  "💕 romántico",
-  "😢 melancólico",
-  "🔥 apasionado",
-  "🌸 tierno",
-  "😏 pícaro",
-  "⚔️ épico",
-  "🌌 místico",
-  "🏙️ moderno",
-  "📖 clásico",
-  "😒 sarcástico",
-  "😂 chistoso",
-  "🖤 oscuro",
-].join("  ");
+  '💕 romántico',
+  '😢 melancólico',
+  '🔥 apasionado',
+  '🌸 tierno',
+  '😏 pícaro',
+  '⚔️ épico',
+  '🌌 místico',
+  '🏙️ moderno',
+  '📖 clásico',
+  '😒 sarcástico',
+  '😂 chistoso',
+  '🖤 oscuro',
+].join('  ');
 
 export const TEMAS_LIST = [
-  "❤️ amor",
-  "💔 desamor",
-  "🌿 naturaleza",
-  "👫 amistad",
-  "✨ vida",
-  "🌙 muerte",
-  "🌅 esperanza",
-  "🏠 soledad",
-  "😊 alegría",
-  "🌃 noche",
-  "🌊 mar",
-  "🌕 luna",
-  "🇲🇽 patria",
-  "🕊️ nostalgia",
-  "🦋 libertad",
-].join("  ");
+  '❤️ amor',
+  '💔 desamor',
+  '🌿 naturaleza',
+  '👫 amistad',
+  '✨ vida',
+  '🌙 muerte',
+  '🌅 esperanza',
+  '🏠 soledad',
+  '😊 alegría',
+  '🌃 noche',
+  '🌊 mar',
+  '🌕 luna',
+  '🇲🇽 patria',
+  '🕊️ nostalgia',
+  '🦋 libertad',
+].join('  ');

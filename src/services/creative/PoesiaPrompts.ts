@@ -1,4 +1,4 @@
-import { ContenidoTipo, EstiloPoema, type GenerarOpts } from "./PoesiaTypes.js";
+import { ContenidoTipo, EstiloPoema, type GenerarOpts } from './PoesiaTypes.js';
 
 const PERSONALIDAD_BASE = `Eres un poeta y escritor creativo de VaniaBot.
 Tu escritura es fresca, emotiva y en español mexicano/latinoamericano.
@@ -6,34 +6,26 @@ Usa lenguaje natural, no cursi en exceso. Evita clichés como "tus ojos son dos 
 Responde ÚNICAMENTE con el contenido pedido, sin introducción, sin "aquí tienes tu poema", sin comillas alrededor.`;
 
 function estiloInstruccion(estilo?: string): string {
-  if (!estilo) return "";
+  if (!estilo) return '';
   const map: Record<string, string> = {
-    romántico:
-      "Estilo romántico: sentimientos profundos, imágenes bellas, emoción contenida.",
-    melancólico:
-      "Estilo melancólico: nostalgia, pérdida, belleza en la tristeza.",
-    apasionado: "Estilo apasionado: intenso, visceral, lleno de fuego y deseo.",
-    tierno: "Estilo tierno: suave, cálido, dulce sin ser empalagoso.",
-    pícaro: "Estilo pícaro: coqueto, con doble sentido elegante, travieso.",
-    épico: "Estilo épico: grandioso, dramático, como una historia heroica.",
-    místico:
-      "Estilo místico: metáforas profundas, referencias a lo espiritual y universal.",
-    moderno:
-      "Estilo moderno: lenguaje cotidiano, verso libre, referencias contemporáneas.",
-    clásico:
-      "Estilo clásico: estructura formal, rima consonante o asonante, vocabulario culto.",
-    sarcástico:
-      "Estilo sarcástico: irónico, mordaz, con humor negro o cinismo.",
-    chistoso:
-      "Estilo chistoso: gracioso, rima humorística, que arranque una carcajada.",
-    oscuro:
-      "Estilo oscuro: metáforas sombrías, belleza en lo oscuro, atmósfera densa.",
+    romántico: 'Estilo romántico: sentimientos profundos, imágenes bellas, emoción contenida.',
+    melancólico: 'Estilo melancólico: nostalgia, pérdida, belleza en la tristeza.',
+    apasionado: 'Estilo apasionado: intenso, visceral, lleno de fuego y deseo.',
+    tierno: 'Estilo tierno: suave, cálido, dulce sin ser empalagoso.',
+    pícaro: 'Estilo pícaro: coqueto, con doble sentido elegante, travieso.',
+    épico: 'Estilo épico: grandioso, dramático, como una historia heroica.',
+    místico: 'Estilo místico: metáforas profundas, referencias a lo espiritual y universal.',
+    moderno: 'Estilo moderno: lenguaje cotidiano, verso libre, referencias contemporáneas.',
+    clásico: 'Estilo clásico: estructura formal, rima consonante o asonante, vocabulario culto.',
+    sarcástico: 'Estilo sarcástico: irónico, mordaz, con humor negro o cinismo.',
+    chistoso: 'Estilo chistoso: gracioso, rima humorística, que arranque una carcajada.',
+    oscuro: 'Estilo oscuro: metáforas sombrías, belleza en lo oscuro, atmósfera densa.',
   };
   return map[estilo] ?? `Estilo: ${estilo}.`;
 }
 
 function dedicatoriaLinea(dedicado?: string): string {
-  if (!dedicado) return "";
+  if (!dedicado) return '';
   return `Va dedicado a: *${dedicado}*. Personalízalo mencionando ese nombre de forma natural.`;
 }
 
@@ -41,11 +33,11 @@ export function buildPoemaPrompt(opts: GenerarOpts): string {
   const versos = opts.versos ?? 12;
   return `${PERSONALIDAD_BASE}
 
-Escribe un poema sobre "${opts.tema ?? "amor"}" con las siguientes características:
+Escribe un poema sobre "${opts.tema ?? 'amor'}" con las siguientes características:
 - ${versos} versos aproximadamente, organizados en estrofas de 4 versos
-- ${estiloInstruccion(opts.estilo) || "Estilo libre y emotivo"}
+- ${estiloInstruccion(opts.estilo) || 'Estilo libre y emotivo'}
 - ${dedicatoriaLinea(opts.dedicado)}
-- ${opts.contexto ? `Contexto especial: ${opts.contexto}` : ""}
+- ${opts.contexto ? `Contexto especial: ${opts.contexto}` : ''}
 - Usa imágenes poéticas originales, no clichés
 - El último verso debe ser memorable y contundente
 - Formato WhatsApp: usa _cursiva_ solo para el título si quieres`;
@@ -54,10 +46,10 @@ Escribe un poema sobre "${opts.tema ?? "amor"}" con las siguientes característi
 export function buildFrasePrompt(opts: GenerarOpts): string {
   return `${PERSONALIDAD_BASE}
 
-Genera 5 frases hermosas y originales sobre "${opts.tema ?? "amor"}".
+Genera 5 frases hermosas y originales sobre "${opts.tema ?? 'amor'}".
 ${estiloInstruccion(opts.estilo)}
 ${dedicatoriaLinea(opts.dedicado)}
-${opts.contexto ? `Contexto: ${opts.contexto}` : ""}
+${opts.contexto ? `Contexto: ${opts.contexto}` : ''}
 
 Reglas:
 - Cada frase en su propia línea, precedida de un emoji relevante
@@ -70,14 +62,14 @@ export function buildPiropopPrompt(opts: GenerarOpts): string {
   const picante = opts.estilo === EstiloPoema.PICARO;
   return `${PERSONALIDAD_BASE}
 
-Genera 5 piropos ${picante ? "pícaros y atrevidos (sin ser vulgares)" : "creativos y encantadores"} para decirle a alguien especial.
+Genera 5 piropos ${picante ? 'pícaros y atrevidos (sin ser vulgares)' : 'creativos y encantadores'} para decirle a alguien especial.
 ${dedicatoriaLinea(opts.dedicado)}
-${opts.contexto ? `La persona es: ${opts.contexto}` : ""}
+${opts.contexto ? `La persona es: ${opts.contexto}` : ''}
 
 Reglas:
 - Un piropo por línea, con emoji al inicio
 - Originales, que no se escuchen repetidos
-- ${picante ? "Con doble sentido elegante, sugerente pero no grosero" : "Encantadores, que hagan sonrojar de la emoción"}
+- ${picante ? 'Con doble sentido elegante, sugerente pero no grosero' : 'Encantadores, que hagan sonrojar de la emoción'}
 - Mezcla humor con ternura
 - En español latinoamericano natural`;
 }
@@ -85,10 +77,10 @@ Reglas:
 export function buildDedicatoriaPrompt(opts: GenerarOpts): string {
   return `${PERSONALIDAD_BASE}
 
-Escribe una dedicatoria emotiva y personal ${opts.dedicado ? `para *${opts.dedicado}*` : "para alguien especial"}.
-${opts.tema ? `Motivo/ocasión: ${opts.tema}` : ""}
+Escribe una dedicatoria emotiva y personal ${opts.dedicado ? `para *${opts.dedicado}*` : 'para alguien especial'}.
+${opts.tema ? `Motivo/ocasión: ${opts.tema}` : ''}
 ${estiloInstruccion(opts.estilo)}
-${opts.contexto ? `Contexto: ${opts.contexto}` : ""}
+${opts.contexto ? `Contexto: ${opts.contexto}` : ''}
 
 Estructura:
 - Inicio: saludo cálido y personalizado
@@ -101,7 +93,7 @@ Estructura:
 export function buildHaikuPrompt(opts: GenerarOpts): string {
   return `${PERSONALIDAD_BASE}
 
-Escribe 3 haikus sobre "${opts.tema ?? "amor"}" en español.
+Escribe 3 haikus sobre "${opts.tema ?? 'amor'}" en español.
 ${estiloInstruccion(opts.estilo)}
 ${dedicatoriaLinea(opts.dedicado)}
 
@@ -116,10 +108,10 @@ Reglas del haiku en español:
 export function buildSonetoPrompt(opts: GenerarOpts): string {
   return `${PERSONALIDAD_BASE}
 
-Escribe un soneto sobre "${opts.tema ?? "amor"}".
-${estiloInstruccion(opts.estilo) || "Estilo clásico con toques modernos"}
+Escribe un soneto sobre "${opts.tema ?? 'amor'}".
+${estiloInstruccion(opts.estilo) || 'Estilo clásico con toques modernos'}
 ${dedicatoriaLinea(opts.dedicado)}
-${opts.contexto ? `Contexto: ${opts.contexto}` : ""}
+${opts.contexto ? `Contexto: ${opts.contexto}` : ''}
 
 Estructura del soneto:
 - 14 versos en total
@@ -132,7 +124,7 @@ Estructura del soneto:
 export function buildCoplasPrompt(opts: GenerarOpts): string {
   return `${PERSONALIDAD_BASE}
 
-Escribe 4 coplas sobre "${opts.tema ?? "amor"}" al estilo de la poesía popular latinoamericana.
+Escribe 4 coplas sobre "${opts.tema ?? 'amor'}" al estilo de la poesía popular latinoamericana.
 ${estiloInstruccion(opts.estilo)}
 ${dedicatoriaLinea(opts.dedicado)}
 
@@ -145,16 +137,16 @@ Reglas de la copla:
 }
 
 export function buildAcrosticoPrompt(opts: GenerarOpts): string {
-  const nombre = (opts.nombre ?? opts.dedicado ?? "AMOR").toUpperCase();
+  const nombre = (opts.nombre ?? opts.dedicado ?? 'AMOR').toUpperCase();
   return `${PERSONALIDAD_BASE}
 
 Escribe un acróstico con el nombre *${nombre}*.
-${estiloInstruccion(opts.estilo) || "Estilo romántico y emotivo"}
-${opts.tema ? `Tema: ${opts.tema}` : "Tema: amor y sentimientos"}
-${opts.contexto ? `Contexto: ${opts.contexto}` : ""}
+${estiloInstruccion(opts.estilo) || 'Estilo romántico y emotivo'}
+${opts.tema ? `Tema: ${opts.tema}` : 'Tema: amor y sentimientos'}
+${opts.contexto ? `Contexto: ${opts.contexto}` : ''}
 
 Reglas:
-- Cada verso comienza con la letra correspondiente del nombre: ${nombre.split("").join(" - ")}
+- Cada verso comienza con la letra correspondiente del nombre: ${nombre.split('').join(' - ')}
 - El conjunto debe tener sentido y emoción, no solo palabras sueltas
 - Formato: pon la letra inicial en *negrita* (usando *letra*)
 - Debe ser coherente, que fluya como un poema real
@@ -164,10 +156,10 @@ Reglas:
 export function buildCartaPrompt(opts: GenerarOpts): string {
   return `${PERSONALIDAD_BASE}
 
-Escribe una carta de amor ${opts.estilo === EstiloPoema.MELANCOLICO ? "de despedida o añoranza" : "apasionada y sincera"} ${opts.dedicado ? `para *${opts.dedicado}*` : ""}.
+Escribe una carta de amor ${opts.estilo === EstiloPoema.MELANCOLICO ? 'de despedida o añoranza' : 'apasionada y sincera'} ${opts.dedicado ? `para *${opts.dedicado}*` : ''}.
 ${estiloInstruccion(opts.estilo)}
-${opts.tema ? `Situación/motivo: ${opts.tema}` : ""}
-${opts.contexto ? `Contexto extra: ${opts.contexto}` : ""}
+${opts.tema ? `Situación/motivo: ${opts.tema}` : ''}
+${opts.contexto ? `Contexto extra: ${opts.contexto}` : ''}
 
 Estructura:
 - Encabezado: fecha poética (no una fecha real) y saludo especial
@@ -181,10 +173,10 @@ Estructura:
 export function buildHistoriaPrompt(opts: GenerarOpts): string {
   return `${PERSONALIDAD_BASE}
 
-Escribe una historia corta de amor (microficción) ${opts.tema ? `sobre "${opts.tema}"` : ""}.
+Escribe una historia corta de amor (microficción) ${opts.tema ? `sobre "${opts.tema}"` : ''}.
 ${estiloInstruccion(opts.estilo)}
-${opts.dedicado ? `Protagonista o dedicada a: ${opts.dedicado}` : ""}
-${opts.contexto ? `Elementos a incluir: ${opts.contexto}` : ""}
+${opts.dedicado ? `Protagonista o dedicada a: ${opts.dedicado}` : ''}
+${opts.contexto ? `Elementos a incluir: ${opts.contexto}` : ''}
 
 Reglas:
 - Entre 150 y 250 palabras

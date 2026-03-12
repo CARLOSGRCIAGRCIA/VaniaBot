@@ -12,7 +12,7 @@
  * @module DifficultyEngine
  */
 
-import { QuizDifficulty, type UserQuizStats } from "./QuizTypes.js";
+import { QuizDifficulty, type UserQuizStats } from './QuizTypes.js';
 
 export const COIN_REWARDS: Record<QuizDifficulty, number> = {
   [QuizDifficulty.EASY]: 15,
@@ -40,11 +40,7 @@ export class DifficultyEngine {
    * @param category  - Categoría actual (usa stats por categoría si existen)
    * @param sessionStreak - Racha de aciertos en la sesión activa
    */
-  calculate(
-    stats: UserQuizStats | null,
-    category: string,
-    sessionStreak: number,
-  ): QuizDifficulty {
+  calculate(stats: UserQuizStats | null, category: string, sessionStreak: number): QuizDifficulty {
     if (!stats || stats.totalAnswered === 0) return QuizDifficulty.EASY;
 
     if (sessionStreak >= 5) return QuizDifficulty.HARD;
@@ -79,11 +75,11 @@ export class DifficultyEngine {
   }
 
   emoji(difficulty: QuizDifficulty): string {
-    return { easy: "🟢", medium: "🟡", hard: "🔴" }[difficulty];
+    return { easy: '🟢', medium: '🟡', hard: '🔴' }[difficulty];
   }
 
   label(difficulty: QuizDifficulty): string {
-    return { easy: "Fácil", medium: "Medio", hard: "Difícil" }[difficulty];
+    return { easy: 'Fácil', medium: 'Medio', hard: 'Difícil' }[difficulty];
   }
 }
 

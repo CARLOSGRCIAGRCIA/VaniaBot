@@ -1,4 +1,4 @@
-declare module "yt-search" {
+declare module 'yt-search' {
   export interface VideoSearchResult {
     videoId: string;
     title: string;
@@ -20,9 +20,9 @@ declare module "yt-search" {
 
   export interface SearchResult {
     videos: VideoSearchResult[];
-    playlists: any[];
-    channels: any[];
-    live: any[];
+    playlists: Playlist[];
+    channels: Channel[];
+    live: LiveStream[];
   }
 
   export interface VideoResult {

@@ -1,20 +1,20 @@
-import { Command } from "../../Command.js";
+import { Command } from '../../Command.js';
 import {
   CommandCategory,
   CommandContext,
   PermissionLevel,
   BotPermission,
   type MessageContext,
-} from "@/types/index.js";
-import { serviceManager } from "@/services/system/Servicemanager.js";
+} from '@/types/index.js';
+import { serviceManager } from '@/services/system/Servicemanager.js';
 
 export class KickCommand extends Command {
-  name = "kick";
-  description = "Kick a user from the group (can rejoin)";
+  name = 'kick';
+  description = 'Kick a user from the group (can rejoin)';
   category = CommandCategory.MODERATION;
-  aliases = ["expulsar"];
-  usage = "!kick @user [reason]";
-  examples = ["!kick @user spam", "!kick @user Breaking rules"];
+  aliases = ['expulsar'];
+  usage = '!kick @user [reason]';
+  examples = ['!kick @user spam', '!kick @user Breaking rules'];
   contexts = [CommandContext.GROUP];
   permissions = {
     user: [PermissionLevel.ADMIN],
@@ -22,49 +22,44 @@ export class KickCommand extends Command {
   };
 
   async execute(ctx: MessageContext): Promise<void> {
-    const mentionedJid =
-      ctx.message.message?.extendedTextMessage?.contextInfo?.mentionedJid?.[0];
+    const mentionedJid = ctx.message.message?.extendedTextMessage?.contextInfo?.mentionedJid?.[0];
 
     if (!mentionedJid) {
-      await ctx.reply("You must mention a user to kick");
+      await ctx.reply('You must mention a user to kick');
       return;
     }
 
     if (mentionedJid === ctx.sender.jid) {
-      await ctx.reply("You cannot kick yourself");
+      await ctx.reply('You cannot kick yourself');
       return;
     }
 
-    if (mentionedJid === ctx.sock.user?.id.split(":")[0] + "@s.whatsapp.net") {
-      await ctx.reply("You cannot kick the bot");
+    if (mentionedJid === ctx.sock.user?.id.split(':')[0] + '@s.whatsapp.net') {
+      await ctx.reply('You cannot kick the bot');
       return;
     }
 
     const targetUser = await serviceManager.userService.getUser(mentionedJid);
     if (targetUser.isOwner) {
-      await ctx.reply("You cannot kick an owner");
+      await ctx.reply('You cannot kick an owner');
       return;
     }
 
-    const reason = ctx.args.slice(1).join(" ") || "No reason provided";
+    const reason = ctx.args.slice(1).join(' ') || 'No reason provided';
 
-    await ctx.react("⏳");
+    await ctx.react('⏳');
 
     try {
       await serviceManager.moderationService.logAction({
         userId: mentionedJid,
         userName: targetUser.name,
-        action: "kick",
+        action: 'kick',
         reason,
-        moderator: ctx.sender.pushName || "Unknown",
+        moderator: ctx.sender.pushName || 'Unknown',
         timestamp: Date.now(),
       });
 
-      await ctx.sock.groupParticipantsUpdate(
-        ctx.chat.jid,
-        [mentionedJid],
-        "remove",
-      );
+      await ctx.sock.groupParticipantsUpdate(ctx.chat.jid, [mentionedJid], 'remove');
 
       await ctx.reply(
         `👢 *User Kicked*\n\n` +
@@ -75,11 +70,12 @@ export class KickCommand extends Command {
           `ℹ️ User can rejoin with invite link`,
       );
 
-      await ctx.react("✅");
-    } catch (error: any) {
-      console.error("Error in KickCommand:", error);
-      await ctx.reply(`❌ Error kicking user: ${error.message}`);
-      await ctx.react("❌");
+      await ctx.react('✅');
+    } catch (error: unknown) {
+      console.error('Error in KickCommand:', error);
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      await ctx.reply(`❌ Error kicking user: ${message}`);
+      await ctx.react('❌');
     }
   }
 }

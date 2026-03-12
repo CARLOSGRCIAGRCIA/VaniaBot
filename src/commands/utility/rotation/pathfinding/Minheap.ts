@@ -10,9 +10,11 @@ export class MinHeap {
   get size(): number {
     return this.heap.length;
   }
+
   isEmpty(): boolean {
     return this.heap.length === 0;
   }
+
   peek(): HeapItem | undefined {
     return this.heap[0];
   }
@@ -24,9 +26,11 @@ export class MinHeap {
 
   pop(): HeapItem | undefined {
     if (this.heap.length === 0) return undefined;
+
     const top = this.heap[0];
-    const last = this.heap.pop()!;
-    if (this.heap.length > 0) {
+    const last = this.heap.pop();
+
+    if (last && this.heap.length > 0) {
       this.heap[0] = last;
       this.sinkDown(0);
     }

@@ -1,25 +1,37 @@
-import type { WASocket } from "@whiskeysockets/baileys";
-import { commandRegistry } from "./CommandRegistry.js";
-import { PluginLoader } from "./PluginLoader.js";
-import { MessageContext } from "./MessageContext.js";
-import { AuthManager } from "./AuthManager.js";
-import { CooldownMiddleware } from "@/middlewares/CooldownMiddleware.js";
-import { AutoRegisterMiddleware } from "@/middlewares/AutoRegisterMiddleware.js";
-import { ValidationMiddleware } from "@/middlewares/ValidationMiddleware.js";
-import { PermissionMiddleware } from "@/middlewares/PermissionMiddleware.js";
-import { LoggerMiddleware } from "@/middlewares/LoggerMiddleware.js";
-import { AntiSpamMiddleware } from "@/middlewares/AntiSpamMiddleware.js";
-import { MuteMiddleware } from "@/middlewares/MuteMiddleware.js";
-import { serviceManager } from "@/services/system/Servicemanager.js";
-import { logger, logError } from "@/utils/logger.js";
-import { CommandExecutionError } from "@/utils/errors.js";
-import { cacheManager } from "@/core/CacheManager.js";
-import { handleReaccion } from "@/handlers/ReaccionHandler.js";
-import { quizAnswerHandler } from "@/handlers/QuizAnswerHandler.js";
-import { handleMention } from "@/handlers/AiMentionHandler.js";
-import type { IMiddleware } from "@/types/index.js";
-import { EventEmitter } from "events";
-import { welcomeService } from "@/services/system/WelcomeService.js";
+import type { WASocket, WAMessage, proto, BaileysEventMap } from '@whiskeysockets/baileys';
+import { commandRegistry } from './CommandRegistry.js';
+import { PluginLoader } from './PluginLoader.js';
+import { MessageContext } from './MessageContext.js';
+import { AuthManager } from './AuthManager.js';
+import { CooldownMiddleware } from '@/middlewares/CooldownMiddleware.js';
+import { AutoRegisterMiddleware } from '@/middlewares/AutoRegisterMiddleware.js';
+import { ValidationMiddleware } from '@/middlewares/ValidationMiddleware.js';
+import { PermissionMiddleware } from '@/middlewares/PermissionMiddleware.js';
+import { LoggerMiddleware } from '@/middlewares/LoggerMiddleware.js';
+import { AntiSpamMiddleware } from '@/middlewares/AntiSpamMiddleware.js';
+import { MuteMiddleware } from '@/middlewares/MuteMiddleware.js';
+import { serviceManager } from '@/services/system/Servicemanager.js';
+import { logger, logError } from '@/utils/logger.js';
+import { CommandExecutionError } from '@/utils/errors.js';
+import { cacheManager } from '@/core/CacheManager.js';
+import { handleReaccion } from '@/handlers/ReaccionHandler.js';
+import { quizAnswerHandler } from '@/handlers/QuizAnswerHandler.js';
+import { handleMention } from '@/handlers/AiMentionHandler.js';
+import type { IMiddleware } from '@/types/index.js';
+import { EventEmitter } from 'events';
+import { welcomeService } from '@/services/system/WelcomeService.js';
+
+interface RateLimitResult {
+  allowed: boolean;
+  reason?: string;
+  waitTime?: number;
+}
+
+type GroupParticipantsUpdate = BaileysEventMap['group-participants.update'];
+
+declare global {
+  var client: WhatsAppClient | undefined;
+}
 
 class RealTimeAntiSpam {
   private userMessages = new Map<string, number[]>();
@@ -28,41 +40,27 @@ class RealTimeAntiSpam {
   private readonly MAX_MESSAGES_PER_MINUTE = 20;
   private readonly BAN_DURATION = 5 * 60 * 1000;
 
-  checkRateLimit(userJid: string): {
-    allowed: boolean;
-    reason?: string;
-    waitTime?: number;
-  } {
+  checkRateLimit(userJid: string): RateLimitResult {
     if (this.bannedUsers.has(userJid)) {
-      return {
-        allowed: false,
-        reason: "⛔ Bloqueado temporalmente por spam",
-        waitTime: 300000,
-      };
+      return { allowed: false, reason: '⛔ Bloqueado temporalmente por spam', waitTime: 300000 };
     }
 
     const now = Date.now();
-    const userMsgs = this.userMessages.get(userJid) || [];
-    const recentMessages = userMsgs.filter((time) => now - time < 60000);
+    const userMsgs = this.userMessages.get(userJid) ?? [];
+    const recentMessages = userMsgs.filter(time => now - time < 60000);
 
     if (recentMessages.length >= this.MAX_MESSAGES_PER_MINUTE) {
       this.banUser(userJid);
       return {
         allowed: false,
-        reason: "⚠️ Demasiados mensajes. Bloqueado 5 minutos.",
+        reason: '⚠️ Demasiados mensajes. Bloqueado 5 minutos.',
         waitTime: 300000,
       };
     }
 
-    const lastSecondMessages = recentMessages.filter(
-      (time) => now - time < 1000,
-    );
+    const lastSecondMessages = recentMessages.filter(time => now - time < 1000);
     if (lastSecondMessages.length >= this.MAX_MESSAGES_PER_SECOND) {
-      return {
-        allowed: false,
-        reason: "⚠️ Estás escribiendo muy rápido",
-        waitTime: 2000,
-      };
+      return { allowed: false, reason: '⚠️ Estás escribiendo muy rápido', waitTime: 2000 };
     }
 
     recentMessages.push(now);
@@ -80,7 +78,7 @@ class RealTimeAntiSpam {
       () => {
         const now = Date.now();
         for (const [userJid, messages] of this.userMessages.entries()) {
-          const recent = messages.filter((time) => now - time < 60000);
+          const recent = messages.filter(time => now - time < 60000);
           if (recent.length === 0) this.userMessages.delete(userJid);
           else this.userMessages.set(userJid, recent);
         }
@@ -95,13 +93,11 @@ class RealTimeMessageProcessor extends EventEmitter {
   private queue: Array<{ id: string; handler: () => Promise<void> }> = [];
   private isProcessingQueue = false;
 
-  async process(
-    messageId: string,
-    handler: () => Promise<void>,
-  ): Promise<boolean> {
+  async process(messageId: string, handler: () => Promise<void>): Promise<boolean> {
     if (this.processing.has(messageId)) return false;
     this.queue.push({ id: messageId, handler });
-    this.processQueue();
+    // processQueue errors surface via the inherited 'error' EventEmitter event
+    this.processQueue().catch(err => this.emit('error', messageId, err));
     return true;
   }
 
@@ -115,9 +111,9 @@ class RealTimeMessageProcessor extends EventEmitter {
       this.processing.add(item.id);
       try {
         await item.handler();
-        this.emit("processed", item.id);
+        this.emit('processed', item.id);
       } catch (error) {
-        this.emit("error", item.id, error);
+        this.emit('error', item.id, error);
       } finally {
         this.processing.delete(item.id);
       }
@@ -156,10 +152,10 @@ export class WhatsAppClient {
 
   constructor() {
     this.authManager = new AuthManager();
-    this.messageProcessor.on("processed", () => {
+    this.messageProcessor.on('processed', () => {
       this.stats.messagesProcessed++;
     });
-    this.messageProcessor.on("error", (id, error) => {
+    this.messageProcessor.on('error', (id: string, error: unknown) => {
       this.stats.errorsCount++;
       logError(`Message ${id}`, error);
     });
@@ -170,14 +166,14 @@ export class WhatsAppClient {
 
     await Promise.all([
       serviceManager.initialize(),
-      PluginLoader.loadCommands().then((commands) => {
+      PluginLoader.loadCommands().then(commands => {
         for (const cmd of commands) {
           if (cmd?.name) commandRegistry.register(cmd);
         }
       }),
     ]);
 
-    if (process.env.NODE_ENV !== "production") {
+    if (process.env.NODE_ENV !== 'production') {
       logger.info(`Servicios: ${Date.now() - startTime}ms`);
       logger.info(`Comandos: ${commandRegistry.size}`);
     }
@@ -185,41 +181,13 @@ export class WhatsAppClient {
     AuthManager.showAuthMode();
 
     this.middlewares.push(
-      {
-        middleware: new AutoRegisterMiddleware(),
-        priority: 1,
-        canRunParallel: false,
-      },
-      {
-        middleware: new MuteMiddleware(),
-        priority: 2,
-        canRunParallel: false,
-      },
-      {
-        middleware: new LoggerMiddleware(),
-        priority: 3,
-        canRunParallel: true,
-      },
-      {
-        middleware: new ValidationMiddleware(commandRegistry),
-        priority: 4,
-        canRunParallel: true,
-      },
-      {
-        middleware: new PermissionMiddleware(commandRegistry),
-        priority: 5,
-        canRunParallel: false,
-      },
-      {
-        middleware: new AntiSpamMiddleware(),
-        priority: 6,
-        canRunParallel: false,
-      },
-      {
-        middleware: new CooldownMiddleware(commandRegistry),
-        priority: 7,
-        canRunParallel: false,
-      },
+      { middleware: new AutoRegisterMiddleware(), priority: 1, canRunParallel: false },
+      { middleware: new MuteMiddleware(), priority: 2, canRunParallel: false },
+      { middleware: new LoggerMiddleware(), priority: 3, canRunParallel: true },
+      { middleware: new ValidationMiddleware(commandRegistry), priority: 4, canRunParallel: true },
+      { middleware: new PermissionMiddleware(commandRegistry), priority: 5, canRunParallel: false },
+      { middleware: new AntiSpamMiddleware(), priority: 6, canRunParallel: false },
+      { middleware: new CooldownMiddleware(commandRegistry), priority: 7, canRunParallel: false },
     );
 
     this.middlewares.sort((a, b) => a.priority - b.priority);
@@ -232,33 +200,30 @@ export class WhatsAppClient {
   }
 
   private registerSocketListeners(): void {
-    this.sock.ev.on("messages.upsert", ({ messages, type }) => {
-      if (type !== "notify") return;
+    this.sock.ev.on('messages.upsert', ({ messages, type }) => {
+      if (type !== 'notify') return;
 
       for (const msg of messages) {
         if (msg.message?.reactionMessage) {
-          handleReaccion(this.sock, msg).catch((err) =>
-            logError("handleReaccion", err),
-          );
+          handleReaccion(this.sock, msg).catch(err => logError('handleReaccion', err));
           continue;
         }
-
         this.handleMessageRealTime(msg);
       }
     });
 
-    this.sock.ev.on("group-participants.update", (update) => {
-      this.handleGroupUpdate(update).catch(() => {});
+    this.sock.ev.on('group-participants.update', update => {
+      void this.handleGroupUpdate(update);
     });
 
-    this.sock.ev.on("groups.update", (updates) => {
+    this.sock.ev.on('groups.update', updates => {
       for (const update of updates) {
         if (update.id) cacheManager.invalidateGroupMetadata(update.id);
       }
     });
   }
 
-  private handleMessageRealTime(message: any): void {
+  private handleMessageRealTime(message: WAMessage): void {
     if (!message?.message || message.key.fromMe) return;
 
     const messageId = message.key.id;
@@ -267,114 +232,107 @@ export class WhatsAppClient {
 
     this.stats.messagesReceived++;
 
-    setImmediate(async () => {
-      const startTime = Date.now();
+    setImmediate(() => {
+      void (async () => {
+        const startTime = Date.now();
 
-      await this.messageProcessor.process(messageId, async () => {
-        try {
-          const ctx = new MessageContext(this.sock, message);
+        await this.messageProcessor.process(messageId, async () => {
+          try {
+            // WAMessage and proto.IWebMessageInfo are the same shape in Baileys
+            const ctx = new MessageContext(this.sock, message as proto.IWebMessageInfo);
 
-          if (ctx.chat.isGroup) {
-            const isMuted = await serviceManager.moderationService.isMuted(
-              ctx.chat.jid,
-              ctx.sender.jid,
-            );
-
-            if (isMuted) {
-              await ctx.loadBotPermissions();
-              if (ctx.chat.isBotAdmin) {
-                try {
-                  await this.sock.sendMessage(ctx.chat.jid, {
-                    delete: message.key,
-                  });
-                } catch (_) {}
-              }
-              cacheManager.markMessageProcessed(messageId);
-              return;
-            }
-          }
-
-          if (ctx.chat.isGroup && !ctx.command) {
-            const quizHandled = await quizAnswerHandler.handle(ctx);
-            if (quizHandled) {
-              cacheManager.markMessageProcessed(messageId);
-              return;
-            }
-
-            const botJid = this.sock.user?.id ?? "";
-            await handleMention(ctx, botJid);
-
-            cacheManager.markMessageProcessed(messageId);
-            return;
-          }
-
-          if (!ctx.command) {
-            cacheManager.markMessageProcessed(messageId);
-            return;
-          }
-
-          const rateLimit = this.antiSpam.checkRateLimit(ctx.sender.jid);
-          if (!rateLimit.allowed) {
-            this.stats.spamBlocked++;
-            ctx.reply(rateLimit.reason!).catch(() => {});
-            return;
-          }
-
-          const fullCommand =
-            ctx.args.length > 0 ? `${ctx.command} ${ctx.args[0]}` : null;
-
-          const command =
-            (fullCommand ? commandRegistry.get(fullCommand) : null) ??
-            commandRegistry.get(ctx.command);
-
-          if (!command) return;
-          if (fullCommand && commandRegistry.get(fullCommand)) {
-            ctx.args.shift();
-          }
-          if (command.permissions?.user || command.permissions?.bot) {
             if (ctx.chat.isGroup) {
-              await Promise.all([
-                ctx.loadSenderPermissions(),
-                ctx.loadBotPermissions(),
-              ]);
-            } else {
-              await ctx.loadSenderPermissions();
-            }
-          }
-
-          await this.executeWithMiddlewares(ctx, async () => {
-            try {
-              await command.execute(ctx);
-              this.stats.commandsExecuted++;
-            } catch (error) {
-              this.stats.errorsCount++;
-              logError(
-                "Command",
-                new CommandExecutionError(ctx.command, error),
+              const isMuted = await serviceManager.moderationService.isMuted(
+                ctx.chat.jid,
+                ctx.sender.jid,
               );
-              ctx.reply("Error al ejecutar el comando.").catch(() => {});
+
+              if (isMuted) {
+                await ctx.loadBotPermissions();
+                if (ctx.chat.isBotAdmin) {
+                  try {
+                    await this.sock.sendMessage(ctx.chat.jid, { delete: message.key });
+                  } catch (_) {}
+                }
+                cacheManager.markMessageProcessed(messageId);
+                return;
+              }
             }
-          });
 
-          cacheManager.markMessageProcessed(messageId);
+            if (ctx.chat.isGroup && !ctx.command) {
+              const quizHandled = await quizAnswerHandler.handle(ctx);
+              if (quizHandled) {
+                cacheManager.markMessageProcessed(messageId);
+                return;
+              }
 
-          const processingTime = Date.now() - startTime;
-          this.stats.totalProcessingTime += processingTime;
-          if (processingTime > 500)
-            logger.warn(`⚠️ ${ctx.command}: ${processingTime}ms`);
-        } catch (error) {
-          logError("handleMessageRealTime", error);
+              const botJid = this.sock.user?.id ?? '';
+              await handleMention(ctx, botJid);
+
+              cacheManager.markMessageProcessed(messageId);
+              return;
+            }
+
+            if (!ctx.command) {
+              cacheManager.markMessageProcessed(messageId);
+              return;
+            }
+
+            const rateLimit = this.antiSpam.checkRateLimit(ctx.sender.jid);
+            if (!rateLimit.allowed) {
+              this.stats.spamBlocked++;
+              await ctx.reply(rateLimit.reason ?? '⚠️ Demasiados mensajes').catch(() => {});
+              return;
+            }
+
+            const fullCommand = ctx.args.length > 0 ? `${ctx.command} ${ctx.args[0]}` : null;
+
+            const command =
+              (fullCommand ? commandRegistry.get(fullCommand) : null) ??
+              commandRegistry.get(ctx.command);
+
+            if (!command) return;
+            if (fullCommand && commandRegistry.get(fullCommand)) {
+              ctx.args.shift();
+            }
+            if (command.permissions?.user || command.permissions?.bot) {
+              if (ctx.chat.isGroup) {
+                await Promise.all([ctx.loadSenderPermissions(), ctx.loadBotPermissions()]);
+              } else {
+                await ctx.loadSenderPermissions();
+              }
+            }
+
+            await this.executeWithMiddlewares(ctx, async () => {
+              try {
+                await command.execute(ctx);
+                this.stats.commandsExecuted++;
+              } catch (error) {
+                this.stats.errorsCount++;
+                logError('Command', new CommandExecutionError(ctx.command, error));
+                await ctx.reply('Error al ejecutar el comando.').catch(() => {});
+              }
+            });
+
+            cacheManager.markMessageProcessed(messageId);
+
+            const processingTime = Date.now() - startTime;
+            this.stats.totalProcessingTime += processingTime;
+            if (processingTime > 500) logger.warn(`⚠️ ${ctx.command}: ${processingTime}ms`);
+          } catch (error) {
+            logError('handleMessageRealTime', error);
+          }
+        });
+
+        if (Date.now() - this.stats.lastStatsLog > 300000) {
+          this.logStats();
+          this.stats.lastStatsLog = Date.now();
         }
-      });
-
-      if (Date.now() - this.stats.lastStatsLog > 300000) {
-        this.logStats();
-        this.stats.lastStatsLog = Date.now();
-      }
+      })();
     });
   }
 
-  private async handleGroupUpdate(update: any): Promise<void> {
+  private async handleGroupUpdate(update: GroupParticipantsUpdate): Promise<void> {
     const { id: groupJid, participants, action } = update;
     if (!groupJid || !participants) return;
 
@@ -382,23 +340,23 @@ export class WhatsAppClient {
       cacheManager.invalidateGroupMetadata(groupJid);
       await serviceManager.groupService.getGroup(groupJid);
 
-      if (action === "add") {
+      if (action === 'add') {
         for (const participant of participants) {
           welcomeService
             .handleNewParticipant(this.sock, groupJid, participant)
-            .catch((err) => logError("handleNewParticipant", err));
+            .catch(err => logError('handleNewParticipant', err));
         }
       }
 
-      if (action === "remove") {
+      if (action === 'remove') {
         for (const participant of participants) {
           welcomeService
             .handleParticipantLeft(this.sock, groupJid, participant)
-            .catch((err) => logError("handleParticipantLeft", err));
+            .catch(err => logError('handleParticipantLeft', err));
         }
       }
     } catch (error) {
-      logError("handleGroupUpdate", error);
+      logError('handleGroupUpdate', error);
     }
   }
 
@@ -411,18 +369,13 @@ export class WhatsAppClient {
     const next = async (): Promise<void> => {
       const parallelBatch: IMiddleware[] = [];
 
-      while (
-        index < this.middlewares.length &&
-        this.middlewares[index].canRunParallel
-      ) {
+      while (index < this.middlewares.length && this.middlewares[index].canRunParallel) {
         parallelBatch.push(this.middlewares[index].middleware);
         index++;
       }
 
       if (parallelBatch.length > 0) {
-        await Promise.all(
-          parallelBatch.map((mw) => mw.execute(ctx, async () => {})),
-        );
+        await Promise.all(parallelBatch.map(mw => mw.execute(ctx, async () => {})));
       }
 
       if (index < this.middlewares.length) {
@@ -473,7 +426,7 @@ export class WhatsAppClient {
   async shutdown(): Promise<void> {
     this.isReady = false;
     try {
-      this.sock?.ws?.close();
+      await Promise.resolve(this.sock?.ws?.close()).catch(() => {});
     } catch (_) {}
     await serviceManager.shutdown();
     this.logStats();

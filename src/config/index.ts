@@ -1,5 +1,5 @@
-import { env } from "./env.js";
-import type { BotConfig } from "@/types/index.js";
+import { env } from './env.js';
+import type { BotConfig } from '@/types/index.js';
 
 export const config: BotConfig = {
   name: env.BOT_NAME,
@@ -26,6 +26,6 @@ export const config: BotConfig = {
   database: {
     type: env.DB_TYPE,
     uri: env.DB_URI,
-    path: "./data/database.json",
+    path: './data/database.json',
   },
 };

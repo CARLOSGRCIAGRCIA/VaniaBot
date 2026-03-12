@@ -1,10 +1,10 @@
-import { Middleware } from "./Middleware.js";
-import type { MessageContext } from "@/types/index.js";
-import { serviceManager } from "@/services/system/Servicemanager.js";
-import { logError, logger } from "@/utils/logger.js";
+import { Middleware } from './Middleware.js';
+import type { MessageContext } from '@/types/index.js';
+import { serviceManager } from '@/services/system/Servicemanager.js';
+import { logError, logger } from '@/utils/logger.js';
 
 export class MuteMiddleware extends Middleware {
-  name = "mute";
+  name = 'mute';
 
   async execute(ctx: MessageContext, next: () => Promise<void>): Promise<void> {
     if (!ctx.chat.isGroup) {
@@ -13,18 +13,13 @@ export class MuteMiddleware extends Middleware {
     }
 
     try {
-      const isMuted = await serviceManager.moderationService.isMuted(
-        ctx.chat.jid,
-        ctx.sender.jid,
-      );
+      const isMuted = await serviceManager.moderationService.isMuted(ctx.chat.jid, ctx.sender.jid);
 
       if (isMuted) {
         await ctx.loadBotPermissions();
 
         if (ctx.chat.isBotAdmin) {
-          logger.info(
-            `[MUTE] Intentando borrar mensaje: ${ctx.message.key.id}`,
-          );
+          logger.info(`[MUTE] Intentando borrar mensaje: ${ctx.message.key.id}`);
           await ctx.sock.sendMessage(ctx.chat.jid, {
             delete: ctx.message.key,
           });
@@ -34,7 +29,7 @@ export class MuteMiddleware extends Middleware {
         return;
       }
     } catch (error) {
-      logError("[MUTE ERROR]", error);
+      logError('[MUTE ERROR]', error);
     }
 
     await next();

@@ -1,4 +1,4 @@
-import type { IDatabase } from "./Database.js";
+import type { IDatabase } from './Database.js';
 
 export interface GroupSettings {
   jid: string;
@@ -57,7 +57,7 @@ export interface GroupSettings {
 }
 
 export class GroupService {
-  private readonly COLLECTION = "groups";
+  private readonly COLLECTION = 'groups';
 
   constructor(private db: IDatabase) {}
 
@@ -70,7 +70,7 @@ export class GroupService {
 
     const newGroup: GroupSettings = {
       jid,
-      name: "Group",
+      name: 'Group',
       isActive: true,
       welcome: {
         enabled: true,
@@ -116,31 +116,20 @@ export class GroupService {
     return newGroup;
   }
 
-  async updateGroup(
-    jid: string,
-    updates: Partial<GroupSettings>,
-  ): Promise<void> {
+  async updateGroup(jid: string, updates: Partial<GroupSettings>): Promise<void> {
     await this.db.update<GroupSettings>(this.COLLECTION, jid, {
       ...updates,
       updatedAt: Date.now(),
     });
   }
 
-  async setWelcome(
-    jid: string,
-    enabled: boolean,
-    message?: string,
-  ): Promise<void> {
+  async setWelcome(jid: string, enabled: boolean, message?: string): Promise<void> {
     await this.updateGroup(jid, {
       welcome: { enabled, message },
     });
   }
 
-  async setGoodbye(
-    jid: string,
-    enabled: boolean,
-    message?: string,
-  ): Promise<void> {
+  async setGoodbye(jid: string, enabled: boolean, message?: string): Promise<void> {
     await this.updateGroup(jid, {
       goodbye: { enabled, message },
     });
@@ -171,7 +160,7 @@ export class GroupService {
 
   async removeAllowedDomain(jid: string, domain: string): Promise<void> {
     const group = await this.getGroup(jid);
-    const domains = group.antiLink.allowedDomains.filter((d) => d !== domain);
+    const domains = group.antiLink.allowedDomains.filter(d => d !== domain);
 
     await this.updateGroup(jid, {
       antiLink: { ...group.antiLink, allowedDomains: domains },
@@ -189,7 +178,7 @@ export class GroupService {
 
   async removeBadWord(jid: string, word: string): Promise<void> {
     const group = await this.getGroup(jid);
-    const words = group.antiWords.words.filter((w) => w !== word.toLowerCase());
+    const words = group.antiWords.words.filter(w => w !== word.toLowerCase());
 
     await this.updateGroup(jid, {
       antiWords: { ...group.antiWords, words },

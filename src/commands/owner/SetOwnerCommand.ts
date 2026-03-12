@@ -1,18 +1,15 @@
-import { Command } from "../Command.js";
-import { CommandCategory, PermissionLevel } from "@/types/index.js";
-import type { MessageContext } from "@/types/index.js";
-import { serviceManager } from "@/services/system/Servicemanager.js";
+import { Command } from '../Command.js';
+import { CommandCategory, PermissionLevel } from '@/types/index.js';
+import type { MessageContext } from '@/types/index.js';
+import { serviceManager } from '@/services/system/Servicemanager.js';
 
 export class SetOwnerCommand extends Command {
-  name = "setowner";
-  description = "Grant or remove owner permissions";
+  name = 'setowner';
+  description = 'Grant or remove owner permissions';
   category = CommandCategory.OWNER;
-  aliases = ["makeowner", "removeowner", "owner"];
-  usage = "!setowner <add|remove> <@user>";
-  examples = [
-    "!setowner add @5215551234567",
-    "!setowner remove @5215551234567",
-  ];
+  aliases = ['makeowner', 'removeowner', 'owner'];
+  usage = '!setowner <add|remove> <@user>';
+  examples = ['!setowner add @5215551234567', '!setowner remove @5215551234567'];
   permissions = {
     user: [PermissionLevel.OWNER],
   };
@@ -24,22 +21,21 @@ export class SetOwnerCommand extends Command {
       await ctx.reply(
         ` Incorrect usage\n\n` +
           `Usage: ${this.usage}\n\n` +
-          `📝 Examples:\n${this.examples.join("\n")}`,
+          `📝 Examples:\n${this.examples.join('\n')}`,
       );
       return;
     }
 
     const action = args[0].toLowerCase();
-    const mentionedJid =
-      ctx.message.message?.extendedTextMessage?.contextInfo?.mentionedJid?.[0];
+    const mentionedJid = ctx.message.message?.extendedTextMessage?.contextInfo?.mentionedJid?.[0];
 
     if (!mentionedJid) {
-      await ctx.reply(" You must mention a user");
+      await ctx.reply(' You must mention a user');
       return;
     }
 
     if (mentionedJid === ctx.sender.jid) {
-      await ctx.reply(" You cannot modify your own owner permissions");
+      await ctx.reply(' You cannot modify your own owner permissions');
       return;
     }
 
@@ -47,9 +43,9 @@ export class SetOwnerCommand extends Command {
       const targetUser = await serviceManager.userService.getUser(mentionedJid);
 
       switch (action) {
-        case "add":
-        case "grant":
-        case "give":
+        case 'add':
+        case 'grant':
+        case 'give':
           if (targetUser.isOwner) {
             await ctx.reply(`⚠️ ${targetUser.name} is already an owner`);
             return;
@@ -63,8 +59,7 @@ export class SetOwnerCommand extends Command {
 
           await serviceManager.userService.setOwner(mentionedJid, true);
 
-          const updatedUser =
-            await serviceManager.userService.getUser(mentionedJid);
+          const updatedUser = await serviceManager.userService.getUser(mentionedJid);
 
           await ctx.reply(
             `✅ ${targetUser.name} is now an owner\n\n` +
@@ -81,9 +76,9 @@ export class SetOwnerCommand extends Command {
           );
           break;
 
-        case "remove":
-        case "revoke":
-        case "take":
+        case 'remove':
+        case 'revoke':
+        case 'take':
           if (!targetUser.isOwner) {
             await ctx.reply(`⚠️ ${targetUser.name} is not an owner`);
             return;
@@ -97,8 +92,7 @@ export class SetOwnerCommand extends Command {
 
           await serviceManager.userService.setOwner(mentionedJid, false);
 
-          const demotedUser =
-            await serviceManager.userService.getUser(mentionedJid);
+          const demotedUser = await serviceManager.userService.getUser(mentionedJid);
 
           await ctx.reply(
             `✅ Owner permissions removed from ${targetUser.name}\n\n` +
@@ -111,13 +105,11 @@ export class SetOwnerCommand extends Command {
           break;
 
         default:
-          await ctx.reply(" Invalid action. Use: add or remove");
+          await ctx.reply(' Invalid action. Use: add or remove');
       }
     } catch (error) {
-      console.error("Error in SetOwnerCommand:", error);
-      await ctx.reply(
-        ` Error: ${error instanceof Error ? error.message : "Unknown"}`,
-      );
+      console.error('Error in SetOwnerCommand:', error);
+      await ctx.reply(` Error: ${error instanceof Error ? error.message : 'Unknown'}`);
     }
   }
 }

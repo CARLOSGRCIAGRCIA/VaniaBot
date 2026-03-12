@@ -1,10 +1,10 @@
-import { Middleware } from "./Middleware.js";
-import type { MessageContext } from "@/types/index.js";
-import { CommandRegistry } from "@/core/CommandRegistry.js";
-import { CommandContext } from "@/types/index.js";
+import { Middleware } from './Middleware.js';
+import type { MessageContext, ICommand } from '@/types/index.js';
+import type { CommandRegistry } from '@/core/CommandRegistry.js';
+import { CommandContext } from '@/types/index.js';
 
 export class ValidationMiddleware extends Middleware {
-  name = "validation";
+  name = 'validation';
 
   constructor(private registry: CommandRegistry) {
     super();
@@ -19,7 +19,7 @@ export class ValidationMiddleware extends Middleware {
     }
 
     if (!this.validateContext(command, ctx)) {
-      const contextName = ctx.chat.isGroup ? "grupos" : "chats privados";
+      const contextName = ctx.chat.isGroup ? 'grupos' : 'chats privados';
       await ctx.reply(`❌ Este comando solo funciona en ${contextName}`);
       return;
     }
@@ -27,18 +27,12 @@ export class ValidationMiddleware extends Middleware {
     await next();
   }
 
-  private validateContext(command: any, ctx: MessageContext): boolean {
-    if (!command.contexts || command.contexts.includes(CommandContext.BOTH)) {
-      return true;
-    }
+  private validateContext(command: ICommand, ctx: MessageContext): boolean {
+    if (!command.contexts || command.contexts.includes(CommandContext.BOTH)) return true;
 
-    if (command.contexts.includes(CommandContext.GROUP) && !ctx.chat.isGroup) {
-      return false;
-    }
+    if (command.contexts.includes(CommandContext.GROUP) && !ctx.chat.isGroup) return false;
 
-    if (command.contexts.includes(CommandContext.PRIVATE) && ctx.chat.isGroup) {
-      return false;
-    }
+    if (command.contexts.includes(CommandContext.PRIVATE) && ctx.chat.isGroup) return false;
 
     return true;
   }

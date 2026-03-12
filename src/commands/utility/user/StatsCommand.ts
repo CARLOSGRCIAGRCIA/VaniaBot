@@ -1,28 +1,60 @@
-import { Command } from "../../Command.js";
-import { CommandCategory, PermissionLevel } from "@/types/index.js";
-import type { MessageContext } from "@/types/index.js";
-import { cacheManager } from "@/core/CacheManager.js";
-import { serviceManager } from "@/services/system/Servicemanager.js";
-import { JsonDatabase } from "@/services/database/JsonDatabase.js";
+import { Command } from '../../Command.js';
+import { CommandCategory, PermissionLevel } from '@/types/index.js';
+import type { MessageContext } from '@/types/index.js';
+import { cacheManager } from '@/core/CacheManager.js';
+import { serviceManager } from '@/services/system/Servicemanager.js';
+import { JsonDatabase } from '@/services/database/JsonDatabase.js';
+
+interface ClientStats {
+  messagesReceived: number;
+  messagesProcessed: number;
+  commandsExecuted: number;
+  spamBlocked: number;
+  avgProcessingTime: number;
+  queue: {
+    queued: number;
+    processing: number;
+  };
+  errorsCount: number;
+}
+
+interface CacheStats {
+  hitRate: string;
+  sizes: {
+    users: number;
+    permissions: number;
+    metadata: number;
+    messages: number;
+  };
+}
 
 export class StatsCommand extends Command {
-  name = "stats";
-  description = "Displays real-time bot statistics";
+  name = 'stats';
+  description = 'Displays real-time bot statistics';
   category = CommandCategory.UTILITY;
-  aliases = ["status"];
-  usage = "!stats";
+  aliases = ['status'];
+  usage = '!stats';
   permissions = {
     user: [PermissionLevel.OWNER],
   };
 
   async execute(ctx: MessageContext): Promise<void> {
-    const client = (global as any).client;
-    const clientStats = client.getStats();
-    const cacheStats = cacheManager.getStats();
+    const client = (global as { client?: { getStats: () => ClientStats } }).client;
+    const clientStats = client?.getStats() || {
+      messagesReceived: 0,
+      messagesProcessed: 0,
+      commandsExecuted: 0,
+      spamBlocked: 0,
+      avgProcessingTime: 0,
+      queue: { queued: 0, processing: 0 },
+      errorsCount: 0,
+    };
+
+    const cacheStats = cacheManager.getStats() as CacheStats;
 
     let dbStats: { hitRate: string; size: number | string } = {
-      hitRate: "N/A",
-      size: "N/A",
+      hitRate: 'N/A',
+      size: 'N/A',
     };
 
     if (serviceManager.db instanceof JsonDatabase) {

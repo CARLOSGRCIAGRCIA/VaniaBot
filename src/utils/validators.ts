@@ -1,18 +1,18 @@
 export function isValidWhatsAppNumber(number: string): boolean {
-  const cleaned = number.replace(/[^\d]/g, "");
+  const cleaned = number.replace(/[^\d]/g, '');
   return /^\d{10,15}$/.test(cleaned);
 }
 
 export function isGroupJid(jid: string): boolean {
-  return jid.endsWith("@g.us");
+  return jid.endsWith('@g.us');
 }
 
 export function isUserJid(jid: string): boolean {
-  return jid.endsWith("@s.whatsapp.net");
+  return jid.endsWith('@s.whatsapp.net');
 }
 
 export function cleanPhoneNumber(number: string): string {
-  return number.replace(/[^\d+]/g, "");
+  return number.replace(/[^\d+]/g, '');
 }
 
 export function isValidEmail(email: string): boolean {
@@ -49,11 +49,8 @@ export function inRange(num: number, min: number, max: number): boolean {
   return num >= min && num <= max;
 }
 
-export function hasRequiredProps<T extends object>(
-  obj: T,
-  props: (keyof T)[],
-): boolean {
-  return props.every((prop) => prop in obj && obj[prop] !== undefined);
+export function hasRequiredProps<T extends object>(obj: T, props: (keyof T)[]): boolean {
+  return props.every(prop => prop in obj && obj[prop] !== undefined);
 }
 
 export function isValidDate(date: string): boolean {
@@ -70,7 +67,7 @@ export function isValidTime(time: string): boolean {
 }
 
 export function sanitizeInput(input: string): string {
-  return input.replace(/[<>]/g, "").replace(/['"]/g, "").trim();
+  return input.replace(/[<>]/g, '').replace(/['"]/g, '').trim();
 }
 
 export function isNonEmptyArray<T>(arr: T[]): boolean {
@@ -105,8 +102,8 @@ export function isValidUsername(username: string): boolean {
   return /^[a-zA-Z0-9_-]{3,20}$/.test(username);
 }
 
-export function isPlainObject(value: any): value is object {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
+export function isPlainObject(value: unknown): value is object {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
 export function isValidJSON(str: string): boolean {
@@ -120,16 +117,13 @@ export function isValidJSON(str: string): boolean {
 
 export function isStrongPassword(password: string): boolean {
   return (
-    password.length >= 8 &&
-    /[A-Z]/.test(password) &&
-    /[a-z]/.test(password) &&
-    /\d/.test(password)
+    password.length >= 8 && /[A-Z]/.test(password) && /[a-z]/.test(password) && /\d/.test(password)
   );
 }
 
 export function containsProfanity(text: string, badWords: string[]): boolean {
   const lowerText = text.toLowerCase();
-  return badWords.some((word) => lowerText.includes(word.toLowerCase()));
+  return badWords.some(word => lowerText.includes(word.toLowerCase()));
 }
 
 export function isWhatsAppLink(url: string): boolean {

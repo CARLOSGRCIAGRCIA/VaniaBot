@@ -1,17 +1,39 @@
-import { LRUCache } from "lru-cache";
+import { LRUCache } from 'lru-cache';
+import type { GroupMetadata } from '@whiskeysockets/baileys';
+import type { UserPermissions, BotPermissions } from '@/services/PermissionService.js';
 
-interface CacheEntry<T> {
+// ─── Types ────────────────────────────────────────────────────────────────────
+
+export interface CacheEntry<T> {
   value: T;
   timestamp: number;
 }
 
+/**
+ * The cache stores either user or bot permissions depending on which was set.
+ * Using a union keeps it compatible with both callers in MessageContext.
+ */
+export type PermissionData = UserPermissions | BotPermissions;
+
+/**
+ * Minimal user shape stored in cache.
+ * Should match (or be a subset of) your User type from UserService.
+ */
+export interface CachedUser {
+  jid: string;
+  name: string;
+  level: number;
+  xp: number;
+  money: number;
+  [key: string]: unknown;
+}
+
+// ──────────────────────────────────────────────────────────────────────────────
+
 export class UnifiedCacheManager {
-  private permissionsCache: LRUCache<string, any>;
-
-  private groupMetadataCache: LRUCache<string, any>;
-
-  private userCache: LRUCache<string, any>;
-
+  private permissionsCache: LRUCache<string, PermissionData>;
+  private groupMetadataCache: LRUCache<string, GroupMetadata>;
+  private userCache: LRUCache<string, CachedUser>;
   private messageIdCache: Set<string>;
 
   private stats = {
@@ -44,20 +66,20 @@ export class UnifiedCacheManager {
     setInterval(() => this.messageIdCache.clear(), 5 * 60 * 1000);
   }
 
-  getPermissions(groupJid: string, userJid: string): any | null {
+  // ─── Permissions ────────────────────────────────────────────────────────────
+
+  getPermissions(groupJid: string, userJid: string): PermissionData | null {
     const key = `${groupJid}:${userJid}`;
     const cached = this.permissionsCache.get(key);
-
     if (cached) {
       this.stats.hits++;
       return cached;
     }
-
     this.stats.misses++;
     return null;
   }
 
-  setPermissions(groupJid: string, userJid: string, perms: any): void {
+  setPermissions(groupJid: string, userJid: string, perms: PermissionData): void {
     const key = `${groupJid}:${userJid}`;
     this.permissionsCache.set(key, perms);
   }
@@ -65,7 +87,7 @@ export class UnifiedCacheManager {
   invalidatePermissions(groupJid?: string): void {
     if (groupJid) {
       for (const key of this.permissionsCache.keys()) {
-        if (key.startsWith(groupJid + ":")) {
+        if (key.startsWith(groupJid + ':')) {
           this.permissionsCache.delete(key);
         }
       }
@@ -74,7 +96,9 @@ export class UnifiedCacheManager {
     }
   }
 
-  getGroupMetadata(groupJid: string): any | null {
+  // ─── Group Metadata ──────────────────────────────────────────────────────────
+
+  getGroupMetadata(groupJid: string): GroupMetadata | null {
     const cached = this.groupMetadataCache.get(groupJid);
     if (cached) {
       this.stats.hits++;
@@ -84,7 +108,7 @@ export class UnifiedCacheManager {
     return null;
   }
 
-  setGroupMetadata(groupJid: string, metadata: any): void {
+  setGroupMetadata(groupJid: string, metadata: GroupMetadata): void {
     this.groupMetadataCache.set(groupJid, metadata);
   }
 
@@ -93,7 +117,9 @@ export class UnifiedCacheManager {
     this.invalidatePermissions(groupJid);
   }
 
-  getUser(jid: string): any | null {
+  // ─── Users ───────────────────────────────────────────────────────────────────
+
+  getUser(jid: string): CachedUser | null {
     const cached = this.userCache.get(jid);
     if (cached) {
       this.stats.hits++;
@@ -103,13 +129,15 @@ export class UnifiedCacheManager {
     return null;
   }
 
-  setUser(jid: string, user: any): void {
+  setUser(jid: string, user: CachedUser): void {
     this.userCache.set(jid, user);
   }
 
   invalidateUser(jid: string): void {
     this.userCache.delete(jid);
   }
+
+  // ─── Message dedup ───────────────────────────────────────────────────────────
 
   hasProcessedMessage(messageId: string): boolean {
     return this.messageIdCache.has(messageId);
@@ -119,12 +147,13 @@ export class UnifiedCacheManager {
     this.messageIdCache.add(messageId);
   }
 
+  // ─── Stats ───────────────────────────────────────────────────────────────────
+
   getStats() {
     const total = this.stats.hits + this.stats.misses;
     return {
       ...this.stats,
-      hitRate:
-        total > 0 ? ((this.stats.hits / total) * 100).toFixed(2) + "%" : "0%",
+      hitRate: total > 0 ? ((this.stats.hits / total) * 100).toFixed(2) + '%' : '0%',
       sizes: {
         permissions: this.permissionsCache.size,
         metadata: this.groupMetadataCache.size,

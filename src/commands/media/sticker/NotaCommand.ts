@@ -1,16 +1,16 @@
-import { Command } from "../../Command.js";
-import { CommandCategory, type MessageContext } from "@/types/index.js";
-import { StickerService } from "@/services/media/StickerService.js";
-import sharp from "sharp";
-import path from "path";
+import { Command } from '../../Command.js';
+import { CommandCategory, type MessageContext } from '@/types/index.js';
+import { StickerService } from '@/services/media/StickerService.js';
+import sharp from 'sharp';
+import path from 'path';
 
 export class NotaCommand extends Command {
-  name = "nota";
-  description = "Create a note sticker with text";
+  name = 'nota';
+  description = 'Create a note sticker with text';
   category = CommandCategory.MEDIA;
-  aliases = ["note"];
-  usage = "!nota <text>";
-  examples = ["!nota Hello World", "!nota Remember this"];
+  aliases = ['note'];
+  usage = '!nota <text>';
+  examples = ['!nota Hello World', '!nota Remember this'];
   cooldown = 5000;
 
   private stickerService: StickerService;
@@ -22,17 +22,17 @@ export class NotaCommand extends Command {
 
   async execute(ctx: MessageContext): Promise<void> {
     if (!ctx.args.length) {
-      await ctx.reply("⚠️ Write something after .nota\nExample: *!nota Hello*");
+      await ctx.reply('⚠️ Write something after .nota\nExample: *!nota Hello*');
       return;
     }
 
     const words = ctx.args.slice(0, 20);
-    const text = words.join(" ");
+    const text = words.join(' ');
 
-    await ctx.react("⏳");
+    await ctx.react('⏳');
 
     try {
-      const imagePath = path.join(process.cwd(), "data", "assets", "nota.jpg");
+      const imagePath = path.join(process.cwd(), 'data', 'assets', 'nota.jpg');
 
       const image = sharp(imagePath);
       const metadata = await image.metadata();
@@ -41,7 +41,7 @@ export class NotaCommand extends Command {
       const height = metadata.height || 512;
 
       const fontSize = 99;
-      const textColor = "#1a1a1a";
+      const textColor = '#1a1a1a';
 
       const x = width / 2;
       const centerY = height / 2;
@@ -85,29 +85,26 @@ export class NotaCommand extends Command {
         .toBuffer();
 
       const stiker = await this.stickerService.createSticker(buffer, {
-        pack: "VaniaBot",
-        author: "VaniaBot",
+        pack: 'VaniaBot',
+        author: 'VaniaBot',
       });
 
       await ctx.sock.sendMessage(ctx.chat.jid, { sticker: stiker });
-      await ctx.react("✅");
-    } catch (error: any) {
-      console.error("Error in NotaCommand:", error);
-      await ctx.reply(
-        ` Error: ${error.message || "Could not generate sticker"}`,
-      );
-      await ctx.react("");
+      await ctx.react('✅');
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      await ctx.reply(`❌ Error: ${message}`);
     }
   }
 
   private wrapText(text: string, maxChars: number): string[] {
-    const words = text.split(" ");
+    const words = text.split(' ');
     const lines: string[] = [];
-    let currentLine = "";
+    let currentLine = '';
 
-    words.forEach((word) => {
+    words.forEach(word => {
       if ((currentLine + word).length <= maxChars) {
-        currentLine += (currentLine ? " " : "") + word;
+        currentLine += (currentLine ? ' ' : '') + word;
       } else {
         if (currentLine) lines.push(currentLine);
         currentLine = word;
@@ -120,10 +117,10 @@ export class NotaCommand extends Command {
 
   private escapeXml(text: string): string {
     return text
-      .replace(/&/g, "&amp;")
-      .replace(/</g, "&lt;")
-      .replace(/>/g, "&gt;")
-      .replace(/"/g, "&quot;")
-      .replace(/'/g, "&apos;");
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&apos;');
   }
 }

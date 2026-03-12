@@ -1,27 +1,27 @@
 export enum QuizDifficulty {
-  EASY = "easy",
-  MEDIUM = "medium",
-  HARD = "hard",
+  EASY = 'easy',
+  MEDIUM = 'medium',
+  HARD = 'hard',
 }
 
 export enum QuizCategory {
-  JAVASCRIPT = "javascript",
-  TYPESCRIPT = "typescript",
-  PYTHON = "python",
-  HISTORIA = "historia",
-  CIENCIA = "ciencia",
-  MATEMATICAS = "matematicas",
-  ANIME = "anime",
-  CULTURA = "cultura general",
-  GEOGRAFIA = "geografia",
-  PERSONALIZADO = "personalizado",
+  JAVASCRIPT = 'javascript',
+  TYPESCRIPT = 'typescript',
+  PYTHON = 'python',
+  HISTORIA = 'historia',
+  CIENCIA = 'ciencia',
+  MATEMATICAS = 'matematicas',
+  ANIME = 'anime',
+  CULTURA = 'cultura general',
+  GEOGRAFIA = 'geografia',
+  PERSONALIZADO = 'personalizado',
 }
 
 export enum QuizSessionState {
-  WAITING_ANSWER = "waiting_answer",
-  SHOWING_RESULT = "showing_result",
-  FINISHED = "finished",
-  PAUSED = "paused",
+  WAITING_ANSWER = 'waiting_answer',
+  SHOWING_RESULT = 'showing_result',
+  FINISHED = 'finished',
+  PAUSED = 'paused',
 }
 
 export interface QuizQuestion {

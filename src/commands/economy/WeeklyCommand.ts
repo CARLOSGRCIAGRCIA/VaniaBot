@@ -1,14 +1,14 @@
-import { Command } from "../Command.js";
-import { CommandCategory, type MessageContext } from "@/types/index.js";
-import { serviceManager } from "@/services/system/Servicemanager.js";
+import { Command } from '../Command.js';
+import { CommandCategory, type MessageContext } from '@/types/index.js';
+import { serviceManager } from '@/services/system/Servicemanager.js';
 
 export class WeeklyCommand extends Command {
-  name = "weekly";
-  description = "Claim your weekly reward";
+  name = 'weekly';
+  description = 'Claim your weekly reward';
   category = CommandCategory.ECONOMY;
-  aliases = ["semanal"];
-  usage = "!weekly";
-  examples = ["!weekly"];
+  aliases = ['semanal'];
+  usage = '!weekly';
+  examples = ['!weekly'];
   cooldown = 5000;
 
   private readonly BASE_REWARD = 10000;
@@ -22,9 +22,7 @@ export class WeeklyCommand extends Command {
     if (!serviceManager.userService.canClaimWeekly(user) && !user.isOwner) {
       const remaining = serviceManager.userService.getWeeklyTimeRemaining(user);
       const days = Math.floor(remaining / (1000 * 60 * 60 * 24));
-      const hours = Math.floor(
-        (remaining % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60),
-      );
+      const hours = Math.floor((remaining % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
 
       await ctx.reply(
         `⏰ *Weekly Reward*\n\n` +
@@ -35,14 +33,11 @@ export class WeeklyCommand extends Command {
       return;
     }
 
-    await ctx.react("⏳");
+    await ctx.react('⏳');
 
     let reward = this.BASE_REWARD;
-    let streak = (user.weeklyStreak || 0) + 1;
-    let streakBonus = Math.min(
-      streak * this.STREAK_BONUS,
-      this.MAX_STREAK_BONUS,
-    );
+    const streak = (user.weeklyStreak || 0) + 1;
+    const streakBonus = Math.min(streak * this.STREAK_BONUS, this.MAX_STREAK_BONUS);
 
     if (!user.isOwner) {
       reward += streakBonus;
@@ -50,15 +45,10 @@ export class WeeklyCommand extends Command {
       await serviceManager.userService.addMoney(ctx.sender.jid, reward);
       await serviceManager.userService.addXP(ctx.sender.jid, this.XP_REWARD);
 
-      await serviceManager.userService.updateWeeklyClaim(
-        ctx.sender.jid,
-        streak,
-      );
+      await serviceManager.userService.updateWeeklyClaim(ctx.sender.jid, streak);
     }
 
-    const updatedUser = await serviceManager.userService.getUser(
-      ctx.sender.jid,
-    );
+    const updatedUser = await serviceManager.userService.getUser(ctx.sender.jid);
 
     let message = `🎁 *Weekly Reward Claimed!*\n\n`;
     message += `💰 Base Reward: $${this.BASE_REWARD.toLocaleString()}\n`;
@@ -71,7 +61,7 @@ export class WeeklyCommand extends Command {
       message += `💵 Total: $${reward.toLocaleString()}\n`;
       message += `✨ XP Gained: +${this.XP_REWARD}\n\n`;
       message += `💰 New Balance: $${updatedUser.money.toLocaleString()}\n`;
-      message += `🔥 Current Streak: ${streak} week${streak > 1 ? "s" : ""}\n\n`;
+      message += `🔥 Current Streak: ${streak} week${streak > 1 ? 's' : ''}\n\n`;
     } else {
       message += `\n👑 *Owner:* Infinite claims available\n\n`;
     }
@@ -82,6 +72,6 @@ export class WeeklyCommand extends Command {
     message += `> _*VaniaBot💝*_`;
 
     await ctx.reply(message);
-    await ctx.react("✅");
+    await ctx.react('✅');
   }
 }

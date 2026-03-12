@@ -1,7 +1,7 @@
-import { Command } from "../../../Command.js";
-import { CommandCategory } from "@/types/index.js";
-import type { MessageContext } from "@/types/index.js";
-import { aiService } from "@/services/external/AIService.js";
+import { Command } from '../../../Command.js';
+import { CommandCategory } from '@/types/index.js';
+import type { MessageContext } from '@/types/index.js';
+import { aiService } from '@/services/external/AIService.js';
 
 import {
   parseCoord,
@@ -9,7 +9,7 @@ import {
   resolveNodeId,
   coordToString,
   NODES,
-} from "../map/Purgatoriomap.js";
+} from '../map/Purgatoriomap.js';
 import {
   runTacticalAnalysis,
   scoreRoutes,
@@ -17,10 +17,15 @@ import {
   type TacticalAnalysis,
   type ScoredRoute,
   type ZoneId,
-} from "../services/RotationSimulator.js";
-import { rotationCache, formatAnalysis } from "../services/RotationCache.js";
+} from '../services/RotationSimulator.js';
+import { rotationCache, formatAnalysis } from '../services/RotationCache.js';
 
-function resolveInput(raw: string): { nodeId: string; label: string } | null {
+interface ResolvedNode {
+  nodeId: string;
+  label: string;
+}
+
+function resolveInput(raw: string): ResolvedNode | null {
   const byAlias = resolveNodeId(raw);
   if (byAlias) return { nodeId: byAlias, label: NODES[byAlias].name };
 
@@ -36,7 +41,7 @@ function resolveInput(raw: string): { nodeId: string; label: string } | null {
 }
 
 function inferZone(nodeId: string): ZoneId {
-  return (NODES[nodeId]?.zone ?? "CENTER") as ZoneId;
+  return (NODES[nodeId]?.zone ?? 'CENTER') as ZoneId;
 }
 
 function buildAIPrompt(
@@ -49,33 +54,28 @@ function buildAIPrompt(
   const phase = analysis.circlePhase;
 
   const enemySummary = analysis.enemyRotations
-    .map(
-      (e) =>
-        `Z${e.zone}:ETA${e.fastestEta < 999 ? e.fastestEta + "s" : "bloqueado"}`,
-    )
-    .join(" | ");
+    .map(e => `Z${e.zone}:ETA${e.fastestEta < 999 ? e.fastestEta + 's' : 'bloqueado'}`)
+    .join(' | ');
 
   const topConflicts = analysis.conflictZones
     .slice(0, 2)
-    .map((c) => `${c.nodeName}(${Math.round(c.risk * 100)}%)`)
-    .join(", ");
+    .map(c => `${c.nodeName}(${Math.round(c.risk * 100)}%)`)
+    .join(', ');
 
   const routeSummary = scored
     .slice(0, 3)
-    .filter((r) => r.path.found)
-    .map(
-      (r, i) => `R${i + 1}:${Math.round(r.score)}pts/${r.eta}s/${r.riskLevel}`,
-    )
-    .join(" | ");
+    .filter(r => r.path.found)
+    .map((r, i) => `R${i + 1}:${Math.round(r.score)}pts/${r.eta}s/${r.riskLevel}`)
+    .join(' | ');
 
   return (
     `Analista táctico Free Fire, Purgatorio. Solo genera explicación, cálculos ya hechos.\n` +
     `Zona:${myZone} Cierre:${goalName} Fase:${phase}\n` +
     `Enemigos: ${enemySummary}\n` +
-    `Conflictos: ${topConflicts || "ninguno crítico"}\n` +
+    `Conflictos: ${topConflicts || 'ninguno crítico'}\n` +
     `Rutas: ${routeSummary}\n` +
     `Mejor ruta: score ${Math.round(top?.score ?? 0)}, ETA ${top?.eta ?? 0}s\n` +
-    `High ground en ruta: ${top?.highGroundNodes?.join(",") || "ninguno"}\n\n` +
+    `High ground en ruta: ${top?.highGroundNodes?.join(',') || 'ninguno'}\n\n` +
     `Explica en 3 frases cortas: (1) por qué esa ruta es la mejor, ` +
     `(2) qué enemigo es la mayor amenaza y dónde, ` +
     `(3) cómo posicionarse al llegar. Sin encabezados. Máx 80 palabras.`
@@ -100,16 +100,16 @@ const HELP =
   `Golf:7,C · Marble:4,C · Central:9,D · Fire:9,F · Lumber:9,H`;
 
 export class RotacionCommand extends Command {
-  name = "r cuadri";
-  description = "Motor de rotación táctica — Purgatorio (Free Fire)";
+  name = 'r cuadri';
+  description = 'Motor de rotación táctica — Purgatorio (Free Fire)';
   category = CommandCategory.UTILITY;
-  aliases = ["rot cuadri", "rotacion cuadri"];
-  usage = "!r cuadri [posición] [cierre] [equipos?]";
+  aliases = ['rot cuadri', 'rotacion cuadri'];
+  usage = '!r cuadri [posición] [cierre] [equipos?]';
   examples = [
-    "!r cuadri 8,d 6,e",
-    "!r cuadri golf brasilia",
-    "!r cuadri marbleworks forge 3",
-    "!r cuadri 4,i fire",
+    '!r cuadri 8,d 6,e',
+    '!r cuadri golf brasilia',
+    '!r cuadri marbleworks forge 3',
+    '!r cuadri 4,i fire',
   ];
 
   async execute(ctx: MessageContext): Promise<void> {
@@ -141,26 +141,17 @@ export class RotacionCommand extends Command {
     }
 
     try {
-      await ctx.react("🗺️");
+      await ctx.react('🗺️');
     } catch {}
 
-    const myZone = inferZone(start.nodeId) as "A" | "B" | "C" | "D";
+    const myZone = inferZone(start.nodeId);
 
     const analysis = runTacticalAnalysis(start.nodeId, goal.nodeId, myZone);
-    const cacheKey = buildCacheKey(
-      start.nodeId,
-      goal.nodeId,
-      analysis.circlePhase,
-      teamCount,
-    );
+    const cacheKey = buildCacheKey(start.nodeId, goal.nodeId, analysis.circlePhase, teamCount);
 
     const cached = rotationCache.get<string>(cacheKey);
     if (cached) {
-      await ctx.sock.sendMessage(
-        ctx.chat.jid,
-        { text: cached },
-        { quoted: ctx.message },
-      );
+      await ctx.sock.sendMessage(ctx.chat.jid, { text: cached }, { quoted: ctx.message });
       return;
     }
 
@@ -179,26 +170,14 @@ export class RotacionCommand extends Command {
 
     const prompt = buildAIPrompt(analysis, scored, myZone, goal.label);
     const aiResp = await aiService.generate(prompt, 200);
-    const aiText = aiResp.success
-      ? aiResp.text!
-      : "Análisis calculado por motor táctico.";
+    const aiText =
+      aiResp.success && aiResp.text ? aiResp.text : 'Análisis calculado por motor táctico.';
 
-    const result = formatAnalysis(
-      analysis,
-      scored,
-      start.label,
-      goal.label,
-      myZone,
-      aiText,
-    );
+    const result = formatAnalysis(analysis, scored, start.label, goal.label, myZone, aiText);
 
     rotationCache.set(cacheKey, result);
 
-    await ctx.sock.sendMessage(
-      ctx.chat.jid,
-      { text: result },
-      { quoted: ctx.message },
-    );
+    await ctx.sock.sendMessage(ctx.chat.jid, { text: result }, { quoted: ctx.message });
   }
 }
 

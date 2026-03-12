@@ -1,9 +1,5 @@
-import { aiService } from "@/services/external/AIService.js";
-import {
-  resolverIdioma,
-  type TraduccionOpts,
-  type TraduccionResult,
-} from "./TranslatorTypes.js";
+import { aiService } from '@/services/external/AIService.js';
+import { resolverIdioma, type TraduccionOpts, type TraduccionResult } from './TranslatorTypes.js';
 
 interface CacheEntry {
   result: TraduccionResult;
@@ -19,25 +15,23 @@ function buildPrompt(opts: TraduccionOpts): string {
   const origen = opts.idiomaOrigen ? resolverIdioma(opts.idiomaOrigen) : null;
 
   const idiomaDestinoNombre = dest?.nombre ?? opts.idiomaDestino;
-  const idiomaOrigenNombre =
-    origen?.nombre ?? opts.idiomaOrigen ?? "detectar automáticamente";
+  const idiomaOrigenNombre = origen?.nombre ?? opts.idiomaOrigen ?? 'detectar automáticamente';
 
   const modoInstr = {
-    literal:
-      "Traduce de forma literal y fiel, respetando cada palabra lo más posible.",
+    literal: 'Traduce de forma literal y fiel, respetando cada palabra lo más posible.',
     contextual:
-      "Traduce de forma contextual: preserva el significado, tono y registro. Adapta expresiones idiomáticas al idioma destino de forma natural.",
+      'Traduce de forma contextual: preserva el significado, tono y registro. Adapta expresiones idiomáticas al idioma destino de forma natural.',
     libre:
-      "Traduce con libertad creativa: el resultado debe sonar completamente nativo en el idioma destino, aunque no sea literal.",
-  }[opts.modo ?? "contextual"];
+      'Traduce con libertad creativa: el resultado debe sonar completamente nativo en el idioma destino, aunque no sea literal.',
+  }[opts.modo ?? 'contextual'];
 
   const formalInstr = opts.formal
-    ? "Usa un registro formal y profesional."
-    : "Mantén el mismo registro del texto original (coloquial si es coloquial, formal si es formal).";
+    ? 'Usa un registro formal y profesional.'
+    : 'Mantén el mismo registro del texto original (coloquial si es coloquial, formal si es formal).';
 
   const notasInstr = opts.notas
     ? `Después de la traducción, en una nueva línea que empiece con "📝 Notas:", añade brevemente observaciones culturales, diferencias de expresión o alternativas relevantes (máximo 2 líneas).`
-    : "";
+    : '';
 
   return `Eres un traductor experto y contextual.
 
@@ -74,7 +68,7 @@ class TranslatorService {
     }
 
     if (!opts.texto.trim()) {
-      return { success: false, error: "No hay texto para traducir." };
+      return { success: false, error: 'No hay texto para traducir.' };
     }
 
     const dest = resolverIdioma(opts.idiomaDestino);
@@ -90,16 +84,16 @@ class TranslatorService {
       idiomaDestino: dest.codigo,
     };
 
-    const cacheKey = `${dest.codigo}::${opts.idiomaOrigen ?? "auto"}::${opts.modo ?? "contextual"}::${opts.texto}`;
+    const cacheKey = `${dest.codigo}::${opts.idiomaOrigen ?? 'auto'}::${opts.modo ?? 'contextual'}::${opts.texto}`;
     if (!opts.notas) {
       const cached = this.cache.get(cacheKey);
       if (cached && Date.now() < cached.expiresAt) {
-        return { ...cached.result, notas: "(caché)" };
+        return { ...cached.result, notas: '(caché)' };
       }
     }
 
-    let origenNombre = opts.idiomaOrigen ?? "Detectado automáticamente";
-    let origenBand = "🔍";
+    let origenNombre = opts.idiomaOrigen ?? 'Detectado automáticamente';
+    let origenBand = '🔍';
 
     if (!opts.idiomaOrigen) {
       const detectado = await this._detectarIdioma(opts.texto);
@@ -125,7 +119,7 @@ class TranslatorService {
     if (!response.success || !response.text) {
       return {
         success: false,
-        error: response.error ?? "No pude traducir el texto. Intenta de nuevo.",
+        error: response.error ?? 'No pude traducir el texto. Intenta de nuevo.',
       };
     }
 
@@ -133,7 +127,7 @@ class TranslatorService {
     let notas: string | undefined;
 
     if (opts.notas) {
-      const notasIdx = traduccion.indexOf("📝 Notas:");
+      const notasIdx = traduccion.indexOf('📝 Notas:');
       if (notasIdx !== -1) {
         notas = traduccion.slice(notasIdx).trim();
         traduccion = traduccion.slice(0, notasIdx).trim();
@@ -161,14 +155,14 @@ class TranslatorService {
   async detectarIdioma(texto: string): Promise<TraduccionResult> {
     const detectado = await this._detectarIdioma(texto);
     if (!detectado) {
-      return { success: false, error: "No pude detectar el idioma." };
+      return { success: false, error: 'No pude detectar el idioma.' };
     }
 
     const resuelto = resolverIdioma(detectado);
     return {
       success: true,
       idiomaOrigen: resuelto?.nombre ?? detectado,
-      bandOrigen: resuelto?.bandera ?? "🔍",
+      bandOrigen: resuelto?.bandera ?? '🔍',
       textoOriginal: texto,
     };
   }
@@ -182,7 +176,7 @@ class TranslatorService {
         .trim()
         .toLowerCase()
         .slice(0, 5)
-        .replace(/[^a-z]/g, "") || null
+        .replace(/[^a-z]/g, '') || null
     );
   }
 
@@ -196,10 +190,10 @@ class TranslatorService {
   formatResult(result: TraduccionResult, mostrarOriginal = false): string {
     if (!result.success) return `❌ ${result.error}`;
 
-    let msg = "";
+    let msg = '';
 
-    msg += `${result.bandOrigen ?? "🔍"} ${result.idiomaOrigen ?? "?"} `;
-    msg += `→ ${result.bandDestino ?? "🌐"} *${result.idiomaDestino ?? "?"}*\n`;
+    msg += `${result.bandOrigen ?? '🔍'} ${result.idiomaOrigen ?? '?'} `;
+    msg += `→ ${result.bandDestino ?? '🌐'} *${result.idiomaDestino ?? '?'}*\n`;
     msg += `━━━━━━━━━━━━\n\n`;
 
     if (mostrarOriginal && result.textoOriginal) {

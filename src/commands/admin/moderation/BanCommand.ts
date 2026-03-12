@@ -1,20 +1,20 @@
-import { Command } from "../../Command.js";
+import { Command } from '../../Command.js';
 import {
   CommandCategory,
   CommandContext,
   PermissionLevel,
   BotPermission,
   type MessageContext,
-} from "@/types/index.js";
-import { serviceManager } from "@/services/system/Servicemanager.js";
+} from '@/types/index.js';
+import { serviceManager } from '@/services/system/Servicemanager.js';
 
 export class BanCommand extends Command {
-  name = "ban";
-  description = "Ban a user from the group";
+  name = 'ban';
+  description = 'Ban a user from the group';
   category = CommandCategory.MODERATION;
-  aliases = ["banear"];
-  usage = "!ban @user [reason]";
-  examples = ["!ban @user spam", "!ban @user Breaking rules"];
+  aliases = ['banear'];
+  usage = '!ban @user [reason]';
+  examples = ['!ban @user spam', '!ban @user Breaking rules'];
   contexts = [CommandContext.GROUP];
   permissions = {
     user: [PermissionLevel.ADMIN],
@@ -22,42 +22,38 @@ export class BanCommand extends Command {
   };
 
   async execute(ctx: MessageContext): Promise<void> {
-    const mentionedJid =
-      ctx.message.message?.extendedTextMessage?.contextInfo?.mentionedJid?.[0];
+    const mentionedJid = ctx.message.message?.extendedTextMessage?.contextInfo?.mentionedJid?.[0];
 
     if (!mentionedJid) {
-      await ctx.reply("❌ You must mention a user to ban");
+      await ctx.reply('❌ You must mention a user to ban');
       return;
     }
 
     if (mentionedJid === ctx.sender.jid) {
-      await ctx.reply("❌ You cannot ban yourself");
+      await ctx.reply('❌ You cannot ban yourself');
       return;
     }
 
-    if (mentionedJid === ctx.sock.user?.id.split(":")[0] + "@s.whatsapp.net") {
-      await ctx.reply("❌ You cannot ban the bot");
+    if (mentionedJid === ctx.sock.user?.id.split(':')[0] + '@s.whatsapp.net') {
+      await ctx.reply('❌ You cannot ban the bot');
       return;
     }
 
     const targetUser = await serviceManager.userService.getUser(mentionedJid);
     if (targetUser.isOwner) {
-      await ctx.reply("❌ You cannot ban an owner");
+      await ctx.reply('❌ You cannot ban an owner');
       return;
     }
 
-    const reason = ctx.args.slice(1).join(" ") || "No reason provided";
+    const reason = ctx.args.slice(1).join(' ') || 'No reason provided';
 
-    await ctx.react("⏳");
+    await ctx.react('⏳');
 
     try {
-      const isBanned = await serviceManager.moderationService.isBanned(
-        ctx.chat.jid,
-        mentionedJid,
-      );
+      const isBanned = await serviceManager.moderationService.isBanned(ctx.chat.jid, mentionedJid);
 
       if (isBanned) {
-        await ctx.reply("⚠️ This user is already banned");
+        await ctx.reply('⚠️ This user is already banned');
         return;
       }
 
@@ -65,15 +61,11 @@ export class BanCommand extends Command {
         ctx.chat.jid,
         mentionedJid,
         targetUser.name,
-        ctx.sender.pushName || "Unknown",
+        ctx.sender.pushName || 'Unknown',
         reason,
       );
 
-      await ctx.sock.groupParticipantsUpdate(
-        ctx.chat.jid,
-        [mentionedJid],
-        "remove",
-      );
+      await ctx.sock.groupParticipantsUpdate(ctx.chat.jid, [mentionedJid], 'remove');
 
       await ctx.reply(
         `🔨 *User Banned*\n\n` +
@@ -83,11 +75,12 @@ export class BanCommand extends Command {
           `📅 Date: ${new Date().toLocaleString()}`,
       );
 
-      await ctx.react("✅");
-    } catch (error: any) {
-      console.error("Error in BanCommand:", error);
-      await ctx.reply(`❌ Error banning user: ${error.message}`);
-      await ctx.react("❌");
+      await ctx.react('✅');
+    } catch (error: unknown) {
+      console.error('Error in BanCommand:', error);
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      await ctx.reply(`❌ Error banning user: ${message}`);
+      await ctx.react('❌');
     }
   }
 }

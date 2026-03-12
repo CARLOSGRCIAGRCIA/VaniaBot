@@ -1,8 +1,8 @@
-import { Command } from "../Command.js";
-import { CommandCategory, CommandContext } from "@/types/index.js";
-import type { MessageContext } from "@/types/index.js";
-import { listaManager, type ListaTipo } from "@/services/game/ListaManager.js";
-import { logError } from "@/utils/logger.js";
+import { Command } from '../Command.js';
+import { CommandCategory, CommandContext } from '@/types/index.js';
+import type { MessageContext } from '@/types/index.js';
+import { listaManager, type ListaTipo } from '@/services/game/ListaManager.js';
+import { logError } from '@/utils/logger.js';
 
 interface ListaConfig {
   tipo: ListaTipo;
@@ -28,7 +28,7 @@ export class ListaCommand extends Command {
   }
 
   async execute(ctx: MessageContext): Promise<void> {
-    const cleanArgs = ctx.args.filter((a) => !a.startsWith("@"));
+    const cleanArgs = ctx.args.filter(a => !a.startsWith('@'));
 
     let hora: string | undefined;
     let liga: string | undefined;
@@ -48,14 +48,14 @@ export class ListaCommand extends Command {
       const tempLista = listaManager.crearLista({
         tipo: this.config.tipo,
         chatJid: ctx.chat.jid,
-        messageId: "temp",
+        messageId: 'temp',
         horaTexto: hora,
         liga,
         color,
       });
 
       const textoInicial = listaManager.renderizar(tempLista);
-      listaManager.desactivarLista("temp");
+      listaManager.desactivarLista('temp');
 
       const sent = await ctx.sock.sendMessage(ctx.chat.jid, {
         text: textoInicial,
@@ -63,7 +63,7 @@ export class ListaCommand extends Command {
       });
 
       if (!sent?.key?.id) {
-        await ctx.reply("❌ Error al crear la lista");
+        await ctx.reply('❌ Error al crear la lista');
         return;
       }
 
@@ -77,63 +77,63 @@ export class ListaCommand extends Command {
       });
     } catch (error) {
       logError(`ListaCommand ${this.name}`, error);
-      await ctx.reply("❌ Error al crear la lista");
+      await ctx.reply('❌ Error al crear la lista');
     }
   }
 }
 
 export const clkCommand = new ListaCommand({
-  name: "clk",
-  aliases: ["CLK"],
-  tipo: "clk",
+  name: 'clk',
+  aliases: ['CLK'],
+  tipo: 'clk',
   tieneLiga: true,
   tieneColor: false,
 });
 
 export const vv2Command = new ListaCommand({
-  name: "vv2",
-  aliases: ["VV2"],
-  tipo: "vv2",
+  name: 'vv2',
+  aliases: ['VV2'],
+  tipo: 'vv2',
   tieneLiga: false,
   tieneColor: false,
 });
 
 export const cuadrilateroCommand = new ListaCommand({
-  name: "cuadrilatero",
-  aliases: ["cuadri", "cuad"],
-  tipo: "cuadrilatero",
+  name: 'cuadrilatero',
+  aliases: ['cuadri', 'cuad'],
+  tipo: 'cuadrilatero',
   tieneLiga: false,
   tieneColor: true,
 });
 
 export const trilateroCommand = new ListaCommand({
-  name: "trilatero",
-  aliases: ["tri"],
-  tipo: "trilatero",
+  name: 'trilatero',
+  aliases: ['tri'],
+  tipo: 'trilatero',
   tieneLiga: false,
   tieneColor: true,
 });
 
 export const hexagonalCommand = new ListaCommand({
-  name: "hexagonal",
-  aliases: ["hexa", "hex"],
-  tipo: "hexagonal",
+  name: 'hexagonal',
+  aliases: ['hexa', 'hex'],
+  tipo: 'hexagonal',
   tieneLiga: false,
   tieneColor: true,
 });
 
 export const ascensoCommand = new ListaCommand({
-  name: "ascenso",
-  aliases: ["asc"],
-  tipo: "ascenso",
+  name: 'ascenso',
+  aliases: ['asc'],
+  tipo: 'ascenso',
   tieneLiga: false,
   tieneColor: false,
 });
 
 export const scrimCommand = new ListaCommand({
-  name: "scrim",
-  aliases: ["sc"],
-  tipo: "scrim",
+  name: 'scrim',
+  aliases: ['sc'],
+  tipo: 'scrim',
   tieneLiga: false,
   tieneColor: false,
 });

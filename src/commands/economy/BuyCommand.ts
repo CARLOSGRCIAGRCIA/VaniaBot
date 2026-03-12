@@ -1,6 +1,6 @@
-import { Command } from "../Command.js";
-import { CommandCategory, type MessageContext } from "@/types/index.js";
-import { serviceManager } from "@/services/system/Servicemanager.js";
+import { Command } from '../Command.js';
+import { CommandCategory, type MessageContext } from '@/types/index.js';
+import { serviceManager } from '@/services/system/Servicemanager.js';
 
 interface ShopItem {
   id: string;
@@ -8,71 +8,71 @@ interface ShopItem {
   description: string;
   price: number;
   emoji: string;
-  type: "role" | "feature" | "cosmetic";
+  type: 'role' | 'feature' | 'cosmetic';
   duration?: number;
 }
 
 export class BuyCommand extends Command {
-  name = "buy";
-  description = "Buy an item from the shop";
+  name = 'buy';
+  description = 'Buy an item from the shop';
   category = CommandCategory.ECONOMY;
-  aliases = ["comprar", "purchase"];
-  usage = "!buy <item_number>";
-  examples = ["!buy 1", "!buy 5"];
+  aliases = ['comprar', 'purchase'];
+  usage = '!buy <item_number>';
+  examples = ['!buy 1', '!buy 5'];
   cooldown = 5000;
 
   private readonly SHOP_ITEMS: ShopItem[] = [
     {
-      id: "vip_role",
-      name: "VIP Role",
-      description: "VIP status for 7 days",
+      id: 'vip_role',
+      name: 'VIP Role',
+      description: 'VIP status for 7 days',
       price: 5000,
-      emoji: "👑",
-      type: "role",
+      emoji: '👑',
+      type: 'role',
       duration: 7 * 24 * 60 * 60 * 1000,
     },
     {
-      id: "legend_role",
-      name: "Legend Role",
-      description: "Legend status for 7 days",
+      id: 'legend_role',
+      name: 'Legend Role',
+      description: 'Legend status for 7 days',
       price: 10000,
-      emoji: "💎",
-      type: "role",
+      emoji: '💎',
+      type: 'role',
       duration: 7 * 24 * 60 * 60 * 1000,
     },
     {
-      id: "name_color",
-      name: "Custom Name Color",
-      description: "Customize your name color",
+      id: 'name_color',
+      name: 'Custom Name Color',
+      description: 'Customize your name color',
       price: 3000,
-      emoji: "🎨",
-      type: "cosmetic",
+      emoji: '🎨',
+      type: 'cosmetic',
     },
     {
-      id: "cooldown_bypass",
-      name: "Cooldown Bypass",
-      description: "Reduce cooldowns by 50% for 24h",
+      id: 'cooldown_bypass',
+      name: 'Cooldown Bypass',
+      description: 'Reduce cooldowns by 50% for 24h',
       price: 2000,
-      emoji: "⚡",
-      type: "feature",
+      emoji: '⚡',
+      type: 'feature',
       duration: 24 * 60 * 60 * 1000,
     },
     {
-      id: "xp_boost",
-      name: "XP Boost",
-      description: "Double XP for 24 hours",
+      id: 'xp_boost',
+      name: 'XP Boost',
+      description: 'Double XP for 24 hours',
       price: 1500,
-      emoji: "✨",
-      type: "feature",
+      emoji: '✨',
+      type: 'feature',
       duration: 24 * 60 * 60 * 1000,
     },
     {
-      id: "lucky_charm",
-      name: "Lucky Charm",
-      description: "Increase game win chance by 10%",
+      id: 'lucky_charm',
+      name: 'Lucky Charm',
+      description: 'Increase game win chance by 10%',
       price: 2500,
-      emoji: "🍀",
-      type: "feature",
+      emoji: '🍀',
+      type: 'feature',
       duration: 24 * 60 * 60 * 1000,
     },
   ];
@@ -80,20 +80,16 @@ export class BuyCommand extends Command {
   async execute(ctx: MessageContext): Promise<void> {
     if (!ctx.args.length) {
       await ctx.reply(
-        "❌ Specify item number\n\n" +
-          "📖 Usage: !buy <item_number>\n" +
-          "💡 Use !shop to see available items",
+        '❌ Specify item number\n\n' +
+          '📖 Usage: !buy <item_number>\n' +
+          '💡 Use !shop to see available items',
       );
       return;
     }
 
     const itemNumber = parseInt(ctx.args[0]);
 
-    if (
-      isNaN(itemNumber) ||
-      itemNumber < 1 ||
-      itemNumber > this.SHOP_ITEMS.length
-    ) {
+    if (isNaN(itemNumber) || itemNumber < 1 || itemNumber > this.SHOP_ITEMS.length) {
       await ctx.reply(
         `❌ Invalid item number\n\n` +
           `Valid range: 1-${this.SHOP_ITEMS.length}\n` +
@@ -116,7 +112,7 @@ export class BuyCommand extends Command {
       return;
     }
 
-    await ctx.react("⏳");
+    await ctx.react('⏳');
 
     try {
       await serviceManager.userService.removeMoney(ctx.sender.jid, item.price);
@@ -131,9 +127,7 @@ export class BuyCommand extends Command {
         expiresAt,
       });
 
-      const updatedUser = await serviceManager.userService.getUser(
-        ctx.sender.jid,
-      );
+      const updatedUser = await serviceManager.userService.getUser(ctx.sender.jid);
 
       let message = `✅ *Purchase Successful!*\n\n`;
       message += `${item.emoji} *${item.name}*\n`;
@@ -144,12 +138,10 @@ export class BuyCommand extends Command {
 
       if (item.duration) {
         const days = Math.floor(item.duration / (24 * 60 * 60 * 1000));
-        const hours = Math.floor(
-          (item.duration % (24 * 60 * 60 * 1000)) / (60 * 60 * 1000),
-        );
+        const hours = Math.floor((item.duration % (24 * 60 * 60 * 1000)) / (60 * 60 * 1000));
 
-        message += `⏰ Duration: ${days > 0 ? `${days}d ` : ""}${hours}h\n`;
-        message += `📅 Expires: ${new Date(expiresAt!).toLocaleString()}\n\n`;
+        message += `⏰ Duration: ${days > 0 ? `${days}d ` : ''}${hours}h\n`;
+        message += `📅 Expires: ${new Date(Date.now() + item.duration).toLocaleString()}\n\n`;
       }
 
       message += `📦 Item added to your inventory\n`;
@@ -158,11 +150,12 @@ export class BuyCommand extends Command {
       message += `> _*VaniaBot💝*_`;
 
       await ctx.reply(message);
-      await ctx.react("✅");
-    } catch (error: any) {
-      console.error("Error in BuyCommand:", error);
-      await ctx.reply(`❌ Error processing purchase: ${error.message}`);
-      await ctx.react("❌");
+      await ctx.react('✅');
+    } catch (error) {
+      console.error('Error in BuyCommand:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      await ctx.reply(`❌ Error processing purchase: ${errorMessage}`);
+      await ctx.react('❌');
     }
   }
 }

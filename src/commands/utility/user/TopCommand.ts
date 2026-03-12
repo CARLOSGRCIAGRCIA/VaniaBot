@@ -1,48 +1,49 @@
-import { Command } from "../../Command.js";
-import { CommandCategory } from "@/types/index.js";
-import type { MessageContext } from "@/types/index.js";
-import { serviceManager } from "@/services/system/Servicemanager.js";
-import { formatNumber } from "@/utils/helpers.js";
+import { Command } from '../../Command.js';
+import { CommandCategory } from '@/types/index.js';
+import type { MessageContext } from '@/types/index.js';
+import { serviceManager } from '@/services/system/Servicemanager.js';
+import { formatNumber } from '@/utils/helpers.js';
+import type { User } from '@/services/database/UserService.js';
 
 export class TopCommand extends Command {
-  name = "top";
-  description = "Displays the bot leaderboards";
+  name = 'top';
+  description = 'Displays the bot leaderboards';
   category = CommandCategory.UTILITY;
-  aliases = ["leaderboard", "lb"];
-  usage = "!top [money|level|xp]";
-  examples = ["!top", "!top money", "!top level"];
+  aliases = ['leaderboard', 'lb'];
+  usage = '!top [money|level|xp]';
+  examples = ['!top', '!top money', '!top level'];
   cooldown = 10000;
 
   async execute(ctx: MessageContext): Promise<void> {
-    const type = ctx.args[0]?.toLowerCase() || "level";
+    const type = ctx.args[0]?.toLowerCase() || 'level';
 
-    let users;
-    let title;
-    let formatter: (user: any) => string;
+    let users: User[];
+    let title: string;
+    let formatter: (user: User) => string;
 
     switch (type) {
-      case "money":
+      case 'money':
         users = await serviceManager.userService.getTopByMoney(10);
-        title = "TOP 10 - RICHEST";
-        formatter = (u) => `$${formatNumber(u.money)}`;
+        title = 'TOP 10 - RICHEST';
+        formatter = (u: User) => `$${formatNumber(u.money)}`;
         break;
 
-      case "xp":
+      case 'xp':
         users = await serviceManager.userService.getTopByXP(10);
-        title = "TOP 10 - MOST XP";
-        formatter = (u) => `${formatNumber(u.xp)} XP`;
+        title = 'TOP 10 - MOST XP';
+        formatter = (u: User) => `${formatNumber(u.xp)} XP`;
         break;
 
-      case "level":
+      case 'level':
       default:
         users = await serviceManager.userService.getTopByLevel(10);
-        title = "TOP 10 - HIGHEST LEVEL";
-        formatter = (u) => `Level ${u.level} (${formatNumber(u.xp)} XP)`;
+        title = 'TOP 10 - HIGHEST LEVEL';
+        formatter = (u: User) => `Level ${u.level} (${formatNumber(u.xp)} XP)`;
         break;
     }
 
     if (users.length === 0) {
-      await ctx.reply("No leaderboard data available yet.");
+      await ctx.reply('No leaderboard data available yet.');
       return;
     }
 

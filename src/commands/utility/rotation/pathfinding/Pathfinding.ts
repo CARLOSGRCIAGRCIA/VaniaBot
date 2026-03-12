@@ -1,10 +1,5 @@
-import { MinHeap } from "./Minheap.js";
-import {
-  NODES,
-  GRAPH,
-  type ResolvedEdge,
-  type Coord,
-} from "../map/Purgatoriomap.js";
+import { MinHeap } from './Minheap.js';
+import { NODES, GRAPH, type ResolvedEdge, type Coord } from '../map/Purgatoriomap.js';
 
 export interface PathStep {
   nodeId: string;
@@ -31,8 +26,7 @@ function heuristic(fromId: string, goalCoord: Coord): number {
   const node = NODES[fromId];
   if (!node) return 0;
   return (
-    (Math.abs(node.coord.row - goalCoord.row) +
-      Math.abs(node.coord.col - goalCoord.col)) *
+    (Math.abs(node.coord.row - goalCoord.row) + Math.abs(node.coord.col - goalCoord.col)) *
     GRAPH.minEdgeCost
   );
 }
@@ -60,7 +54,7 @@ export function findPath(
         {
           nodeId: startId,
           nodeName: n.name,
-          edgeType: "start",
+          edgeType: 'start',
           costFromStart: 0,
           exposure: 0,
         },
@@ -78,12 +72,12 @@ export function findPath(
   pq.push({ id: startId, g: 0, f: heuristic(startId, goalCoord) });
 
   const gScore: Record<string, number> = { [startId]: 0 };
-  const cameFrom: Record<string, { from: string; edge: ResolvedEdge } | null> =
-    { [startId]: null };
+  const cameFrom: Record<string, { from: string; edge: ResolvedEdge } | null> = { [startId]: null };
   const visited = new Set<string>();
 
   while (!pq.isEmpty()) {
-    const current = pq.pop()!;
+    const current = pq.pop();
+    if (!current) continue;
 
     if (visited.has(current.id)) continue;
     visited.add(current.id);
@@ -139,36 +133,27 @@ function reconstructPath(
   steps.unshift({
     nodeId: startId,
     nodeName: NODES[startId].name,
-    edgeType: "start",
+    edgeType: 'start',
     costFromStart: 0,
     exposure: 0,
   });
 
   const totalExposure =
     steps.length > 1
-      ? steps.slice(1).reduce((s, st) => s + st.exposure, 0) /
-        (steps.length - 1)
+      ? steps.slice(1).reduce((s, st) => s + st.exposure, 0) / (steps.length - 1)
       : 0;
 
   return {
     steps,
     totalCost: gScore[goalId] ?? Infinity,
     totalExposure,
-    chokepoints: steps
-      .filter((s) => NODES[s.nodeId]?.isChokepoint)
-      .map((s) => s.nodeName),
-    hotspots: steps
-      .filter((s) => NODES[s.nodeId]?.isHotspot)
-      .map((s) => s.nodeName),
+    chokepoints: steps.filter(s => NODES[s.nodeId]?.isChokepoint).map(s => s.nodeName),
+    hotspots: steps.filter(s => NODES[s.nodeId]?.isHotspot).map(s => s.nodeName),
     found: true,
   };
 }
 
-export function findTopKPaths(
-  startId: string,
-  goalId: string,
-  k = 3,
-): PathResult[] {
+export function findTopKPaths(startId: string, goalId: string, k = 3): PathResult[] {
   const results: PathResult[] = [];
   const blockedEdges = new Set<string>();
   const seenSigs = new Set<string>();
@@ -177,15 +162,15 @@ export function findTopKPaths(
     const path = findPath(startId, goalId, blockedEdges);
     if (!path.found) break;
 
-    const sig = path.steps.map((s) => s.nodeId).join(",");
+    const sig = path.steps.map(s => s.nodeId).join(',');
     if (!seenSigs.has(sig)) {
       seenSigs.add(sig);
       results.push(path);
     }
 
     let maxExp = -1,
-      blockFrom = "",
-      blockTo = "";
+      blockFrom = '',
+      blockTo = '';
     for (let j = 1; j < path.steps.length; j++) {
       if (path.steps[j].exposure > maxExp) {
         maxExp = path.steps[j].exposure;

@@ -1,88 +1,90 @@
-import { Command } from "../../Command.js";
-import { audioService } from "@/services/audio/AudioService.js";
+import { Command } from '../../Command.js';
+import { audioService } from '@/services/audio/AudioService.js';
 import {
   CommandCategory,
   CommandContext,
   PermissionLevel,
   type MessageContext,
-} from "@/types/index.js";
+} from '@/types/index.js';
+import { downloadMediaMessage, type WAMessage } from '@whiskeysockets/baileys';
 
 const WHISPER_LANGS: Record<string, string> = {
-  es: "es",
-  español: "es",
-  spanish: "es",
-  en: "en",
-  inglés: "en",
-  ingles: "en",
-  english: "en",
-  pt: "pt",
-  portugués: "pt",
-  portugues: "pt",
-  fr: "fr",
-  francés: "fr",
-  frances: "fr",
-  french: "fr",
-  de: "de",
-  alemán: "de",
-  aleman: "de",
-  german: "de",
-  it: "it",
-  italiano: "it",
-  italian: "it",
-  ja: "ja",
-  japonés: "ja",
-  japones: "ja",
-  japanese: "ja",
-  ko: "ko",
-  coreano: "ko",
-  korean: "ko",
-  zh: "zh",
-  chino: "zh",
-  chinese: "zh",
-  ru: "ru",
-  ruso: "ru",
-  russian: "ru",
-  ar: "ar",
-  árabe: "ar",
-  arabe: "ar",
-  arabic: "ar",
-  hi: "hi",
-  hindi: "hi",
-  nl: "nl",
-  holandés: "nl",
-  dutch: "nl",
-  tr: "tr",
-  turco: "tr",
-  turkish: "tr",
-  pl: "pl",
-  polaco: "pl",
-  polish: "pl",
-  sv: "sv",
-  sueco: "sv",
-  swedish: "sv",
-  uk: "uk",
-  ucraniano: "uk",
-  ukrainian: "uk",
-  id: "id",
-  indonesio: "id",
-  vi: "vi",
-  vietnamita: "vi",
+  es: 'es',
+  español: 'es',
+  spanish: 'es',
+  en: 'en',
+  inglés: 'en',
+  ingles: 'en',
+  english: 'en',
+  pt: 'pt',
+  portugués: 'pt',
+  portugues: 'pt',
+  fr: 'fr',
+  francés: 'fr',
+  frances: 'fr',
+  french: 'fr',
+  de: 'de',
+  alemán: 'de',
+  aleman: 'de',
+  german: 'de',
+  it: 'it',
+  italiano: 'it',
+  italian: 'it',
+  ja: 'ja',
+  japonés: 'ja',
+  japones: 'ja',
+  japanese: 'ja',
+  ko: 'ko',
+  coreano: 'ko',
+  korean: 'ko',
+  zh: 'zh',
+  chino: 'zh',
+  chinese: 'zh',
+  ru: 'ru',
+  ruso: 'ru',
+  russian: 'ru',
+  ar: 'ar',
+  árabe: 'ar',
+  arabe: 'ar',
+  arabic: 'ar',
+  hi: 'hi',
+  hindi: 'hi',
+  nl: 'nl',
+  holandés: 'nl',
+  dutch: 'nl',
+  tr: 'tr',
+  turco: 'tr',
+  turkish: 'tr',
+  pl: 'pl',
+  polaco: 'pl',
+  polish: 'pl',
+  sv: 'sv',
+  sueco: 'sv',
+  swedish: 'sv',
+  uk: 'uk',
+  ucraniano: 'uk',
+  ukrainian: 'uk',
+  id: 'id',
+  indonesio: 'id',
+  vi: 'vi',
+  vietnamita: 'vi',
 };
 
-export async function extractAudio(
-  ctx: MessageContext,
-): Promise<{ buffer: Buffer; extension: string; esNotaDeVoz: boolean } | null> {
-  const { downloadMediaMessage } = await import("@whiskeysockets/baileys");
+interface AudioData {
+  buffer: Buffer;
+  extension: string;
+  esNotaDeVoz: boolean;
+}
 
+export async function extractAudio(ctx: MessageContext): Promise<AudioData | null> {
   const currentMsg = ctx.message.message;
   const quotedMsg = ctx.quoted;
 
   const targets = [
-    { msg: ctx.message, content: currentMsg, ptt: false },
+    { msg: ctx.message as unknown as WAMessage, content: currentMsg },
     {
-      msg: { key: ctx.message.key, message: quotedMsg } as any,
+      msg: { key: ctx.message.key, message: quotedMsg } as unknown as WAMessage,
       content: quotedMsg,
-      ptt: false,
     },
   ];
 
@@ -91,13 +93,9 @@ export async function extractAudio(
 
     if (content.audioMessage) {
       try {
-        const buffer = (await downloadMediaMessage(
-          msg,
-          "buffer",
-          {},
-        )) as Buffer;
+        const buffer = (await downloadMediaMessage(msg, 'buffer', {})) as Buffer;
         const esNotaDeVoz = content.audioMessage.ptt === true;
-        const ext = esNotaDeVoz ? "ogg" : "mp3";
+        const ext = esNotaDeVoz ? 'ogg' : 'mp3';
         return { buffer, extension: ext, esNotaDeVoz };
       } catch {
         continue;
@@ -105,15 +103,11 @@ export async function extractAudio(
     }
 
     if (content.documentMessage) {
-      const mime = content.documentMessage.mimetype ?? "";
-      if (!mime.startsWith("audio/")) continue;
+      const mime = content.documentMessage.mimetype ?? '';
+      if (!mime.startsWith('audio/')) continue;
       try {
-        const buffer = (await downloadMediaMessage(
-          msg,
-          "buffer",
-          {},
-        )) as Buffer;
-        const ext = mime.split("/")[1]?.split(";")[0] ?? "mp3";
+        const buffer = (await downloadMediaMessage(msg, 'buffer', {})) as Buffer;
+        const ext = mime.split('/')[1]?.split(';')[0] ?? 'mp3';
         return { buffer, extension: ext, esNotaDeVoz: false };
       } catch {
         continue;
@@ -122,12 +116,8 @@ export async function extractAudio(
 
     if (content.videoMessage) {
       try {
-        const buffer = (await downloadMediaMessage(
-          msg,
-          "buffer",
-          {},
-        )) as Buffer;
-        return { buffer, extension: "mp4", esNotaDeVoz: false };
+        const buffer = (await downloadMediaMessage(msg, 'buffer', {})) as Buffer;
+        return { buffer, extension: 'mp4', esNotaDeVoz: false };
       } catch {
         continue;
       }
@@ -138,26 +128,25 @@ export async function extractAudio(
 }
 
 export class TranscribeCommand extends Command {
-  name = "transcribe";
-  description =
-    "Transcribe audio/notas de voz a texto con IA, compresión y resumen";
+  name = 'transcribe';
+  description = 'Transcribe audio/notas de voz a texto con IA, compresión y resumen';
   category = CommandCategory.UTILITY;
-  aliases = ["voz", "voice", "stt", "texto", "audio"];
-  usage = "!transcribe [resumen|completo|idioma]";
+  aliases = ['voz', 'voice', 'stt', 'texto', 'audio'];
+  usage = '!transcribe [resumen|completo|idioma]';
   examples = [
-    "!transcribe  (enviando una nota de voz)",
-    "!transcribe  (respondiendo un audio)",
-    "!transcribe resumen",
-    "!transcribe completo",
-    "!transcribe en  (forzar inglés)",
-    "!transcribe es resumen",
+    '!transcribe  (enviando una nota de voz)',
+    '!transcribe  (respondiendo un audio)',
+    '!transcribe resumen',
+    '!transcribe completo',
+    '!transcribe en  (forzar inglés)',
+    '!transcribe es resumen',
   ];
   cooldown = 10000;
   contexts = [CommandContext.BOTH];
   permissions = { user: [PermissionLevel.USER], bot: [] };
 
   async execute(ctx: MessageContext): Promise<void> {
-    const args = [...(ctx.args ?? [])].map((a) => a.toLowerCase());
+    const args = [...(ctx.args ?? [])].map(a => a.toLowerCase());
 
     const audioData = await extractAudio(ctx);
 
@@ -184,16 +173,16 @@ export class TranscribeCommand extends Command {
       return;
     }
 
-    let modo: "simple" | "completo" | "resumen" = "simple";
+    let modo: 'simple' | 'completo' | 'resumen' = 'simple';
     let idioma: string | undefined;
 
     for (const arg of args) {
-      if (arg === "resumen" || arg === "summary") {
-        modo = "resumen";
+      if (arg === 'resumen' || arg === 'summary') {
+        modo = 'resumen';
         continue;
       }
-      if (arg === "completo" || arg === "full") {
-        modo = "completo";
+      if (arg === 'completo' || arg === 'full') {
+        modo = 'completo';
         continue;
       }
       if (WHISPER_LANGS[arg]) {
@@ -202,7 +191,7 @@ export class TranscribeCommand extends Command {
       }
     }
 
-    await ctx.react("🎙️");
+    await ctx.react('🎙️');
 
     const tamañoMB = audioData.buffer.length / 1024 / 1024;
     const needsCompression = tamañoMB > 5;
@@ -217,31 +206,31 @@ export class TranscribeCommand extends Command {
       buffer: audioData.buffer,
       extension: audioData.extension,
       esNotaDeVoz: audioData.esNotaDeVoz,
-      resumir: modo === "resumen",
+      resumir: modo === 'resumen',
       idioma,
     });
 
     if (!result.success) {
-      await ctx.react("❌");
+      await ctx.react('❌');
       await ctx.reply(`❌ ${result.error}`);
       return;
     }
 
-    if (result.analisis?.tipo === "musica") {
+    if (result.analisis?.tipo === 'musica') {
       await ctx.reply(
         `⚠️ *Nota:* El audio parece contener música. La transcripción puede no ser precisa.\n` +
           `_Whisper está optimizado para voz humana._`,
       );
     }
 
-    if (result.analisis?.tipo === "ruido") {
+    if (result.analisis?.tipo === 'ruido') {
       await ctx.reply(
         `⚠️ *Nota:* Se detectó mucho ruido de fondo. La transcripción puede tener errores.\n` +
           `_Intenta con un audio con menos ruido._`,
       );
     }
 
-    await ctx.react("✅");
+    await ctx.react('✅');
     await ctx.reply(audioService.formatearResultado(result, modo));
   }
 }

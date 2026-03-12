@@ -13,4 +13,4 @@ export {
   VotarPoesiaCommand,
   PoesiaTopCommand,
   PoesiaStatsCommand,
-} from "./PoesiaCommands.js";
+} from './PoesiaCommand.js';

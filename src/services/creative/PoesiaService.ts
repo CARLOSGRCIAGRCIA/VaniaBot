@@ -1,5 +1,5 @@
-import { aiService } from "@/services/external/AIService.js";
-import { buildPrompt, MAX_TOKENS } from "./PoesiaPrompts.js";
+import { aiService } from '@/services/external/AIService.js';
+import { buildPrompt, MAX_TOKENS } from './PoesiaPrompts.js';
 import {
   ContenidoTipo,
   type ContenidoEntry,
@@ -7,7 +7,7 @@ import {
   type GenerarResult,
   type VotoResult,
   type TopEntry,
-} from "./PoesiaTypes.js";
+} from './PoesiaTypes.js';
 
 interface CacheSlot {
   entry: ContenidoEntry;
@@ -25,29 +25,29 @@ function shortId(): string {
 }
 
 export const TIPO_EMOJI: Record<ContenidoTipo, string> = {
-  [ContenidoTipo.POEMA]: "🌹",
-  [ContenidoTipo.FRASE]: "✨",
-  [ContenidoTipo.PIROPO]: "😏",
-  [ContenidoTipo.DEDICATORIA]: "💌",
-  [ContenidoTipo.HAIKU]: "🍃",
-  [ContenidoTipo.SONETO]: "📜",
-  [ContenidoTipo.COPLA]: "🎶",
-  [ContenidoTipo.ACROSTICO]: "🔤",
-  [ContenidoTipo.CARTA]: "💌",
-  [ContenidoTipo.HISTORIA]: "📖",
+  [ContenidoTipo.POEMA]: '🌹',
+  [ContenidoTipo.FRASE]: '✨',
+  [ContenidoTipo.PIROPO]: '😏',
+  [ContenidoTipo.DEDICATORIA]: '💌',
+  [ContenidoTipo.HAIKU]: '🍃',
+  [ContenidoTipo.SONETO]: '📜',
+  [ContenidoTipo.COPLA]: '🎶',
+  [ContenidoTipo.ACROSTICO]: '🔤',
+  [ContenidoTipo.CARTA]: '💌',
+  [ContenidoTipo.HISTORIA]: '📖',
 };
 
 export const TIPO_LABEL: Record<ContenidoTipo, string> = {
-  [ContenidoTipo.POEMA]: "Poema",
-  [ContenidoTipo.FRASE]: "Frases",
-  [ContenidoTipo.PIROPO]: "Piropos",
-  [ContenidoTipo.DEDICATORIA]: "Dedicatoria",
-  [ContenidoTipo.HAIKU]: "Haiku",
-  [ContenidoTipo.SONETO]: "Soneto",
-  [ContenidoTipo.COPLA]: "Coplas",
-  [ContenidoTipo.ACROSTICO]: "Acróstico",
-  [ContenidoTipo.CARTA]: "Carta de amor",
-  [ContenidoTipo.HISTORIA]: "Historia",
+  [ContenidoTipo.POEMA]: 'Poema',
+  [ContenidoTipo.FRASE]: 'Frases',
+  [ContenidoTipo.PIROPO]: 'Piropos',
+  [ContenidoTipo.DEDICATORIA]: 'Dedicatoria',
+  [ContenidoTipo.HAIKU]: 'Haiku',
+  [ContenidoTipo.SONETO]: 'Soneto',
+  [ContenidoTipo.COPLA]: 'Coplas',
+  [ContenidoTipo.ACROSTICO]: 'Acróstico',
+  [ContenidoTipo.CARTA]: 'Carta de amor',
+  [ContenidoTipo.HISTORIA]: 'Historia',
 };
 
 export class PoesiaService {
@@ -72,14 +72,9 @@ export class PoesiaService {
       };
     }
 
-    const cacheKey = `${opts.tipo}::${opts.tema ?? ""}::${opts.estilo ?? ""}::${opts.dedicado ?? ""}`;
+    const cacheKey = `${opts.tipo}::${opts.tema ?? ''}::${opts.estilo ?? ''}::${opts.dedicado ?? ''}`;
     const cached = this.cache.get(cacheKey);
-    if (
-      cached &&
-      Date.now() < cached.expiresAt &&
-      !opts.dedicado &&
-      !opts.contexto
-    ) {
+    if (cached && Date.now() < cached.expiresAt && !opts.dedicado && !opts.contexto) {
       const cloned: ContenidoEntry = {
         ...cached.entry,
         id: shortId(),
@@ -102,8 +97,7 @@ export class PoesiaService {
     if (!response.success || !response.text) {
       return {
         success: false,
-        error:
-          response.error ?? "No pude generar el contenido. Intenta de nuevo.",
+        error: response.error ?? 'No pude generar el contenido. Intenta de nuevo.',
       };
     }
 
@@ -135,14 +129,13 @@ export class PoesiaService {
     const entries = this.entries.get(groupId) ?? [];
 
     const entry = entryId
-      ? entries.find((e) => e.id === entryId)
-      : [...entries].reverse().find((e) => e.autor !== voterJid);
+      ? entries.find(e => e.id === entryId)
+      : [...entries].reverse().find(e => e.autor !== voterJid);
 
     if (!entry) {
       return {
         success: false,
-        error:
-          "No encontré qué votar. Usa *!votar [ID]* o vota después de un contenido.",
+        error: 'No encontré qué votar. Usa *!votar [ID]* o vota después de un contenido.',
       };
     }
 
@@ -150,14 +143,14 @@ export class PoesiaService {
       return {
         success: false,
         alreadyVoted: true,
-        error: "Ya votaste por este contenido.",
+        error: 'Ya votaste por este contenido.',
       };
     }
 
     if (entry.autor === voterJid) {
       return {
         success: false,
-        error: "No puedes votar tu propio contenido 😅",
+        error: 'No puedes votar tu propio contenido 😅',
       };
     }
 
@@ -170,10 +163,10 @@ export class PoesiaService {
   getTop(groupId: string, limit = 5, tipo?: ContenidoTipo): TopEntry[] {
     const entries = this.entries.get(groupId) ?? [];
 
-    const filtered = tipo ? entries.filter((e) => e.tipo === tipo) : entries;
+    const filtered = tipo ? entries.filter(e => e.tipo === tipo) : entries;
 
     return filtered
-      .filter((e) => e.votes > 0)
+      .filter(e => e.votes > 0)
       .sort((a, b) => b.votes - a.votes || b.createdAt - a.createdAt)
       .slice(0, limit)
       .map((entry, i) => ({ entry, rank: i + 1 }));
@@ -185,7 +178,7 @@ export class PoesiaService {
   }
 
   getById(groupId: string, id: string): ContenidoEntry | null {
-    return (this.entries.get(groupId) ?? []).find((e) => e.id === id) ?? null;
+    return (this.entries.get(groupId) ?? []).find(e => e.id === id) ?? null;
   }
 
   getUserStats(
@@ -197,9 +190,7 @@ export class PoesiaService {
     byTipo: Partial<Record<ContenidoTipo, number>>;
     topEntry?: ContenidoEntry;
   } {
-    const entries = (this.entries.get(groupId) ?? []).filter(
-      (e) => e.autor === jid,
-    );
+    const entries = (this.entries.get(groupId) ?? []).filter(e => e.autor === jid);
     const totalVotes = entries.reduce((s, e) => s + e.votes, 0);
     const byTipo: Partial<Record<ContenidoTipo, number>> = {};
     for (const e of entries) {
@@ -213,13 +204,13 @@ export class PoesiaService {
     const emoji = TIPO_EMOJI[entry.tipo];
     const label = TIPO_LABEL[entry.tipo];
 
-    let msg = "";
+    let msg = '';
 
     if (showMeta) {
       msg += `${emoji} *${label}*`;
       if (entry.tema) msg += ` — _${entry.tema}_`;
       if (entry.estilo) msg += ` _(${entry.estilo})_`;
-      msg += "\n";
+      msg += '\n';
       if (entry.dedicado) msg += `💝 _Para: ${entry.dedicado}_\n`;
       msg += `━━━━━━━━━━━━━\n\n`;
     }
@@ -239,20 +230,18 @@ export class PoesiaService {
   formatTop(entries: TopEntry[], tipo?: ContenidoTipo): string {
     if (entries.length === 0) {
       return tipo
-        ? `No hay ${TIPO_LABEL[tipo]?.toLowerCase() ?? "contenido"} votado aún en este grupo.`
-        : "Nadie ha votado contenido aún. Usa *!votar* después de pedir un poema. 🌹";
+        ? `No hay ${TIPO_LABEL[tipo]?.toLowerCase() ?? 'contenido'} votado aún en este grupo.`
+        : 'Nadie ha votado contenido aún. Usa *!votar* después de pedir un poema. 🌹';
     }
 
-    const medals = ["🥇", "🥈", "🥉", "4️⃣", "5️⃣"];
-    const titulo = tipo
-      ? `${TIPO_EMOJI[tipo]} Top ${TIPO_LABEL[tipo]}`
-      : "🏆 Top Poesía del Grupo";
+    const medals = ['🥇', '🥈', '🥉', '4️⃣', '5️⃣'];
+    const titulo = tipo ? `${TIPO_EMOJI[tipo]} Top ${TIPO_LABEL[tipo]}` : '🏆 Top Poesía del Grupo';
 
     let msg = `${titulo}\n━━━━━━━━━━━━\n\n`;
 
     for (const { entry, rank } of entries) {
       const medal = medals[rank - 1] ?? `${rank}.`;
-      const preview = entry.contenido.split("\n")[0].slice(0, 50) + "...";
+      const preview = entry.contenido.split('\n')[0].slice(0, 50) + '...';
       msg += `${medal} *${entry.autorName}* — ❤️ ${entry.votes} votos\n`;
       msg += `   _"${preview}"_\n`;
       msg += `   🆔 ${entry.id} | ${TIPO_EMOJI[entry.tipo]} ${TIPO_LABEL[entry.tipo]}\n\n`;
@@ -264,10 +253,12 @@ export class PoesiaService {
 
   private _saveEntry(groupId: string, entry: ContenidoEntry): void {
     if (!this.entries.has(groupId)) this.entries.set(groupId, []);
-    const list = this.entries.get(groupId)!;
-    list.push(entry);
-    if (list.length > MAX_ENTRIES_PER_GROUP) {
-      list.splice(0, list.length - MAX_ENTRIES_PER_GROUP);
+    const list = this.entries.get(groupId);
+    if (list) {
+      list.push(entry);
+      if (list.length > MAX_ENTRIES_PER_GROUP) {
+        list.splice(0, list.length - MAX_ENTRIES_PER_GROUP);
+      }
     }
   }
 

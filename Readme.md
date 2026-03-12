@@ -1,871 +1,654 @@
 <div align="center">
 
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset="https://readme-typing-svg.demolab.com?font=JetBrains+Mono&weight=700&size=42&pause=1000&color=FF1493&center=true&vCenter=true&width=600&height=80&lines=VaniaBot+IA;WhatsApp+Bot">
-  <img src="https://readme-typing-svg.demolab.com?font=JetBrains+Mono&weight=700&size=42&pause=1000&color=FF1493&center=true&vCenter=true&width=600&height=80&lines=VaniaBot+IA;WhatsApp+Bot" alt="VaniaBot IA">
-</picture>
-
-<br/>
-
-```
-    ██╗   ██╗ █████╗ ███╗   ██╗██╗ █████╗ ██████╗  ██████╗ ████████╗
-    ██║   ██║██╔══██╗████╗  ██║██║██╔══██╗██╔══██╗██╔═══██╗╚══██╔══╝
- ██║   ██║███████║██╔██╗ ██║██║███████║██████╔╝██║   ██║   ██║
- ╚██╗ ██╔╝██╔══██║██║╚██╗██║██║██╔══██║██╔══██╗██║   ██║   ██║
-  ╚████╔╝ ██║  ██║██║ ╚████║██║██║  ██║██████╔╝╚██████╔╝   ██║
-   ╚═══╝  ╚═╝  ╚═╝╚═╝  ╚═══╝╚═╝╚═╝  ╚═╝╚═════╝  ╚═════╝    ╚═╝
-```
-
-<p align="center">
-  <strong>Bot multifuncional de WhatsApp construido con TypeScript, Baileys y Groq AI</strong><br/>
-  <sub>Moderacion · Economia virtual · Juegos · Descarga de medios · Inteligencia Artificial</sub>
-</p>
-
-<br/>
-
-<p align="center">
-  <img src="https://img.shields.io/badge/TypeScript-ES2022-3178C6?style=for-the-badge&logo=typescript&logoColor=white"/>
-  <img src="https://img.shields.io/badge/Node.js-18%2B-339933?style=for-the-badge&logo=node.js&logoColor=white"/>
-  <img src="https://img.shields.io/badge/WhatsApp-Baileys-25D366?style=for-the-badge&logo=whatsapp&logoColor=white"/>
-  <img src="https://img.shields.io/badge/Groq-LLaMA%20%2B%20Whisper-F55036?style=for-the-badge&logo=openai&logoColor=white"/>
-</p>
-
-<p align="center">
-  <img src="https://img.shields.io/badge/FFmpeg-Requerido-007808?style=for-the-badge&logo=ffmpeg&logoColor=white"/>
-  <img src="https://img.shields.io/badge/sharp-Imagenes-99CC00?style=for-the-badge&logo=sharp&logoColor=white"/>
-  <img src="https://img.shields.io/badge/License-MIT-blue?style=for-the-badge"/>
-  <img src="https://img.shields.io/badge/Estado-Produccion-brightgreen?style=for-the-badge"/>
-</p>
-
-<br/>
-
----
+<img src="https://capsule-render.vercel.app/api?type=waving&color=ff6b9d,c084fc,2dd4bf,ff6b9d&height=280&section=header&text=VaniaBot&fontSize=90&fontColor=ffffff&fontAlignY=40&desc=%E2%80%94%20Tu%20asistente%20inteligente%20de%20WhatsApp%20%E2%80%94&descAlignY=58&descSize=20&animation=fadeIn&stroke=ffffff&strokeWidth=1" width="100%"/>
 
 </div>
 
-## Tabla de contenidos
+<div align="center">
 
-- [Vision general](#-vision-general)
-- [Caracteristicas](#-caracteristicas)
-- [Arquitectura del sistema](#-arquitectura-del-sistema)
-- [Flujo de mensajes](#-flujo-de-mensajes)
-- [Requisitos](#-requisitos)
-- [Instalacion rapida](#-instalacion-rapida)
-- [Configuracion](#-configuracion)
-- [Modos de inicio](#-modos-de-inicio)
-- [Estructura del proyecto](#-estructura-del-proyecto)
-- [Referencia completa de comandos](#-referencia-completa-de-comandos)
-- [Sistema de permisos](#-sistema-de-permisos)
-- [Motor de economia](#-motor-de-economia)
-- [Integracion con IA](#-integracion-con-ia)
-- [Sistema de reinicio automatico](#-sistema-de-reinicio-automatico)
-- [Pipeline de middleware](#-pipeline-de-middleware)
-- [Stack tecnologico](#-stack-tecnologico)
-- [Guia de desarrollo](#-guia-de-desarrollo)
-- [Aviso legal](#-aviso-legal)
+<img src="https://readme-typing-svg.demolab.com?font=Fira+Code&weight=800&size=26&pause=800&color=FF6B9D&center=true&vCenter=true&multiline=false&repeat=true&width=700&height=50&lines=💖+Bienvenido+a+VaniaBot;🤖+IA+con+Groq+%2F+LLaMA+3;🛡️+Moderación+%2B+Anti-spam;💰+Economía+%2B+Niveles+%2B+Logros;🎮+Juegos+interactivos+con+reacciones;🎨+Stickers+%2B+Descargas+multimedia;🎭+Poesía+generativa+con+IA;+Docker+Ready+%2F+MongoDB+%2F+JSON" alt="Typing SVG"/>
 
----
+</div>
 
-## Vision general
+<br/>
 
-VaniaBot IA es un bot de WhatsApp de nivel produccion construido completamente en **TypeScript**. Implementa una arquitectura de **proceso padre-hijo** donde el proceso guardian gestiona el ciclo de vida, la autenticacion y la recuperacion ante fallos, mientras el proceso hijo ejecuta la logica del bot conectado a WhatsApp via Baileys.
+<div align="center">
 
-El sistema expone mas de **50 comandos** organizados en dominios: moderacion de grupos, economia virtual, juegos con apuesta, descarga de medios desde multiples plataformas, creacion de stickers, inteligencia artificial conversacional y transcripcion de audio. Cada dominio es un servicio aislado coordinado por un `ServiceManager` singleton.
+[![Node.js](https://img.shields.io/badge/Node.js-18%2B-339933?style=for-the-badge&logo=node.js&logoColor=white)](https://nodejs.org)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.x-3178C6?style=for-the-badge&logo=typescript&logoColor=white)](https://www.typescriptlang.org)
+[![Baileys](https://img.shields.io/badge/Baileys-WA_Web-25D366?style=for-the-badge&logo=whatsapp&logoColor=white)](https://github.com/WhiskeySockets/Baileys)
+[![Groq](https://img.shields.io/badge/Groq-LLaMA_3-F55036?style=for-the-badge&logo=meta&logoColor=white)](https://console.groq.com)
+[![Docker](https://img.shields.io/badge/Docker-Ready-2496ED?style=for-the-badge&logo=docker&logoColor=white)](docker-compose.yml)
+[![MIT](https://img.shields.io/badge/License-MIT-fbbf24?style=for-the-badge&logoColor=white)](LICENSE)
 
-> **Caracteristica central:** VaniaBot no requiere compilacion previa — usa `tsx` para ejecutar TypeScript directamente, lo que acelera el ciclo de desarrollo.
+</div>
 
----
+<div align="center">
 
-## Caracteristicas
+[![Stars](https://img.shields.io/github/stars/CARLOSGRCIAGRCIA/vaniabot?style=for-the-badge&logo=starship&color=ff6b9d&labelColor=1a1028&logoColor=ff6b9d)](https://github.com/CARLOSGRCIAGRCIA/vaniabot/stargazers)
+[![Forks](https://img.shields.io/github/forks/CARLOSGRCIAGRCIA/vaniabot?style=for-the-badge&logo=git&color=c084fc&labelColor=1a1028&logoColor=c084fc)](https://github.com/CARLOSGRCIAGRCIA/vaniabot/network/members)
+[![Issues](https://img.shields.io/github/issues/CARLOSGRCIAGRCIA/vaniabot?style=for-the-badge&logo=github&color=2dd4bf&labelColor=1a1028&logoColor=2dd4bf)](https://github.com/CARLOSGRCIAGRCIA/vaniabot/issues)
+[![Last Commit](https://img.shields.io/github/last-commit/CARLOSGRCIAGRCIA/vaniabot?style=for-the-badge&logo=github&color=fbbf24&labelColor=1a1028&logoColor=fbbf24)](https://github.com/CARLOSGRCIAGRCIA/vaniabot/commits)
 
-<table>
-<thead>
-<tr>
-<th width="33%">Moderacion</th>
-<th width="33%">Economia y Juegos</th>
-<th width="33%">Inteligencia Artificial</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>
+</div>
 
-- Ban / unban con registro permanente
-- Kick (puede reingresar)
-- Mute con duracion (`10m` `1h` `2d`)
-- Warns acumulativos — 3 = kick auto
-- Promote y demote de admins
-- Autopromocion de owner
+<br/>
 
-</td>
-<td>
+<div align="center">
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/CARLOSGRCIAGRCIA/vaniabot/main/data/assets/logo.png">
+  <img src="https://raw.githubusercontent.com/CARLOSGRCIAGRCIA/vaniabot/main/data/assets/logo.png" width="100" alt="VaniaBot logo"/>
+</picture>
+</div>
 
-- Sistema de monedas y balance
-- Daily con streak multiplicado
-- Weekly con bonus acumulativo
-- Trabajo con cooldown de 1 hora
-- Tienda de items y cosmeticos
-- Tragamonedas y coinflip
-
-</td>
-<td>
-
-- Chat multiturno con LLaMA (Groq)
-- Historial por usuario y grupo
-- Transcripcion de audio (Whisper)
-- Limpieza de historial individual o global
-- Deteccion automatica de idioma
-
-</td>
-</tr>
-<tr>
-<th>Medios y Stickers</th>
-<th>Administracion de grupos</th>
-<th>Utilidades</th>
-</tr>
-<tr>
-<td>
-
-- YouTube MP3 y MP4 por URL o busqueda
-- TikTok sin marca de agua
-- Instagram Reels, posts e imagenes
-- Facebook videos y Reels
-- Sticker desde imagen o video
-- Sticker de texto, meme y cita
-
-</td>
-<td>
-
-- Bienvenida personalizada con foto de perfil
-- Despedida configurable
-- Variables dinamicas en mensajes
-- Mencion masiva de todos los miembros
-- Logros con 15 categorias desbloqueables
-- Sistema de niveles y XP automatico
-
-</td>
-<td>
-
-- Calculadora con soporte de expresiones
-- Conversor de 7 tipos de unidades
-- Acortador de URLs via TinyURL
-- Validadores de JID, URL, email y telefono
-- Formateo de numeros y tiempos
-
-</td>
-</tr>
-</tbody>
-</table>
-
----
-
-## Arquitectura del sistema
-
-El proyecto separa responsabilidades entre dos procesos y multiples capas de servicios.
-
-![alt text](docs/assets/Arquitectura_del_sistema.png)
-
----
-
-## Flujo de mensajes
-
-Cada mensaje entrante de WhatsApp pasa por la siguiente cadena antes de ejecutar un comando.
-
-![alt text](docs/assets/Flujo_de_mensajes.png)
-
----
-
-## Flujo de autenticacion
-
-![alt text](docs/assets/Flujo_de_autenticacion.png)
-
----
-
-## Requisitos
-
-| Herramienta         | Version minima            | Para que se usa                              |
-| ------------------- | ------------------------- | -------------------------------------------- |
-| **Node.js**         | 18.x o superior           | Runtime principal, ESM nativo                |
-| **npm** o **yarn**  | Cualquiera reciente       | Gestion de dependencias                      |
-| **FFmpeg**          | Cualquier version estable | Stickers animados, conversion de audio/video |
-| **Cuenta WhatsApp** | Activa                    | Numero real o virtual para el bot            |
-| **API Key de Groq** | Activa y con cuota        | Chat con LLaMA y transcripcion con Whisper   |
-
-> Obtener API Key de Groq gratis en [console.groq.com](https://console.groq.com)
-
----
-
-## Instalacion rapida
-
-```bash
-# Clonar el repositorio
-git clone https://github.com/tu-usuario/vaniabot.git
-cd vaniabot
-
-# Instalar dependencias
-npm install
-
-# Instalar FFmpeg (Debian / Ubuntu)
-sudo apt install ffmpeg
-
-# Instalar FFmpeg (macOS con Homebrew)
-brew install ffmpeg
-
-# Configurar variables de entorno
-cp .env.example .env
-# Editar .env con tu editor preferido
-
-# Iniciar el bot
-npm start
-```
-
----
-
-## Configuracion
-
-### Variables de entorno
-
-Crea el archivo `.env` en la raiz del proyecto:
-
-```env
-# ════════════════════════════════════════════
-#   AUTENTICACION
-# ════════════════════════════════════════════
-
-# Numero de telefono del bot con codigo de pais
-PHONE_NUMBER=+521XXXXXXXXXX
-
-# Metodo de autenticacion por defecto: qr | code
-AUTH_MODE=qr
-
-# ════════════════════════════════════════════
-#   INTELIGENCIA ARTIFICIAL
-# ════════════════════════════════════════════
-
-# API Key de Groq  https://console.groq.com
-GROQ_API_KEY=gsk_xxxxxxxxxxxxxxxxxxxxxxxxxxxx
-
-# ════════════════════════════════════════════
-#   OWNER DEL BOT
-# ════════════════════════════════════════════
-
-# Numero del propietario principal (con codigo de pais)
-OWNER_NUMBER=+521XXXXXXXXXX
-```
-
-### Constantes internas
-
-Estas constantes estan definidas directamente en `vania.ts` y pueden modificarse segun sea necesario:
-
-| Constante               | Valor por defecto           | Descripcion                               |
-| ----------------------- | --------------------------- | ----------------------------------------- |
-| `SESSION_DIR`           | `./vaniasession`            | Directorio de sesion de Baileys           |
-| `SESSION_CREDS`         | `./vaniasession/creds.json` | Archivo de credenciales                   |
-| `BOOT_FLAG`             | `./.vania-session`          | Flag para evitar re-animacion del banner  |
-| `MAX_QUICK_RESTARTS`    | `5`                         | Maximo de reinicios rapidos en la ventana |
-| `RESTART_WINDOW_MS`     | `120,000` ms                | Ventana de tiempo para contar reinicios   |
-| `MAX_RESTART_DELAY_MS`  | `30,000` ms                 | Delay maximo entre reinicios              |
-| `FORCE_RESTART_WAIT_MS` | `60,000` ms                 | Espera forzada tras superar el limite     |
-
-> **Nunca versiones** `vaniasession/` ni `.vania-session`. Ambos deben estar en `.gitignore`.
-
----
-
-## Modos de inicio
-
-```bash
-# Menu interactivo (recomendado para primer uso)
-npm start
-
-# Directamente con codigo QR — escanear con WhatsApp movil
-npm start qr
-
-# Con codigo de pareamiento — se solicita numero de telefono
-npm start code
-```
-
-Al elegir `code`, el proceso padre valida el numero con la expresion regular `/^+?\d{10,15}$/` y lo inyecta como `process.env.PHONE_NUMBER` antes de spawnear el proceso hijo.
-
----
-
-## Estructura del proyecto
-
-```
-vaniabot/
-├── vania.ts                             ← Proceso padre: guardian y gestor
-├── tsconfig.json                        ← TypeScript ES2022 / bundler
-├── package.json
-├── .env                                 ← Variables de entorno (no versionar)
-│
-├── vaniasession/                        ← Sesion Baileys (no versionar)
-│   └── creds.json
-│
-└── src/
-    ├── index.ts                         ← Proceso hijo: entry point del bot
-    │
-    ├── core/
-    │   └── Client.ts                    ← WhatsAppClient e inicializacion
-    │
-    ├── commands/
-    │   ├── Command.ts                   ← Clase base abstracta
-    │   │
-    │   ├── moderation/
-    │   │   ├── BanCommand.ts            ← Ban permanente con registro
-    │   │   ├── UnbanCommand.ts          ← Levantar ban
-    │   │   ├── KickCommand.ts           ← Expulsion temporal
-    │   │   ├── MuteCommand.ts           ← Silencio por duracion
-    │   │   ├── UnmuteCommand.ts         ← Levantar silencio
-    │   │   ├── WarnCommand.ts           ← Advertencias (max 3 = kick auto)
-    │   │   ├── PromoteCommand.ts        ← Ascender a admin
-    │   │   └── DemoteCommand.ts         ← Degradar de admin
-    │   │
-    │   ├── economy/
-    │   │   ├── BalanceCommand.ts        ← Ver saldo y rango
-    │   │   ├── DailyCommand.ts          ← Recompensa diaria con streak
-    │   │   ├── WeeklyCommand.ts         ← Recompensa semanal con bonus
-    │   │   ├── WorkCommand.ts           ← Trabajar (cooldown 1h)
-    │   │   ├── PayCommand.ts            ← Transferencias entre usuarios
-    │   │   ├── ShopCommand.ts           ← Catalogo de la tienda
-    │   │   └── BuyCommand.ts            ← Compra de items
-    │   │
-    │   ├── games/
-    │   │   ├── SlotsCommand.ts          ← Tragamonedas con multiplicadores
-    │   │   ├── CoinflipCommand.ts       ← Cara o cruz con apuesta
-    │   │   └── InventoryCommand.ts      ← Inventario RPG
-    │   │
-    │   ├── media/
-    │   │   ├── StickerCommand.ts        ← Imagen/video a sticker
-    │   │   ├── NotaCommand.ts           ← Sticker de texto
-    │   │   ├── PatCommand.ts            ← Sticker meme Patrick
-    │   │   ├── QcCommand.ts             ← Sticker de cita con foto
-    │   │   ├── TakeCommand.ts           ← Robar y renombrar sticker
-    │   │   ├── YtMp3Command.ts          ← YouTube a MP3
-    │   │   ├── YtMp4Command.ts          ← YouTube a MP4
-    │   │   ├── TiktokCommand.ts         ← TikTok sin watermark
-    │   │   ├── InstagramCommand.ts      ← Instagram Reels / posts
-    │   │   └── FacebookCommand.ts       ← Facebook videos y Reels
-    │   │
-    │   ├── ai/
-    │   │   ├── AiCommand.ts             ← Chat IA con historial multiturno
-    │   │   ├── AiClearCommand.ts        ← Limpiar historial de IA
-    │   │   └── TranscribeCommand.ts     ← Transcripcion de audio (Whisper)
-    │   │
-    │   ├── utility/
-    │   │   ├── LevelCommand.ts          ← Nivel y XP
-    │   │   ├── AllCommand.ts            ← Mencionar a todos
-    │   │   ├── AchievementsCommand.ts   ← Logros con barra de progreso
-    │   │   ├── CalculatorCommand.ts     ← Calculadora y conversor
-    │   │   ├── UrlShortenerCommand.ts   ← Acortador TinyURL
-    │   │   ├── WelcomeCommand.ts        ← Config bienvenida
-    │   │   └── GoodbyeCommand.ts        ← Config despedida
-    │   │
-    │   └── owner/
-    │       ├── AutoAdminCommand.ts      ← Autopromocion a admin
-    │       ├── GrantCommand.ts          ← Conceder recursos
-    │       └── SetOwnerCommand.ts       ← Gestionar propietarios
-    │
-    ├── services/
-    │   ├── Servicemanager.ts            ← Singleton de servicios
-    │   ├── database/
-    │   │   └── UserService.ts           ← CRUD: XP, dinero, inventario
-    │   ├── ModerationService.ts         ← Ban, mute, warns, log
-    │   ├── LevelService.ts              ← Niveles y XP
-    │   ├── WelcomeService.ts            ← Bienvenida y despedida
-    │   ├── external/
-    │   │   └── AIService.ts             ← Groq: LLaMA + Whisper
-    │   ├── media/
-    │   │   └── StickerService.ts        ← Procesamiento con sharp
-    │   └── download/
-    │       ├── YouTubeDownloader.ts
-    │       ├── TikTokDownloader.ts
-    │       ├── InstagramDownloader.ts
-    │       └── FacebookDownloader.ts
-    │
-    ├── middleware/
-    │   ├── Middleware.ts                ← Clase base abstracta
-    │   ├── CooldownMiddleware.ts        ← Throttle por usuario/comando
-    │   └── LoggerMiddleware.ts          ← Tiempo de respuesta
-    │
-    ├── utils/
-    │   ├── cli.ts                       ← Banner y selector de auth
-    │   ├── logger.ts                    ← Logger con niveles
-    │   ├── helpers.ts                   ← formatNumber, formatTime
-    │   └── validators.ts                ← JID, URL, email, telefono
-    │
-    └── types/
-        └── index.ts                     ← Tipos globales del proyecto
-```
-
----
-
-## Referencia completa de comandos
-
-### Moderacion de grupos
-
-> Contexto requerido: `GROUP` — Permisos requeridos: `ADMIN`
-
-| Comando                     | Alias                  | Descripcion                                       | Bot admin  |
-| --------------------------- | ---------------------- | ------------------------------------------------- | :--------: |
-| `!ban @user [razon]`        | `!banear`              | Ban permanente con expulsion del grupo            |     Si     |
-| `!unban @user`              | `!desbanear`           | Levantar ban de un usuario                        |     No     |
-| `!kick @user [razon]`       | `!expulsar`            | Expulsar (puede reingresar con invitacion)        |     Si     |
-| `!mute @user <dur> [razon]` | `!silenciar`           | Silenciar por duracion especificada               |     No     |
-| `!unmute @user`             | `!desmutear`           | Levantar silencio                                 |     No     |
-| `!warn @user [razon]`       | —                      | Registrar advertencia (3 warns = kick automatico) | Si al kick |
-| `!promote @user`            | `!promover` `!admin`   | Ascender a administrador del grupo                |     Si     |
-| `!demote @user`             | `!degradar` `!deadmin` | Quitar rango de administrador                     |     Si     |
-
-**Formato de duraciones para `!mute`:**
-
-```
-!mute @user 10m flood         →  10 minutos
-!mute @user 2h spam           →  2 horas
-!mute @user 3d conducta       →  3 dias
-```
-
-**Logica de advertencias (`!warn`):**
-
-![alt text](docs/assets/advertencias.png)
-
----
-
-### Economia virtual
-
-| Comando                 | Alias                    | Descripcion                              | Cooldown |
-| ----------------------- | ------------------------ | ---------------------------------------- | -------- |
-| `!balance [@user]`      | `!bal` `!dinero` `!cash` | Ver saldo, rango y estado del daily      | 3 seg    |
-| `!daily`                | —                        | Recompensa diaria con streak acumulativo | 24 horas |
-| `!weekly`               | `!semanal`               | Recompensa semanal con bonus por racha   | 7 dias   |
-| `!work`                 | —                        | Trabajar en un oficio aleatorio          | 1 hora   |
-| `!pay @user <cantidad>` | `!transfer`              | Transferir monedas a otro usuario        | 5 seg    |
-| `!shop`                 | `!store` `!tienda`       | Ver catalogo completo de la tienda       | 3 seg    |
-| `!buy <numero>`         | `!comprar`               | Comprar un item de la tienda             | 5 seg    |
-
-**Catalogo de la tienda:**
-
-| #   | Item                               | Precio  | Tipo      | Duracion   |
-| --- | ---------------------------------- | ------- | --------- | ---------- |
-| 1   | Rol VIP                            | $5,000  | Rol       | 7 dias     |
-| 2   | Rol Leyenda                        | $10,000 | Rol       | 7 dias     |
-| 3   | Color de nombre personalizado      | $3,000  | Cosmetico | Permanente |
-| 4   | Bypass de cooldown (−50%)          | $2,000  | Mejora    | 24 horas   |
-| 5   | Boost de XP (doble)                | $1,500  | Mejora    | 24 horas   |
-| 6   | Amuleto de suerte (+10% en juegos) | $2,500  | Mejora    | 24 horas   |
-
-**Progresion del sistema de recompensas:**
-
-![alt text](docs/assets/Sistema_Recompensas.png)
-
-**Oficios disponibles en `!work`:**
-
-| Oficio      | Rango de pago | XP ganado       |
-| ----------- | ------------- | --------------- |
-| Programador | $500 — $1,500 | 10% del salario |
-| Maestro     | $400 — $1,200 | 10% del salario |
-| Chef        | $300 — $1,000 | 10% del salario |
-| Musico      | $250 — $900   | 10% del salario |
-| Conductor   | $200 — $800   | 10% del salario |
-
----
-
-### Juegos
-
-| Comando                           | Alias                   | Descripcion                  | Apuesta minima | Cooldown |
-| --------------------------------- | ----------------------- | ---------------------------- | -------------- | -------- |
-| `!slots <apuesta>`                | `!slot` `!tragamonedas` | Maquina tragamonedas         | $10            | 5 seg    |
-| `!coinflip <cara/cruz> <apuesta>` | `!cf`                   | Cara o cruz                  | $1             | 5 seg    |
-| `!inventory [@user]`              | `!inv` `!inventario`    | Ver inventario RPG con items | —              | —        |
-
-**Tabla de pagos de `!slots`:**
-
-| Combinacion      | Simbolo       | Multiplicador | Nombre    |
-| ---------------- | ------------- | ------------- | --------- |
-| Triple 7         | 7 7 7         | x10           | JACKPOT   |
-| Triple Diamante  | Diamante x3   | x8            | MEGA WIN  |
-| Triple Campana   | Campana x3    | x5            | BIG WIN   |
-| Triple Estrella  | Estrella x3   | x4            | GREAT WIN |
-| Triple Limon     | Limon x3      | x3            | NICE WIN  |
-| Triple Cereza    | Cereza x3     | x3            | GOOD WIN  |
-| Dos iguales      | Cualquiera x2 | x1.5          | TWO MATCH |
-| Sin coincidencia | —             | x0            | NO MATCH  |
-
----
-
-### Logros desbloqueables
-
-![alt text](docs/assets/logros.png)
-
----
-
-### Inteligencia Artificial
-
-| Comando         | Alias                    | Descripcion                                       | Cooldown |
-| --------------- | ------------------------ | ------------------------------------------------- | -------- |
-| `!ai <mensaje>` | `!chat` `!vania` `!ask`  | Chat con IA — mantiene historial por usuario      | 4 seg    |
-| `!aiclear`      | `!aiborrar` `!airestart` | Limpiar tu historial personal de conversacion     | 3 seg    |
-| `!aiclear all`  | —                        | Limpiar historial de todos los usuarios del grupo | 3 seg    |
-| `!transcribe`   | `!voz` `!voice` `!stt`   | Transcribir nota de voz o archivo de audio        | 10 seg   |
-
-**Flujo del chat con IA:**
-
-![alt text](docs/assets/FlujoAi.png)
-
-**Flujo de transcripcion de audio:**
-
-![alt text](docs/assets/trasncriptionFlow.png)
-
----
-
-### Medios y Stickers
-
-| Comando                   | Alias                  | Descripcion                                    | Cooldown |
-| ------------------------- | ---------------------- | ---------------------------------------------- | -------- |
-| `!sticker`                | `!s` `!stiker`         | Convertir imagen o video a sticker             | —        |
-| `!nota <texto>`           | `!note`                | Sticker de texto sobre plantilla de nota       | 5 seg    |
-| `!pat <texto>`            | `!patrick`             | Sticker de meme Patrick con texto superpuesto  | 5 seg    |
-| `!qc <texto>`             | `!quote`               | Sticker de cita con foto de perfil del usuario | 5 seg    |
-| `!take <pack>\|<autor>`   | `!steal` `!wm`         | Robar sticker y cambiar nombre/autor           | 3 seg    |
-| `!ytmp3 <busqueda o URL>` | `!yta` `!ytaudio`      | YouTube a MP3 — busqueda o URL directa         | 30 seg   |
-| `!ytmp4 <busqueda o URL>` | `!ytv` `!ytvideo`      | YouTube a MP4 — busqueda o URL directa         | 30 seg   |
-| `!tiktok <URL>`           | `!tt` `!tk`            | Video de TikTok sin marca de agua              | 30 seg   |
-| `!instagram <URL>`        | `!ig` `!insta` `!reel` | Instagram: Reels, posts e imagenes             | 30 seg   |
-| `!facebook <URL>`         | `!fb` `!fbvideo`       | Facebook: videos y Reels publicos              | 30 seg   |
-
-> Para stickers de video se requiere FFmpeg instalado. Videos mayores a 10 segundos pueden ser rechazados por la API de WhatsApp.
-
----
-
-### Utilidades
-
-| Comando                 | Alias                 | Descripcion                                  | Cooldown |
-| ----------------------- | --------------------- | -------------------------------------------- | -------- |
-| `!level [@user]`        | `!lvl` `!rank` `!xp`  | Ver nivel, XP y estadisticas de progreso     | 3 seg    |
-| `!achievements [@user]` | `!logros` `!trofeos`  | Logros desbloqueados con barra de progreso   | —        |
-| `!all [mensaje]`        | `!everyone` `!tagall` | Mencionar a todos los miembros del grupo     | 30 seg   |
-| `!calc <expresion>`     | `!math` `!calcular`   | Calculadora avanzada y conversor de unidades | 2 seg    |
-| `!acortar <URL>`        | `!short` `!tinyurl`   | Acortar una URL larga con TinyURL            | 5 seg    |
-| `!welcome [accion]`     | `!bienvenida`         | Configurar mensaje de bienvenida del grupo   | —        |
-| `!goodbye [accion]`     | `!despedida` `!bye`   | Configurar mensaje de despedida del grupo    | —        |
-
-**Acciones de `!welcome` y `!goodbye`:**
-
-```
-!welcome on            →  Activar
-!welcome off           →  Desactivar
-!welcome set <msg>     →  Personalizar mensaje
-!welcome test          →  Probar en tiempo real
-!welcome reset         →  Restaurar mensaje por defecto
-!welcome pic           →  Activar foto de perfil en bienvenida
-!welcome nopic         →  Desactivar foto de perfil
-```
-
-**Variables en mensajes de bienvenida y despedida:**
-
-| Variable | Reemplaza con                       |
-| -------- | ----------------------------------- |
-| `@user`  | Nombre del usuario que entra o sale |
-| `@group` | Nombre del grupo                    |
-| `@desc`  | Descripcion del grupo               |
-| `@count` | Numero total de miembros            |
-| `@fact`  | Dato curioso aleatorio              |
-
-**Calculadora — operaciones y conversiones soportadas (`!calc`):**
-
-```
-Matematicas
-  !calc 15% de 340               →  Porcentajes
-  !calc (25 * 4) + 100 / 2       →  Expresiones con parentesis
-  !calc 5 ^ 2                    →  Potencias
-
-Conversiones
-  !calc 5 km a m                 →  Longitud
-  !calc 100 kg a lb              →  Peso / masa
-  !calc 37 C a F                 →  Temperatura (C, F, K)
-  !calc 1 gb a mb                →  Digital (b, kb, mb, gb, tb, pb)
-  !calc 3.6 km/h a m/s           →  Velocidad
-  !calc 500 ml a cup             →  Volumen
-  !calc 10000 m2 a ha            →  Area
-```
-
----
-
-### Comandos exclusivos del Owner
-
-| Comando                     | Alias                  | Descripcion                                    |
-| --------------------------- | ---------------------- | ---------------------------------------------- |
-| `!autoadmin`                | `!sadmin` `!makeadmin` | Autopromocion a administrador del grupo actual |
-| `!grant money @user <cant>` | `!give` `!dar`         | Conceder dinero a un usuario                   |
-| `!grant xp @user <cant>`    | —                      | Conceder XP a un usuario                       |
-| `!grant item @user <item>`  | —                      | Agregar un item al inventario de un usuario    |
-| `!setowner add @user`       | `!makeowner`           | Otorgar permisos de propietario del bot        |
-| `!setowner remove @user`    | `!removeowner`         | Revocar permisos de propietario                |
-
-> Al agregar a alguien como owner, sus estadisticas se elevan al maximo automaticamente. Al removerlo, se reinician a valores por defecto.
-
----
-
-## Sistema de permisos
-
-![alt text](docs/assets/permisos.png)
-
-**Resumen de niveles:**
-
-| Nivel     | Acceso                       | Inmunidad                      | Recursos   |
-| --------- | ---------------------------- | ------------------------------ | ---------- |
-| **OWNER** | Total — todos los comandos   | No se puede bannear ni warnear | Ilimitados |
-| **ADMIN** | Moderacion + usuario         | Ninguna especial               | Normales   |
-| **USER**  | Economia, juegos, medios, IA | Ninguna                        | Normales   |
-
----
-
-## Motor de economia
-
-![alt text](docs/assets/economySistem.png)
-
----
-
-## Sistema de reinicio automatico
-
-![alt text](docs/assets/restart_service.png)
-
----
-
-## Pipeline de middleware
-
-![alt text](docs/assets/PipelineMiddleware.png)
-
----
-
-## Stack tecnologico
-
-<table>
-<tr>
-<th>Capa</th>
-<th>Tecnologia</th>
-<th>Version</th>
-<th>Uso</th>
-</tr>
-<tr>
-<td><strong>Lenguaje</strong></td>
-<td>TypeScript</td>
-<td>ES2022, strict</td>
-<td>Lenguaje principal con tipos fuertes en todo el codebase</td>
-</tr>
-<tr>
-<td><strong>Runtime</strong></td>
-<td>Node.js + tsx</td>
-<td>18+</td>
-<td>Ejecucion directa de TS sin compilar</td>
-</tr>
-<tr>
-<td><strong>WhatsApp</strong></td>
-<td>Baileys</td>
-<td>@whiskeysockets</td>
-<td>Cliente de WhatsApp Web API sin app oficial</td>
-</tr>
-<tr>
-<td><strong>IA</strong></td>
-<td>Groq SDK</td>
-<td>LLaMA + Whisper</td>
-<td>Chat generativo y transcripcion de audio</td>
-</tr>
-<tr>
-<td><strong>Imagenes</strong></td>
-<td>sharp</td>
-<td>Latest</td>
-<td>Composicion de stickers, overlay SVG, resize</td>
-</tr>
-<tr>
-<td><strong>Video/Audio</strong></td>
-<td>FFmpeg</td>
-<td>Cualquiera estable</td>
-<td>Conversion para stickers animados y descargas</td>
-</tr>
-<tr>
-<td><strong>HTTP</strong></td>
-<td>axios</td>
-<td>Latest</td>
-<td>Stickers de cita (bot.lyo.su) y downloaders</td>
-</tr>
-<tr>
-<td><strong>CLI</strong></td>
-<td>chalk</td>
-<td>Latest</td>
-<td>Colores y estilos en consola del proceso padre</td>
-</tr>
-<tr>
-<td><strong>URLs</strong></td>
-<td>TinyURL API</td>
-<td>REST</td>
-<td>Acortamiento de URLs en !acortar</td>
-</tr>
-</table>
-
-**Aliases de rutas (`tsconfig.json`):**
-
-```jsonc
-{
-  "compilerOptions": {
-    "target": "ES2022",
-    "module": "ESNext",
-    "moduleResolution": "bundler",
-    "strict": true,
-    "experimentalDecorators": true,
-    "emitDecoratorMetadata": true,
-    "declaration": true,
-    "sourceMap": true,
-    "paths": {
-      "@/*": ["src/*"],
-      "@config/*": ["src/config/*"],
-      "@core/*": ["src/core/*"],
-      "@commands/*": ["src/commands/*"],
-      "@services/*": ["src/services/*"],
-      "@utils/*": ["src/utils/*"],
-      "@types/*": ["src/types/*"],
-    },
-  },
-}
-```
-
----
-
-## Guia de desarrollo
-
-### Agregar un nuevo comando
-
-**1.** Crear el archivo en la carpeta del dominio correspondiente:
-
-```typescript
-// src/commands/utility/MiComando.ts
-import { Command } from "../Command.js";
-import {
-  CommandCategory,
-  CommandContext,
-  PermissionLevel,
-  type MessageContext,
-} from "@/types/index.js";
-
-export class MiComando extends Command {
-  name = "micomando";
-  description = "Descripcion clara del comando";
-  category = CommandCategory.UTILITY;
-  aliases = ["mc", "micmd"];
-  usage = "!micomando <argumento> [opcional]";
-  examples = ["!micomando hola", "!micomando mundo"];
-  cooldown = 3000; // milisegundos
-  contexts = [CommandContext.BOTH]; // GROUP | PRIVATE | BOTH
-  permissions = { user: [PermissionLevel.USER] };
-
-  async execute(ctx: MessageContext): Promise<void> {
-    if (!ctx.args.length) {
-      await ctx.reply(`Uso: ${this.usage}`);
-      return;
-    }
-
-    await ctx.react("⏳");
-
-    const resultado = ctx.args.join(" ").toUpperCase();
-    await ctx.reply(`Resultado: ${resultado}`);
-
-    await ctx.react("✅");
-  }
-}
-```
-
-**2.** Registrar el comando en el `CommandRegistry` o loader automatico del proyecto.
-
----
-
-### Propiedades disponibles en `MessageContext`
-
-```typescript
-// Informacion del remitente
-ctx.sender.jid; // JID del usuario: 521XXXXXXXXXX@s.whatsapp.net
-ctx.sender.pushName; // Nombre visible en WhatsApp
-ctx.sender.isAdmin; // true si es admin del grupo
-ctx.sender.isOwner; // true si es owner del bot
-
-// Informacion del chat
-ctx.chat.jid; // JID del grupo o chat privado
-ctx.chat.isBotAdmin; // true si el bot es admin en este grupo
-
-// Contenido del mensaje
-ctx.args; // string[] — argumentos del comando
-ctx.command; // string — nombre del comando sin prefijo
-ctx.quoted; // WAMessage | null — mensaje citado
-ctx.message; // WAMessage — mensaje completo de WhatsApp
-
-// Acciones
-ctx.reply(texto); // Responder al mensaje actual
-ctx.react(emoji); // Reaccionar con emoji al mensaje
-ctx.sock; // Socket de Baileys — acceso total a la API
-```
-
----
-
-### Utilidades disponibles
-
-```typescript
-// validators.ts
-import {
-  isValidWhatsAppNumber,
-  isGroupJid,
-  isUserJid,
-  isValidUrl,
-} from "@/utils/validators.js";
-
-isValidWhatsAppNumber("+521XXXXXXXXXX"); // true
-isGroupJid("123456789@g.us"); // true
-isUserJid("521XXXXXXXXXX@s.whatsapp.net"); // true
-isValidUrl("https://example.com"); // true
-
-// helpers.ts
-import { formatNumber, formatTime } from "@/utils/helpers.js";
-
-formatNumber(1500000); // "1,500,000"
-formatTime(3661000); // "1h 1m 1s"
-```
-
----
-
-### Archivos que no deben versionarse
-
-```gitignore
-# Sesion de WhatsApp
-vaniasession/
-.vania-session
-
-# Entorno
-.env
-
-# Dependencias y compilacion
-node_modules/
-dist/
-
-# Archivos temporales de audio/video
-data/temp/
-```
-
----
-
-## Aviso legal
+<br/>
 
 <div align="center">
 
 ```
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-   El uso de clientes no oficiales de WhatsApp puede violar
-   los Terminos de Servicio de WhatsApp / Meta.
-   Este proyecto es de caracter educativo y experimental.
-   Utilizalo bajo tu propia responsabilidad.
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ ╭──────────────────────────────────────────────────────────────────╮
+ │                                                                  │
+ │   💖   Nombrado en honor a alguien especial                      │
+ │   🌟   54 directorios  ·  169 archivos  ·  TypeScript estricto   │
+ │   ⚡   Potenciado por Groq LLaMA · Baileys · Node 18+            │
+ │                                                                  │
+ ╰──────────────────────────────────────────────────────────────────╯
+```
+
+</div>
+
+<br/>
+
+---
+
+<div align="center">
+
+## ⚠️ Deslinde de Responsabilidades
+
+### Baileys no está afiliado con Meta ni WhatsApp LLC
+
+</div>
+
+VaniaBot utiliza [**Baileys**](https://github.com/WhiskeySockets/Baileys), una librería **no oficial** que interactúa con WhatsApp Web mediante ingeniería inversa. **No está afiliada, respaldada ni aprobada por Meta Platforms, Inc. ni por WhatsApp LLC.**
+
+Al descargar, instalar o ejecutar este software, aceptas y reconoces lo siguiente:
+
+<div align="center">
+
+|                  Riesgo                  | Descripción                                                                                                                                                                                                                    |
+| :--------------------------------------: | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+|          ☢️ **Baneo de cuenta**          | WhatsApp puede suspender o bloquear **permanentemente** cualquier número que use clientes no oficiales. El autor no tiene control sobre esto ni se responsabiliza de la pérdida de tu cuenta.                                  |
+|    🔌 **Sin garantía de continuidad**    | WhatsApp puede modificar su protocolo en cualquier momento, dejando Baileys —y VaniaBot— sin funcionamiento sin previo aviso.                                                                                                  |
+|        ⚖️ **Legalidad regional**         | El uso de clientes no oficiales puede estar sujeto a restricciones legales en tu país o región. Eres responsable de verificar su legalidad.                                                                                    |
+|        🚫 **Prohibido para spam**        | Queda estrictamente prohibido usar VaniaBot para mensajes masivos no solicitados, phishing, acoso o cualquier actividad que viole los [**Términos de Servicio de WhatsApp**](https://www.whatsapp.com/legal/terms-of-service). |
+| 👤 **Responsabilidad total del usuario** | Eres el único responsable del uso que hagas de este software y de todas las consecuencias que se deriven.                                                                                                                      |
+
+</div>
+
+> [!CAUTION]
+> **Este proyecto se proporciona únicamente con fines educativos y de investigación personal. El autor no ofrece ninguna garantía, expresa ni implícita, sobre su estabilidad, seguridad o adecuación para ningún propósito.**
+
+<br/>
+
+---
+
+<div align="center">
+
+## Características principales
+
+<img src="https://readme-typing-svg.demolab.com?font=Fira+Code&size=13&pause=3000&color=c084fc&center=true&vCenter=true&width=500&height=30&lines=10+módulos+%2F++60%2B+comandos+%2F+TypeScript+estricto" alt="stats"/>
+
+</div>
+
+<br/>
+
+<div align="center">
+
+| &nbsp; | Módulo                      | Descripción                                                                                                      |
+| :----: | :-------------------------- | :--------------------------------------------------------------------------------------------------------------- |
+|   🤖   | **Inteligencia Artificial** | Chat contextual con historial persistente vía Groq (LLaMA 3). Transcripción automática de audios y notas de voz. |
+|   🛡️   | **Moderación completa**     | Ban, kick, mute, warn, anti-spam, anti-link, filtro de palabras y auto-mod con pipeline de middlewares.          |
+|   💰   | **Sistema económico**       | Recompensas diarias/semanales, trabajo, tienda, inventario, logros, niveles XP y ranking.                        |
+|   🎮   | **Juegos interactivos**     | Coinflip, tragamonedas, quizzes con dificultad adaptativa y listas interactivas con reacciones.                  |
+|   🎨   | **Stickers creativos**      | Desde imágenes, vídeos y GIFs. Memes de Patricio, notas adhesivas y sticker-cita con foto de perfil.             |
+|   📥   | **Descargas multimedia**    | YouTube audio/vídeo, TikTok sin marca de agua, Instagram Reels y vídeos de Facebook.                             |
+|   🎭   | **Poesía con IA**           | Poemas, haikus, sonetos, acrósticos, dedicatorias, cartas e historias. Con sistema de votos.                     |
+|   🌐   | **Utilidades potentes**     | Traductor contextual con modos, conversor de unidades/monedas, QR, encuestas y recordatorios.                    |
+|   ⚙️   | **Comandos de owner**       | Otorgar recursos, gestionar owners, estadísticas globales y auto-admin.                                          |
+|   🔒   | **Infraestructura robusta** | JSON o MongoDB, caché, rate limiting, reconexión automática y soporte Docker completo.                           |
+
+</div>
+
+<br/>
+
+---
+
+<div align="center">
+
+## Requisitos previos
+
+[![Node](https://img.shields.io/badge/Node.js_18%2B-✓_requerido-339933?style=flat-square&logo=node.js&logoColor=white)](https://nodejs.org)
+[![FFmpeg](https://img.shields.io/badge/FFmpeg-✓_requerido-007808?style=flat-square&logo=ffmpeg&logoColor=white)](https://ffmpeg.org)
+[![yt-dlp](https://img.shields.io/badge/yt--dlp-✓_requerido-FF0000?style=flat-square&logo=youtube&logoColor=white)](https://github.com/yt-dlp/yt-dlp)
+[![Groq](https://img.shields.io/badge/Groq_API_Key-✓_gratuita-F55036?style=flat-square&logo=meta&logoColor=white)](https://console.groq.com)
+
+</div>
+
+<br/>
+
+```
+  ┌─────────────────────────────────────────────────────────────┐
+  │  DEPENDENCIAS                                               │
+  ├──────────────────────┬──────────────────────────────────────┤
+  │  Node.js 18+         │  nodejs.org                          │
+  │  npm / yarn          │  incluido con Node                   │
+  │  FFmpeg              │  procesamiento de audio y vídeo      │
+  │  yt-dlp              │  descargas de YouTube                │
+  │  Groq API Key        │  gratis en console.groq.com          │
+  │  Cuenta WhatsApp     │  el número que usará el bot          │
+  └──────────────────────┴──────────────────────────────────────┘
 ```
 
 <br/>
 
-**VaniaBot IA** — Construido con TypeScript y Baileys
+---
 
-<img src="https://img.shields.io/badge/Made%20with-TypeScript-3178C6?style=for-the-badge&logo=typescript&logoColor=white"/>
-<img src="https://img.shields.io/badge/Powered%20by-Groq%20AI-F55036?style=for-the-badge"/>
+<div align="center">
+
+## Instalación
+
+```
+  ╔══════╗      ╔══════════╗      ╔════════╗      ╔════════╗
+  ║  01  ║────▶║    02    ║────▶║   03   ║────▶║   04   ║
+  ║Clone ║      ║ Instalar ║      ║ Config ║      ║ Start  ║
+  ╚══════╝      ╚══════════╝      ╚════════╝      ╚════════╝
+```
+
+</div>
+
+<br/>
+
+**① Clonar el repositorio**
+
+```bash
+git clone https://github.com/CARLOSGRCIAGRCIA/vaniabot.git
+cd vaniabot
+```
+
+**② Instalar dependencias**
+
+```bash
+npm install
+```
+
+**③ Configurar variables de entorno**
+
+```bash
+cp .env.example .env
+# Edita .env con tu Groq API Key y demás datos
+```
+
+**④ Iniciar el bot**
+
+```bash
+npm start
+```
+
+> [!TIP]
+> **Modos de inicio disponibles**
+>
+> ```bash
+> npm start        # Modo interactivo — elige QR o código de pareamiento
+> npm start qr       # Autenticación por código QR directo
+> npm start code     # Código de pareamiento — pedirá tu número de teléfono
+> ```
+
+<br/>
+
+---
+
+<div align="center">
+
+## Configuración — `.env`
+
+</div>
+
+<br/>
+
+<div align="center">
+
+| Variable           | Descripción                                 |   Por defecto    |
+| :----------------- | :------------------------------------------ | :--------------: |
+| `BOT_NAME`         | Nombre del bot                              |    `VaniaBot`    |
+| `PREFIX`           | Prefijo de comandos                         |       `.`        |
+| `OWNERS`           | Números de owners (sin @s.whatsapp.net)     |        —         |
+| `SESSION_PATH`     | Ruta de sesión de WhatsApp                  | `./vaniasession` |
+| `USE_PAIRING_CODE` | Usar código en lugar de QR                  |      `true`      |
+| `PHONE_NUMBER`     | Número de teléfono para pareamiento         |        —         |
+| `DB_TYPE`          | Tipo de base de datos: `json` · `mongodb`   |      `json`      |
+| `DB_URI`           | URI de MongoDB (si `DB_TYPE=mongodb`)       |        —         |
+| `NODE_ENV`         | Entorno: `development` · `production`       |  `development`   |
+| `GROQ_API_KEY`     | **Obligatoria** — Clave API de Groq para IA |        —         |
+
+</div>
+
+<br/>
+
+> [!NOTE]
+> Sin `GROQ_API_KEY` los comandos `.ai`, `.transcribe` y todo el sistema de poesía quedarán deshabilitados.
+
+<br/>
+
+---
+
+<div align="center">
+
+## Comandos
+
+<img src="https://readme-typing-svg.demolab.com?font=Fira+Code&size=13&pause=3000&color=2DD4BF&center=true&vCenter=true&width=520&height=30&lines=Despliega+cada+sección+para+ver+los+comandos+disponibles+👇" alt="tip"/>
+
+</div>
+
+<br/>
+
+<details>
+<summary>&nbsp;&nbsp; <b>Utilidad</b> &nbsp;·&nbsp; <code>15 comandos</code></summary>
+
+<br/>
+
+```
+  .ping · .help · .profile · .level · .top · .inventory
+  .achievements · .calc · .moneda · .qr · .recordatorio
+  .acortar · .traducir · .tr · .encuesta
+```
+
+| Comando                             | Descripción                                     |
+| :---------------------------------- | :---------------------------------------------- |
+| `.ping`                             | Latencia del bot                                |
+| `.help [comando]`                   | Ayuda detallada                                 |
+| `.profile [@usuario]`               | Ver perfil                                      |
+| `.level [@usuario]`                 | Nivel y experiencia                             |
+| `.top [money\|level\|xp]`           | Ranking del grupo                               |
+| `.inventory [@usuario]`             | Inventario                                      |
+| `.achievements`                     | Logros desbloqueados                            |
+| `.calc <expresión>`                 | Calculadora y conversor de unidades             |
+| `.moneda <cant> <de> <a>`           | Conversor de monedas en tiempo real             |
+| `.qr <texto>`                       | Generar código QR                               |
+| `.recordatorio <tiempo> <msg>`      | Recordatorio — `10m`, `2h`, `1d`                |
+| `.acortar <url>`                    | Acortar URL                                     |
+| `.traducir <idioma> <texto>`        | Traducción simple                               |
+| `.tr [opciones]`                    | Traductor contextual (formal / literal / libre) |
+| `.encuesta "pregunta" "op1" "op2"…` | Crear encuesta interactiva                      |
+
+<br/>
+
+</details>
+
+<details>
+<summary>&nbsp;&nbsp; <b>IA y Chat</b> &nbsp;·&nbsp; <code>3 comandos</code></summary>
+
+<br/>
+
+```
+  .ai · .aiclear · .transcribe
+```
+
+| Comando         | Descripción                                                     |
+| :-------------- | :-------------------------------------------------------------- |
+| `.ai <mensaje>` | Chatea con Vania IA — mantiene historial contextual por usuario |
+| `.aiclear`      | Limpiar tu historial de conversación                            |
+| `.transcribe`   | Transcribir un audio o nota de voz (respondiendo al audio)      |
+
+<br/>
+
+</details>
+
+<details>
+<summary>&nbsp;&nbsp; <b>Moderación</b> &nbsp;·&nbsp; <code>11 comandos</code> &nbsp;·&nbsp; requiere ser admin del grupo</summary>
+
+<br/>
+
+```
+  .ban · .unban · .kick · .mute · .unmute · .warn
+  .demote · .promote · .all · .welcome · .goodbye
+```
+
+| Comando                            | Descripción                      |
+| :--------------------------------- | :------------------------------- |
+| `.ban @usuario [razón]`            | Banear usuario                   |
+| `.unban @usuario`                  | Desbanear                        |
+| `.kick @usuario [razón]`           | Expulsar                         |
+| `.mute @usuario <dur> [razón]`     | Silenciar — `10m`, `1h`          |
+| `.unmute @usuario`                 | Quitar silencio                  |
+| `.warn @usuario [razón]`           | Advertir — 3 warns = auto-kick   |
+| `.demote @usuario`                 | Degradar admin                   |
+| `.promote @usuario`                | Ascender a admin                 |
+| `.all [mensaje]`                   | Mencionar a todos                |
+| `.welcome [on/off/set/test/reset]` | Configurar mensaje de bienvenida |
+| `.goodbye [on/off/set/test/reset]` | Configurar mensaje de despedida  |
+
+<br/>
+
+</details>
+
+<details>
+<summary>&nbsp;&nbsp; <b>Economía</b> &nbsp;·&nbsp; <code>6 comandos</code></summary>
+
+<br/>
+
+```
+  .daily · .weekly · .work · .shop · .buy · .pay
+```
+
+| Comando                    | Descripción                |
+| :------------------------- | :------------------------- |
+| `.daily`                   | Recompensa diaria          |
+| `.weekly`                  | Recompensa semanal         |
+| `.work`                    | Trabajar para ganar dinero |
+| `.shop`                    | Ver tienda                 |
+| `.buy <número>`            | Comprar objeto             |
+| `.pay @usuario <cantidad>` | Transferir dinero          |
+
+<br/>
+
+</details>
+
+<details>
+<summary>&nbsp;&nbsp; <b>Juegos</b> &nbsp;·&nbsp; <code>11 comandos</code></summary>
+
+<br/>
+
+```
+  .coinflip · .slots · .quiz · .quizstats · .quiztop
+  .clk · .vv2 · .cuadrilatero · .trilatero · .hexagonal
+```
+
+| Comando                         | Descripción                                      |
+| :------------------------------ | :----------------------------------------------- |
+| `.coinflip <cara\|cruz> <cant>` | Apostar en cara o cruz                           |
+| `.slots <apuesta>`              | Tragamonedas                                     |
+| `.quiz [categoría] [preguntas]` | Iniciar quiz educativo con dificultad adaptativa |
+| `.quiz stop`                    | Detener quiz actual                              |
+| `.quizstats [@usuario]`         | Estadísticas de quiz                             |
+| `.quiztop [categoría]`          | Top del grupo                                    |
+| `.clk [hora] [liga]`            | Lista CLK interactiva con reacciones             |
+| `.vv2 [hora]`                   | Lista VV2                                        |
+| `.cuadrilatero [hora] [color]`  | Lista Cuadrilátero                               |
+| `.trilatero [hora] [color]`     | Lista Trilátero                                  |
+| `.hexagonal [hora] [color]`     | Lista Hexagonal                                  |
+
+<br/>
+
+</details>
+
+<details>
+<summary>&nbsp;&nbsp; <b>Multimedia y Stickers</b> &nbsp;·&nbsp; <code>10 comandos</code></summary>
+
+<br/>
+
+```
+  .sticker · .take · .nota · .pat · .qc
+  .ytmp3 · .ytmp4 · .tiktok · .instagram · .facebook
+```
+
+| Comando                   | Descripción                              |
+| :------------------------ | :--------------------------------------- |
+| `.sticker`                | Convertir imagen / vídeo / GIF a sticker |
+| `.take <pack>\|<autor>`   | Cambiar autor o pack de un sticker       |
+| `.nota <texto>`           | Sticker tipo nota adhesiva               |
+| `.pat <texto>`            | Sticker meme de Patricio                 |
+| `.qc <texto>`             | Sticker de cita con foto de perfil       |
+| `.ytmp3 <búsqueda o URL>` | Descargar audio de YouTube               |
+| `.ytmp4 <búsqueda o URL>` | Descargar vídeo de YouTube               |
+| `.tiktok <URL>`           | Vídeo de TikTok sin marca de agua        |
+| `.instagram <URL>`        | Reel o publicación de Instagram          |
+| `.facebook <URL>`         | Vídeo de Facebook                        |
+
+<br/>
+
+</details>
+
+<details>
+<summary>&nbsp;&nbsp; <b>Poesía</b> &nbsp;·&nbsp; <code>13 comandos</code></summary>
+
+<br/>
+
+```
+  .poema · .frases · .piropo · .dedicatoria · .haiku · .soneto
+  .copla · .acrostico · .carta · .historia · .votar · .poetop · .poetstats
+```
+
+| Comando                           | Descripción                  |
+| :-------------------------------- | :--------------------------- |
+| `.poema [tema] [estilo] [para:x]` | Poema personalizado          |
+| `.frases [tema] [estilo]`         | 5 frases creativas           |
+| `.piropo [estilo] [para:x]`       | Piropos generados con IA     |
+| `.dedicatoria [tema] [para:x]`    | Dedicatoria personalizada    |
+| `.haiku [tema] [estilo]`          | 3 haikus                     |
+| `.soneto [tema] [para:x]`         | Soneto clásico               |
+| `.copla [tema] [estilo]`          | Coplas populares             |
+| `.acrostico [NOMBRE] [tema]`      | Acróstico con el nombre dado |
+| `.carta [motivo] [para:x]`        | Carta de amor                |
+| `.historia [tema] [estilo]`       | Microrrelato                 |
+| `.votar [ID]`                     | Votar por una obra poética   |
+| `.poetop [tipo]`                  | Ranking de votos             |
+| `.poetstats`                      | Tus estadísticas poéticas    |
+
+<br/>
+
+</details>
+
+<details>
+<summary>&nbsp;&nbsp; <b>Owner</b> &nbsp;·&nbsp; <code>4 comandos</code> &nbsp;·&nbsp; solo dueños del bot</summary>
+
+<br/>
+
+```
+  .setowner · .grant · .stats · .autoadmin
+```
+
+| Comando                              | Descripción                                  |
+| :----------------------------------- | :------------------------------------------- |
+| `.setowner add/remove @usuario`      | Conceder o revocar estatus de owner          |
+| `.grant <money\|xp\|item> @u <cant>` | Otorgar recursos a un usuario                |
+| `.stats`                             | Estadísticas globales del bot                |
+| `.autoadmin`                         | Auto-ascender en grupos (bot debe ser admin) |
+
+<br/>
+
+</details>
+
+<br/>
+
+---
+
+<div align="center">
+
+## Estructura del proyecto
+
+```
+╔══════════════════════════════════════════════════╗
+║   54 directorios  ·  169 archivos                ║
+║   TypeScript estricto  ·  Arquitectura modular   ║
+╚══════════════════════════════════════════════════╝
+```
+
+</div>
+
+<br/>
+
+```
+vaniabot/
+│
+├──  src/
+│   │
+│   ├──  commands/                        # Comandos organizados por dominio
+│   │   ├──  admin/
+│   │   │   ├──  moderation/              # Ban · Kick · Mute · Warn · Promote · Demote
+│   │   │   ├──  GoodbyeCommand.ts
+│   │   │   └──  WelcomeCommand.ts
+│   │   ├──  creative/poesia/             # PoesiaBase · PoesiaCommand · index
+│   │   ├──  economy/                     # Balance · Daily · Weekly · Shop · Pay · Work
+│   │   ├──  game/                        # Coinflip · Slots · ListaCommand
+│   │   ├──  media/
+│   │   │   ├──  download/                # YouTube · TikTok · Instagram · Facebook
+│   │   │   └──  sticker/                 # Nota · Pat · Qc · Take
+│   │   ├──  owner/                       # AutoAdmin · Grant · SetOwner
+│   │   └──  utility/
+│   │       ├──  ai/                      # AiCommand · AiClearCommand
+│   │       ├──  audio/                   # TranscribeCommand
+│   │       ├──  quiz/                    # QuizCommand · QuizStats · QuizTop
+│   │       ├──  rotation/                # RotacionCommand · Pathfinding A* · MinHeap
+│   │       ├──  rules/                   # RulesclkCommand · Rulesvv2Command
+│   │       ├──  system/                  # Ping · Help · Stats · Owners · Notify · Dev
+│   │       ├──  tools/                   # Calc · Currency · Poll · QR · Reminder · Translate · URL
+│   │       ├──  traductor/               # TraductorCommand · index
+│   │       └──  user/                    # Profile · Level · Top · Inventory · Achievements · Stats
+│   │
+│   ├──  core/                            # Client · CommandRegistry · MessageContext · PluginLoader · AuthManager · CacheManager
+│   ├──  handlers/                        # AiMentionHandler · QuizAnswerHandler · ReaccionHandler
+│   ├──  middlewares/                     # AntiSpam · AutoRegister · Cooldown · Logger · Mute · Permission · Validation
+│   ├──  models/                          # Group.ts · User.ts
+│   │
+│   ├──  services/                        # Lógica de negocio desacoplada
+│   │   ├──  audio/                       # AudioService
+│   │   ├──  creative/                    # PoesiaService · PoesiaPrompts · PoesiaParser · PoesiaTypes
+│   │   ├──  database/                    # Database · JsonDatabase · MongoDatabase · BatchWriter · GroupService · LevelService · UserService
+│   │   ├──  download/                    # DownloadService · YouTubeDownloader · TikTokDownloader · InstagramDownloader · FacebookDownloader
+│   │   ├──  external/                    # AIService (Groq LLaMA 3)
+│   │   ├──  game/                        # ListaManager
+│   │   ├──  media/                       # StickerService · ConverterService · DownloadService
+│   │   ├──  moderation/                  # ModerationService
+│   │   ├──  study/                       # QuizService · QuizTypes · DifficultyEngine · QuestionGenerator · AnswerValidator
+│   │   ├──  system/                      # CleanupService · WelcomeService · ServiceManager
+│   │   ├──  translator/                  # TranslatorService · TranslatorTypes
+│   │   └──  PermissionService.ts
+│   │
+│   ├──  types/                           # global.d.ts · index.ts · yt-search.d.ts
+│   ├──  utils/                           # cli · errors · helpers · logger · qr · validators
+│   └──  index.ts                         ← Punto de entrada principal
+│
+├──  vania.ts                             ← Bootstrapper · selección de auth · auto-reinicio
+│
+├──  data/
+│   ├──  assets/                          # logo · clkRules · vv2Rules · pat1-4 · nota · stickers
+│   ├──  temp/
+│   │   ├──  audio/                       # archivos temporales de audio
+│   │   └──  downloads/                   # archivos temporales de descarga
+│   └──  database.json                    # base de datos local (si DB_TYPE=json)
+│
+├──  docs/assets/                         # Diagramas de arquitectura del sistema
+├──  vaniasession/                        # Credenciales de sesión WhatsApp (gitignored)
+├──  logs/                                # Archivos de log en producción
+│
+├──  docker-compose.yml
+├──  Dockerfile
+├──  entrypoint.sh
+├──  package.json
+├──  tsconfig.json
+└──  README.md
+```
+
+<br/>
+
+---
+
+<div align="center">
+
+## Despliegue con Docker
+
+</div>
+
+<br/>
+
+```bash
+docker-compose up -d
+
+#  Manual
+
+docker build -t vaniabot .
+
+docker run -it --rm \
+  --env-file .env \
+  -v $(pwd)/vaniasession:/app/vaniasession \
+  -v $(pwd)/data:/app/data \
+  vaniabot
+```
+
+> [!NOTE]
+> Los volúmenes persistentes mantienen la sesión de WhatsApp y los archivos temporales entre reinicios del contenedor.
+
+<br/>
+
+---
+
+<div align="center">
+
+## Contribuir
+
+</div>
+
+<br/>
+
+```
+  Fork  ──▶  Branch  ──▶  Código limpio  ──▶  npm run lint  ──▶  Pull Request
+```
+
+```bash
+# Crear rama para tu feature o fix
+git checkout -b feature/nombre-de-la-funcion
+
+# Verificar TypeScript y linting antes de hacer PR
+npm run lint
+
+# Enviar Pull Request con descripción detallada del cambio
+```
+
+> [!IMPORTANT]
+> Asegúrate de que TypeScript compile sin errores y que el linter pase antes de abrir un PR. Código sin tipos explícitos o con `any` será rechazado.
+
+<br/>
+
+---
+
+<div align="center">
+
+## Licencia
+
+Distribuido bajo la licencia **MIT** — consulta [LICENSE](LICENSE) para más detalles.
+
+</div>
+
+<br/>
+
+---
+
+<div align="center">
+
+<img src="https://capsule-render.vercel.app/api?type=waving&color=2dd4bf,c084fc,ff6b9d&height=140&section=footer&animation=fadeIn&reversal=true" width="100%"/>
+
+<br/>
+
+<img src="https://readme-typing-svg.demolab.com?font=Fira+Code&weight=700&size=18&pause=1500&color=FF6B9D&center=true&vCenter=true&width=500&lines=Hecho+con+💖+por+Carlos+Garcia;Inspirado+en+Vania/valeria+🌸;Gracias+por+usar+VaniaBot" alt="footer typing"/>
+
+<br/><br/>
+
+[![GitHub](https://img.shields.io/badge/CARLOSGRCIAGRCIA-181717?style=for-the-badge&logo=github&logoColor=white)](https://github.com/CARLOSGRCIAGRCIA)
+[![TikTok](https://img.shields.io/badge/@carlos.grcia0-000000?style=for-the-badge&logo=tiktok&logoColor=white)](https://www.tiktok.com/@carlos.grcia0)
+
+<br/>
+
+[![Baileys](https://img.shields.io/badge/Baileys-WhiskeySockets-25D366?style=flat-square&logo=whatsapp&logoColor=white)](https://github.com/WhiskeySockets/Baileys)&nbsp;
+[![Groq](https://img.shields.io/badge/Groq_SDK-LLaMA_3-F55036?style=flat-square&logo=meta&logoColor=white)](https://console.groq.com)&nbsp;
+[![sharp](https://img.shields.io/badge/sharp-image_processing-99cc00?style=flat-square)](https://sharp.pixelplumbing.com)&nbsp;
+[![yt-dlp](https://img.shields.io/badge/yt--dlp-media_downloads-FF0000?style=flat-square&logo=youtube&logoColor=white)](https://github.com/yt-dlp/yt-dlp)
+
+<br/>
+
+> Reportar problemas o sugerir mejoras → [**Abrir un issue**](https://github.com/CARLOSGRCIAGRCIA/vaniabot/issues)
+
+<br/>
+
+![](https://komarev.com/ghpvc/?username=CARLOSGRCIAGRCIA&label=Visitas+al+perfil&color=ff6b9d&style=flat-square)
 
 </div>

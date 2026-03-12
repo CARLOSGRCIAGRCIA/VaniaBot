@@ -1,34 +1,33 @@
-import { Command } from "../../Command.js";
+import { Command } from '../../Command.js';
 import {
   CommandCategory,
   CommandContext,
   PermissionLevel,
   type MessageContext,
-} from "@/types/index.js";
-import { serviceManager } from "@/services/system/Servicemanager.js";
+} from '@/types/index.js';
+import { serviceManager } from '@/services/system/Servicemanager.js';
 
 export class UnmuteCommand extends Command {
-  name = "unmute";
-  description = "Unmute a user";
+  name = 'unmute';
+  description = 'Unmute a user';
   category = CommandCategory.MODERATION;
-  aliases = ["desmutear"];
-  usage = "!unmute @user";
-  examples = ["!unmute @user"];
+  aliases = ['desmutear'];
+  usage = '!unmute @user';
+  examples = ['!unmute @user'];
   contexts = [CommandContext.GROUP];
   permissions = {
     user: [PermissionLevel.ADMIN],
   };
 
   async execute(ctx: MessageContext): Promise<void> {
-    const mentionedJid =
-      ctx.message.message?.extendedTextMessage?.contextInfo?.mentionedJid?.[0];
+    const mentionedJid = ctx.message.message?.extendedTextMessage?.contextInfo?.mentionedJid?.[0];
 
     if (!mentionedJid) {
-      await ctx.reply("❌ You must mention a user to unmute");
+      await ctx.reply('❌ You must mention a user to unmute');
       return;
     }
 
-    await ctx.react("⏳");
+    await ctx.react('⏳');
 
     try {
       const muteInfo = await serviceManager.moderationService.getMuteInfo(
@@ -37,14 +36,11 @@ export class UnmuteCommand extends Command {
       );
 
       if (!muteInfo) {
-        await ctx.reply("⚠️ This user is not muted");
+        await ctx.reply('⚠️ This user is not muted');
         return;
       }
 
-      await serviceManager.moderationService.unmuteUser(
-        ctx.chat.jid,
-        mentionedJid,
-      );
+      await serviceManager.moderationService.unmuteUser(ctx.chat.jid, mentionedJid);
 
       await ctx.reply(
         `🔊 *User Unmuted*\n\n` +
@@ -53,11 +49,12 @@ export class UnmuteCommand extends Command {
           `📅 Date: ${new Date().toLocaleString()}`,
       );
 
-      await ctx.react("✅");
-    } catch (error: any) {
-      console.error("Error in UnmuteCommand:", error);
-      await ctx.reply(`❌ Error unmuting user: ${error.message}`);
-      await ctx.react("❌");
+      await ctx.react('✅');
+    } catch (error: unknown) {
+      console.error('Error in UnmuteCommand:', error);
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      await ctx.reply(`❌ Error unmutting user: ${message}`);
+      await ctx.react('❌');
     }
   }
 }
