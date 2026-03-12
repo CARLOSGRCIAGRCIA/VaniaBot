@@ -1,4 +1,4 @@
-import { Command } from "../Command.js";
+import { Command } from "../../Command.js";
 import { CommandCategory, CommandContext } from "@/types/index.js";
 import type { MessageContext } from "@/types/index.js";
 
