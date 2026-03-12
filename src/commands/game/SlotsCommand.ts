@@ -1,6 +1,6 @@
 import { Command } from "../Command.js";
 import { CommandCategory, type MessageContext } from "@/types/index.js";
-import { serviceManager } from "@/services/Servicemanager.js";
+import { serviceManager } from "@/services/system/Servicemanager.js";
 
 export class SlotsCommand extends Command {
   name = "slots";
@@ -19,7 +19,7 @@ export class SlotsCommand extends Command {
     "⭐⭐⭐": 4,
     "🍋🍋🍋": 3,
     "🍒🍒🍒": 3,
-    "match2": 1.5,
+    match2: 1.5,
   };
 
   async execute(ctx: MessageContext): Promise<void> {
@@ -27,7 +27,7 @@ export class SlotsCommand extends Command {
       await ctx.reply(
         "❌ Specify your bet\n\n" +
           "📖 Usage: !slots <amount>\n" +
-          "💡 Example: !slots 100"
+          "💡 Example: !slots 100",
       );
       return;
     }
@@ -46,7 +46,7 @@ export class SlotsCommand extends Command {
         await ctx.reply(
           `❌ Insufficient funds\n\n` +
             `💰 Your balance: $${user.money.toLocaleString()}\n` +
-            `💵 Bet: $${bet.toLocaleString()}`
+            `💵 Bet: $${bet.toLocaleString()}`,
         );
         return;
       }
@@ -114,7 +114,9 @@ export class SlotsCommand extends Command {
     }
 
     if (!user.isOwner) {
-      const newBalance = await serviceManager.userService.getUser(ctx.sender.jid);
+      const newBalance = await serviceManager.userService.getUser(
+        ctx.sender.jid,
+      );
       message += `\n\n💵 Balance: $${newBalance.money.toLocaleString()}`;
     }
 

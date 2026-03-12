@@ -1,7 +1,7 @@
 import { Command } from "../Command.js";
 import { CommandCategory, CommandContext } from "@/types/index.js";
 import type { MessageContext } from "@/types/index.js";
-import { listaManager, type ListaTipo } from "@/services/ListaManager.js";
+import { listaManager, type ListaTipo } from "@/services/game/ListaManager.js";
 import { logError } from "@/utils/logger.js";
 
 interface ListaConfig {
