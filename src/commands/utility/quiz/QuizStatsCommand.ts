@@ -6,7 +6,7 @@ import {
   PermissionLevel,
   type MessageContext,
 } from "@/types/index.js";
-import { serviceManager } from "@/services/Servicemanager.js";
+import { serviceManager } from "@/services/system/Servicemanager.js";
 
 export class QuizStatsCommand extends Command {
   name = "quizstats";

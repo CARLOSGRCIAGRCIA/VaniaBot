@@ -8,7 +8,7 @@ import {
   PermissionLevel,
   type MessageContext,
 } from "@/types/index.js";
-import { serviceManager } from "@/services/Servicemanager.js";
+import { serviceManager } from "@/services/system/Servicemanager.js";
 
 const CATEGORY_ALIASES: Record<string, string> = {
   js: QuizCategory.JAVASCRIPT,
