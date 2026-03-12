@@ -29,7 +29,7 @@ export interface ConflictZone {
 
 export interface ScoredRoute {
   path: PathResult;
-  score: number; // 0–100, mayor = mejor tácticamente
+  score: number;
   label: string;
   riskLevel: "bajo" | "medio" | "alto" | "muy alto";
   eta: number;
@@ -134,7 +134,7 @@ export function detectConflictZones(
   for (const nodeId of allNodeIds) {
     const exact = exactCount[nodeId] ?? 0;
     const prox = proximityCount[nodeId] ?? 0;
-    if (prox < 1.2) continue; // umbral mínimo
+    if (prox < 1.2) continue;
 
     const node = NODES[nodeId];
     if (!node) continue;

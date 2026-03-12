@@ -12,11 +12,11 @@ export interface MapNode {
   name: string;
   coord: Coord;
   zone: ZoneId;
-  cover: number; // 0–1: cobertura disponible
-  elevation: number; // 0–1: ventaja de altura (high ground)
-  isChokepoint: boolean; // cuello de botella declarado
-  isHotspot: boolean; // zona de combate casi garantizado
-  crossesRiver: boolean; // ¿el nodo está en un cruce de río?
+  cover: number;
+  elevation: number;
+  isChokepoint: boolean;
+  isHotspot: boolean;
+  crossesRiver: boolean;
   aliases: string[];
 }
 
@@ -24,8 +24,8 @@ export interface MapEdge {
   from: string;
   to: string;
   type: EdgeType;
-  travelCost: number; // segundos base de desplazamiento
-  exposure: number; // 0–1
+  travelCost: number;
+  exposure: number;
   crossesRiver: boolean;
   bidirectional: boolean;
 }

@@ -93,12 +93,8 @@ export class WelcomeService {
 .・✦── ⋆⋅ 🩰🌙 ⋅⋆ ──✦・.
 
 hola @user ♡
-soy VaniaBot, un pedacito de código que cuida el silencio entre mensajes y celebra cada pequeño movimiento del corazón
 
-cositas simples para que fluya bonito:
-• respeto, porque todos somos un trazo único en el mismo lienzo
-• nada de spam… deja que las palabras bailen con calma
-• trae lo que eres: tus dudas, tus risas, tus sueños… todo tiene lugar aquí
+soy VaniaBot, un pedacito de código que cuida el silencio entre mensajes y celebra cada pequeño movimiento del corazón
 
 la vida es una danza corta… qué bonito que hayas decidido dar unos pasos con nosotros ♡
 

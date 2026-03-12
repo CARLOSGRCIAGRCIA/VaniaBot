@@ -1,7 +1,7 @@
 export interface HeapItem {
   id: string;
-  g: number; // costo acumulado real
-  f: number; // g + heurística
+  g: number;
+  f: number;
 }
 
 export class MinHeap {
