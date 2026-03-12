@@ -1,7 +1,7 @@
 import { quizService } from "@/services/study/QuizService.js";
 import { answerValidator } from "@/services/study/AnswerValidator.js";
 import { difficultyEngine } from "@/services/study/DifficultyEngine.js";
-import { serviceManager } from "@/services/Servicemanager.js";
+import { serviceManager } from "@/services/system/Servicemanager.js";
 import type { MessageContext } from "@/types/index.js";
 
 class QuizAnswerHandler {

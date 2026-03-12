@@ -1,5 +1,5 @@
 import type { WASocket, proto } from "@whiskeysockets/baileys";
-import { listaManager } from "@/services/ListaManager.js";
+import { listaManager } from "@/services/game/ListaManager.js";
 import { normalizeJid } from "@/services/PermissionService.js";
 import { logger, logError } from "@/utils/logger.js";
 
