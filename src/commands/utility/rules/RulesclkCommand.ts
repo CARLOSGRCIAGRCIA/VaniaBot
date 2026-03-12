@@ -1,23 +1,23 @@
-import { Command } from "../Command.js";
+import { Command } from "../../Command.js";
 import { CommandCategory } from "@/types/index.js";
 import type { MessageContext } from "@/types/index.js";
 import fs from "fs";
 import path from "path";
 
-export class RulesVV2Command extends Command {
-  name = "rules vv2";
-  description = "Reglas VV2";
+export class RulesCLKCommand extends Command {
+  name = "rules clk";
+  description = "Reglas CLK";
   category = CommandCategory.UTILITY;
-  aliases = ["rules vv2"];
-  usage = "!rules vv2";
-  examples = ["!rules vv2"];
+  aliases = ["rules clk"];
+  usage = "!rules clk";
+  examples = ["!rules clk"];
 
   async execute(ctx: MessageContext): Promise<void> {
     const imagePath = path.join(
       process.cwd(),
       "data",
       "assets",
-      "vv2Rules.png",
+      "clkRules.png",
     );
     const imageBuffer = fs.readFileSync(imagePath);
 
@@ -29,4 +29,4 @@ export class RulesVV2Command extends Command {
   }
 }
 
-export default RulesVV2Command;
+export default RulesCLKCommand;
