@@ -163,7 +163,7 @@ El sistema expone mas de **50 comandos** organizados en dominios: moderacion de 
 
 El proyecto separa responsabilidades entre dos procesos y multiples capas de servicios.
 
-![alt text](data/assets/Arquitectura_del_sistema.png)
+![alt text](docs/assets/Arquitectura_del_sistema.png)
 
 ---
 
@@ -171,13 +171,13 @@ El proyecto separa responsabilidades entre dos procesos y multiples capas de ser
 
 Cada mensaje entrante de WhatsApp pasa por la siguiente cadena antes de ejecutar un comando.
 
-![alt text](data/assets/Flujo_de_mensajes.png)
+![alt text](docs/assets/Flujo_de_mensajes.png)
 
 ---
 
 ## Flujo de autenticacion
 
-![alt text](data/assets/Flujo_de_autenticacion.png)
+![alt text](docs/assets/Flujo_de_autenticacion.png)
 
 ---
 
@@ -425,7 +425,7 @@ vaniabot/
 
 **Logica de advertencias (`!warn`):**
 
-![alt text](data/assets/advertencias.png)
+![alt text](docs/assets/advertencias.png)
 
 ---
 
@@ -454,7 +454,7 @@ vaniabot/
 
 **Progresion del sistema de recompensas:**
 
-![alt text](data/assets/Sistema_Recompensas.png)
+![alt text](docs/assets/Sistema_Recompensas.png)
 
 **Oficios disponibles en `!work`:**
 
@@ -493,7 +493,7 @@ vaniabot/
 
 ### Logros desbloqueables
 
-![alt text](data/assets/logros.png)
+![alt text](docs/assets/logros.png)
 
 ---
 
@@ -508,11 +508,11 @@ vaniabot/
 
 **Flujo del chat con IA:**
 
-![alt text](data/assets/FlujoAi.png)
+![alt text](docs/assets/FlujoAi.png)
 
 **Flujo de transcripcion de audio:**
 
-![alt text](data/assets/trasncriptionFlow.png)
+![alt text](docs/assets/trasncriptionFlow.png)
 
 ---
 
@@ -606,7 +606,7 @@ Conversiones
 
 ## Sistema de permisos
 
-![alt text](data/assets/permisos.png)
+![alt text](docs/assets/permisos.png)
 
 **Resumen de niveles:**
 
@@ -620,19 +620,19 @@ Conversiones
 
 ## Motor de economia
 
-![alt text](data/assets/economySistem.png)
+![alt text](docs/assets/economySistem.png)
 
 ---
 
 ## Sistema de reinicio automatico
 
-![alt text](data/assets/restart_service.png)
+![alt text](docs/assets/restart_service.png)
 
 ---
 
 ## Pipeline de middleware
 
-![alt text](data/assets/PipelineMiddleware.png)
+![alt text](docs/assets/PipelineMiddleware.png)
 
 ---
 
