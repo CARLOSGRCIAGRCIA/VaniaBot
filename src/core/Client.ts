@@ -14,8 +14,9 @@ import { serviceManager } from "@/services/Servicemanager.js";
 import { logger, logError } from "@/utils/logger.js";
 import { CommandExecutionError } from "@/utils/errors.js";
 import { cacheManager } from "@/core/CacheManager.js";
-import { aiService } from "@/services/external/AIService.js";
 import { handleReaccion } from "@/handlers/ReaccionHandler.js";
+import { quizAnswerHandler } from "@/handlers/QuizAnswerHandler.js";
+import { handleMention } from "@/events/AiMentionHandler.js";
 import type { IMiddleware } from "@/types/index.js";
 import { EventEmitter } from "events";
 import { welcomeService } from "@/services/WelcomeService.js";
@@ -294,8 +295,15 @@ export class WhatsAppClient {
           }
 
           if (ctx.chat.isGroup && !ctx.command) {
+            const quizHandled = await quizAnswerHandler.handle(ctx);
+            if (quizHandled) {
+              cacheManager.markMessageProcessed(messageId);
+              return;
+            }
+
             const botJid = this.sock.user?.id ?? "";
-            await this.handleAiMention(ctx, botJid);
+            await handleMention(ctx, botJid);
+
             cacheManager.markMessageProcessed(messageId);
             return;
           }
@@ -366,65 +374,13 @@ export class WhatsAppClient {
     });
   }
 
-  private async handleAiMention(
-    ctx: MessageContext,
-    botJid: string,
-  ): Promise<boolean> {
-    const rawText = ctx.text ?? "";
-    const msgContent = ctx.message.message;
-
-    const mentionedJids: string[] =
-      msgContent?.extendedTextMessage?.contextInfo?.mentionedJid ?? [];
-
-    const botNumber = botJid.split("@")[0].split(":")[0];
-
-    const botMentioned =
-      mentionedJids.some((jid: string) => jid.startsWith(botNumber)) ||
-      rawText.toLowerCase().includes("@vania") ||
-      /^vania[,:\s]/i.test(rawText);
-
-    if (!botMentioned) return false;
-
-    const cleanText = rawText
-      .replace(/@\d+/g, "")
-      .replace(/@vania/gi, "")
-      .replace(/^vania[,:\s]*/i, "")
-      .trim();
-
-    if (!cleanText) {
-      await ctx.reply(
-        "¿Me llamaste? 👀 Dime qué necesitas o usa *!ai <mensaje>* para chatear.",
-      );
-      return true;
-    }
-
-    await ctx.react("🤔");
-
-    const response = await aiService.chat(
-      ctx.chat.jid,
-      ctx.sender.jid,
-      cleanText,
-      true,
-    );
-
-    if (!response.success) {
-      await ctx.react("❌");
-      await ctx.reply(`❌ ${response.error}`);
-      return true;
-    }
-
-    await ctx.react("✅");
-    await ctx.reply(response.text!);
-    return true;
-  }
-
   private async handleGroupUpdate(update: any): Promise<void> {
     const { id: groupJid, participants, action } = update;
     if (!groupJid || !participants) return;
 
     try {
       cacheManager.invalidateGroupMetadata(groupJid);
-      const group = await serviceManager.groupService.getGroup(groupJid);
+      await serviceManager.groupService.getGroup(groupJid);
 
       if (action === "add") {
         for (const participant of participants) {
@@ -526,9 +482,11 @@ export class WhatsAppClient {
   getRegistry() {
     return commandRegistry;
   }
+
   getSocket(): WASocket {
     return this.sock;
   }
+
   isClientReady(): boolean {
     return this.isReady;
   }
