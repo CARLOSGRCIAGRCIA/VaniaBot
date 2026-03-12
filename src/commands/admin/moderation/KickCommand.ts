@@ -6,7 +6,7 @@ import {
   BotPermission,
   type MessageContext,
 } from "@/types/index.js";
-import { serviceManager } from "@/services/Servicemanager.js";
+import { serviceManager } from "@/services/system/Servicemanager.js";
 
 export class KickCommand extends Command {
   name = "kick";

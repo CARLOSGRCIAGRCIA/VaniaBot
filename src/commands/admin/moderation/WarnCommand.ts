@@ -5,7 +5,7 @@ import {
   PermissionLevel,
 } from "@/types/index.js";
 import type { MessageContext } from "@/types/index.js";
-import { serviceManager } from "@/services/Servicemanager.js";
+import { serviceManager } from "@/services/system/Servicemanager.js";
 
 export class WarnCommand extends Command {
   name = "warn";

@@ -5,7 +5,7 @@ import {
   PermissionLevel,
 } from "@/types/index.js";
 import type { MessageContext } from "@/types/index.js";
-import { welcomeService } from "@/services/WelcomeService.js";
+import { welcomeService } from "@/services/system/WelcomeService.js";
 
 export class WelcomeCommand extends Command {
   name = "welcome";
