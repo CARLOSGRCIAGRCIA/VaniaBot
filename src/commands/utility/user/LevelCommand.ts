@@ -1,6 +1,6 @@
-import { Command } from "../Command.js";
+import { Command } from "../../Command.js";
 import { CommandCategory, type MessageContext } from "@/types/index.js";
-import { serviceManager } from "@/services/Servicemanager.js";
+import { serviceManager } from "@/services/system/Servicemanager.js";
 
 export class LevelCommand extends Command {
   name = "level";
@@ -42,7 +42,9 @@ export class LevelCommand extends Command {
       message += `✨ *XP:* ${targetUser.xp.toLocaleString()} ♾️\n`;
       message += `\n👑 *Owner Status:* Max level`;
     } else {
-      const requiredXP = serviceManager.levelService.getRequiredXP(targetUser.level);
+      const requiredXP = serviceManager.levelService.getRequiredXP(
+        targetUser.level,
+      );
       const currentLevelXP = targetUser.xp;
       const progress = Math.min((currentLevelXP / requiredXP) * 100, 100);
 

@@ -1,8 +1,8 @@
-import { Command } from "../Command.js";
+import { Command } from "../../Command.js";
 import { CommandCategory, PermissionLevel } from "@/types/index.js";
 import type { MessageContext } from "@/types/index.js";
 import { cacheManager } from "@/core/CacheManager.js";
-import { serviceManager } from "@/services/Servicemanager.js";
+import { serviceManager } from "@/services/system/Servicemanager.js";
 import { JsonDatabase } from "@/services/database/JsonDatabase.js";
 
 export class StatsCommand extends Command {
