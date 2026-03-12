@@ -1,14 +1,2 @@
 #!/bin/sh
-commit_msg=$(cat "$1")
-pattern="^(feat|fix|chore|docs|style|refactor|test|perf|ci|build|revert)(\(.+\))?: .{1,100}"
-
-if ! echo "$commit_msg" | grep -Eq "$pattern"; then
-  echo ""
-  echo "  ✗  Mensaje de commit inválido."
-  echo "     Usa Conventional Commits:"
-  echo "     feat: descripción"
-  echo "     fix: descripción"
-  echo "     chore: descripción"
-  echo ""
-  exit 1
-fi
+# pre-commit: aquí van linters, tests, etc. (NO validación de mensaje)
