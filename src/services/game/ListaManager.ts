@@ -326,10 +326,6 @@ export class ListaManager {
       emoji: string;
     },
   ): Promise<void> {
-    logger.info(
-      `[LISTA REACCION] messageId=${reaccion.messageId} sender=${reaccion.senderJid} emoji="${reaccion.emoji}"`,
-    );
-
     const lista = this.getLista(reaccion.messageId);
 
     if (!lista) {
@@ -345,13 +341,9 @@ export class ListaManager {
     const eliminado = reaccion.emoji === "";
 
     if (eliminado) {
-      logger.info(`[LISTA REACCION] Emoji vacío → removiendo jugador`);
       const removido = removerJugador(lista, reaccion.senderJid);
       if (!removido) return;
     } else {
-      logger.info(
-        `[LISTA REACCION] Emoji "${reaccion.emoji}" → agregando jugador`,
-      );
       const agregado = agregarJugador(
         lista,
         reaccion.senderJid,
@@ -367,19 +359,11 @@ export class ListaManager {
     try {
       const texto = renderizarLista(lista);
       const menciones = getMenciones(lista);
-
-      logger.info(
-        `[LISTA EDITAR] Editando mensaje ${lista.messageId} en ${lista.chatJid}`,
-      );
-      logger.info(`[LISTA EDITAR] Menciones: ${menciones.join(", ")}`);
-
       await sock.sendMessage(lista.chatJid, {
         text: texto,
         mentions: menciones,
         edit: { id: lista.messageId, remoteJid: lista.chatJid, fromMe: true },
       } as any);
-
-      logger.info(`[LISTA EDITAR] Mensaje editado OK`);
     } catch (error) {
       logError("[LISTA EDITAR ERROR]", error);
     }

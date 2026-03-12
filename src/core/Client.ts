@@ -16,7 +16,7 @@ import { CommandExecutionError } from "@/utils/errors.js";
 import { cacheManager } from "@/core/CacheManager.js";
 import { handleReaccion } from "@/handlers/ReaccionHandler.js";
 import { quizAnswerHandler } from "@/handlers/QuizAnswerHandler.js";
-import { handleMention } from "@/events/AiMentionHandler.js";
+import { handleMention } from "@/handlers/AiMentionHandler.js";
 import type { IMiddleware } from "@/types/index.js";
 import { EventEmitter } from "events";
 import { welcomeService } from "@/services/system/WelcomeService.js";
