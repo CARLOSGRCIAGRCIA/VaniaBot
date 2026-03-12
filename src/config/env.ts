@@ -5,7 +5,7 @@ dotenv.config();
 
 const envSchema = z.object({
   BOT_NAME: z.string().default("VaniaBot"),
-  PREFIX: z.string().default("!"),
+  PREFIX: z.string().default("."),
   OWNERS: z
     .string()
     .default("208924405956643@lid,208924405956643,529516526675")

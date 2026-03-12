@@ -80,7 +80,6 @@ export class NotifyCommand extends Command {
           { text: `${extraText}${footer}`, mentions: participants },
           { quoted: ctx.message },
         );
-        await ctx.react("✅");
         return;
       }
 
@@ -107,7 +106,6 @@ export class NotifyCommand extends Command {
           mentions: participants,
           mimetype: ctx.quoted.stickerMessage?.mimetype || "image/webp",
         });
-        await ctx.react("✅");
         return;
       }
 
@@ -145,7 +143,6 @@ export class NotifyCommand extends Command {
           mentions: participants,
           mimetype: ctx.quoted.imageMessage?.mimetype || "image/jpeg",
         });
-        await ctx.react("✅");
         return;
       }
 
@@ -184,7 +181,6 @@ export class NotifyCommand extends Command {
           mimetype: ctx.quoted.videoMessage?.mimetype || "video/mp4",
           gifPlayback: ctx.quoted.videoMessage?.gifPlayback || false,
         });
-        await ctx.react("✅");
         return;
       }
 
@@ -211,7 +207,6 @@ export class NotifyCommand extends Command {
             ptt: ctx.quoted.audioMessage?.ptt || false,
           });
         }
-        await ctx.react("✅");
         return;
       }
 
@@ -229,7 +224,6 @@ export class NotifyCommand extends Command {
             messageId: ctx.sock.generateMessageTag(),
           });
         }
-        await ctx.react("✅");
         return;
       }
 
@@ -250,7 +244,6 @@ export class NotifyCommand extends Command {
         { text: notificationText, mentions: participants },
         { quoted: ctx.message },
       );
-      await ctx.react("✅");
     } catch (error) {
       console.error("Error in NotifyCommand:", error);
       await ctx.react("❌");
