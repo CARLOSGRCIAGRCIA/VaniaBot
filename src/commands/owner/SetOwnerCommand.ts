@@ -1,7 +1,7 @@
 import { Command } from "../Command.js";
 import { CommandCategory, PermissionLevel } from "@/types/index.js";
 import type { MessageContext } from "@/types/index.js";
-import { serviceManager } from "@/services/Servicemanager.js";
+import { serviceManager } from "@/services/system/Servicemanager.js";
 
 export class SetOwnerCommand extends Command {
   name = "setowner";

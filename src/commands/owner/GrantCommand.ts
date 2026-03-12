@@ -1,7 +1,7 @@
 import { Command } from "../Command.js";
 import { CommandCategory, PermissionLevel } from "@/types/index.js";
 import type { MessageContext } from "@/types/index.js";
-import { serviceManager } from "@/services/Servicemanager.js";
+import { serviceManager } from "@/services/system/Servicemanager.js";
 import { formatNumber } from "@/utils/helpers.js";
 
 export class GrantCommand extends Command {
