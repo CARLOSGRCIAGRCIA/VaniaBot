@@ -1,6 +1,6 @@
 import { Command } from "../Command.js";
 import { CommandCategory, type MessageContext } from "@/types/index.js";
-import { serviceManager } from "@/services/Servicemanager.js";
+import { serviceManager } from "@/services/system/Servicemanager.js";
 
 interface ShopItem {
   id: string;
@@ -82,18 +82,22 @@ export class BuyCommand extends Command {
       await ctx.reply(
         "❌ Specify item number\n\n" +
           "📖 Usage: !buy <item_number>\n" +
-          "💡 Use !shop to see available items"
+          "💡 Use !shop to see available items",
       );
       return;
     }
 
     const itemNumber = parseInt(ctx.args[0]);
 
-    if (isNaN(itemNumber) || itemNumber < 1 || itemNumber > this.SHOP_ITEMS.length) {
+    if (
+      isNaN(itemNumber) ||
+      itemNumber < 1 ||
+      itemNumber > this.SHOP_ITEMS.length
+    ) {
       await ctx.reply(
         `❌ Invalid item number\n\n` +
           `Valid range: 1-${this.SHOP_ITEMS.length}\n` +
-          `Use !shop to see items`
+          `Use !shop to see items`,
       );
       return;
     }
@@ -107,7 +111,7 @@ export class BuyCommand extends Command {
           `${item.emoji} *${item.name}*\n` +
           `💵 Price: $${item.price.toLocaleString()}\n` +
           `💰 Your balance: $${user.money.toLocaleString()}\n` +
-          `📉 Need: $${(item.price - user.money).toLocaleString()} more`
+          `📉 Need: $${(item.price - user.money).toLocaleString()} more`,
       );
       return;
     }
@@ -127,7 +131,9 @@ export class BuyCommand extends Command {
         expiresAt,
       });
 
-      const updatedUser = await serviceManager.userService.getUser(ctx.sender.jid);
+      const updatedUser = await serviceManager.userService.getUser(
+        ctx.sender.jid,
+      );
 
       let message = `✅ *Purchase Successful!*\n\n`;
       message += `${item.emoji} *${item.name}*\n`;
@@ -139,7 +145,7 @@ export class BuyCommand extends Command {
       if (item.duration) {
         const days = Math.floor(item.duration / (24 * 60 * 60 * 1000));
         const hours = Math.floor(
-          (item.duration % (24 * 60 * 60 * 1000)) / (60 * 60 * 1000)
+          (item.duration % (24 * 60 * 60 * 1000)) / (60 * 60 * 1000),
         );
 
         message += `⏰ Duration: ${days > 0 ? `${days}d ` : ""}${hours}h\n`;

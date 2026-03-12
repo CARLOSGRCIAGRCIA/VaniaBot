@@ -1,6 +1,6 @@
 import { Command } from "../Command.js";
 import { CommandCategory, type MessageContext } from "@/types/index.js";
-import { serviceManager } from "@/services/Servicemanager.js";
+import { serviceManager } from "@/services/system/Servicemanager.js";
 
 export class BalanceCommand extends Command {
   name = "balance";
@@ -54,7 +54,8 @@ export class BalanceCommand extends Command {
     message += `\n\n💎 *Daily Reward:* ${canClaimDaily ? "✅ Available" : "⏳ Claimed"}`;
 
     if (!canClaimDaily && isSelf) {
-      const remaining = serviceManager.userService.getDailyTimeRemaining(targetUser);
+      const remaining =
+        serviceManager.userService.getDailyTimeRemaining(targetUser);
       const hours = Math.floor(remaining / (1000 * 60 * 60));
       const minutes = Math.floor((remaining % (1000 * 60 * 60)) / (1000 * 60));
 

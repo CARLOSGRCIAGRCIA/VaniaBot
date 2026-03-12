@@ -1,6 +1,6 @@
 import { Command } from "../Command.js";
 import { CommandCategory, type MessageContext } from "@/types/index.js";
-import { serviceManager } from "@/services/Servicemanager.js";
+import { serviceManager } from "@/services/system/Servicemanager.js";
 
 interface ShopItem {
   id: string;
