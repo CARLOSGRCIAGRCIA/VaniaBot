@@ -1,6 +1,6 @@
 import { Middleware } from "./Middleware.js";
 import type { MessageContext } from "@/types/index.js";
-import { serviceManager } from "@/services/Servicemanager.js";
+import { serviceManager } from "@/services/system/Servicemanager.js";
 import { logError, logger } from "@/utils/logger.js";
 
 export class MuteMiddleware extends Middleware {

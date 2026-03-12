@@ -1,7 +1,7 @@
 import { Middleware } from "./Middleware.js";
 import type { MessageContext } from "@/types/index.js";
 import { logger } from "@/utils/logger.js";
-import { serviceManager } from "@/services/Servicemanager.js";
+import { serviceManager } from "@/services/system/Servicemanager.js";
 
 export class LoggerMiddleware extends Middleware {
   name = "logger";

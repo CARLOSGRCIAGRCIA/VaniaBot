@@ -1,6 +1,6 @@
 import { Middleware } from "./Middleware.js";
 import type { MessageContext } from "@/types/index.js";
-import { serviceManager } from "@/services/Servicemanager.js";
+import { serviceManager } from "@/services/system/Servicemanager.js";
 import { logger, logError } from "@/utils/logger.js";
 
 export class AutoRegisterMiddleware extends Middleware {
