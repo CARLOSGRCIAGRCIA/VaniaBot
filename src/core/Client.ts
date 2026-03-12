@@ -10,7 +10,7 @@ import { PermissionMiddleware } from "@/middlewares/PermissionMiddleware.js";
 import { LoggerMiddleware } from "@/middlewares/LoggerMiddleware.js";
 import { AntiSpamMiddleware } from "@/middlewares/AntiSpamMiddleware.js";
 import { MuteMiddleware } from "@/middlewares/MuteMiddleware.js";
-import { serviceManager } from "@/services/Servicemanager.js";
+import { serviceManager } from "@/services/system/Servicemanager.js";
 import { logger, logError } from "@/utils/logger.js";
 import { CommandExecutionError } from "@/utils/errors.js";
 import { cacheManager } from "@/core/CacheManager.js";
@@ -19,7 +19,7 @@ import { quizAnswerHandler } from "@/handlers/QuizAnswerHandler.js";
 import { handleMention } from "@/events/AiMentionHandler.js";
 import type { IMiddleware } from "@/types/index.js";
 import { EventEmitter } from "events";
-import { welcomeService } from "@/services/WelcomeService.js";
+import { welcomeService } from "@/services/system/WelcomeService.js";
 
 class RealTimeAntiSpam {
   private userMessages = new Map<string, number[]>();
