@@ -1,8 +1,8 @@
-import { Command } from "../Command.js";
+import { Command } from "../../Command.js";
 import { CommandCategory } from "@/types/index.js";
 import type { MessageContext } from "@/types/index.js";
 import { config } from "@/config/index.js";
-import { serviceManager } from "@/services/Servicemanager.js";
+import { serviceManager } from "@/services/system/Servicemanager.js";
 
 export class OwnersCommand extends Command {
   name = "owners";

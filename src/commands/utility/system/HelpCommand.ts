@@ -1,8 +1,8 @@
-import { Command } from "../Command.js";
+import { Command } from "../../Command.js";
 import { CommandCategory, PermissionLevel } from "@/types/index.js";
 import type { MessageContext } from "@/types/index.js";
 import { commandRegistry } from "@/core/CommandRegistry.js";
-import { serviceManager } from "@/services/Servicemanager.js";
+import { serviceManager } from "@/services/system/Servicemanager.js";
 import { logger, logError } from "@/utils/logger.js";
 import fs from "fs";
 import path from "path";
