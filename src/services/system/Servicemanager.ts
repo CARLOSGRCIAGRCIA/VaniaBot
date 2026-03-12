@@ -1,10 +1,10 @@
-import { Database } from "./database/Database.js";
-import { JsonDatabase } from "./database/JsonDatabase.js";
-import { MongoDatabase } from "./database/MongoDatabase.js";
-import { UserService } from "./database/UserService.js";
-import { GroupService } from "./database/GroupService.js";
-import { LevelService } from "./database/LevelService.js";
-import { ModerationService } from "./moderation/ModerationService.js";
+import { Database } from "../database/Database.js";
+import { JsonDatabase } from "../database/JsonDatabase.js";
+import { MongoDatabase } from "../database/MongoDatabase.js";
+import { UserService } from "../database/UserService.js";
+import { GroupService } from "../database/GroupService.js";
+import { LevelService } from "../database/LevelService.js";
+import { ModerationService } from "../moderation/ModerationService.js";
 import { config } from "@/config/index.js";
 import { logger, logError } from "@/utils/logger.js";
 import { cleanupService } from "./CleanupService.js";
