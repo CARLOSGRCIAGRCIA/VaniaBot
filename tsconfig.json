@@ -17,16 +17,16 @@
     "experimentalDecorators": true,
     "emitDecoratorMetadata": true,
     "allowSyntheticDefaultImports": true,
-    "baseUrl": ".",
     "paths": {
-      "@/*": ["src/*"],
-      "@config/*": ["src/config/*"],
-      "@core/*": ["src/core/*"],
-      "@commands/*": ["src/commands/*"],
-      "@services/*": ["src/services/*"],
-      "@utils/*": ["src/utils/*"],
-      "@types/*": ["src/types/*"]
-    },"typeRoots": ["./node_modules/@types", "./src/types"],
+      "@/*": ["./src/*"],
+      "@config/*": ["./src/config/*"],
+      "@core/*": ["./src/core/*"],
+      "@commands/*": ["./src/commands/*"],
+      "@services/*": ["./src/services/*"],
+      "@utils/*": ["./src/utils/*"],
+      "@types/*": ["./src/types/*"]
+    },
+    "typeRoots": ["./node_modules/@types", "./src/types"]
   },
   "include": ["src/**/*"],
   "exclude": ["node_modules", "dist"]

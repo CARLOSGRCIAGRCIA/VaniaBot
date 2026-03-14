@@ -1,6 +1,5 @@
 import { writeFileSync, readFileSync, unlinkSync, existsSync, mkdirSync } from 'fs';
 import { join } from 'path';
-import sharp from 'sharp';
 import { spawn } from 'child_process';
 
 export interface StickerOptions {
@@ -142,6 +141,14 @@ export class StickerService {
   }
 
   private async imageToStickerFallback(buffer: Buffer): Promise<Buffer> {
+    let sharp: any;
+    try {
+      sharp = (await import('sharp')).default;
+    } catch {
+      console.warn('⚠️ sharp no disponible en esta plataforma, devolviendo buffer sin procesar');
+      return buffer;
+    }
+
     const image = sharp(buffer);
     const metadata = await image.metadata();
 
@@ -158,7 +165,7 @@ export class StickerService {
       width = Math.round((imgWidth / imgHeight) * StickerService.STICKER_SIZE);
     }
 
-    const processedBuffer = await image
+    return await image
       .resize(width, height, {
         fit: 'contain',
         background: { r: 0, g: 0, b: 0, alpha: 0 },
@@ -172,8 +179,6 @@ export class StickerService {
       })
       .webp({ quality: 100, lossless: false })
       .toBuffer();
-
-    return processedBuffer;
   }
 
   async videoToSticker(buffer: Buffer, _options: StickerOptions = {}): Promise<Buffer> {
