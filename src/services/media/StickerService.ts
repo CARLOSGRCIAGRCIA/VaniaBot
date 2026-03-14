@@ -26,6 +26,7 @@ interface FileTypeModule {
 export class StickerService {
   private static readonly TEMP_DIR = './data/temp';
   private static readonly STICKER_SIZE = 512;
+  private static readonly IS_ANDROID = process.platform === 'linux' && process.arch === 'arm64';
 
   constructor() {
     if (!existsSync(StickerService.TEMP_DIR)) {
@@ -50,19 +51,24 @@ export class StickerService {
   }
 
   async createSticker(buffer: Buffer, options: StickerOptions = {}): Promise<Buffer> {
-    try {
-      const { Sticker } = await import('wa-sticker-formatter');
-      const sticker = new Sticker(buffer, {
-        pack: options.pack || 'VaniaBot',
-        author: options.author || 'VaniaBot',
-        type: 'default',
-        quality: options.quality || 100,
-      });
-      return await sticker.toBuffer();
-    } catch (error) {
-      console.error('Error with wa-sticker-formatter, using fallback:', error);
-      return await this.createStickerManual(buffer, options);
+    // En Android/Termux, wa-sticker-formatter usa sharp internamente y falla
+    // Saltamos directo al manual para evitar el error
+    if (!StickerService.IS_ANDROID) {
+      try {
+        const { Sticker } = await import('wa-sticker-formatter');
+        const sticker = new Sticker(buffer, {
+          pack: options.pack || 'VaniaBot',
+          author: options.author || 'VaniaBot',
+          type: 'default',
+          quality: options.quality || 100,
+        });
+        return await sticker.toBuffer();
+      } catch (error) {
+        console.error('Error with wa-sticker-formatter, using fallback:', error);
+      }
     }
+
+    return await this.createStickerManual(buffer, options);
   }
 
   private async createStickerManual(buffer: Buffer, options: StickerOptions = {}): Promise<Buffer> {
@@ -114,6 +120,7 @@ export class StickerService {
   }
 
   private async imageToStickerFallback(buffer: Buffer): Promise<Buffer> {
+    // Intenta sharp primero (funciona en Linux/Windows)
     try {
       const sharp = (await import('sharp')).default;
       const image = sharp(buffer);
@@ -147,10 +154,9 @@ export class StickerService {
   }
 
   private async imageToStickerJimp(buffer: Buffer): Promise<Buffer> {
-    const Jimp = (await import('jimp')).Jimp;
+    const { Jimp } = await import('jimp');
     const image = await Jimp.read(buffer);
     const size = StickerService.STICKER_SIZE;
-
     image.cover({ w: size, h: size });
 
     const tempInput = join(StickerService.TEMP_DIR, `jimp-${Date.now()}.png`);
@@ -165,6 +171,7 @@ export class StickerService {
       return result;
     } catch {
       this.cleanup(tempInput, tempOutput);
+      // Último recurso: devolver PNG si ffmpeg tampoco está
       return await image.getBuffer('image/png');
     }
   }
