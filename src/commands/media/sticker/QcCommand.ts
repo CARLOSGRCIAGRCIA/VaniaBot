@@ -38,7 +38,6 @@ export class QcCommand extends Command {
 
     const mentionedJid = ctx.message.message?.extendedTextMessage?.contextInfo?.mentionedJid?.[0];
     const targetJid = mentionedJid || ctx.sender.jid;
-
     const cleanNumber = targetJid.split('@')[0];
     const mentionRegex = new RegExp(
       `@${cleanNumber.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\s*`,
@@ -54,38 +53,15 @@ export class QcCommand extends Command {
     await ctx.react('⏳');
 
     try {
-      let sharp: any;
-      try {
-        sharp = (await import('sharp')).default;
-      } catch {
-        await ctx.reply(
-          '❌ Este comando no está disponible en esta plataforma (sharp no instalado)',
-        );
-        await ctx.react('❌');
-        return;
-      }
-
       let pp = 'https://telegra.ph/file/24fa902ead26340f3df2c.png';
       try {
         const profilePic = await ctx.sock.profilePictureUrl(targetJid, 'image');
         if (profilePic) pp = profilePic;
-      } catch (error) {
-        console.warn('Could not fetch profile picture:', error);
+      } catch {
+        console.warn('Could not fetch profile picture');
       }
 
-      let nombre = ctx.sender.pushName || 'User';
-
-      if (mentionedJid) {
-        try {
-          const mentionedContact =
-            ctx.message.message?.extendedTextMessage?.contextInfo?.mentionedJid;
-          if (mentionedContact && mentionedContact.length > 0) {
-            nombre = ctx.sender.pushName || nombre;
-          }
-        } catch (error) {
-          console.warn('Could not fetch mentioned user info:', error);
-        }
-      }
+      const nombre = ctx.sender.pushName || 'User';
 
       const obj = {
         type: 'quote',
@@ -110,14 +86,7 @@ export class QcCommand extends Command {
       });
 
       const buffer = Buffer.from(res.data.result.image, 'base64');
-
-      const resizedBuffer = await sharp(buffer)
-        .resize(512, 512, {
-          fit: 'contain',
-          background: { r: 0, g: 0, b: 0, alpha: 0 },
-        })
-        .webp({ quality: 100 })
-        .toBuffer();
+      const resizedBuffer = await this.resizeBuffer(buffer);
 
       const stiker = await this.stickerService.createSticker(resizedBuffer, {
         pack: 'VaniaBot',
@@ -129,6 +98,23 @@ export class QcCommand extends Command {
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : 'Unknown error';
       await ctx.reply(`❌ Error: ${message}`);
+    }
+  }
+
+  private async resizeBuffer(buffer: Buffer): Promise<Buffer> {
+    // Intenta sharp (Linux/Windows)
+    try {
+      const sharp = (await import('sharp')).default;
+      return await sharp(buffer)
+        .resize(512, 512, { fit: 'contain', background: { r: 0, g: 0, b: 0, alpha: 0 } })
+        .webp({ quality: 100 })
+        .toBuffer();
+    } catch {
+      // Fallback jimp (Termux/Android)
+      const { Jimp } = await import('jimp');
+      const image = await Jimp.read(buffer);
+      image.cover({ w: 512, h: 512 });
+      return await image.getBuffer('image/png');
     }
   }
 }

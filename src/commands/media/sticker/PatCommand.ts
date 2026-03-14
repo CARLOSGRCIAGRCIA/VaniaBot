@@ -25,65 +25,12 @@ export class PatCommand extends Command {
       return;
     }
 
-    const words = ctx.args.slice(0, 20);
-    const text = words.join(' ');
-
+    const text = ctx.args.slice(0, 20).join(' ');
     await ctx.react('⏳');
 
     try {
-      let sharp: any;
-      try {
-        sharp = (await import('sharp')).default;
-      } catch {
-        await ctx.reply(
-          '❌ Este comando no está disponible en esta plataforma (sharp no instalado)',
-        );
-        await ctx.react('❌');
-        return;
-      }
-
       const randomNum = Math.floor(Math.random() * 4) + 1;
-      const imagePath = path.join(process.cwd(), 'data', 'assets', `pat${randomNum}.jpg`);
-
-      const image = sharp(imagePath);
-      const metadata = await image.metadata();
-
-      const width = metadata.width || 512;
-      const height = metadata.height || 512;
-
-      const fontSize = 95;
-      const textColor = '#FFFFFF';
-      const shadowColor = '#000000';
-      const shadowOffset = 4;
-
-      const x = width / 2;
-      const y = height - 100;
-
-      const maxCharsPerLine = 20;
-      const lines = this.wrapText(text, maxCharsPerLine);
-      const lineHeight = fontSize + 10;
-
-      const startY = y - ((lines.length - 1) * lineHeight) / 2;
-
-      let svgContent = `<svg width="${width}" height="${height}">`;
-
-      lines.forEach((line, index) => {
-        const currentY = startY + index * lineHeight;
-        svgContent += `
-          <text x="${x - shadowOffset}" y="${currentY}" font-family="Impact, Arial Black, sans-serif" font-size="${fontSize}" font-weight="bold" fill="${shadowColor}" text-anchor="middle">${this.escapeXml(line)}</text>
-          <text x="${x + shadowOffset}" y="${currentY}" font-family="Impact, Arial Black, sans-serif" font-size="${fontSize}" font-weight="bold" fill="${shadowColor}" text-anchor="middle">${this.escapeXml(line)}</text>
-          <text x="${x}" y="${currentY - shadowOffset}" font-family="Impact, Arial Black, sans-serif" font-size="${fontSize}" font-weight="bold" fill="${shadowColor}" text-anchor="middle">${this.escapeXml(line)}</text>
-          <text x="${x}" y="${currentY + shadowOffset}" font-family="Impact, Arial Black, sans-serif" font-size="${fontSize}" font-weight="bold" fill="${shadowColor}" text-anchor="middle">${this.escapeXml(line)}</text>
-          <text x="${x}" y="${currentY}" font-family="Impact, Arial Black, sans-serif" font-size="${fontSize}" font-weight="bold" fill="${textColor}" text-anchor="middle">${this.escapeXml(line)}</text>
-        `;
-      });
-
-      svgContent += `</svg>`;
-
-      const buffer = await image
-        .composite([{ input: Buffer.from(svgContent), top: 0, left: 0 }])
-        .png()
-        .toBuffer();
+      const buffer = await this.composeImage(`pat${randomNum}.jpg`, text);
 
       const stiker = await this.stickerService.createSticker(buffer, {
         pack: 'VaniaBot',
@@ -98,11 +45,77 @@ export class PatCommand extends Command {
     }
   }
 
+  private async composeImage(filename: string, text: string): Promise<Buffer> {
+    const imagePath = path.join(process.cwd(), 'data', 'assets', filename);
+
+    try {
+      const sharp = (await import('sharp')).default;
+      return await this.composeWithSharp(sharp, imagePath, text);
+    } catch {
+      return await this.composeWithJimp(imagePath, text);
+    }
+  }
+
+  private async composeWithSharp(sharp: any, imagePath: string, text: string): Promise<Buffer> {
+    const image = sharp(imagePath);
+    const metadata = await image.metadata();
+    const width = metadata.width || 512;
+    const height = metadata.height || 512;
+    const fontSize = 95;
+    const x = width / 2;
+    const y = height - 100;
+    const lines = this.wrapText(text, 20);
+    const lineHeight = fontSize + 10;
+    const startY = y - ((lines.length - 1) * lineHeight) / 2;
+
+    let svg = `<svg width="${width}" height="${height}">`;
+    lines.forEach((line, i) => {
+      const cy = startY + i * lineHeight;
+      const escaped = this.escapeXml(line);
+      const base = `font-family="Impact, Arial Black, sans-serif" font-size="${fontSize}" font-weight="bold" text-anchor="middle"`;
+      svg += `<text x="${x - 4}" y="${cy}" ${base} fill="#000000">${escaped}</text>`;
+      svg += `<text x="${x + 4}" y="${cy}" ${base} fill="#000000">${escaped}</text>`;
+      svg += `<text x="${x}" y="${cy - 4}" ${base} fill="#000000">${escaped}</text>`;
+      svg += `<text x="${x}" y="${cy + 4}" ${base} fill="#000000">${escaped}</text>`;
+      svg += `<text x="${x}" y="${cy}" ${base} fill="#FFFFFF">${escaped}</text>`;
+    });
+    svg += `</svg>`;
+
+    return await image
+      .composite([{ input: Buffer.from(svg), top: 0, left: 0 }])
+      .png()
+      .toBuffer();
+  }
+
+  private async composeWithJimp(imagePath: string, text: string): Promise<Buffer> {
+    const { Jimp, loadFont, HorizontalAlign, VerticalAlign } = await import('jimp');
+    const image = await Jimp.read(imagePath);
+    image.resize({ w: 512, h: 512 });
+
+    const font = await loadFont(
+      'https://raw.githubusercontent.com/oliver-moran/jimp/master/packages/plugin-print/fonts/open-sans/open-sans-32-black/open-sans-32-black.fnt',
+    );
+
+    image.print({
+      font,
+      x: 0,
+      y: image.height - 120,
+      text: {
+        text,
+        alignmentX: HorizontalAlign.CENTER,
+        alignmentY: VerticalAlign.MIDDLE,
+      },
+      maxWidth: 512,
+      maxHeight: 120,
+    });
+
+    return await image.getBuffer('image/png');
+  }
+
   private wrapText(text: string, maxChars: number): string[] {
     const words = text.split(' ');
     const lines: string[] = [];
     let currentLine = '';
-
     words.forEach(word => {
       if ((currentLine + word).length <= maxChars) {
         currentLine += (currentLine ? ' ' : '') + word;
@@ -111,7 +124,6 @@ export class PatCommand extends Command {
         currentLine = word;
       }
     });
-
     if (currentLine) lines.push(currentLine);
     return lines.length > 0 ? lines : [text];
   }
