@@ -2,7 +2,6 @@ import { Command } from '../../Command.js';
 import { CommandCategory, type MessageContext } from '@/types/index.js';
 import { StickerService } from '@/services/media/StickerService.js';
 import axios from 'axios';
-import sharp from 'sharp';
 
 export class QcCommand extends Command {
   name = 'qc';
@@ -55,12 +54,21 @@ export class QcCommand extends Command {
     await ctx.react('⏳');
 
     try {
+      let sharp: any;
+      try {
+        sharp = (await import('sharp')).default;
+      } catch {
+        await ctx.reply(
+          '❌ Este comando no está disponible en esta plataforma (sharp no instalado)',
+        );
+        await ctx.react('❌');
+        return;
+      }
+
       let pp = 'https://telegra.ph/file/24fa902ead26340f3df2c.png';
       try {
         const profilePic = await ctx.sock.profilePictureUrl(targetJid, 'image');
-        if (profilePic) {
-          pp = profilePic;
-        }
+        if (profilePic) pp = profilePic;
       } catch (error) {
         console.warn('Could not fetch profile picture:', error);
       }

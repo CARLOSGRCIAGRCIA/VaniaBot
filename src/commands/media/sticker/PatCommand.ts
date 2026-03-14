@@ -1,7 +1,6 @@
 import { Command } from '../../Command.js';
 import { CommandCategory, type MessageContext } from '@/types/index.js';
 import { StickerService } from '@/services/media/StickerService.js';
-import sharp from 'sharp';
 import path from 'path';
 
 export class PatCommand extends Command {
@@ -32,6 +31,17 @@ export class PatCommand extends Command {
     await ctx.react('⏳');
 
     try {
+      let sharp: any;
+      try {
+        sharp = (await import('sharp')).default;
+      } catch {
+        await ctx.reply(
+          '❌ Este comando no está disponible en esta plataforma (sharp no instalado)',
+        );
+        await ctx.react('❌');
+        return;
+      }
+
       const randomNum = Math.floor(Math.random() * 4) + 1;
       const imagePath = path.join(process.cwd(), 'data', 'assets', `pat${randomNum}.jpg`);
 
@@ -59,14 +69,11 @@ export class PatCommand extends Command {
 
       lines.forEach((line, index) => {
         const currentY = startY + index * lineHeight;
-
         svgContent += `
           <text x="${x - shadowOffset}" y="${currentY}" font-family="Impact, Arial Black, sans-serif" font-size="${fontSize}" font-weight="bold" fill="${shadowColor}" text-anchor="middle">${this.escapeXml(line)}</text>
           <text x="${x + shadowOffset}" y="${currentY}" font-family="Impact, Arial Black, sans-serif" font-size="${fontSize}" font-weight="bold" fill="${shadowColor}" text-anchor="middle">${this.escapeXml(line)}</text>
           <text x="${x}" y="${currentY - shadowOffset}" font-family="Impact, Arial Black, sans-serif" font-size="${fontSize}" font-weight="bold" fill="${shadowColor}" text-anchor="middle">${this.escapeXml(line)}</text>
           <text x="${x}" y="${currentY + shadowOffset}" font-family="Impact, Arial Black, sans-serif" font-size="${fontSize}" font-weight="bold" fill="${shadowColor}" text-anchor="middle">${this.escapeXml(line)}</text>
-          
-          <!-- Texto principal -->
           <text x="${x}" y="${currentY}" font-family="Impact, Arial Black, sans-serif" font-size="${fontSize}" font-weight="bold" fill="${textColor}" text-anchor="middle">${this.escapeXml(line)}</text>
         `;
       });
@@ -74,13 +81,7 @@ export class PatCommand extends Command {
       svgContent += `</svg>`;
 
       const buffer = await image
-        .composite([
-          {
-            input: Buffer.from(svgContent),
-            top: 0,
-            left: 0,
-          },
-        ])
+        .composite([{ input: Buffer.from(svgContent), top: 0, left: 0 }])
         .png()
         .toBuffer();
 

@@ -1,7 +1,6 @@
 import { Command } from '../../Command.js';
 import { CommandCategory, type MessageContext } from '@/types/index.js';
 import { StickerService } from '@/services/media/StickerService.js';
-import sharp from 'sharp';
 import path from 'path';
 
 export class NotaCommand extends Command {
@@ -32,6 +31,17 @@ export class NotaCommand extends Command {
     await ctx.react('⏳');
 
     try {
+      let sharp: any;
+      try {
+        sharp = (await import('sharp')).default;
+      } catch {
+        await ctx.reply(
+          '❌ Este comando no está disponible en esta plataforma (sharp no instalado)',
+        );
+        await ctx.react('❌');
+        return;
+      }
+
       const imagePath = path.join(process.cwd(), 'data', 'assets', 'nota.jpg');
 
       const image = sharp(imagePath);
@@ -57,7 +67,6 @@ export class NotaCommand extends Command {
 
       lines.forEach((line, index) => {
         const currentY = startY + index * lineHeight;
-
         svgContent += `
           <text 
             x="${x}" 
@@ -74,13 +83,7 @@ export class NotaCommand extends Command {
       svgContent += `</svg>`;
 
       const buffer = await image
-        .composite([
-          {
-            input: Buffer.from(svgContent),
-            top: 0,
-            left: 0,
-          },
-        ])
+        .composite([{ input: Buffer.from(svgContent), top: 0, left: 0 }])
         .png()
         .toBuffer();
 
