@@ -113,7 +113,12 @@ export class StickerService {
           stderr += d.toString();
         });
         ffmpeg.on('close', code => {
-          code === 0 ? resolve() : reject(new Error(stderr));
+          if (code === 0) {
+            resolve();
+          } else {
+            console.error('FFmpeg EXIF error:', stderr);
+            reject(new Error(stderr));
+          }
         });
         ffmpeg.on('error', reject);
       });
@@ -121,9 +126,9 @@ export class StickerService {
       const result = readFileSync(tempOutput);
       this.cleanup(tempInput, tempOutput);
       return result;
-    } catch {
+    } catch (e) {
+      console.error('addExifManual catch:', e);
       this.cleanup(tempInput, tempOutput);
-      console.warn('⚠️ No se pudo modificar EXIF, devolviendo sticker original');
       return buffer;
     }
   }
