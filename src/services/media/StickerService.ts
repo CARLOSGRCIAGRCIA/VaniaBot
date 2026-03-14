@@ -88,49 +88,108 @@ export class StickerService {
   }
 
   private async addExifManual(buffer: Buffer, pack: string, author: string): Promise<Buffer> {
-    const tempInput = join(StickerService.TEMP_DIR, `take-input-${Date.now()}.webp`);
-    const tempOutput = join(StickerService.TEMP_DIR, `take-output-${Date.now()}.webp`);
-
     try {
-      writeFileSync(tempInput, buffer);
-
-      await new Promise<void>((resolve, reject) => {
-        const args = [
-          '-y',
-          '-i',
-          tempInput,
-          '-codec',
-          'copy',
-          '-metadata',
-          `title=${pack}`,
-          '-metadata',
-          `artist=${author}`,
-          tempOutput,
-        ];
-        const ffmpeg = spawn('ffmpeg', args);
-        let stderr = '';
-        ffmpeg.stderr.on('data', d => {
-          stderr += d.toString();
-        });
-        ffmpeg.on('close', code => {
-          if (code === 0) {
-            resolve();
-          } else {
-            console.error('FFmpeg EXIF error:', stderr);
-            reject(new Error(stderr));
-          }
-        });
-        ffmpeg.on('error', reject);
+      const packJson = JSON.stringify({
+        'sticker-pack-name': pack,
+        'sticker-pack-publisher': author,
       });
 
-      const result = readFileSync(tempOutput);
-      this.cleanup(tempInput, tempOutput);
-      return result;
+      const utf8 = Buffer.from(packJson, 'utf8');
+
+      // EXIF header: TIFF little-endian + IFD con 1 entry (tag 0x5741 = 'WA')
+      const header = Buffer.from([
+        0x49,
+        0x49,
+        0x2a,
+        0x00, // TIFF LE magic
+        0x08,
+        0x00,
+        0x00,
+        0x00, // offset to IFD = 8
+        0x01,
+        0x00, // 1 IFD entry
+        0x41,
+        0x57, // tag 0x5741 (WhatsApp)
+        0x07,
+        0x00, // type = UNDEFINED
+      ]);
+
+      const lengthBuf = Buffer.allocUnsafe(4);
+      lengthBuf.writeUInt32LE(utf8.length, 0);
+
+      const offsetBuf = Buffer.from([0x16, 0x00, 0x00, 0x00]); // offset al valor = 22
+      const nextIFD = Buffer.from([0x00, 0x00, 0x00, 0x00]); // no more IFDs
+
+      const exifData = Buffer.concat([header, lengthBuf, offsetBuf, nextIFD, utf8]);
+
+      // Construir chunk EXIF para WebP
+      const chunkId = Buffer.from('EXIF');
+      const chunkSize = Buffer.allocUnsafe(4);
+      chunkSize.writeUInt32LE(exifData.length, 0);
+      const padding = exifData.length % 2 !== 0 ? Buffer.from([0x00]) : Buffer.alloc(0);
+      const exifChunk = Buffer.concat([chunkId, chunkSize, exifData, padding]);
+
+      // Verificar RIFF/WEBP
+      if (buffer.toString('ascii', 0, 4) !== 'RIFF' || buffer.toString('ascii', 8, 12) !== 'WEBP') {
+        console.warn('⚠️ Buffer no es WebP válido');
+        return buffer;
+      }
+
+      // Activar flag EXIF en VP8X si existe, luego limpiar EXIF viejo e insertar nuevo
+      const withFlag = this.ensureExtendedWebP(Buffer.from(buffer));
+      const cleaned = this.removeExifChunk(withFlag);
+
+      // Insertar EXIF después del header WEBP (byte 12)
+      const riffHeader = cleaned.slice(0, 12);
+      const webpBody = cleaned.slice(12);
+      const newBody = Buffer.concat([exifChunk, webpBody]);
+      const newFile = Buffer.concat([riffHeader, newBody]);
+
+      // Actualizar tamaño RIFF (bytes 4-7)
+      newFile.writeUInt32LE(newFile.length - 8, 4);
+
+      return newFile;
     } catch (e) {
-      console.error('addExifManual catch:', e);
-      this.cleanup(tempInput, tempOutput);
+      console.error('addExifManual error:', e);
       return buffer;
     }
+  }
+
+  private ensureExtendedWebP(buffer: Buffer): Buffer {
+    let offset = 12;
+    while (offset < buffer.length - 8) {
+      const chunkId = buffer.toString('ascii', offset, offset + 4);
+      if (chunkId === 'VP8X') {
+        // byte de flags en offset+8, bit 3 = EXIF
+        buffer[offset + 8] = buffer[offset + 8] | 0x08;
+        return buffer;
+      }
+      const chunkSize = buffer.readUInt32LE(offset + 4);
+      offset += 8 + chunkSize + (chunkSize % 2 !== 0 ? 1 : 0);
+    }
+    return buffer;
+  }
+
+  private removeExifChunk(buffer: Buffer): Buffer {
+    const result: Buffer[] = [];
+    result.push(buffer.slice(0, 12));
+
+    let offset = 12;
+    while (offset < buffer.length - 8) {
+      const chunkId = buffer.toString('ascii', offset, offset + 4);
+      const chunkSize = buffer.readUInt32LE(offset + 4);
+      const totalChunkSize = 8 + chunkSize + (chunkSize % 2 !== 0 ? 1 : 0);
+
+      if (chunkId !== 'EXIF') {
+        result.push(buffer.slice(offset, offset + totalChunkSize));
+      }
+
+      offset += totalChunkSize;
+    }
+
+    const newBuffer = Buffer.concat(result);
+    newBuffer.writeUInt32LE(newBuffer.length - 8, 4);
+    return newBuffer;
   }
 
   private async createStickerManual(buffer: Buffer, options: StickerOptions = {}): Promise<Buffer> {
