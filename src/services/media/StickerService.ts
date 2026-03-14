@@ -90,7 +90,8 @@ export class StickerService {
   private async addExifManual(buffer: Buffer, pack: string, author: string): Promise<Buffer> {
     try {
       const webp = await import('node-webpmux');
-      const img = new webp.Image();
+      const Image = webp.default?.Image ?? webp.Image;
+      const img = new Image();
 
       const packJson = JSON.stringify({
         'sticker-pack-name': pack,
