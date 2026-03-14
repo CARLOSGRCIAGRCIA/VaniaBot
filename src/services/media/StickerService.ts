@@ -26,7 +26,8 @@ interface FileTypeModule {
 export class StickerService {
   private static readonly TEMP_DIR = './data/temp';
   private static readonly STICKER_SIZE = 512;
-  private static readonly IS_ANDROID = process.platform === 'linux' && process.arch === 'arm64';
+  private static readonly IS_ANDROID =
+    process.platform === 'android' || (process.platform === 'linux' && process.arch === 'arm64');
 
   constructor() {
     if (!existsSync(StickerService.TEMP_DIR)) {
