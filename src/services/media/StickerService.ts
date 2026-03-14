@@ -52,8 +52,6 @@ export class StickerService {
   }
 
   async createSticker(buffer: Buffer, options: StickerOptions = {}): Promise<Buffer> {
-    // En Android/Termux, wa-sticker-formatter usa sharp internamente y falla
-    // Saltamos directo al manual para evitar el error
     if (!StickerService.IS_ANDROID) {
       try {
         const { Sticker } = await import('wa-sticker-formatter');
@@ -70,6 +68,62 @@ export class StickerService {
     }
 
     return await this.createStickerManual(buffer, options);
+  }
+
+  async addExif(buffer: Buffer, pack: string, author: string): Promise<Buffer> {
+    try {
+      const { Sticker } = await import('wa-sticker-formatter');
+      const sticker = new Sticker(buffer, {
+        pack,
+        author,
+        type: 'default',
+        quality: 100,
+      });
+      return await sticker.toBuffer();
+    } catch {
+      return await this.addExifManual(buffer, pack, author);
+    }
+  }
+
+  private async addExifManual(buffer: Buffer, pack: string, author: string): Promise<Buffer> {
+    const packJson = JSON.stringify({
+      'sticker-pack-name': pack,
+      'sticker-pack-publisher': author,
+    });
+    const packBuffer = Buffer.from(packJson, 'utf8');
+
+    const exifHeader = Buffer.from([
+      0x49, 0x49, 0x2a, 0x00, 0x08, 0x00, 0x00, 0x00, 0x01, 0x00, 0x41, 0x57, 0x07, 0x00,
+    ]);
+    const dataSize = Buffer.allocUnsafe(4);
+    dataSize.writeUInt32LE(packBuffer.length, 0);
+    const footer = Buffer.from([0x16, 0x00, 0x00, 0x00]);
+
+    const exif = Buffer.concat([exifHeader, dataSize, footer, packBuffer]);
+    return this.injectExifIntoWebP(buffer, exif);
+  }
+
+  private injectExifIntoWebP(webpBuffer: Buffer, exifBuffer: Buffer): Buffer {
+    if (
+      webpBuffer.toString('utf8', 0, 4) !== 'RIFF' ||
+      webpBuffer.toString('utf8', 8, 12) !== 'WEBP'
+    ) {
+      return webpBuffer;
+    }
+
+    const exifChunkType = Buffer.from('EXIF');
+    const exifChunkSize = Buffer.allocUnsafe(4);
+    exifChunkSize.writeUInt32LE(exifBuffer.length, 0);
+    const exifChunk = Buffer.concat([exifChunkType, exifChunkSize, exifBuffer]);
+
+    const riffHeader = webpBuffer.slice(0, 12);
+    const webpContent = webpBuffer.slice(12);
+    const newContent = Buffer.concat([exifChunk, webpContent]);
+
+    const newRiff = Buffer.concat([riffHeader, newContent]);
+    newRiff.writeUInt32LE(newContent.length + 4, 4);
+
+    return newRiff;
   }
 
   private async createStickerManual(buffer: Buffer, options: StickerOptions = {}): Promise<Buffer> {
@@ -121,7 +175,6 @@ export class StickerService {
   }
 
   private async imageToStickerFallback(buffer: Buffer): Promise<Buffer> {
-    // Intenta sharp primero (funciona en Linux/Windows)
     try {
       const sharp = (await import('sharp')).default;
       const image = sharp(buffer);
@@ -148,7 +201,6 @@ export class StickerService {
         .webp({ quality: 100, lossless: false })
         .toBuffer();
     } catch {
-      // Si sharp falla (Termux/Android), usa jimp
       console.warn('⚠️ sharp no disponible, usando jimp como fallback');
       return await this.imageToStickerJimp(buffer);
     }
@@ -172,7 +224,6 @@ export class StickerService {
       return result;
     } catch {
       this.cleanup(tempInput, tempOutput);
-      // Último recurso: devolver PNG si ffmpeg tampoco está
       return await image.getBuffer('image/png');
     }
   }

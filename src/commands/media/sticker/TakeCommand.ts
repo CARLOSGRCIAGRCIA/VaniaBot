@@ -37,17 +37,15 @@ export class TakeCommand extends Command {
     try {
       const fakeMsg = { message: quotedMsg } as proto.IWebMessageInfo;
       const buffer = await downloadMediaMessage(fakeMsg, 'buffer', {});
-      const stiker = await this.stickerService.createSticker(buffer, {
-        pack: packname.trim(),
-        author: author.trim(),
-      });
+
+      const stiker = await this.stickerService.addExif(buffer, packname.trim(), author.trim());
 
       await ctx.sock.sendMessage(ctx.chat.jid, { sticker: stiker });
       await ctx.react('✅');
     } catch (error) {
       console.error('Error in TakeCommand:', error);
-      await ctx.reply(`Could not modify sticker`);
-      await ctx.react('');
+      await ctx.reply('Could not modify sticker');
+      await ctx.react('❌');
     }
   }
 }
