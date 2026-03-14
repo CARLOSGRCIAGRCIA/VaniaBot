@@ -1,7 +1,7 @@
 import { Command } from '../../Command.js';
 import { CommandCategory, type MessageContext } from '@/types/index.js';
 import { StickerService } from '@/services/media/StickerService.js';
-import path from 'path';
+import path, { join } from 'path';
 
 export class PatCommand extends Command {
   name = 'pat';
@@ -89,24 +89,28 @@ export class PatCommand extends Command {
 
   private async composeWithJimp(imagePath: string, text: string): Promise<Buffer> {
     const { Jimp, loadFont, HorizontalAlign, VerticalAlign } = await import('jimp');
+
     const image = await Jimp.read(imagePath);
     image.resize({ w: 512, h: 512 });
 
-    const font = await loadFont(
-      'https://raw.githubusercontent.com/oliver-moran/jimp/master/packages/plugin-print/fonts/open-sans/open-sans-32-black/open-sans-32-black.fnt',
+    const fontPath = join(
+      process.cwd(),
+      'node_modules/@jimp/plugin-print/fonts/open-sans/open-sans-64-white/open-sans-64-white.fnt',
     );
+    const font = await loadFont(fontPath);
 
+    // Texto en la parte inferior como meme
     image.print({
       font,
       x: 0,
-      y: image.height - 120,
+      y: 512 - 140,
       text: {
         text,
         alignmentX: HorizontalAlign.CENTER,
         alignmentY: VerticalAlign.MIDDLE,
       },
       maxWidth: 512,
-      maxHeight: 120,
+      maxHeight: 140,
     });
 
     return await image.getBuffer('image/png');

@@ -1,7 +1,7 @@
 import { Command } from '../../Command.js';
 import { CommandCategory, type MessageContext } from '@/types/index.js';
 import { StickerService } from '@/services/media/StickerService.js';
-import path from 'path';
+import path, { join } from 'path';
 
 export class NotaCommand extends Command {
   name = 'nota';
@@ -29,7 +29,7 @@ export class NotaCommand extends Command {
     await ctx.react('⏳');
 
     try {
-      const buffer = await this.composeImage('nota.jpg', text, 'nota');
+      const buffer = await this.composeImage('nota.jpg', text);
 
       const stiker = await this.stickerService.createSticker(buffer, {
         pack: 'VaniaBot',
@@ -44,27 +44,18 @@ export class NotaCommand extends Command {
     }
   }
 
-  private async composeImage(
-    filename: string,
-    text: string,
-    style: 'nota' | 'pat',
-  ): Promise<Buffer> {
+  private async composeImage(filename: string, text: string): Promise<Buffer> {
     const imagePath = path.join(process.cwd(), 'data', 'assets', filename);
 
     try {
       const sharp = (await import('sharp')).default;
-      return await this.composeWithSharp(sharp, imagePath, text, style);
+      return await this.composeWithSharp(sharp, imagePath, text);
     } catch {
-      return await this.composeWithJimp(imagePath, text, style);
+      return await this.composeWithJimp(imagePath, text);
     }
   }
 
-  private async composeWithSharp(
-    sharp: any,
-    imagePath: string,
-    text: string,
-    _style: 'nota' | 'pat',
-  ): Promise<Buffer> {
+  private async composeWithSharp(sharp: any, imagePath: string, text: string): Promise<Buffer> {
     const image = sharp(imagePath);
     const metadata = await image.metadata();
     const width = metadata.width || 512;
@@ -90,18 +81,17 @@ export class NotaCommand extends Command {
       .toBuffer();
   }
 
-  private async composeWithJimp(
-    imagePath: string,
-    text: string,
-    _style: 'nota' | 'pat',
-  ): Promise<Buffer> {
+  private async composeWithJimp(imagePath: string, text: string): Promise<Buffer> {
     const { Jimp, loadFont, HorizontalAlign, VerticalAlign } = await import('jimp');
+
     const image = await Jimp.read(imagePath);
     image.resize({ w: 512, h: 512 });
 
-    const font = await loadFont(
-      'https://raw.githubusercontent.com/oliver-moran/jimp/master/packages/plugin-print/fonts/open-sans/open-sans-32-black/open-sans-32-black.fnt',
+    const fontPath = join(
+      process.cwd(),
+      'node_modules/@jimp/plugin-print/fonts/open-sans/open-sans-64-black/open-sans-64-black.fnt',
     );
+    const font = await loadFont(fontPath);
 
     image.print({
       font,

@@ -2,6 +2,7 @@ import { Command } from '../../Command.js';
 import { CommandCategory, type MessageContext } from '@/types/index.js';
 import { StickerService } from '@/services/media/StickerService.js';
 import axios from 'axios';
+// import { join } from 'path';
 
 export class QcCommand extends Command {
   name = 'qc';
@@ -102,7 +103,7 @@ export class QcCommand extends Command {
   }
 
   private async resizeBuffer(buffer: Buffer): Promise<Buffer> {
-    // Intenta sharp (Linux/Windows)
+    // Intenta sharp primero (Linux/Windows)
     try {
       const sharp = (await import('sharp')).default;
       return await sharp(buffer)
@@ -113,7 +114,7 @@ export class QcCommand extends Command {
       // Fallback jimp (Termux/Android)
       const { Jimp } = await import('jimp');
       const image = await Jimp.read(buffer);
-      image.cover({ w: 512, h: 512 });
+      image.contain({ w: 512, h: 512 });
       return await image.getBuffer('image/png');
     }
   }
