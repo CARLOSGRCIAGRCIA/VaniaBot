@@ -311,7 +311,7 @@ nano .env
 
 ```env
 BOT_NAME=VaniaBot
-PREFIX=!
+BOT_PREFIX=.
 OWNERS=tu_numero@lid
 USE_PAIRING_CODE=true
 PHONE_NUMBER=+1234567890
@@ -469,7 +469,7 @@ pm2 logs vaniabot
 | Variable                  | Descripción                                                                                                          | Requerido                  | Valor por defecto                  |
 | :------------------------ | :------------------------------------------------------------------------------------------------------------------- | :------------------------- | :--------------------------------- |
 | `BOT_NAME`                | Nombre del bot                                                                                                       | No                         | VaniaBot                           |
-| `PREFIX`                  | Prefijo de comandos                                                                                                  | No                         | !                                  |
+| `BOT_PREFIX`              | Prefijo de comandos                                                                                                  | No                         | .                                  |
 | `OWNERS`                  | IDs de owners (separados por coma)                                                                                   | Sí                         | 208924405956643@lid,529516526675   |
 | `OWNER_JIDS`              | IDs adicionales de owners para permisos específicos                                                                  | No                         | 208924405956643@lid                |
 | `SESSION_PATH`            | Ruta de almacenamiento de sesión WhatsApp                                                                            | No                         | ./vaniasession                     |

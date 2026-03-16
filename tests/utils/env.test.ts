@@ -16,7 +16,7 @@ import { z } from 'zod';
 
 const testSchema = z.object({
   BOT_NAME: z.string().default('VaniaBot'),
-  PREFIX: z.string().default('.'),
+  BOT_PREFIX: z.string().default('.'),
   OWNERS: z
     .string()
     .default('')
@@ -54,7 +54,7 @@ describe('Environment Schema Validation', () => {
     const result = testSchema.parse(process.env);
 
     expect(result.BOT_NAME).toBe('VaniaBot');
-    expect(result.PREFIX).toBe('.');
+    expect(result.BOT_PREFIX).toBe('.');
     expect(result.DB_TYPE).toBe('json');
     expect(result.MAX_RECONNECT_ATTEMPTS).toBe(10);
     expect(result.AUTO_RECONNECT).toBe(true);
@@ -65,7 +65,7 @@ describe('Environment Schema Validation', () => {
   it('should override defaults with env values', () => {
     process.env = {
       BOT_NAME: 'CustomBot',
-      PREFIX: '!',
+      BOT_PREFIX: '!',
       DB_TYPE: 'mongodb',
       MAX_RECONNECT_ATTEMPTS: '20',
       AUTO_RECONNECT: 'false',
@@ -76,7 +76,7 @@ describe('Environment Schema Validation', () => {
     const result = testSchema.parse(process.env);
 
     expect(result.BOT_NAME).toBe('CustomBot');
-    expect(result.PREFIX).toBe('!');
+    expect(result.BOT_PREFIX).toBe('!');
     expect(result.DB_TYPE).toBe('mongodb');
     expect(result.MAX_RECONNECT_ATTEMPTS).toBe(20);
     expect(result.AUTO_RECONNECT).toBe(false);

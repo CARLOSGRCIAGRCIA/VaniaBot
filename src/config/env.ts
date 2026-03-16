@@ -50,6 +50,7 @@ const envSchema = z.object({
 
   /** Command prefix */
   PREFIX: z.string().default('.'),
+  BOT_PREFIX: z.string().default('.'),
 
   /** Owner JIDs (phone numbers and LID IDs) - comma separated */
   OWNERS: z

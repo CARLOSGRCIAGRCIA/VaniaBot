@@ -25,7 +25,7 @@ export const config: BotConfig = {
   name: env.BOT_NAME,
 
   /** Command prefix */
-  prefix: env.PREFIX,
+  prefix: env.BOT_PREFIX,
 
   /** Array of owner JIDs (phone numbers and LID IDs) */
   owners: env.OWNERS,
