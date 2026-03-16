@@ -275,22 +275,32 @@ export class SubBotManager extends EventEmitter {
       try {
         await this.mainSock.sendMessage(subConfig.ownerJid, {
           text:
-            `╔═══════════════════════════╗\n` +
-            `║  🌸 *VaniaBot — SubBot*     ║\n` +
-            `╚═══════════════════════════╝\n\n` +
-            `¡Tu subbot está lista para vincularse! 💝\n\n` +
-            `📱 *Código de pareamiento:*\n` +
-            `┌───────────────────────┐\n` +
-            `│     *${code}*     │\n` +
-            `└───────────────────────┘\n\n` +
-            `*¿Cómo vincularla?*\n` +
-            `1️⃣ Abre WhatsApp en el teléfono de la subbot\n` +
+            `╭━━━ 🌸 *VaniaBot* ━━━╮\n` +
+            `   *Vincular SubBot*\n` +
+            `\n` +
+            `💝 Tu SubBot está lista\n` +
+            `   para conectarse.\n` +
+            `\n` +
+            `*Código de vinculación*\n` +
+            `╭───────────────╮\n` +
+            `│    *${code}*    │\n` +
+            `╰───────────────╯\n` +
+            `\n` +
+            `✨ *Cómo vincularla*\n` +
+            `1️⃣ Abre *WhatsApp* en\n` +
+            `   el teléfono de la SubBot\n` +
             `2️⃣ Ve a *Dispositivos vinculados*\n` +
-            `3️⃣ Toca *Vincular un dispositivo*\n` +
-            `4️⃣ Ingresa el código de arriba\n\n` +
-            `⏳ El código expira en *3 minutos*\n` +
-            `📞 Número: *+${subConfig.phoneNumber}*\n\n` +
-            `_— VaniaBot 🦋_`,
+            `3️⃣ Toca *Vincular dispositivo*\n` +
+            `4️⃣ Ingresa el código de arriba\n` +
+            `\n` +
+            `⏳ El código expira\n` +
+            `   en *3 minutos*\n` +
+            `\n` +
+            `Número:\n` +
+            `   *+${subConfig.phoneNumber}*\n` +
+            `\n` +
+            `   Estaré esperando 💗\n` +
+            `╰━━━━━━━━━━━━━━━━━━━━╯`,
         });
       } catch (e) {
         logError(`SubBot[${subConfig.id}].sendPairingCode`, e);
@@ -317,17 +327,33 @@ export class SubBotManager extends EventEmitter {
       try {
         await this.mainSock.sendMessage(subConfig.ownerJid, {
           text:
-            `╔═══════════════════════════╗\n` +
-            `║  🌸 *VaniaBot — SubBot*     ║\n` +
-            `╚═══════════════════════════╝\n\n` +
-            `✅ *¡Tu subbot ya está activa!* 💝\n\n` +
-            `🏷️ Nombre: *${subConfig.name}*\n` +
-            `📞 Número: *+${subConfig.phoneNumber}*\n` +
-            `🔑 Prefijo: *${config.prefix}*\n` +
-            `🆔 ID: \`${subConfig.id}\`\n\n` +
-            `Tiene todos los comandos de VaniaBot disponibles.\n` +
-            `¡Úsala como si fuera la bot principal! 🦋\n\n` +
-            `_— VaniaBot 🌸_`,
+            `╭━━━ 🌸 *VaniaBot* ━━━╮\n` +
+            `   🤖 *SubBot activada*\n` +
+            `\n` +
+            `💝 ¡Tu SubBot ya está\n` +
+            `   lista para usarse!\n` +
+            `\n` +
+            `🏷️ Nombre:\n` +
+            `   *${subConfig.name}*\n` +
+            `\n` +
+            `Número:\n` +
+            `   *+${subConfig.phoneNumber}*\n` +
+            `\n` +
+            `Prefijo:\n` +
+            `   *${config.prefix}*\n` +
+            `\n` +
+            `ID:\n` +
+            `   \`${subConfig.id}\`\n` +
+            `\n` +
+            `✨ Tu SubBot tiene\n` +
+            `   todos mis comandos\n` +
+            `   disponibles.\n` +
+            `\n` +
+            `🦋 Puedes usarla igual\n` +
+            `   que a VaniaBot.\n` +
+            `\n` +
+            `   ¡Disfrútala! 💗\n` +
+            `╰━━━━━━━━━━━━━━━━━━━━╯`,
         });
       } catch (e) {
         logError(`SubBot[${subConfig.id}].sendReady`, e);
@@ -340,13 +366,27 @@ export class SubBotManager extends EventEmitter {
       try {
         await this.mainSock.sendMessage(subConfig.ownerJid, {
           text:
-            `╔═══════════════════════════╗\n` +
-            `║  🌸 *VaniaBot — SubBot*     ║\n` +
-            `╚═══════════════════════════╝\n\n` +
-            `⚠️ *Tu subbot fue desconectada*\n\n` +
-            `Parece que cerraste sesión desde el teléfono.\n` +
-            `Usa *.reconbot* para volver a vincularla 🦋\n\n` +
-            `_— VaniaBot 🌸_`,
+            `╭━━━ 🌸 *VaniaBot* ━━━╮\n` +
+            `   *SubBot desconectada*\n` +
+            `\n` +
+            `Parece que tu SubBot\n` +
+            `   se ha desconectado.\n` +
+            `\n` +
+            `Probablemente la sesión\n` +
+            `   se cerró desde el\n` +
+            `   teléfono.\n` +
+            `\n` +
+            `Para volver a conectarla\n` +
+            `   usa:\n` +
+            `\n` +
+            `   *.reconbot*\n` +
+            `\n` +
+            `Cuando quieras,\n` +
+            `   puedo ayudarte\n` +
+            `   a vincularla otra vez.\n` +
+            `\n` +
+            `   Estoy aquí 💗\n` +
+            `╰━━━━━━━━━━━━━━━━━━━━╯`,
         });
       } catch {}
     });

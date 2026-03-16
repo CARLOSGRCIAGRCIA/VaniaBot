@@ -27,11 +27,18 @@ export class ListBotsCommand extends Command {
 
     if (all.length === 0) {
       await ctx.reply(
-        `╔═══════════════════════════╗\n` +
-          `║  🌸 *VaniaBot — SubBots*    ║\n` +
-          `╚═══════════════════════════╝\n\n` +
-          `_No hay subbots registradas aún_ 🦋\n\n` +
-          `_— VaniaBot 🌸_`,
+        `╭━━━ 🌸 *VaniaBot* ━━━╮\n` +
+          `   *SubBots registradas*\n` +
+          `\n` +
+          `🦋 Aún no hay subbots\n` +
+          `   registradas en este\n` +
+          `   momento.\n` +
+          `\n` +
+          `✨ Cuando agregues una,\n` +
+          `   aparecerá aquí.\n` +
+          `\n` +
+          `   Estaré esperando 💗\n` +
+          `╰━━━━━━━━━━━━━━━━━━━━╯`,
       );
       return;
     }
@@ -47,10 +54,13 @@ export class ListBotsCommand extends Command {
     const connected = all.filter(s => s.status === 'connected').length;
 
     let text =
-      `╔═══════════════════════════╗\n` +
-      `║  🌸 *VaniaBot — SubBots*    ║\n` +
-      `╚═══════════════════════════╝\n\n` +
-      `📊 Total: *${all.length}* | ✅ Activas: *${connected}*\n\n`;
+      `╭━━━ 🌸 *VaniaBot* ━━━╮\n` +
+      `   *SubBots registradas*\n` +
+      `\n` +
+      `Total: *${all.length}*\n` +
+      `Activas: *${connected}*\n` +
+      `───────────────\n` +
+      `\n`;
 
     for (const s of all) {
       text +=

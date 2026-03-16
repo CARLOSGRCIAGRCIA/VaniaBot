@@ -65,15 +65,19 @@ export class SoloAdminCommand extends Command {
       case 'activar':
         await serviceManager.groupService.setOnlyAdmin(ctx.chat.jid, true);
         await ctx.reply(
-          `╔═══════════════════════════╗\n` +
-            `║  🌸 *VaniaBot — SoloAdmin*  ║\n` +
-            `╚═══════════════════════════╝\n\n` +
-            `✅ *Admin-Only Mode Enabled*\n\n` +
-            `Only group admins and bot owners\n` +
-            `can use commands.\n\n` +
-            `Regular users cannot use commands,\n` +
-            `but can still react to lists.\n\n` +
-            `_— VaniaBot 🌸_`,
+          `╭━━━ 🌸  *VaniaBot*  ━━━╮\n` +
+            `   *Modo Solo Admin* activado\n` +
+            `\n` +
+            `Ahora solo los *admins del grupo*\n` +
+            `   y los *owners del bot* pueden\n` +
+            `   usar mis comandos.\n` +
+            `\n` +
+            `Los demás miembros aún podrán\n` +
+            `   reaccionar a las listas.\n` +
+            `\n` +
+            `   Gracias por cuidar el orden\n` +
+            `   del grupo conmigo 💗\n` +
+            `╰━━━━━━━━━━━━━━━━━━━━╯`,
         );
         break;
 
@@ -81,13 +85,18 @@ export class SoloAdminCommand extends Command {
       case 'desactivar':
         await serviceManager.groupService.setOnlyAdmin(ctx.chat.jid, false);
         await ctx.reply(
-          `╔═══════════════════════════╗\n` +
-            `║  🌸 *VaniaBot — SoloAdmin*  ║\n` +
-            `╚═══════════════════════════╝\n\n` +
-            `🔓 *Admin-Only Mode Disabled*\n\n` +
-            `All group members can\n` +
-            `use commands again.\n\n` +
-            `_— VaniaBot 🌸_`,
+          `╭━━━ 🌸 *VaniaBot* ━━━╮\n` +
+            `   *Modo Solo Admin desactivado*\n` +
+            `\n` +
+            `Todos los miembros del grupo\n` +
+            `   pueden usar mis comandos\n` +
+            `   nuevamente.\n` +
+            `\n` +
+            `Gracias por mantener\n` +
+            `   el grupo organizado.\n` +
+            `\n` +
+            `   Estoy aquí para ayudar 💗\n` +
+            `╰━━━━━━━━━━━━━━━━━━━━╯`,
         );
         break;
 
@@ -118,22 +127,29 @@ export class SoloAdminCommand extends Command {
     const onlyAdmin = await serviceManager.groupService.getOnlyAdmin(ctx.chat.jid);
 
     await ctx.reply(
-      `╔═══════════════════════════╗\n` +
-        `║  🌸 *VaniaBot — SoloAdmin*  ║\n` +
-        `╚═══════════════════════════╝\n\n` +
-        `📊 *Current Status:* ${onlyAdmin ? '✅ Enabled' : '❌ Disabled'}\n\n` +
+      `╭━━━ 🌸 *VaniaBot* ━━━╮\n` +
+        `   ⚙️ *Modo Solo Admin*\n` +
+        `\n` +
+        `*Estado actual:* ${onlyAdmin ? '✅ Activado' : '❌ Desactivado'}\n` +
+        `\n` +
         `${
           onlyAdmin
-            ? `Only *admins* and *bot owners*\n` +
-              `can use commands.\n\n` +
-              `Regular users cannot use commands,\n` +
-              `but can still react to lists.`
-            : `All group members can\n` + `use commands freely.`
-        }\n\n` +
-        `Commands:\n` +
-        `• \`.soloadmin on\` — Enable\n` +
-        `• \`.soloadmin off\` — Disable\n\n` +
-        `_— VaniaBot 🌸_`,
+            ? `Solo *admins del grupo*\n` +
+              `   y *owners del bot*\n` +
+              `   pueden usar comandos.\n` +
+              `\n` +
+              `Los demás miembros\n` +
+              `   solo podrán reaccionar\n` +
+              `   a las listas.`
+            : `Todos los miembros\n` + `   pueden usar mis\n` + `   comandos libremente.`
+        }\n` +
+        `\n` +
+        `*Comandos disponibles*\n` +
+        `• \`.soloadmin on\`  — Activar\n` +
+        `• \`.soloadmin off\` — Desactivar\n` +
+        `\n` +
+        `   Estoy aquí para ayudarte 💗\n` +
+        `╰━━━━━━━━━━━━━━━━━━━━╯`,
     );
   }
 }

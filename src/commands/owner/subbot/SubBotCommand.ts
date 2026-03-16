@@ -80,18 +80,30 @@ export class SubBotCommand extends Command {
 
     if (!phone) {
       await ctx.reply(
-        `╔═══════════════════════════╗\n` +
-          `║  🌸 *VaniaBot — SubBot*     ║\n` +
-          `╚═══════════════════════════╝\n\n` +
-          `*Link your number as a subbot!* 💝\n\n` +
-          `📋 *Usage:* \`.serbot <number>\`\n` +
-          `📌 *Example:* \`.serbot +529514639799\`\n\n` +
-          `⚠️ Include country code:\n` +
-          `🇲🇽 Mexico: \`+52\`\n` +
-          `🇺🇸 USA/Canada: \`+1\`\n\n` +
-          `ℹ️ Your subbot will have all VaniaBot\n` +
-          `commands available 🦋\n\n` +
-          `_— VaniaBot 🌸_`,
+        `╭━━━ 🌸 *VaniaBot* ━━━╮\n` +
+          `   *Conectar SubBot*\n` +
+          `\n` +
+          `💝 Vincula tu número\n` +
+          `   para crear tu propia\n` +
+          `   *SubBot*.\n` +
+          `\n` +
+          `*Uso*\n` +
+          `• \`.serbot <numero>\`\n` +
+          `\n` +
+          `*Ejemplo*\n` +
+          `• \`.serbot +529514639799\`\n` +
+          `\n` +
+          `🌍 Incluye el código\n` +
+          `   de país:\n` +
+          `🇲🇽 México: \`+52\`\n` +
+          `🇺🇸 USA / Canadá: \`+1\`\n` +
+          `\n` +
+          `✨ Tu SubBot tendrá\n` +
+          `   todos mis comandos\n` +
+          `   disponibles 🦋\n` +
+          `\n` +
+          `   Estaré lista para ayudarte 💗\n` +
+          `╰━━━━━━━━━━━━━━━━━━━━╯`,
       );
       return;
     }
@@ -99,14 +111,22 @@ export class SubBotCommand extends Command {
     const cooldownCheck = canRegisterSubBot(ctx.sender.jid);
     if (!cooldownCheck.allowed) {
       await ctx.reply(
-        `╔═══════════════════════════╗\n` +
-          `║  🌸 *VaniaBot — SubBot*     ║\n` +
-          `╚═══════════════════════════╝\n\n` +
-          `⏳ *Please wait...*\n\n` +
-          `You must wait *${cooldownCheck.remaining} seconds* before\n` +
-          `trying to register a subbot again.\n\n` +
-          `This prevents errors from too rapid requests.\n` +
-          `_— VaniaBot 🌸_`,
+        `╭━━━ 🌸 *VaniaBot* ━━━╮\n` +
+          `   *Registro de SubBot*\n` +
+          `\n` +
+          `⏳ Un pequeño momento...\n` +
+          `\n` +
+          `💗 Necesitas esperar\n` +
+          `   *${cooldownCheck.remaining} segundos*\n` +
+          `   antes de intentar\n` +
+          `   registrar otra SubBot.\n` +
+          `\n` +
+          `✨ Esto ayuda a evitar\n` +
+          `   errores por intentos\n` +
+          `   demasiado rápidos.\n` +
+          `\n` +
+          `   Gracias por tu paciencia 🌸\n` +
+          `╰━━━━━━━━━━━━━━━━━━━━╯`,
       );
       return;
     }
@@ -125,17 +145,25 @@ export class SubBotCommand extends Command {
     if (subBotDatabase.existsByOwner(ctx.sender.jid)) {
       const status = subBotManager.getStatus(ctx.sender.jid);
       await ctx.reply(
-        `╔═══════════════════════════╗\n` +
-          `║  🌸 *VaniaBot — SubBot*     ║\n` +
-          `╚═══════════════════════════╝\n\n` +
-          `⚠️ *You already have a registered subbot*\n\n` +
-          `📞 Number: *+${status?.phoneNumber}*\n` +
-          `${status?.status === 'connected' ? '✅' : '❌'} Status: *${status?.status}*\n\n` +
-          `Available commands:\n` +
-          `• *.statusbot* — View status\n` +
-          `• *.reconbot* — Reconnect\n` +
-          `• *.delbot* — Delete\n\n` +
-          `_— VaniaBot 🌸_`,
+        `╭━━━ 🌸 *VaniaBot* ━━━╮\n` +
+          `   *Tu SubBot*\n` +
+          `\n` +
+          `💗 Ya tienes una SubBot\n` +
+          `   registrada.\n` +
+          `\n` +
+          `Número:\n` +
+          `   *+${status?.phoneNumber}*\n` +
+          `\n` +
+          `${status?.status === 'connected' ? '✅' : '❌'} Estado:\n` +
+          `   *${status?.status}*\n` +
+          `\n` +
+          `✨ *Opciones disponibles*\n` +
+          `• *.statusbot* — Ver estado\n` +
+          `• *.reconbot* — Reconectar\n` +
+          `• *.delbot* — Eliminar\n` +
+          `\n` +
+          `   Estoy aquí para ayudarte 🌸\n` +
+          `╰━━━━━━━━━━━━━━━━━━━━╯`,
       );
       return;
     }
@@ -147,15 +175,27 @@ export class SubBotCommand extends Command {
       userLastAttempt.set(ctx.sender.jid, Date.now());
       await subBotManager.registerSubBot(ctx.sender.jid, ctx.sender.pushName, cleaned);
       await ctx.reply(
-        `╔═══════════════════════════╗\n` +
-          `║  🌸 *VaniaBot — SubBot*     ║\n` +
-          `╚═══════════════════════════╝\n\n` +
-          `✅ *Subbot registered successfully!* 💝\n\n` +
-          `📞 Number: *${cleaned}*\n` +
-          `⏳ Generating pairing code...\n\n` +
-          `📲 I will send it here in a few seconds.\n` +
-          `_Wait for the code and follow instructions_ 🦋\n\n` +
-          `_— VaniaBot 🌸_`,
+        `╭━━━ 🌸 *VaniaBot* ━━━╮\n` +
+          `   *SubBot creada*\n` +
+          `\n` +
+          `💝 Tu SubBot fue\n` +
+          `   registrada con éxito.\n` +
+          `\n` +
+          `Número:\n` +
+          `   *${cleaned}*\n` +
+          `\n` +
+          `Estoy generando\n` +
+          `   tu *pairing code*...\n` +
+          `\n` +
+          `En unos segundos\n` +
+          `   lo enviaré aquí.\n` +
+          `\n` +
+          `🦋 Espera el código\n` +
+          `   y sigue las\n` +
+          `   instrucciones.\n` +
+          `\n` +
+          `   ¡Estoy lista para ayudarte! 💗\n` +
+          `╰━━━━━━━━━━━━━━━━━━━━╯`,
       );
       await ctx.react('✅');
     } catch (error) {
@@ -189,13 +229,23 @@ export class DelBotCommand extends Command {
     try {
       await subBotManager.deleteSubBot(ctx.sender.jid);
       await ctx.reply(
-        `╔═══════════════════════════╗\n` +
-          `║  🌸 *VaniaBot — SubBot*     ║\n` +
-          `╚═══════════════════════════╝\n\n` +
-          `🗑️ *Subbot deleted successfully* 💝\n\n` +
-          `The session has been completely erased.\n` +
-          `Use *.serbot <number>* to create a new one 🦋\n\n` +
-          `_— VaniaBot 🌸_`,
+        `╭━━━ 🌸 *VaniaBot* ━━━╮\n` +
+          `   *SubBot eliminada*\n` +
+          `\n` +
+          `Tu SubBot fue\n` +
+          `   eliminada con éxito.\n` +
+          `\n` +
+          `La sesión ha sido\n` +
+          `   borrada completamente.\n` +
+          `\n` +
+          `🦋 Si deseas crear\n` +
+          `   una nueva SubBot,\n` +
+          `   usa:\n` +
+          `\n` +
+          `   *.serbot <numero>*\n` +
+          `\n` +
+          `   Estoy aquí para ayudarte 💗\n` +
+          `╰━━━━━━━━━━━━━━━━━━━━╯`,
       );
       await ctx.react('✅');
     } catch (error) {
@@ -247,19 +297,29 @@ export class StatusBotCommand extends Command {
       : '';
 
     await ctx.reply(
-      `╔═══════════════════════════╗\n` +
-        `║  🌸 *VaniaBot — SubBot*     ║\n` +
-        `╚═══════════════════════════╝\n\n` +
-        `🏷️ *Name:* ${status.name}\n` +
-        `📞 *Number:* +${status.phoneNumber}\n` +
-        `${statusEmoji[status.status] ?? '❓'} *Status:* ${statusLabel[status.status] ?? status.status}` +
+      `╭━━━ 🌸 *VaniaBot* ━━━╮\n` +
+        `   *Estado de tu SubBot*\n` +
+        `\n` +
+        `Nombre:\n` +
+        `   *${status.name}*\n` +
+        `\n` +
+        `Número:\n` +
+        `   *+${status.phoneNumber}*\n` +
+        `\n` +
+        `${statusEmoji[status.status] ?? '❓'} Estado:\n` +
+        `   *${statusLabel[status.status] ?? status.status}*` +
         `${connectedSince}\n` +
-        `🆔 *ID:* \`${status.id}\`\n\n` +
-        `_Available commands:_\n` +
-        `• *.serbot* — Create subbot\n` +
-        `• *.delbot* — Delete subbot\n` +
-        `• *.reconbot* — Reconnect subbot\n\n` +
-        `_— VaniaBot 🌸_`,
+        `\n` +
+        `ID:\n` +
+        `   \`${status.id}\`\n` +
+        `\n` +
+        `*Opciones disponibles*\n` +
+        `• *.serbot* — Crear SubBot\n` +
+        `• *.delbot* — Eliminar\n` +
+        `• *.reconbot* — Reconectar\n` +
+        `\n` +
+        `   Estoy aquí para ayudarte 🌸\n` +
+        `╰━━━━━━━━━━━━━━━━━━━━╯`,
     );
   }
 }
@@ -286,14 +346,22 @@ export class ReconBotCommand extends Command {
     try {
       await subBotManager.reconnectSubBot(ctx.sender.jid);
       await ctx.reply(
-        `╔═══════════════════════════╗\n` +
-          `║  🌸 *VaniaBot — SubBot*     ║\n` +
-          `╚═══════════════════════════╝\n\n` +
-          `🔄 *Reconnecting your subbot...* 💝\n\n` +
-          `⏳ You will receive the pairing code\n` +
-          `in this chat in a few seconds.\n\n` +
-          `_Follow the instructions when it arrives_ 🦋\n\n` +
-          `_— VaniaBot 🌸_`,
+        `╭━━━ 🌸 *VaniaBot* ━━━╮\n` +
+          `   *Reconectando SubBot*\n` +
+          `\n` +
+          `Estoy reconectando\n` +
+          `   tu SubBot...\n` +
+          `\n` +
+          `En unos segundos\n` +
+          `   recibirás aquí\n` +
+          `   tu *pairing code*.\n` +
+          `\n` +
+          `🦋 Cuando llegue,\n` +
+          `   solo sigue las\n` +
+          `   instrucciones.\n` +
+          `\n` +
+          `   Estoy contigo 💗\n` +
+          `╰━━━━━━━━━━━━━━━━━━━━╯`,
       );
       await ctx.react('✅');
     } catch (error) {
