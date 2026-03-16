@@ -44,7 +44,7 @@
 | Atributo              | Valor          |
 | :-------------------- | :------------- |
 | **Nombre**            | VaniaBot       |
-| **Versión**           | 1.0.0          |
+| **Versión**           | 4.3.0          |
 | **Licencia**          | MIT            |
 | **Idioma principal**  | TypeScript     |
 | **Runtime**           | Node.js 18+    |
@@ -95,17 +95,17 @@ VaniaBot es un bot de WhatsApp **multifuncional** construido con TypeScript y Ba
 
 ## Características
 
-| Módulo            | Descripción                                                              |
-| :---------------- | :----------------------------------------------------------------------- |
-| **🤖 AI**         | Chat contextual con Groq (LLaMA 3), transcripción de audio.              |
-| **🛡️ Moderación** | Ban, kick, mute, warn, anti-spam, anti-link, anti-fake.                  |
-| **💰 Economía**   | Recompensas diarias/semanales, trabajo, tienda, inventario, niveles XP.  |
-| **🎮 Juegos**     | Coinflip, slots, quizzes con dificultad adaptativa, listas interactivas. |
-| **🖼️ Stickers**   | Crear stickers de imágenes, videos, GIFs.                                |
-| **📥 Descargas**  | YouTube audio/video, TikTok, Instagram, Facebook.                        |
-| **📝 Poesía**     | Poemas generados por IA, haikus, sonetos, dedicatorias.                  |
-| **🛠️ Utilidades** | Traductor, conversor de moneda, QR, encuestas, recordatorios.            |
-| **🧩 SubBots**    | Múltiples instancias de WhatsApp paralelas.                              |
+| Módulo         | Descripción                                                              |
+| :------------- | :----------------------------------------------------------------------- |
+| **AI**         | Chat contextual con Groq (LLaMA 3), transcripción de audio.              |
+| **Moderación** | Ban, kick, mute, warn, anti-spam, anti-link, anti-fake.                  |
+| **Economía**   | Recompensas diarias/semanales, trabajo, tienda, inventario, niveles XP.  |
+| **Juegos**     | Coinflip, slots, quizzes con dificultad adaptativa, listas interactivas. |
+| **Stickers**   | Crear stickers de imágenes, videos, GIFs.                                |
+| **Descargas**  | YouTube audio/video, TikTok, Instagram, Facebook.                        |
+| **Poesía**     | Poemas generados por IA, haikus, sonetos, dedicatorias.                  |
+| **Utilidades** | Traductor, conversor de moneda, QR, encuestas, recordatorios.            |
+| **SubBots**    | Múltiples instancias de WhatsApp paralelas.                              |
 
 ---
 
