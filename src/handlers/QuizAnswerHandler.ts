@@ -1,3 +1,17 @@
+/**
+ * QuizAnswerHandler.ts
+ *
+ * Handles quiz game answer processing in groups.
+ * Manages answer validation, scoring, streaks, and rewards.
+ * Part of the interactive quiz system with adaptive difficulty.
+ *
+ * @author **Carlos G** ⭐
+ * @github CARLOSGRCIAGRCIA
+ * @tiktok carlos.grcia0
+ * @instagram carlos.gxv
+ * @created 2026-03-16
+ */
+
 import { quizService } from '@/services/study/QuizService.js';
 import { difficultyEngine } from '@/services/study/DifficultyEngine.js';
 import { serviceManager } from '@/services/system/Servicemanager.js';
@@ -9,6 +23,9 @@ interface UserWithQuizStats {
   quizStats?: UserQuizStats;
 }
 
+/**
+ * Default quiz statistics for new players
+ */
 const DEFAULT_STATS: UserQuizStats = {
   totalCorrect: 0,
   totalAnswered: 0,
@@ -20,7 +37,18 @@ const DEFAULT_STATS: UserQuizStats = {
   sessionsPlayed: 0,
 };
 
+/**
+ * Handler for processing quiz answers in group chats.
+ * Validates answers, updates scores, and manages game state.
+ */
 class QuizAnswerHandler {
+  /**
+   * Handles quiz answer messages.
+   * Checks if there's an active quiz session and processes the answer.
+   *
+   * @param ctx - The message context
+   * @returns true if answer was processed, false otherwise
+   */
   async handle(ctx: MessageContext): Promise<boolean> {
     if (!ctx.chat.isGroup) {
       return false;
@@ -108,29 +136,36 @@ class QuizAnswerHandler {
 
     const streakMsg =
       newStreak >= 3
-        ? `\n🔥 *¡Racha de ${newStreak}!* +${difficultyEngine.calculateCoins(QuizDifficulty.MEDIUM, newStreak) - 35} bonus`
+        ? `\n🔥 *Streak of ${newStreak}!* +${difficultyEngine.calculateCoins(QuizDifficulty.MEDIUM, newStreak) - 35} bonus`
         : '';
 
-    const hintPenalty = player.usedHint ? '\n_(recompensa reducida por usar hint)_' : '';
+    const hintPenalty = player.usedHint ? '\n_(reduced reward for using hint)_' : '';
 
     await ctx.reply(
-      `✅ *¡Correcto, ${player.pushName}!*\n\n` +
-        `💰 +${coinsAwarded} monedas\n` +
+      `✅ *Correct, ${player.pushName}!*\n\n` +
+        `💰 +${coinsAwarded} coins\n` +
         `⭐ +${xpAwarded} XP` +
         streakMsg +
         hintPenalty +
-        (sessionEnded ? '' : '\n\n_Siguiente pregunta en 4s..._'),
+        (sessionEnded ? '' : '\n\n_Next question in 4s..._'),
     );
 
     return true;
   }
 
+  /**
+   * Handles hint requests during a quiz.
+   * Provides a hint to the current question with a penalty.
+   *
+   * @param ctx - The message context
+   * @returns Promise<void>
+   */
   private async _handleHint(ctx: MessageContext): Promise<void> {
     const hint = quizService.getHint(ctx.chat.jid, ctx.sender.jid);
     if (!hint) return;
 
     await ctx.reply(
-      `💡 *Pista:* ${hint}\n\n` + `_(Si respondes correctamente ganarás 50% menos monedas)_`,
+      `💡 *Hint:* ${hint}\n\n` + `_(If answered correctly, you will earn 50% less coins)_`,
     );
   }
 }

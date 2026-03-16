@@ -282,10 +282,10 @@ export class ListaManager {
 
   getLista(messageId: string): Lista | undefined {
     const lista = this.listas.get(messageId);
-    logger.info(
+    logger.debug(
       `[LISTA] getLista(${messageId}) → ${lista ? `encontrada (activa=${lista.activa})` : 'NO encontrada'}`,
     );
-    logger.info(`[LISTA] Listas registradas: [${Array.from(this.listas.keys()).join(', ')}]`);
+    logger.debug(`[LISTA] Listas registradas: [${Array.from(this.listas.keys()).join(', ')}]`);
     return lista;
   }
 
@@ -309,12 +309,12 @@ export class ListaManager {
     const lista = this.getLista(reaccion.messageId);
 
     if (!lista) {
-      logger.info(`[LISTA REACCION] No hay lista con ese messageId, ignorando`);
+      logger.debug(`[LISTA REACCION] No hay lista con ese messageId, ignorando`);
       return;
     }
 
     if (!lista.activa) {
-      logger.info(`[LISTA REACCION] Lista inactiva, ignorando`);
+      logger.debug(`[LISTA REACCION] Lista inactiva, ignorando`);
       return;
     }
 

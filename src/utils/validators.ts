@@ -138,3 +138,159 @@ export function isDomainLink(url: string, domain: string): boolean {
     return false;
   }
 }
+
+export interface BetValidationResult {
+  valid: boolean;
+  error?: string;
+}
+
+export interface TransferValidationResult {
+  valid: boolean;
+  error?: string;
+}
+
+export interface ValidationConfig {
+  minBet?: number;
+  maxBet?: number;
+  minTransfer?: number;
+  maxTransfer?: number;
+}
+
+const DEFAULT_CONFIG: Required<ValidationConfig> = {
+  minBet: 10,
+  maxBet: 10000,
+  minTransfer: 1,
+  maxTransfer: 1000000,
+};
+
+export function validateBetAmount(
+  amount: number,
+  userBalance: number,
+  config: ValidationConfig = DEFAULT_CONFIG,
+): BetValidationResult {
+  if (isNaN(amount) || amount <= 0) {
+    return { valid: false, error: '❌ Monto inválido' };
+  }
+
+  const minBet = config.minBet ?? DEFAULT_CONFIG.minBet;
+  const maxBet = config.maxBet ?? DEFAULT_CONFIG.maxBet;
+
+  if (amount < minBet) {
+    return { valid: false, error: `❌ Apuesta mínima: $${minBet}` };
+  }
+
+  if (amount > maxBet) {
+    return { valid: false, error: `❌ Apuesta máxima: $${maxBet}` };
+  }
+
+  if (amount > userBalance) {
+    return {
+      valid: false,
+      error: `❌ Saldo insuficiente. Balance: $${userBalance.toLocaleString()}`,
+    };
+  }
+
+  return { valid: true };
+}
+
+export function validateTransferAmount(
+  amount: number,
+  senderBalance: number,
+  recipientJid: string,
+  senderJid: string,
+  config: ValidationConfig = DEFAULT_CONFIG,
+): TransferValidationResult {
+  if (isNaN(amount) || amount <= 0) {
+    return { valid: false, error: '❌ Monto inválido' };
+  }
+
+  const minTransfer = config.minTransfer ?? DEFAULT_CONFIG.minTransfer;
+  const maxTransfer = config.maxTransfer ?? DEFAULT_CONFIG.maxTransfer;
+
+  if (amount < minTransfer) {
+    return { valid: false, error: `❌ Transferencia mínima: $${minTransfer}` };
+  }
+
+  if (amount > maxTransfer) {
+    return { valid: false, error: `❌ Transferencia máxima: $${maxTransfer}` };
+  }
+
+  if (senderJid === recipientJid || recipientJid.includes(senderJid.split('@')[0])) {
+    return { valid: false, error: '❌ No puedes transferirte a ti mismo' };
+  }
+
+  if (amount > senderBalance) {
+    return {
+      valid: false,
+      error: `❌ Saldo insuficiente. Balance: $${senderBalance.toLocaleString()}`,
+    };
+  }
+
+  return { valid: true };
+}
+
+export function validateWorkCooldown(
+  lastWork: number | undefined,
+  cooldownMs: number = 60 * 60 * 1000,
+): {
+  allowed: boolean;
+  remainingMs?: number;
+} {
+  if (!lastWork) return { allowed: true };
+
+  const elapsed = Date.now() - lastWork;
+  const remaining = cooldownMs - elapsed;
+
+  if (remaining > 0) {
+    return { allowed: false, remainingMs: remaining };
+  }
+
+  return { allowed: true };
+}
+
+export function validateDailyCooldown(lastDaily: number | undefined): {
+  allowed: boolean;
+  remainingMs?: number;
+} {
+  if (!lastDaily) return { allowed: true };
+
+  const cooldownMs = 24 * 60 * 60 * 1000;
+  const elapsed = Date.now() - lastDaily;
+  const remaining = cooldownMs - elapsed;
+
+  if (remaining > 0) {
+    return { allowed: false, remainingMs: remaining };
+  }
+
+  return { allowed: true };
+}
+
+export function validateWeeklyCooldown(lastWeekly: number | undefined): {
+  allowed: boolean;
+  remainingMs?: number;
+} {
+  if (!lastWeekly) return { allowed: true };
+
+  const cooldownMs = 7 * 24 * 60 * 60 * 1000;
+  const elapsed = Date.now() - lastWeekly;
+  const remaining = cooldownMs - elapsed;
+
+  if (remaining > 0) {
+    return { allowed: false, remainingMs: remaining };
+  }
+
+  return { allowed: true };
+}
+
+export function sanitizeTextInput(input: string, maxLength: number = 500): string {
+  return input
+    .replace(/[<>]/g, '')
+    .replace(/['"]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .slice(0, maxLength);
+}
+
+export function validateMention(jid: string): boolean {
+  return isUserJid(jid) || isGroupJid(jid);
+}

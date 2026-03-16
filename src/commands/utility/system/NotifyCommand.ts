@@ -3,6 +3,7 @@ import { CommandCategory, CommandContext } from '@/types/index.js';
 import type { MessageContext } from '@/types/index.js';
 import type { proto, WAMessage } from '@whiskeysockets/baileys';
 import { downloadMediaMessage } from '@whiskeysockets/baileys';
+import { cacheManager } from '@/core/CacheManager.js';
 
 export class NotifyCommand extends Command {
   name = 'notify';
@@ -60,7 +61,9 @@ export class NotifyCommand extends Command {
     const footer = '\n\n> _*By VaniaBot*_ 💝';
 
     try {
-      const groupMetadata = await ctx.sock.groupMetadata(ctx.chat.jid);
+      const cached = cacheManager.getGroupMetadata(ctx.chat.jid);
+      const groupMetadata = cached ?? (await ctx.sock.groupMetadata(ctx.chat.jid));
+      if (!cached) cacheManager.setGroupMetadata(ctx.chat.jid, groupMetadata);
       const participants = groupMetadata.participants.map(p => p.id);
 
       if (!ctx.quoted) {

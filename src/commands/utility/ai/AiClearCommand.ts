@@ -18,13 +18,13 @@ export class AiClearCommand extends Command {
         await ctx.reply(' Solo los administradores pueden borrar el historial del grupo.');
         return;
       }
-      aiService.clearGroupSessions(ctx.chat.jid);
+      await aiService.clearGroupSessions(ctx.chat.jid);
       await ctx.react('🗑️');
       await ctx.reply('🗑️ Historial de *todos los usuarios* borrado.');
       return;
     }
 
-    aiService.clearSession(ctx.chat.jid, ctx.sender.jid);
+    await aiService.clearSession(ctx.chat.jid, ctx.sender.jid);
     await ctx.react('🗑️');
     await ctx.reply('🗑️ Tu historial fue borrado. ¡Empezamos desde cero! 😊');
   }

@@ -3,6 +3,8 @@ import { CommandCategory } from '@/types/index.js';
 import type { MessageContext } from '@/types/index.js';
 import { serviceManager } from '@/services/system/Servicemanager.js';
 import { formatNumber } from '@/utils/helpers.js';
+import { validateBetAmount } from '@/utils/validators.js';
+import { config } from '@/config/index.js';
 
 export class CoinflipCommand extends Command {
   name = 'coinflip';
@@ -37,9 +39,16 @@ export class CoinflipCommand extends Command {
 
     const user = await serviceManager.userService.getUser(ctx.sender.jid);
 
-    if (user.money < amount) {
-      await ctx.reply(`You don't have enough money.\n\n` + `Balance: $${formatNumber(user.money)}`);
-      return;
+    if (!user.isOwner) {
+      const validation = validateBetAmount(amount, user.money, {
+        minBet: config.economy.minBet,
+        maxBet: config.economy.maxBet,
+      });
+
+      if (!validation.valid) {
+        await ctx.reply(validation.error || '❌ Apuesta inválida');
+        return;
+      }
     }
 
     const result: 'heads' | 'tails' = Math.random() < 0.5 ? 'heads' : 'tails';

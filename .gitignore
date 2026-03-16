@@ -7,3 +7,7 @@ vaniasession
 .vscode
 data/database.json
 dest
+subbot-sessions
+subbots.json
+coverage
+backups

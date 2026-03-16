@@ -1,12 +1,14 @@
 import { Command } from '../Command.js';
 import { CommandCategory, type MessageContext } from '@/types/index.js';
 import { serviceManager } from '@/services/system/Servicemanager.js';
+import { validateBetAmount } from '@/utils/validators.js';
+import { config } from '@/config/index.js';
 
 export class SlotsCommand extends Command {
   name = 'slots';
   description = 'Play slot machine and win money';
   category = CommandCategory.GAME;
-  aliases = ['slot', 'tragamonedas'];
+  aliases = ['slot', 'tragamonas'];
   usage = '!slots <bet>';
   examples = ['!slots 100', '!slots 500'];
   cooldown = 5000;
@@ -40,17 +42,13 @@ export class SlotsCommand extends Command {
     const user = await serviceManager.userService.getUser(ctx.sender.jid);
 
     if (!user.isOwner) {
-      if (bet > user.money) {
-        await ctx.reply(
-          `❌ Insufficient funds\n\n` +
-            `💰 Your balance: $${user.money.toLocaleString()}\n` +
-            `💵 Bet: $${bet.toLocaleString()}`,
-        );
-        return;
-      }
+      const validation = validateBetAmount(bet, user.money, {
+        minBet: config.economy.minBet,
+        maxBet: config.economy.maxBet,
+      });
 
-      if (bet < 10) {
-        await ctx.reply('❌ Minimum bet is $10');
+      if (!validation.valid) {
+        await ctx.reply(validation.error || '❌ Apuesta inválida');
         return;
       }
     }

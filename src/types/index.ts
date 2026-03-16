@@ -19,6 +19,7 @@ export interface ICommand {
 export enum CommandCategory {
   UTILITY = 'utility',
   FUN = 'fun',
+  SUBBOT = 'subbot',
   ECONOMY = 'economy',
   MODERATION = 'moderation',
   MEDIA = 'media',
@@ -107,4 +108,18 @@ export interface BotConfig {
     maxReconnectAttempts: number;
   };
   database: DatabaseConfig;
+  rateLimit: {
+    maxMessagesPerGroup: number;
+    windowMs: number;
+    whitelistGroups: string[];
+    whitelistUsers: string[];
+    floodMaxPerSecond: number;
+    floodWindowMs: number;
+  };
+  economy: {
+    minBet: number;
+    maxBet: number;
+    minTransfer: number;
+    maxTransfer: number;
+  };
 }

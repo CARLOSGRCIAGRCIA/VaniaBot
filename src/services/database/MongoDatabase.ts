@@ -2,6 +2,7 @@ import type { Db, Collection, Filter, Document } from 'mongodb';
 import { MongoClient, ObjectId } from 'mongodb';
 import { Database } from './Database.js';
 import { logger, logError } from '@/utils/logger.js';
+import { ErrorHandler } from '@/utils/ErrorHandler.js';
 
 export class MongoDatabase extends Database {
   private client: MongoClient | null = null;
@@ -118,5 +119,17 @@ export class MongoDatabase extends Database {
   async clear(collection: string): Promise<void> {
     const coll = this.getCollection(collection);
     await coll.deleteMany({});
+  }
+
+  async retryOperation<T>(operation: () => Promise<T>, operationName: string): Promise<T> {
+    return ErrorHandler.retry(operation, {
+      maxRetries: 3,
+      delayMs: 1000,
+      onRetry: (attempt, error) => {
+        logger.warn(
+          `MongoDB ${operationName} retry ${attempt}: ${error instanceof Error ? error.message : 'unknown'}`,
+        );
+      },
+    });
   }
 }

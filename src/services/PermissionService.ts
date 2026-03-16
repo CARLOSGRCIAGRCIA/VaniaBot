@@ -58,8 +58,17 @@ export class PermissionService {
   private static readonly CACHE_TTL = 5 * 60 * 1000;
 
   static isOwner(jid: string): boolean {
-    const phoneNumber = normalizeJid(jid).split('@')[0];
-    return config.owners.includes(phoneNumber);
+    const normalizedJid = normalizeJid(jid);
+    const phoneNumber = normalizedJid.split('@')[0];
+
+    for (const owner of config.owners) {
+      const normalizedOwner = normalizeJid(owner);
+      const ownerPhone = normalizedOwner.split('@')[0];
+      if (normalizedJid === normalizedOwner || phoneNumber === ownerPhone) {
+        return true;
+      }
+    }
+    return false;
   }
 
   private static async getGroupMetadata(

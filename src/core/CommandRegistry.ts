@@ -1,6 +1,22 @@
+/**
+ * CommandRegistry.ts
+ *
+ * Central registry for managing bot commands and their aliases.
+ * Handles command registration, retrieval, and cooldown tracking.
+ *
+ * @author **Carlos G** ⭐
+ * @github CARLOSGRCIAGRCIA
+ * @tiktok carlos.grcia0
+ * @instagram carlos.gxv
+ * @created 2026-03-16
+ */
+
 import type { ICommand } from '@/types/index.js';
 import { logger } from '@/utils/logger.js';
 
+/**
+ * Registry for managing commands and their aliases.
+ */
 export class CommandRegistry {
   private commands = new Map<string, ICommand>();
   private aliases = new Map<string, string>();

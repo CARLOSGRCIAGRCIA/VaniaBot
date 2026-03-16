@@ -1,14 +1,42 @@
+/**
+ * AiMentionHandler.ts
+ *
+ * Handles AI chat when the bot is mentioned in a message.
+ * Processes mentions and routes them to the AI service for contextual responses.
+ * Includes logic for solo-admin mode and permission checking.
+ *
+ * @author **Carlos G** ⭐
+ * @github CARLOSGRCIAGRCIA
+ * @tiktok carlos.grcia0
+ * @instagram carlos.gxv
+ * @created 2026-03-16
+ */
+
 import { aiService } from '@/services/external/AIService.js';
 import type { MessageContext } from '@/types/index.js';
+import { serviceManager } from '@/services/system/Servicemanager.js';
+import { PermissionService } from '@/services/PermissionService.js';
 
+/**
+ * Handles mention events for AI chat.
+ * Checks if the bot was mentioned and routes to AI service if valid.
+ *
+ * @param ctx - The message context
+ * @param botJid - The bot's JID to check against
+ * @returns true if mention was handled, false otherwise
+ *
+ * @example
+ * ```typescript
+ * const botJid = sock.user?.id ?? '';
+ * await handleMention(ctx, botJid);
+ * ```
+ */
 export async function handleMention(ctx: MessageContext, botJid: string): Promise<boolean> {
   const rawText: string = ctx.text ?? '';
-  const textLower: string = rawText.toLowerCase().trim();
   const message = ctx.message.message;
 
   const mentionedJids: string[] = message?.extendedTextMessage?.contextInfo?.mentionedJid ?? [];
 
-  // sock.user.lid is an undocumented Baileys field — access safely
   const sockUser = ctx.sock.user as { id?: string; lid?: string } | undefined;
   const botLid: string | undefined = sockUser?.lid;
   const botNumber = botJid.split('@')[0].split(':')[0];
@@ -23,12 +51,22 @@ export async function handleMention(ctx: MessageContext, botJid: string): Promis
     return false;
   });
 
-  const mentionedByText = textLower.includes('@vania') || /\bvania\b/.test(textLower);
-  const isPureMention = mentionedJids.length === 1 && /^@\d+$/.test(rawText.trim());
+  if (!mentionedByJid) return false;
 
-  const botMentioned = mentionedByJid || mentionedByText || isPureMention;
+  if (ctx.chat.isGroup) {
+    const onlyAdmin = await serviceManager.groupService.getOnlyAdmin(ctx.chat.jid);
 
-  if (!botMentioned) return false;
+    if (onlyAdmin) {
+      const isOwner = PermissionService.isOwner(ctx.sender.jid);
+
+      if (!isOwner) {
+        await ctx.loadSenderPermissions();
+        if (!ctx.sender.isAdmin) {
+          return false;
+        }
+      }
+    }
+  }
 
   const cleanText = rawText
     .replace(/@\d+/g, '')
@@ -38,7 +76,7 @@ export async function handleMention(ctx: MessageContext, botJid: string): Promis
     .trim();
 
   if (!cleanText) {
-    await ctx.reply(`¿Me llamaste? 👀 Dime qué necesitas o usa *!ai <mensaje>* para chatear.`);
+    await ctx.reply(`Did you call me? Tell me what you need or use *!ai <message>* to chat.`);
     return true;
   }
 
@@ -53,7 +91,6 @@ export async function handleMention(ctx: MessageContext, botJid: string): Promis
   }
 
   await ctx.react('✅');
-  // response.success guarantees text is present
   await ctx.reply(response.text ?? '');
   return true;
 }

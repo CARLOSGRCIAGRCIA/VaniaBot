@@ -1,0 +1,124 @@
+/**
+ * BatchWriter.test.ts
+ *
+ * Unit tests for the BatchWriter class.
+ * Tests batch writing, scheduling, and flush operations.
+ *
+ * @author **Carlos G** ⭐
+ * @github CARLOSGRCIAGRCIA
+ * @tiktok carlos.grcia0
+ * @instagram carlos.gxv
+ * @created 2026-03-16
+ */
+
+import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
+import { BatchWriter } from '../../src/services/database/BatchWriter.js';
+
+describe('BatchWriter', () => {
+  let batchWriter: BatchWriter;
+  let mockWriteCallback: ReturnType<typeof vi.fn>;
+
+  beforeEach(() => {
+    mockWriteCallback = vi.fn().mockResolvedValue(undefined);
+    batchWriter = new BatchWriter(mockWriteCallback);
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  describe('schedule', () => {
+    it('should schedule a write operation', () => {
+      batchWriter.schedule('users', 'user1', { name: 'Test' });
+
+      expect(batchWriter.getPendingCount()).toBe(1);
+    });
+
+    it('should update existing key in batch', () => {
+      batchWriter.schedule('users', 'user1', { name: 'Test 1' });
+      batchWriter.schedule('users', 'user1', { name: 'Test 2' });
+
+      expect(batchWriter.getPendingCount()).toBe(1);
+    });
+
+    it('should handle multiple collections', () => {
+      batchWriter.schedule('users', 'user1', { name: 'User' });
+      batchWriter.schedule('groups', 'group1', { name: 'Group' });
+
+      expect(batchWriter.getPendingCount()).toBe(2);
+    });
+  });
+
+  describe('flushNow', () => {
+    it('should flush pending writes immediately', async () => {
+      batchWriter.schedule('users', 'user1', { name: 'Test' });
+
+      await batchWriter.flushNow();
+
+      expect(mockWriteCallback).toHaveBeenCalledTimes(1);
+      expect(mockWriteCallback).toHaveBeenCalledWith(
+        expect.arrayContaining([
+          expect.objectContaining({
+            collection: 'users',
+            key: 'user1',
+            value: { name: 'Test' },
+          }),
+        ]),
+      );
+      expect(batchWriter.getPendingCount()).toBe(0);
+    });
+
+    it('should not flush if no pending writes', async () => {
+      await batchWriter.flushNow();
+
+      expect(mockWriteCallback).not.toHaveBeenCalled();
+    });
+
+    it('should not allow concurrent flush', async () => {
+      vi.useFakeTimers();
+
+      let flushResolve!: () => void;
+      mockWriteCallback = vi.fn().mockImplementation(() => {
+        return new Promise<void>(resolve => {
+          flushResolve = resolve;
+        });
+      });
+
+      batchWriter = new BatchWriter(mockWriteCallback);
+      batchWriter.schedule('users', 'user1', { name: 'Test' });
+
+      const flush1 = batchWriter.flushNow();
+      const flush2 = batchWriter.flushNow();
+
+      expect(flush2).resolves.toBeUndefined();
+
+      flushResolve();
+      await flush1;
+    });
+
+    it('should restore writes on error', async () => {
+      mockWriteCallback = vi.fn().mockRejectedValue(new Error('Write error'));
+      batchWriter = new BatchWriter(mockWriteCallback);
+
+      batchWriter.schedule('users', 'user1', { name: 'Test' });
+
+      await batchWriter.flushNow();
+
+      expect(batchWriter.getPendingCount()).toBe(1);
+    });
+  });
+
+  describe('getPendingCount', () => {
+    it('should return 0 for empty batch', () => {
+      expect(batchWriter.getPendingCount()).toBe(0);
+    });
+
+    it('should return correct count after scheduling', () => {
+      batchWriter.schedule('users', 'user1', { name: 'Test 1' });
+      batchWriter.schedule('users', 'user2', { name: 'Test 2' });
+      batchWriter.schedule('groups', 'group1', { name: 'Test 3' });
+
+      expect(batchWriter.getPendingCount()).toBe(3);
+    });
+  });
+});

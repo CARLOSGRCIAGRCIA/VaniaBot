@@ -3,6 +3,8 @@ import { CommandCategory } from '@/types/index.js';
 import type { MessageContext } from '@/types/index.js';
 import { serviceManager } from '@/services/system/Servicemanager.js';
 import { formatNumber } from '@/utils/helpers.js';
+import { validateTransferAmount } from '@/utils/validators.js';
+import { config } from '@/config/index.js';
 
 export class PayCommand extends Command {
   name = 'pay';
@@ -21,27 +23,23 @@ export class PayCommand extends Command {
       return;
     }
 
-    if (mentionedJid === ctx.sender.jid) {
-      await ctx.reply('You cannot transfer money to yourself.');
-      return;
-    }
-
     const amountStr = ctx.args[1];
     const amount = parseInt(amountStr);
 
     if (!amountStr || isNaN(amount) || amount <= 0) {
-      await ctx.reply('Invalid amount\n\Usage: !pay @user <quantity>');
+      await ctx.reply('Invalid amount\n\nUsage: !pay @user <quantity>');
       return;
     }
 
     const sender = await serviceManager.userService.getUser(ctx.sender.jid);
 
-    if (sender.money < amount) {
-      await ctx.reply(
-        `You don't have enough money.\n\n` +
-          `Your balance: $${formatNumber(sender.money)}\n` +
-          `You need: $${formatNumber(amount)}`,
-      );
+    const validation = validateTransferAmount(amount, sender.money, mentionedJid, ctx.sender.jid, {
+      minTransfer: config.economy.minTransfer,
+      maxTransfer: config.economy.maxTransfer,
+    });
+
+    if (!validation.valid) {
+      await ctx.reply(validation.error || '❌ Transferencia inválida');
       return;
     }
 

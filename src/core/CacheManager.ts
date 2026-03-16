@@ -1,3 +1,16 @@
+/**
+ * CacheManager.ts
+ *
+ * Unified caching system for permissions, group metadata, users, and message deduplication.
+ * Uses LRU cache with TTL support for optimal performance.
+ *
+ * @author **Carlos G** ⭐
+ * @github CARLOSGRCIAGRCIA
+ * @tiktok carlos.grcia0
+ * @instagram carlos.gxv
+ * @created 2026-03-16
+ */
+
 import { LRUCache } from 'lru-cache';
 import type { GroupMetadata } from '@whiskeysockets/baileys';
 import type { UserPermissions, BotPermissions } from '@/services/PermissionService.js';
@@ -30,6 +43,10 @@ export interface CachedUser {
 
 // ──────────────────────────────────────────────────────────────────────────────
 
+/**
+ * Unified cache manager for all caching needs.
+ * Manages permissions, group metadata, users, and message deduplication.
+ */
 export class UnifiedCacheManager {
   private permissionsCache: LRUCache<string, PermissionData>;
   private groupMetadataCache: LRUCache<string, GroupMetadata>;

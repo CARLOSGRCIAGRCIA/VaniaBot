@@ -5,6 +5,7 @@ import { logger, logError } from '@/utils/logger.js';
 import { BatchWriter } from './BatchWriter.js';
 import { cacheManager } from '@/core/CacheManager.js';
 import type { CachedUser } from '@/core/CacheManager.js';
+import { ErrorHandler } from '@/utils/ErrorHandler.js';
 
 // The on-disk shape — collection → key → JSON value
 interface JsonData {
@@ -243,5 +244,17 @@ export class JsonDatabase extends Database {
 
   getCacheStats() {
     return this.cache.getStats();
+  }
+
+  async retryOperation<T>(operation: () => Promise<T>, operationName: string): Promise<T> {
+    return ErrorHandler.retry(operation, {
+      maxRetries: 3,
+      delayMs: 500,
+      onRetry: (attempt, error) => {
+        logger.warn(
+          `JsonDB ${operationName} retry ${attempt}: ${error instanceof Error ? error.message : 'unknown'}`,
+        );
+      },
+    });
   }
 }

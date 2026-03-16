@@ -1,15 +1,46 @@
+/**
+ * PermissionMiddleware.ts
+ *
+ * Middleware for checking user and bot permissions before command execution.
+ * Includes support for admin-only mode and owner exceptions.
+ *
+ * @author **Carlos G** ⭐
+ * @github CARLOSGRCIAGRCIA
+ * @tiktok carlos.grcia0
+ * @instagram carlos.gxv
+ * @created 2026-03-16
+ */
+
 import { Middleware } from './Middleware.js';
 import type { MessageContext, ICommand } from '@/types/index.js';
 import type { CommandRegistry } from '@/core/CommandRegistry.js';
 import { PermissionLevel, BotPermission } from '@/types/index.js';
+import { serviceManager } from '@/services/system/Servicemanager.js';
 
+/**
+ * Middleware that validates user and bot permissions before command execution.
+ * Handles admin-only mode and owner exceptions.
+ */
 export class PermissionMiddleware extends Middleware {
   name = 'permission';
 
+  /**
+   * Creates a new PermissionMiddleware instance.
+   *
+   * @param registry - The command registry for looking up commands
+   */
   constructor(private registry: CommandRegistry) {
     super();
   }
 
+  /**
+   * Executes the middleware to check permissions.
+   * First checks admin-only mode, then validates user/bot permissions.
+   *
+   * @param ctx - The message context
+   * @param next - The next middleware in the chain
+   * @returns Promise<void>
+   */
   async execute(ctx: MessageContext, next: () => Promise<void>): Promise<void> {
     const command = this.registry.get(ctx.command);
 
@@ -18,19 +49,39 @@ export class PermissionMiddleware extends Middleware {
       return;
     }
 
+    if (ctx.chat.isGroup) {
+      const onlyAdmin = await serviceManager.groupService.getOnlyAdmin(ctx.chat.jid);
+
+      if (onlyAdmin && !ctx.sender.isOwner) {
+        await ctx.loadSenderPermissions();
+
+        if (!ctx.sender.isAdmin) {
+          return;
+        }
+      }
+    }
+
     if (!this.checkUserPermissions(command, ctx)) {
-      await ctx.reply('❌ No tienes permisos para usar este comando');
+      await ctx.reply('❌ You do not have permission to use this command');
       return;
     }
 
     if (ctx.chat.isGroup && !this.checkBotPermissions(command, ctx)) {
-      await ctx.reply('❌ El bot necesita ser administrador para ejecutar este comando');
+      await ctx.reply('❌ The bot needs to be an admin to execute this command');
       return;
     }
 
     await next();
   }
 
+  /**
+   * Checks if the user has the required permissions for a command.
+   * Owners always have access.
+   *
+   * @param command - The command to check
+   * @param ctx - The message context
+   * @returns true if user has permission, false otherwise
+   */
   private checkUserPermissions(command: ICommand, ctx: MessageContext): boolean {
     const requiredPerms = command.permissions?.user || [PermissionLevel.USER];
 
@@ -45,6 +96,13 @@ export class PermissionMiddleware extends Middleware {
     return true;
   }
 
+  /**
+   * Checks if the bot has the required permissions for a command.
+   *
+   * @param command - The command to check
+   * @param ctx - The message context
+   * @returns true if bot has permission, false otherwise
+   */
   private checkBotPermissions(command: ICommand, ctx: MessageContext): boolean {
     const requiredPerms = command.permissions?.bot || [];
 

@@ -8,6 +8,8 @@ import { ModerationService } from '../moderation/ModerationService.js';
 import { config } from '@/config/index.js';
 import { logger, logError } from '@/utils/logger.js';
 import { cleanupService } from './CleanupService.js';
+import { healthCheckService } from './HealthCheckService.js';
+import { sessionBackupService } from './SessionBackupService.js';
 
 export class ServiceManager {
   private static instance: ServiceManager;
@@ -17,6 +19,8 @@ export class ServiceManager {
   public groupService!: GroupService;
   public levelService!: LevelService;
   public moderationService!: ModerationService;
+  public healthCheckService = healthCheckService;
+  public sessionBackupService = sessionBackupService;
 
   private constructor() {}
 
@@ -39,6 +43,8 @@ export class ServiceManager {
       this.moderationService = new ModerationService(this.db);
 
       cleanupService.start();
+
+      await this.sessionBackupService.start();
 
       logger.info('Servicios inicializados correctamente');
     } catch (error) {
@@ -75,6 +81,7 @@ export class ServiceManager {
     try {
       logger.info('Cerrando servicios...');
       cleanupService.stop();
+      this.sessionBackupService.stop();
       if (this.db) {
         await this.db.disconnect();
       }

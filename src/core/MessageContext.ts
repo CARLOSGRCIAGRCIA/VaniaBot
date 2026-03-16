@@ -1,17 +1,43 @@
+/**
+ * MessageContext.ts
+ *
+ * Provides a structured context for message handling.
+ * Parses messages, extracts commands, and provides helper methods.
+ *
+ * @author **Carlos G** ⭐
+ * @github CARLOSGRCIAGRCIA
+ * @tiktok carlos.grcia0
+ * @instagram carlos.gxv
+ * @created 2026-03-16
+ */
+
 import type { WASocket, proto, AnyMessageContent } from '@whiskeysockets/baileys';
 import type { MessageContext as IMessageContext } from '@/types/index.js';
 import { config } from '@/config/index.js';
 import { PermissionService, getBotJid, normalizeJid } from '@/services/PermissionService.js';
 import { cacheManager } from '@/core/CacheManager.js';
 
+/**
+ * MessageContext class that wraps a WhatsApp message.
+ * Provides convenient access to message data and helper methods.
+ */
 export class MessageContext implements IMessageContext {
+  /** The raw text content of the message */
   public text: string;
+  /** Command arguments parsed from the message */
   public args: string[];
+  /** The command name extracted from the message */
   public command: string;
 
   private _senderPermissions?: { isAdmin: boolean; isOwner: boolean };
   private _botPermissions?: { isAdmin: boolean };
 
+  /**
+   * Creates a new MessageContext instance.
+   *
+   * @param sock - The Baileys socket
+   * @param message - The raw WhatsApp message
+   */
   constructor(
     public sock: WASocket,
     public message: proto.IWebMessageInfo,
@@ -22,6 +48,11 @@ export class MessageContext implements IMessageContext {
     this.args = parsed.args;
   }
 
+  /**
+   * Extracts text content from various message types.
+   *
+   * @returns The text content of the message
+   */
   private extractText(): string {
     const msg = this.message.message;
     return (
@@ -33,6 +64,11 @@ export class MessageContext implements IMessageContext {
     );
   }
 
+  /**
+   * Parses the command from message text.
+   *
+   * @returns Object with command name and arguments
+   */
   private parseCommand() {
     if (!this.text.startsWith(config.prefix)) {
       return { command: '', args: [] };
@@ -42,8 +78,10 @@ export class MessageContext implements IMessageContext {
     return { command, args };
   }
 
+  /**
+   * Gets sender information including JID, name, and permissions.
+   */
   get sender() {
-    // remoteJid is always present on a message we're processing
     const rawJid = this.message.key.participant ?? this.message.key.remoteJid ?? '';
     const jid = normalizeJid(rawJid);
     const pushName = this.message.pushName || 'User';
@@ -57,6 +95,9 @@ export class MessageContext implements IMessageContext {
     };
   }
 
+  /**
+   * Gets chat information including JID and whether it's a group.
+   */
   get chat() {
     const jid = this.message.key.remoteJid ?? '';
     const isGroup = jid.endsWith('@g.us');
@@ -68,6 +109,11 @@ export class MessageContext implements IMessageContext {
     };
   }
 
+  /**
+   * Loads sender permissions from cache or fetches from WhatsApp.
+   *
+   * @returns Promise<void>
+   */
   async loadSenderPermissions(): Promise<void> {
     const groupJid = this.chat.isGroup ? this.chat.jid : undefined;
 

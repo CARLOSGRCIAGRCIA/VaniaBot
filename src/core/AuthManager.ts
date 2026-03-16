@@ -1,3 +1,16 @@
+/**
+ * AuthManager.ts
+ *
+ * Manages WhatsApp Web authentication using QR code or pairing code.
+ * Handles connection lifecycle, reconnection logic, and session persistence.
+ *
+ * @author **Carlos G** ⭐
+ * @github CARLOSGRCIAGRCIA
+ * @tiktok carlos.grcia0
+ * @instagram carlos.gxv
+ * @created 2026-03-16
+ */
+
 import makeWASocket, {
   useMultiFileAuthState,
   makeCacheableSignalKeyStore,
@@ -97,6 +110,10 @@ function patchStdout(): void {
   };
 }
 
+/**
+ * Manages WhatsApp Web authentication and connection lifecycle.
+ * Supports QR code and pairing code authentication with auto-reconnect.
+ */
 export class AuthManager {
   private pairingCodeRequested = false;
   private reconnectAttempts = 0;

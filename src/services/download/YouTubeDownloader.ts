@@ -1,5 +1,10 @@
 import type { DownloadResult } from './DownloadService.js';
 import { DownloadService } from './DownloadService.js';
+import {
+  circuitBreakerManager,
+  CircuitOpenError,
+} from '@/services/system/CircuitBreakerService.js';
+import { retryManager } from '@/services/system/RetryService.js';
 import yts from 'yt-search';
 import fs from 'fs';
 
@@ -31,35 +36,65 @@ export class YouTubeDownloader extends DownloadService {
   }
 
   async searchVideo(query: string): Promise<YouTubeVideo | null> {
+    const circuitBreaker = circuitBreakerManager.getOrCreate('youtube-search', {
+      failureThreshold: 5,
+      successThreshold: 2,
+      timeout: 15000,
+      name: 'youtube-search',
+    });
+
     try {
-      if (query.includes('youtube.com') || query.includes('youtu.be')) {
-        const videoId = this.extractVideoId(query);
-        if (!videoId) return null;
+      const result = await circuitBreaker.execute(async () => {
+        return await retryManager.retryOperation(
+          'youtube-search',
+          async () => {
+            if (query.includes('youtube.com') || query.includes('youtu.be')) {
+              const videoId = this.extractVideoId(query);
+              if (!videoId) return null;
 
-        const options: { videoId: string } = { videoId };
-        const result = await yts(options);
+              const options: { videoId: string } = { videoId };
+              const ytResult = await yts(options);
 
-        return {
-          videoId: result.videoId,
-          title: result.title,
-          duration: result.timestamp,
-          thumbnail: result.thumbnail,
-          url: result.url,
-        };
+              return {
+                videoId: ytResult.videoId,
+                title: ytResult.title,
+                duration: ytResult.timestamp,
+                thumbnail: ytResult.thumbnail,
+                url: ytResult.url,
+              };
+            }
+
+            const results = await yts(query);
+            if (!results.videos.length) return null;
+
+            const video = results.videos[0];
+            return {
+              videoId: video.videoId,
+              title: video.title,
+              duration: video.timestamp,
+              thumbnail: video.thumbnail,
+              url: video.url,
+            };
+          },
+          {
+            maxAttempts: 2,
+            baseDelay: 1000,
+            maxDelay: 5000,
+          },
+        );
+      });
+
+      if (!result.success || !result.result) {
+        console.error('YouTube search failed:', result.error);
+        return null;
       }
 
-      const results = await yts(query);
-      if (!results.videos.length) return null;
-
-      const video = results.videos[0];
-      return {
-        videoId: video.videoId,
-        title: video.title,
-        duration: video.timestamp,
-        thumbnail: video.thumbnail,
-        url: video.url,
-      };
+      return result.result;
     } catch (error) {
+      if (error instanceof CircuitOpenError) {
+        console.warn('YouTube search circuit open');
+        return null;
+      }
       console.error('YouTube search error:', error);
       return null;
     }

@@ -56,6 +56,7 @@ export class PatCommand extends Command {
     }
   }
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   private async composeWithSharp(sharp: any, imagePath: string, text: string): Promise<Buffer> {
     const image = sharp(imagePath);
     const metadata = await image.metadata();
