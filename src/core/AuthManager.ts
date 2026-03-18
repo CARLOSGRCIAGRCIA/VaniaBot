@@ -126,11 +126,11 @@ export class AuthManager {
 
   private error515Count = 0;
   private last515Time = 0;
+  private badSessionCount = 0;
+  private loggedOutCount = 0;
 
   constructor() {
     patchStdout();
-    // suppress unused warning for last515Time — it's reserved for future use
-    void this.last515Time;
   }
 
   async createSocket(): Promise<WASocket> {
@@ -148,8 +148,21 @@ export class AuthManager {
       useMultiFileAuthState(config.sessionPath),
     ]);
 
+    const isRegistered = state.creds.registered;
+    const credsMe = state.creds.me;
+
     logger.info(`WhatsApp Web v${version.join('.')}`);
-    logger.info(state.creds.registered ? '✅ Sesión existente' : '🆕 Nueva sesión');
+    logger.info(isRegistered ? '✅ Sesión existente' : '🆕 Nueva sesión');
+
+    if (isRegistered && credsMe) {
+      logger.debug(
+        {
+          sessionId: credsMe.id,
+          sessionName: credsMe.name,
+        },
+        '[Auth] Credenciales cargadas',
+      );
+    }
 
     const browser = config.auth.usePairingCode ? WA_BROWSER_PAIRING : WA_BROWSER_QR;
 
@@ -188,10 +201,26 @@ export class AuthManager {
   }
 
   private async handleConnection(sock: WASocket, update: Partial<ConnectionState>): Promise<void> {
-    // isNewLogin is intentionally unused — destructure with underscore prefix
-    const { connection, lastDisconnect, qr, isNewLogin: _isNewLogin } = update;
+    const { connection, lastDisconnect, qr, isNewLogin } = update;
 
     if (qr && !config.auth.usePairingCode) {
+      const isRegistered = sock.authState.creds.registered;
+
+      logger.debug(
+        {
+          qrReceived: true,
+          isRegistered,
+          isNewLogin,
+          qrRetries: this.qrRetries,
+        },
+        '[Auth] Evento QR recibido',
+      );
+
+      if (isRegistered) {
+        logger.info('🔄 Renovando sesión internamente (QR de refresh)');
+        return;
+      }
+
       this.qrRetries++;
       if (this.qrRetries > MAX_QR_RETRIES) {
         logger.error('❌ Demasiados QR sin escanear');
@@ -254,6 +283,8 @@ export class AuthManager {
     this.pairingCodeRequested = false;
     this.authPromise = null;
     this.error515Count = 0;
+    this.badSessionCount = 0;
+    this.loggedOutCount = 0;
 
     if (!this.connectionEstablished) {
       this.connectionEstablished = true;
@@ -279,17 +310,33 @@ export class AuthManager {
 
     switch (statusCode) {
       case DisconnectReason.badSession:
-        logger.error('❌ Sesión corrupta → limpiando');
-        this.clearSession();
-        this.connectionEstablished = false;
-        process.exit(1);
+        this.badSessionCount++;
+        logger.warn(`⚠️ Sesión corrupta [${this.badSessionCount}/3] → reintentando`);
+        if (this.badSessionCount >= 3) {
+          logger.error('❌ Sesión corrupta persistente → limpiando');
+          this.clearSession();
+          this.connectionEstablished = false;
+          this.badSessionCount = 0;
+          process.exit(1);
+        } else {
+          this.scheduleReconnectFast();
+        }
         break;
 
       case DisconnectReason.loggedOut:
-        logger.error('❌ Sesión cerrada desde el teléfono → limpiando');
-        this.clearSession();
-        this.connectionEstablished = false;
-        process.exit(1);
+        this.loggedOutCount++;
+        logger.warn(
+          `⚠️ Sesión cerrada desde el teléfono [${this.loggedOutCount}/3] → reintentando`,
+        );
+        if (this.loggedOutCount >= 3) {
+          logger.error('❌ Sesión cerrada persistente → limpiando');
+          this.clearSession();
+          this.connectionEstablished = false;
+          this.loggedOutCount = 0;
+          process.exit(1);
+        } else {
+          this.scheduleReconnectFast();
+        }
         break;
 
       case 515:

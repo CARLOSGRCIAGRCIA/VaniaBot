@@ -114,7 +114,7 @@ const envSchema = z.object({
   GROQ_API_KEY: z.string().optional(),
 
   /** Log level: error | warn | info | debug */
-  LOG_LEVEL: z.enum(['error', 'warn', 'info', 'debug']).default('info'),
+  LOG_LEVEL: z.enum(['error', 'warn', 'info', 'debug']).default('debug'),
 
   /** WebSocket connection timeout in milliseconds */
   CONNECT_TIMEOUT: z
