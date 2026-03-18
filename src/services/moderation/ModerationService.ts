@@ -1,5 +1,18 @@
 import type { IDatabase } from '../database/Database';
 
+function normalizeJid(jid: string): string {
+  if (!jid) return jid;
+  if (jid.includes('@s.whatsapp.net')) {
+    const phone = jid.split('@')[0].split(':')[0];
+    return `${phone}@s.whatsapp.net`;
+  }
+  if (jid.includes('@lid')) {
+    const phone = jid.split('@')[0];
+    return `${phone}@lid`;
+  }
+  return jid;
+}
+
 export interface ModerationAction {
   userId: string;
   userName: string;
@@ -48,21 +61,23 @@ export class ModerationService {
     moderator: string,
     reason: string,
   ): Promise<void> {
-    const banKey = `${groupId}:${userId}`;
+    const normalizedGroupId = normalizeJid(groupId);
+    const normalizedUserId = normalizeJid(userId);
+    const banKey = `${normalizedGroupId}:${normalizedUserId}`;
 
     const banRecord: BanRecord = {
-      userId,
+      userId: normalizedUserId,
       userName,
       bannedBy: moderator,
       reason,
       timestamp: Date.now(),
-      groupId,
+      groupId: normalizedGroupId,
     };
 
     await this.db.set(this.BANS_COLLECTION, banKey, banRecord);
 
     await this.logAction({
-      userId,
+      userId: normalizedUserId,
       userName,
       action: 'ban',
       reason,
@@ -72,7 +87,9 @@ export class ModerationService {
   }
 
   async unbanUser(groupId: string, userId: string): Promise<boolean> {
-    const banKey = `${groupId}:${userId}`;
+    const normalizedGroupId = normalizeJid(groupId);
+    const normalizedUserId = normalizeJid(userId);
+    const banKey = `${normalizedGroupId}:${normalizedUserId}`;
     const ban = await this.db.get<BanRecord>(this.BANS_COLLECTION, banKey);
 
     if (!ban) return false;
@@ -82,13 +99,17 @@ export class ModerationService {
   }
 
   async isBanned(groupId: string, userId: string): Promise<boolean> {
-    const banKey = `${groupId}:${userId}`;
+    const normalizedGroupId = normalizeJid(groupId);
+    const normalizedUserId = normalizeJid(userId);
+    const banKey = `${normalizedGroupId}:${normalizedUserId}`;
     const ban = await this.db.get<BanRecord>(this.BANS_COLLECTION, banKey);
     return ban !== null;
   }
 
   async getBanInfo(groupId: string, userId: string): Promise<BanRecord | null> {
-    const banKey = `${groupId}:${userId}`;
+    const normalizedGroupId = normalizeJid(groupId);
+    const normalizedUserId = normalizeJid(userId);
+    const banKey = `${normalizedGroupId}:${normalizedUserId}`;
     return await this.db.get<BanRecord>(this.BANS_COLLECTION, banKey);
   }
 
@@ -105,24 +126,26 @@ export class ModerationService {
     reason: string,
     duration: number,
   ): Promise<void> {
-    const muteKey = `${groupId}:${userId}`;
+    const normalizedGroupId = normalizeJid(groupId);
+    const normalizedUserId = normalizeJid(userId);
+    const muteKey = `${normalizedGroupId}:${normalizedUserId}`;
     const now = Date.now();
 
     const muteRecord: MuteRecord = {
-      userId,
+      userId: normalizedUserId,
       userName,
       mutedBy: moderator,
       reason,
       timestamp: now,
       duration,
       expiresAt: now + duration,
-      groupId,
+      groupId: normalizedGroupId,
     };
 
     await this.db.set(this.MUTES_COLLECTION, muteKey, muteRecord);
 
     await this.logAction({
-      userId,
+      userId: normalizedUserId,
       userName,
       action: 'mute',
       reason,
@@ -134,7 +157,9 @@ export class ModerationService {
   }
 
   async unmuteUser(groupId: string, userId: string): Promise<boolean> {
-    const muteKey = `${groupId}:${userId}`;
+    const normalizedGroupId = normalizeJid(groupId);
+    const normalizedUserId = normalizeJid(userId);
+    const muteKey = `${normalizedGroupId}:${normalizedUserId}`;
     const mute = await this.db.get<MuteRecord>(this.MUTES_COLLECTION, muteKey);
 
     if (!mute) return false;
@@ -144,7 +169,9 @@ export class ModerationService {
   }
 
   async isMuted(groupId: string, userId: string): Promise<boolean> {
-    const muteKey = `${groupId}:${userId}`;
+    const normalizedGroupId = normalizeJid(groupId);
+    const normalizedUserId = normalizeJid(userId);
+    const muteKey = `${normalizedGroupId}:${normalizedUserId}`;
     const mute = await this.db.get<MuteRecord>(this.MUTES_COLLECTION, muteKey);
 
     if (!mute) return false;
@@ -158,7 +185,9 @@ export class ModerationService {
   }
 
   async getMuteInfo(groupId: string, userId: string): Promise<MuteRecord | null> {
-    const muteKey = `${groupId}:${userId}`;
+    const normalizedGroupId = normalizeJid(groupId);
+    const normalizedUserId = normalizeJid(userId);
+    const muteKey = `${normalizedGroupId}:${normalizedUserId}`;
     const mute = await this.db.get<MuteRecord>(this.MUTES_COLLECTION, muteKey);
 
     if (!mute) return null;
