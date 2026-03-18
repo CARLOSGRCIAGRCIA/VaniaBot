@@ -1,6 +1,6 @@
 import type { WASocket, GroupParticipant } from '@whiskeysockets/baileys';
 import { config } from '@/config/index.js';
-import { logError } from '@/utils/logger.js';
+import { logError, logger } from '@/utils/logger.js';
 
 export interface UserPermissions {
   isOwner: boolean;
@@ -190,31 +190,92 @@ export class PermissionService {
 
   static async getBotPermissions(sock: WASocket, groupJid: string): Promise<BotPermissions> {
     try {
-      const metadata = await this.getGroupMetadata(sock, groupJid);
+      let metadata = await this.getGroupMetadata(sock, groupJid);
+
+      if (!metadata || metadata.participants.length === 0) {
+        this.invalidateCache(groupJid);
+        metadata = await sock.groupMetadata(groupJid);
+      }
+
       if (!metadata) return { isAdmin: false, isSuperAdmin: false };
 
-      const botLid = getBotLid(sock);
+      const botId = sock.user?.id;
+      if (!botId) {
+        logger.debug('[PERMS] Bot no tiene ID de usuario');
+        return { isAdmin: false, isSuperAdmin: false };
+      }
+
       const botPhone = getBotPhone(sock);
+      const botJidNormalized = normalizeJid(botId);
+      const botLid = getBotLid(sock);
+
+      logger.debug(`[PERMS] Buscando bot - ID: ${botId}, Phone: ${botPhone}, LID: ${botLid}`);
+      logger.debug(`[PERMS] Total participantes: ${metadata.participants.length}`);
 
       let botParticipant: GroupParticipant | undefined = undefined;
 
-      if (botLid) {
-        botParticipant = metadata.participants.find(p => normalizeJid(p.id) === botLid);
+      for (const p of metadata.participants) {
+        const pNormalized = normalizeJid(p.id);
+
+        if (pNormalized === botJidNormalized) {
+          botParticipant = p;
+          logger.debug(`[PERMS] Encontrado por JID normalizado: ${p.id}`);
+          break;
+        }
+
+        const pPhone = p.id.split('@')[0].split(':')[0];
+        if (pPhone === botPhone) {
+          botParticipant = p;
+          logger.debug(`[PERMS] Encontrado por teléfono: ${p.id}`);
+          break;
+        }
+
+        if (p.id.includes(botPhone)) {
+          botParticipant = p;
+          logger.debug(`[PERMS] Encontrado por include teléfono: ${p.id}`);
+          break;
+        }
+
+        if (botLid && p.id === botLid) {
+          botParticipant = p;
+          logger.debug(`[PERMS] Encontrado por LID exacto: ${p.id}`);
+          break;
+        }
+
+        if (botLid && p.id.includes(botLid.split('@')[0])) {
+          botParticipant = p;
+          logger.debug(`[PERMS] Encontrado por include LID: ${p.id}`);
+          break;
+        }
+
+        if (p.lid && botLid && p.lid === botLid) {
+          botParticipant = p;
+          logger.debug(`[PERMS] Encontrado por LID del participante: ${p.id}`);
+          break;
+        }
+
+        if (p.lid && botLid && p.lid.includes(botLid.split('@')[0])) {
+          botParticipant = p;
+          logger.debug(`[PERMS] Encontrado por include LID del participante: ${p.id}`);
+          break;
+        }
       }
 
-      if (!botParticipant && botPhone) {
-        botParticipant = metadata.participants.find(p => {
-          if (!isLidJid(p.id)) {
-            return p.id.split('@')[0].split(':')[0] === botPhone;
-          }
-          return false;
-        });
+      if (!botParticipant) {
+        const allIds = metadata.participants.map(p => p.id).join(', ');
+        logger.debug(
+          `[PERMS] Bot no encontrado en grupo. Buscando: ${botPhone}, LID: ${botLid}. Participantes: ${allIds.substring(0, 500)}`,
+        );
+        return { isAdmin: false, isSuperAdmin: false };
       }
 
-      if (!botParticipant) return { isAdmin: false, isSuperAdmin: false };
+      const isAdmin = botParticipant.admin === 'admin' || botParticipant.admin === 'superadmin';
+      logger.debug(
+        `[PERMS] Bot encontrado! JID: ${botParticipant.id}, Admin: ${botParticipant.admin}, LID: ${botParticipant.lid}, isAdmin: ${isAdmin}`,
+      );
 
       return {
-        isAdmin: botParticipant.admin === 'admin' || botParticipant.admin === 'superadmin',
+        isAdmin,
         isSuperAdmin: botParticipant.admin === 'superadmin',
       };
     } catch (error) {
