@@ -36,6 +36,7 @@ import { handleReaccion } from '@/handlers/ReaccionHandler.js';
 import { quizAnswerHandler } from '@/handlers/QuizAnswerHandler.js';
 import { handleMention } from '@/handlers/AiMentionHandler.js';
 import { welcomeService } from '@/services/system/WelcomeService.js';
+import { PermissionService } from '@/services/PermissionService.js';
 import { CommandExecutionError } from '@/utils/errors.js';
 import type { IMiddleware } from '@/types/index.js';
 import type { BaileysEventMap } from '@whiskeysockets/baileys';
@@ -311,6 +312,11 @@ export class SubBotManager extends EventEmitter {
       if (!this.mainSock) return;
       logger.info(`🎉 SubBot[${subConfig.id}] lista, notificando owner`);
 
+      if (!subConfig.ownerJid) {
+        logger.warn(`SubBot[${subConfig.id}] sin ownerJid, saltando notificación`);
+        return;
+      }
+
       // Precargar grupos para reducir cold start
       try {
         const groups = await instance.sock?.groupFetchAllParticipating();
@@ -433,17 +439,31 @@ export class SubBotManager extends EventEmitter {
       const ctx = new MessageContext(sock, msg as proto.IWebMessageInfo);
 
       if (ctx.chat.isGroup) {
+        logger.debug(`[MUTE SubBot] Verificando mute para ${ctx.sender.jid} en ${ctx.chat.jid}`);
+
         const isMuted = await serviceManager.moderationService.isMuted(
           ctx.chat.jid,
           ctx.sender.jid,
         );
+
+        logger.debug(`[MUTE SubBot] Resultado: ${isMuted}`);
+
         if (isMuted) {
+          const botJid = sock.user?.id ?? '';
+          if (botJid) {
+            cacheManager.invalidateGroupMetadata(ctx.chat.jid);
+          }
           await ctx.loadBotPermissions();
+
           if (ctx.chat.isBotAdmin) {
             try {
               await sock.sendMessage(ctx.chat.jid, { delete: msg.key });
-            } catch {}
+              logger.info(`[MUTE] Mensaje eliminado en SubBot: ${msg.key.id}`);
+            } catch (error) {
+              logError('[MUTE] Error al eliminar mensaje en SubBot', error);
+            }
           }
+
           return;
         }
       }
@@ -646,6 +666,59 @@ export class SubBotManager extends EventEmitter {
 
   getTotalConnected(): number {
     return subBotDatabase.getAll().filter(s => s.status === 'connected').length;
+  }
+
+  private async notifyAdminsMute(ctx: MessageContext, sock: WASocket): Promise<void> {
+    try {
+      const admins = await PermissionService.getGroupAdmins(sock, ctx.chat.jid);
+      const botJid = sock.user?.id;
+      const adminJids = admins.filter(admin => admin !== botJid);
+
+      if (adminJids.length === 0) {
+        logger.debug(`[MUTE] No hay admins para notificar en ${ctx.chat.jid}`);
+        return;
+      }
+
+      const muteInfo = await serviceManager.moderationService.getMuteInfo(
+        ctx.chat.jid,
+        ctx.sender.jid,
+      );
+      const timeRemaining = await serviceManager.moderationService.getMuteTimeRemaining(
+        ctx.chat.jid,
+        ctx.sender.jid,
+      );
+      const timeText = this.formatTimeRemaining(timeRemaining);
+
+      for (const adminJid of adminJids) {
+        try {
+          await sock.sendMessage(adminJid, {
+            text:
+              `🔇 *Aviso de Mute (SubBot)*\n\n` +
+              `El usuario *${ctx.sender.pushName || 'Desconocido'}* está muteado pero intentó enviar un mensaje.\n\n` +
+              `📝 Razón: ${muteInfo?.reason || 'No especificada'}\n` +
+              `⏱️ Tiempo restante: ${timeText}\n` +
+              `💬 Mensaje: ${ctx.text.slice(0, 100)}${ctx.text.length > 100 ? '...' : ''}\n\n` +
+              `⚠️ El bot necesita ser admin para eliminar automáticamente los mensajes muteados.`,
+          });
+        } catch (error) {
+          logger.debug(`[MUTE] Error notificando admin ${adminJid}:`, error);
+        }
+      }
+    } catch (error) {
+      logError('[MUTE] Error notifyAdmins', error);
+    }
+  }
+
+  private formatTimeRemaining(ms: number): string {
+    if (ms <= 0) return 'Expira inmediatamente';
+    const seconds = Math.floor(ms / 1000);
+    const minutes = Math.floor(seconds / 60);
+    const hours = Math.floor(minutes / 60);
+    const days = Math.floor(hours / 24);
+    if (days > 0) return `${days} día${days > 1 ? 's' : ''}`;
+    if (hours > 0) return `${hours} hora${hours > 1 ? 's' : ''}`;
+    if (minutes > 0) return `${minutes} minuto${minutes > 1 ? 's' : ''}`;
+    return `${seconds} segundo${seconds > 1 ? 's' : ''}`;
   }
 
   async shutdown(): Promise<void> {
