@@ -145,7 +145,21 @@ hola @user ♡
         return;
       }
 
-      const metadata = await sock.groupMetadata(groupJid);
+      let metadata;
+      try {
+        metadata = await sock.groupMetadata(groupJid);
+      } catch (metadataError) {
+        const errMsg =
+          metadataError instanceof Error ? metadataError.message : String(metadataError);
+        if (errMsg.includes('forbidden') || errMsg.includes('not-authorized')) {
+          logger.warn(
+            `[Goodbye] Sin acceso al grupo ${groupJid} — el bot pudo haber sido eliminado`,
+          );
+          return;
+        }
+        throw metadataError;
+      }
+
       const message = this.parseMessage(group.goodbye.message || this.DEFAULT_GOODBYE, {
         user: `@${userJid.split('@')[0]}`,
         group: metadata.subject,
@@ -156,7 +170,11 @@ hola @user ♡
 
       await sock.sendMessage(groupJid, { text: message, mentions: [userJid] });
     } catch (error) {
-      logError('[Goodbye] Error critico enviando despedida:', error);
+      const errMsg = error instanceof Error ? error.message : String(error);
+      if (errMsg.includes('forbidden') || errMsg.includes('not-authorized')) {
+        return;
+      }
+      logError('[Goodbye] Error enviando despedida:', error);
     }
   }
 
