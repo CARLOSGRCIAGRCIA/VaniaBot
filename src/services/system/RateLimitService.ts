@@ -30,6 +30,7 @@ export class RateLimitService {
   private groupTrackers = new Map<string, GroupTracker>();
   private userTrackers = new Map<string, UserTracker>();
   private readonly config = config.rateLimit;
+  private cleanupTimer: ReturnType<typeof setInterval> | null = null;
 
   constructor() {
     this.startCleanup();
@@ -195,8 +196,15 @@ export class RateLimitService {
     logger.info(`[RateLimit] User ${userJid} stats reset`);
   }
 
+  stop(): void {
+    if (this.cleanupTimer) {
+      clearInterval(this.cleanupTimer);
+      this.cleanupTimer = null;
+    }
+  }
+
   private startCleanup(): void {
-    setInterval(() => {
+    this.cleanupTimer = setInterval(() => {
       const now = Date.now();
       const maxAge = 5 * 60 * 1000;
 

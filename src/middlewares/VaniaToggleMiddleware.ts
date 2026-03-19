@@ -11,7 +11,7 @@ export class VaniaToggleMiddleware extends Middleware {
       return;
     }
 
-    if (ctx.command === 'vaniaon') {
+    if (['vaniaon', 'vaniaoff', 'vaniastatus'].includes(ctx.command)) {
       await next();
       return;
     }

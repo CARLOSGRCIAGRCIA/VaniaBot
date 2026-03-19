@@ -58,6 +58,7 @@ declare global {
 class RealTimeAntiSpam {
   private userMessages = new Map<string, number[]>();
   private bannedUsers = new Set<string>();
+  private cleanupTimer: ReturnType<typeof setInterval> | null = null;
   private readonly MAX_MESSAGES_PER_SECOND = 3;
   private readonly MAX_MESSAGES_PER_MINUTE = 20;
   private readonly BAN_DURATION = 5 * 60 * 1000;
@@ -96,7 +97,7 @@ class RealTimeAntiSpam {
   }
 
   startCleanup(): void {
-    setInterval(
+    this.cleanupTimer = setInterval(
       () => {
         const now = Date.now();
         for (const [userJid, messages] of this.userMessages.entries()) {
@@ -107,6 +108,13 @@ class RealTimeAntiSpam {
       },
       5 * 60 * 1000,
     );
+  }
+
+  stop(): void {
+    if (this.cleanupTimer) {
+      clearInterval(this.cleanupTimer);
+      this.cleanupTimer = null;
+    }
   }
 }
 
@@ -170,6 +178,7 @@ export class WhatsAppClient {
   private isReady = false;
   private messageProcessor = new RealTimeMessageProcessor();
   private antiSpam = new RealTimeAntiSpam();
+  private maintenanceTimer: ReturnType<typeof setInterval> | null = null;
   private stats = {
     messagesReceived: 0,
     messagesProcessed: 0,
@@ -310,37 +319,6 @@ export class WhatsAppClient {
             logger.debug(
               `📋 MessageContext created: command="${ctx.command}", text="${ctx.text.slice(0, 50)}", isGroup=${ctx.chat.isGroup}`,
             );
-
-            if (ctx.chat.isGroup) {
-              logger.debug(`[MUTE] Verificando mute para ${ctx.sender.jid} en ${ctx.chat.jid}`);
-
-              const isMuted = await serviceManager.moderationService.isMuted(
-                ctx.chat.jid,
-                ctx.sender.jid,
-              );
-
-              logger.debug(`[MUTE] Resultado: ${isMuted}`);
-
-              if (isMuted) {
-                const botJid = this.sock.user?.id ?? '';
-                if (botJid) {
-                  cacheManager.invalidateGroupMetadata(ctx.chat.jid);
-                }
-                await ctx.loadBotPermissions();
-
-                if (ctx.chat.isBotAdmin) {
-                  try {
-                    await this.sock.sendMessage(ctx.chat.jid, { delete: message.key });
-                    logger.info(`[MUTE] Mensaje eliminado: ${message.key.id}`);
-                  } catch (error) {
-                    logError('[MUTE] Error al eliminar mensaje', error);
-                  }
-                }
-
-                cacheManager.markMessageProcessed(messageId);
-                return;
-              }
-            }
 
             if (ctx.chat.isGroup && !ctx.command) {
               const quizHandled = await quizAnswerHandler.handle(ctx);
@@ -515,7 +493,7 @@ export class WhatsAppClient {
   }
 
   private startMaintenance(): void {
-    setInterval(
+    this.maintenanceTimer = setInterval(
       () => {
         const queueStats = this.messageProcessor.getStats();
         if (queueStats.queued > 20)
@@ -601,6 +579,22 @@ export class WhatsAppClient {
     try {
       await Promise.resolve(this.sock?.ws?.close()).catch(() => {});
     } catch (_) {}
+
+    if (this.maintenanceTimer) {
+      clearInterval(this.maintenanceTimer);
+      this.maintenanceTimer = null;
+    }
+
+    this.antiSpam.stop();
+
+    const antiSpamMw = this.middlewares.find(m => m.middleware instanceof AntiSpamMiddleware);
+    if (antiSpamMw) {
+      (antiSpamMw.middleware as AntiSpamMiddleware).stop();
+    }
+
+    rateLimitService.stop();
+    cacheManager.stop();
+
     await subBotManager.shutdown();
     await serviceManager.shutdown();
     this.logStats();

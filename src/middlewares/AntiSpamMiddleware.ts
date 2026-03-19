@@ -12,10 +12,11 @@ export class AntiSpamMiddleware extends Middleware {
 
   private userMessages = new Map<string, UserMessageTracker>();
   private readonly CLEANUP_INTERVAL = 60000;
+  private cleanupTimer: ReturnType<typeof setInterval> | null = null;
 
   constructor() {
     super();
-    setInterval(() => this.cleanup(), this.CLEANUP_INTERVAL);
+    this.cleanupTimer = setInterval(() => this.cleanup(), this.CLEANUP_INTERVAL);
   }
 
   async execute(ctx: MessageContext, next: () => Promise<void>): Promise<void> {
@@ -64,11 +65,12 @@ export class AntiSpamMiddleware extends Middleware {
           await ctx.sock.sendMessage(ctx.chat.jid, {
             text: `❌ ${ctx.sender.pushName} fue expulsado por spam`,
           });
-          this.userMessages.delete(key);
-          return;
         } catch (_err) {
           await ctx.reply('❌ No pude expulsar al usuario (falta permisos)');
+        } finally {
+          this.userMessages.delete(key);
         }
+        return;
       }
 
       if (tracker.warnings >= 3) {
@@ -88,6 +90,13 @@ export class AntiSpamMiddleware extends Middleware {
       if (tracker.messages.length === 0 || tracker.messages.every(time => now - time > maxAge)) {
         this.userMessages.delete(key);
       }
+    }
+  }
+
+  stop(): void {
+    if (this.cleanupTimer) {
+      clearInterval(this.cleanupTimer);
+      this.cleanupTimer = null;
     }
   }
 }

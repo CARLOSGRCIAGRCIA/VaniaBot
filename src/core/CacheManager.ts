@@ -52,6 +52,7 @@ export class UnifiedCacheManager {
   private groupMetadataCache: LRUCache<string, GroupMetadata>;
   private userCache: LRUCache<string, CachedUser>;
   private messageIdCache: Set<string>;
+  private messageIdCacheTimer: ReturnType<typeof setInterval> | null = null;
 
   private stats = {
     hits: 0,
@@ -80,7 +81,7 @@ export class UnifiedCacheManager {
     });
 
     this.messageIdCache = new Set();
-    setInterval(() => this.messageIdCache.clear(), 5 * 60 * 1000);
+    this.messageIdCacheTimer = setInterval(() => this.messageIdCache.clear(), 5 * 60 * 1000);
   }
 
   // ─── Permissions ────────────────────────────────────────────────────────────
@@ -178,6 +179,14 @@ export class UnifiedCacheManager {
         messages: this.messageIdCache.size,
       },
     };
+  }
+
+  stop(): void {
+    if (this.messageIdCacheTimer) {
+      clearInterval(this.messageIdCacheTimer);
+      this.messageIdCacheTimer = null;
+    }
+    this.clear();
   }
 
   clear(): void {
