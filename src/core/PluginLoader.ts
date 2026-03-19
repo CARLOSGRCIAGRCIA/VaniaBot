@@ -87,6 +87,7 @@ export class PluginLoader {
       this.preloadCategories.add('rpg');
       this.preloadCategories.add('subbot');
       this.preloadCategories.add('information');
+      this.preloadCategories.add('creative');
     }
 
     try {
