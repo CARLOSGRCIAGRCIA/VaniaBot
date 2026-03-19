@@ -60,6 +60,17 @@ export class NotifyCommand extends Command {
     const extraText = ctx.args.join(' ').trim();
     const footer = '\n\n> _*By VaniaBot*_ 💝';
 
+    const contextInfo = {
+      externalAdReply: {
+        title: '🌸 VaniaBot',
+        body: 'Notificación de grupo',
+        thumbnailUrl: 'https://i.imgur.com/placeholder.png',
+        mediaType: 1,
+        renderLargerThumbnail: false,
+        showAdAttribution: true,
+      },
+    };
+
     try {
       const cached = cacheManager.getGroupMetadata(ctx.chat.jid);
       const groupMetadata = cached ?? (await ctx.sock.groupMetadata(ctx.chat.jid));
@@ -78,7 +89,7 @@ export class NotifyCommand extends Command {
 
         await ctx.sock.sendMessage(
           ctx.chat.jid,
-          { text: `${extraText}${footer}`, mentions: participants },
+          { text: `${extraText}${footer}`, mentions: participants, contextInfo },
           { quoted: ctx.message },
         );
         return;
@@ -135,6 +146,7 @@ export class NotifyCommand extends Command {
           caption,
           mentions: participants,
           mimetype: ctx.quoted.imageMessage?.mimetype || 'image/jpeg',
+          contextInfo,
         });
         return;
       }
@@ -169,6 +181,7 @@ export class NotifyCommand extends Command {
           mentions: participants,
           mimetype: ctx.quoted.videoMessage?.mimetype || 'video/mp4',
           gifPlayback: ctx.quoted.videoMessage?.gifPlayback || false,
+          contextInfo,
         });
         return;
       }
@@ -178,6 +191,7 @@ export class NotifyCommand extends Command {
           await ctx.sock.sendMessage(ctx.chat.jid, {
             text: `${extraText}${footer}`,
             mentions: participants,
+            contextInfo,
           });
         }
 
@@ -199,6 +213,7 @@ export class NotifyCommand extends Command {
           await ctx.sock.sendMessage(ctx.chat.jid, {
             text: `${extraText}${footer}`,
             mentions: participants,
+            contextInfo,
           });
         }
 
@@ -224,7 +239,7 @@ export class NotifyCommand extends Command {
 
       await ctx.sock.sendMessage(
         ctx.chat.jid,
-        { text: notificationText, mentions: participants },
+        { text: notificationText, mentions: participants, contextInfo },
         { quoted: ctx.message },
       );
     } catch (error) {
