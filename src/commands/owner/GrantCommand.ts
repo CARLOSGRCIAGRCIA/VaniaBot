@@ -3,6 +3,7 @@ import { CommandCategory, PermissionLevel } from '@/types/index.js';
 import type { MessageContext } from '@/types/index.js';
 import { serviceManager } from '@/services/system/Servicemanager.js';
 import { formatNumber } from '@/utils/helpers.js';
+import { logError } from '@/utils/logger.js';
 
 export class GrantCommand extends Command {
   name = 'grant';
@@ -62,7 +63,7 @@ export class GrantCommand extends Command {
           await ctx.reply(' Tipo inválido. Usa: money, xp, o item');
       }
     } catch (error) {
-      console.error('Error en GrantCommand:', error);
+      logError('GrantCommand.execute', error);
       await ctx.reply(` Error: ${error instanceof Error ? error.message : 'Desconocido'}`);
     }
   }

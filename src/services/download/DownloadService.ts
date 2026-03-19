@@ -1,6 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 import { spawn } from 'child_process';
+import { logger } from '@/utils/logger.js';
 
 export interface DownloadResult {
   success: boolean;
@@ -80,7 +81,7 @@ export class DownloadService {
       if (fs.existsSync(filePath)) {
         try {
           fs.unlinkSync(filePath);
-          console.log(`🗑️ Cleaned up: ${path.basename(filePath)}`);
+          logger.debug(`🗑️ Cleaned up: ${path.basename(filePath)}`);
         } catch (error) {
           console.error('Cleanup error:', error);
         }

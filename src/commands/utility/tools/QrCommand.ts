@@ -1,5 +1,6 @@
 import { Command } from '../../Command.js';
 import { CommandCategory, CommandContext, type MessageContext } from '@/types/index.js';
+import { logError } from '@/utils/logger.js';
 // import { createCanvas } from 'canvas';
 
 export class QrCommand extends Command {
@@ -78,7 +79,7 @@ export class QrCommand extends Command {
       await ctx.react('✅');
     } catch (error) {
       await ctx.react('❌');
-      console.error('Error in qr command:', error);
+      logError('QrCommand.execute', error);
       await ctx.reply('❌ Error al generar el QR. Intenta más tarde.');
     }
   }

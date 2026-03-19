@@ -6,6 +6,7 @@ import {
   BotPermission,
   type MessageContext,
 } from '@/types/index.js';
+import { logError } from '@/utils/logger.js';
 import { serviceManager } from '@/services/system/Servicemanager.js';
 
 export class DemoteCommand extends Command {
@@ -84,7 +85,7 @@ export class DemoteCommand extends Command {
 
       await ctx.react('✅');
     } catch (error: unknown) {
-      console.error('Error in DemoteCommand:', error);
+      logError('DemoteCommand.execute', error);
       const message = error instanceof Error ? error.message : 'Unknown error';
       await ctx.reply(`❌ Error demoting user: ${message}`);
       await ctx.react('❌');

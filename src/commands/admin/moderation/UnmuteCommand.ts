@@ -6,6 +6,7 @@ import {
   type MessageContext,
 } from '@/types/index.js';
 import { serviceManager } from '@/services/system/Servicemanager.js';
+import { logError } from '@/utils/logger.js';
 
 export class UnmuteCommand extends Command {
   name = 'unmute';
@@ -51,7 +52,7 @@ export class UnmuteCommand extends Command {
 
       await ctx.react('✅');
     } catch (error: unknown) {
-      console.error('Error in UnmuteCommand:', error);
+      logError('UnmuteCommand.execute', error);
       const message = error instanceof Error ? error.message : 'Unknown error';
       await ctx.reply(`❌ Error unmutting user: ${message}`);
       await ctx.react('❌');

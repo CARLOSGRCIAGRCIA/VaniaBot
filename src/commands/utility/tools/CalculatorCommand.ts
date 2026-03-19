@@ -1,5 +1,6 @@
 import { Command } from '../../Command.js';
 import { CommandCategory, CommandContext, type MessageContext } from '@/types/index.js';
+import { logError } from '@/utils/logger.js';
 
 export class CalculatorCommand extends Command {
   name = 'calc';
@@ -239,7 +240,7 @@ export class CalculatorCommand extends Command {
       );
     } catch (error: unknown) {
       await ctx.react('❌');
-      console.error('Error in KickCommand:', error);
+      logError('CalculatorCommand.execute', error);
       await ctx.reply(
         `❌ Expresión inválida: *${input}*\n\n` +
           `Ejemplos válidos:\n` +

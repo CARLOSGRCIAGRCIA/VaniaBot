@@ -9,6 +9,7 @@ import {
   type MessageContext,
 } from '@/types/index.js';
 import { serviceManager } from '@/services/system/Servicemanager.js';
+import { logError } from '@/utils/logger.js';
 
 const CATEGORY_ALIASES: Record<string, string> = {
   js: QuizCategory.JAVASCRIPT,
@@ -156,7 +157,7 @@ export class QuizCommand extends Command {
           typeof serviceManager.userService.updateUser
         >[1]);
       } catch (e) {
-        console.error('[QuizCommand] updateStats error:', e);
+        logError('QuizCommand.updateStats', e);
       }
     };
 

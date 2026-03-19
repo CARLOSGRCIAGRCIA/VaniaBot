@@ -1,6 +1,7 @@
 import { Command } from '../../Command.js';
 import { CommandCategory, CommandContext } from '@/types/index.js';
 import type { MessageContext } from '@/types/index.js';
+import { logError } from '@/utils/logger.js';
 
 export class AllCommand extends Command {
   name = 'all';
@@ -71,7 +72,7 @@ export class AllCommand extends Command {
         { quoted: ctx.message },
       );
     } catch (error) {
-      console.error('Error in AllCommand:', error);
+      logError('AllCommand.execute', error);
       await ctx.reply('Ocurrió un error al mencionar a los miembros, lo siento~');
     }
   }

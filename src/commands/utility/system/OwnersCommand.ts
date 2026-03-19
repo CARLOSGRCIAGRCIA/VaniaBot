@@ -1,8 +1,8 @@
 import { Command } from '../../Command.js';
 import { CommandCategory } from '@/types/index.js';
 import type { MessageContext } from '@/types/index.js';
-// import { config } from '@/config/index.js';
 import { serviceManager } from '@/services/system/Servicemanager.js';
+import { logError } from '@/utils/logger.js';
 
 export class OwnersCommand extends Command {
   name = 'owners';
@@ -39,7 +39,7 @@ ${ownersList}┃
 
       await ctx.reply(message);
     } catch (error) {
-      console.error('Error en OwnersCommand:', error);
+      logError('OwnersCommand.execute', error);
       await ctx.reply('❌ Error al obtener owners');
     }
   }

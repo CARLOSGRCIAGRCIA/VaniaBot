@@ -1,5 +1,6 @@
 import type { DownloadResult } from './DownloadService.js';
 import { DownloadService } from './DownloadService.js';
+import { logger } from '@/utils/logger.js';
 import fs from 'fs';
 
 export interface InstagramMedia {
@@ -83,7 +84,7 @@ export class InstagramDownloader extends DownloadService {
   ): Promise<DownloadResult> {
     for (const method of methods) {
       try {
-        console.log(`🔄 [Instagram] Trying ${method.name}...`);
+        logger.debug(`🔄 [Instagram] Trying ${method.name}...`);
 
         await this.runCommand(method.cmd, method.args, 120000);
 
@@ -100,7 +101,7 @@ export class InstagramDownloader extends DownloadService {
             };
           }
 
-          console.log(`✅ [Instagram] ${method.name} succeeded: ${sizeCheck.sizeMB}MB`);
+          logger.debug(`✅ [Instagram] ${method.name} succeeded: ${sizeCheck.sizeMB}MB`);
 
           return {
             success: true,
@@ -111,7 +112,7 @@ export class InstagramDownloader extends DownloadService {
         }
       } catch (error) {
         const commandError = error as CommandError;
-        console.log(`❌ [Instagram] ${method.name} failed:`, commandError.message);
+        logger.debug(`❌ [Instagram] ${method.name} failed: ${commandError.message}`);
         continue;
       }
     }

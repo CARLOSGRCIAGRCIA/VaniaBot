@@ -6,6 +6,7 @@ import {
   type MessageContext,
 } from '@/types/index.js';
 import { serviceManager } from '@/services/system/Servicemanager.js';
+import { logError } from '@/utils/logger.js';
 
 export class MuteCommand extends Command {
   name = 'mute';
@@ -97,7 +98,7 @@ export class MuteCommand extends Command {
 
       await ctx.react('✅');
     } catch (error: unknown) {
-      console.error('Error in MuteCommand:', error);
+      logError('MuteCommand.execute', error);
       const message = error instanceof Error ? error.message : 'Unknown error';
       await ctx.reply(`❌ Error mutting user: ${message}`);
       await ctx.react('❌');

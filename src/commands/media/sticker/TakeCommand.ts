@@ -3,6 +3,7 @@ import { CommandCategory, type MessageContext } from '@/types/index.js';
 import { downloadMediaMessage } from '@whiskeysockets/baileys';
 import { StickerService } from '@/services/media/StickerService.js';
 import type { proto } from '@whiskeysockets/baileys';
+import { logError } from '@/utils/logger.js';
 
 export class TakeCommand extends Command {
   name = 'take';
@@ -43,7 +44,7 @@ export class TakeCommand extends Command {
       await ctx.sock.sendMessage(ctx.chat.jid, { sticker: stiker });
       await ctx.react('✅');
     } catch (error) {
-      console.error('Error in TakeCommand:', error);
+      logError('TakeCommand.execute', error);
       await ctx.reply('Could not modify sticker');
       await ctx.react('❌');
     }

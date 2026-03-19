@@ -1,6 +1,7 @@
 import { writeFileSync, readFileSync, unlinkSync, existsSync, mkdirSync } from 'fs';
 import { join } from 'path';
 import { spawn } from 'child_process';
+import { logger } from '@/utils/logger.js';
 
 export interface StickerOptions {
   pack?: string;
@@ -193,7 +194,7 @@ export class StickerService {
         .webp({ quality: 100, lossless: false })
         .toBuffer();
     } catch {
-      console.warn('⚠️ sharp no disponible, usando jimp como fallback');
+      logger.warn('⚠️ sharp no disponible, usando jimp como fallback');
       return await this.imageToStickerJimp(buffer);
     }
   }

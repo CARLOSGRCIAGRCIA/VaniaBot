@@ -1,5 +1,6 @@
 import { Command } from '../../Command.js';
 import { CommandCategory, CommandContext, type MessageContext } from '@/types/index.js';
+import { logError } from '@/utils/logger.js';
 
 export class UrlShortenerCommand extends Command {
   name = 'acortar';
@@ -73,7 +74,7 @@ export class UrlShortenerCommand extends Command {
       await ctx.reply(msg);
     } catch (error) {
       await ctx.react('❌');
-      console.error('Error in UrlShort:', error);
+      logError('UrlShortenerCommand.execute', error);
       await ctx.reply('❌ Error al acortar la URL. Intenta más tarde.');
     }
   }

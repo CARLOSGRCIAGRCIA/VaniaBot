@@ -8,6 +8,7 @@ import {
   type MessageContext,
 } from '@/types/index.js';
 import { serviceManager } from '@/services/system/Servicemanager.js';
+import { logError } from '@/utils/logger.js';
 
 interface UserWithQuizStats {
   quizStats?: UserQuizStats;
@@ -52,7 +53,7 @@ export class QuizStatsCommand extends Command {
 
       await ctx.reply(quizService.formatStatsMessage(stats, targetName));
     } catch (err) {
-      console.error('[QuizStatsCommand]', err);
+      logError('QuizStatsCommand', err);
       await ctx.reply('❌ No pude obtener tus estadísticas. Intenta de nuevo.');
     }
   }

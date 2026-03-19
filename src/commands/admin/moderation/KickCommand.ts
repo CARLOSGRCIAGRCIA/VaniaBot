@@ -6,6 +6,7 @@ import {
   BotPermission,
   type MessageContext,
 } from '@/types/index.js';
+import { logError } from '@/utils/logger.js';
 import { serviceManager } from '@/services/system/Servicemanager.js';
 
 export class KickCommand extends Command {
@@ -72,7 +73,7 @@ export class KickCommand extends Command {
 
       await ctx.react('✅');
     } catch (error: unknown) {
-      console.error('Error in KickCommand:', error);
+      logError('KickCommand.execute', error);
       const message = error instanceof Error ? error.message : 'Unknown error';
       await ctx.reply(`❌ Error kicking user: ${message}`);
       await ctx.react('❌');
