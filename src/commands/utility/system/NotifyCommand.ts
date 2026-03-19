@@ -4,8 +4,6 @@ import type { MessageContext } from '@/types/index.js';
 import type { proto, WAMessage } from '@whiskeysockets/baileys';
 import { downloadMediaMessage } from '@whiskeysockets/baileys';
 import { cacheManager } from '@/core/CacheManager.js';
-import { existsSync, readFileSync } from 'fs';
-import { join } from 'path';
 
 export class NotifyCommand extends Command {
   name = 'notify';
@@ -58,32 +56,15 @@ export class NotifyCommand extends Command {
     }
   }
 
-  private getLogoBuffer(): Buffer | undefined {
-    try {
-      const logoPath = join(process.cwd(), 'data/assets/logo.png');
-      if (existsSync(logoPath)) return readFileSync(logoPath);
-    } catch {
-      // Si falla la lectura, continúa sin imagen
-    }
-    return undefined;
-  }
-
   private buildContextInfo(ctx: MessageContext) {
-    const thumbnail = this.getLogoBuffer();
-    const botName = ctx.sender.pushName || 'VaniaBot';
-
     return {
       externalAdReply: {
         title: '🌸 VaniaBot',
         body: 'Notificación de grupo',
-        thumbnail,
-        thumbnailUrl: 'https://i.imgur.com/placeholder.png',
         mediaType: 1,
         renderLargerThumbnail: false,
         showAdAttribution: true,
       },
-      quotedMessage: { conversation: botName },
-      participant: ctx.sock.user?.id || '0@s.whatsapp.net',
     };
   }
 
@@ -102,13 +83,6 @@ export class NotifyCommand extends Command {
     console.log('[NOTIFY] contextInfo keys:', Object.keys(contextInfo));
     console.log('[NOTIFY] externalAdReply.title:', contextInfo.externalAdReply?.title);
     console.log('[NOTIFY] externalAdReply.body:', contextInfo.externalAdReply?.body);
-    console.log(
-      '[NOTIFY] thumbnail:',
-      contextInfo.externalAdReply?.thumbnail
-        ? `Buffer(${contextInfo.externalAdReply.thumbnail.length})`
-        : 'undefined',
-    );
-    console.log('[NOTIFY] quotedMessage:', contextInfo.quotedMessage ? 'si' : 'no');
 
     try {
       const cached = cacheManager.getGroupMetadata(ctx.chat.jid);
