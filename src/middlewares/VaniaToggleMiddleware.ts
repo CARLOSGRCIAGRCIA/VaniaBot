@@ -11,6 +11,11 @@ export class VaniaToggleMiddleware extends Middleware {
       return;
     }
 
+    if (ctx.command === 'vaniaon') {
+      await next();
+      return;
+    }
+
     try {
       const isEnabled = await serviceManager.vaniaToggleService.isEnabled(ctx.chat.jid);
 
