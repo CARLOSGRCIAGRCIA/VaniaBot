@@ -1,6 +1,7 @@
 import type { WASocket, GroupParticipant } from '@whiskeysockets/baileys';
 import { config } from '@/config/index.js';
 import { logError, logger } from '@/utils/logger.js';
+import { cacheManager } from '@/core/CacheManager.js';
 
 export interface UserPermissions {
   isOwner: boolean;
@@ -50,12 +51,7 @@ function isLidJid(jid: string): boolean {
 }
 
 export class PermissionService {
-  private static groupMetadataCache = new Map<
-    string,
-    { data: GroupMetadataLike; timestamp: number }
-  >();
   private static lidPhoneCache = new Map<string, string>();
-  private static readonly CACHE_TTL = 5 * 60 * 1000;
 
   static isOwner(jid: string): boolean {
     const normalizedJid = normalizeJid(jid);
@@ -140,14 +136,13 @@ export class PermissionService {
     sock: WASocket,
     groupJid: string,
   ): Promise<GroupMetadataLike | null> {
-    const cached = this.groupMetadataCache.get(groupJid);
-    const now = Date.now();
-    if (cached && now - cached.timestamp < this.CACHE_TTL) {
-      return cached.data;
+    const cached = cacheManager.getGroupMetadata(groupJid);
+    if (cached) {
+      return cached as GroupMetadataLike;
     }
     try {
       const metadata = await sock.groupMetadata(groupJid);
-      this.groupMetadataCache.set(groupJid, { data: metadata, timestamp: now });
+      cacheManager.setGroupMetadata(groupJid, metadata);
       return metadata;
     } catch (error) {
       logError(`Error obteniendo metadatos del grupo ${groupJid}:`, error);
@@ -170,14 +165,14 @@ export class PermissionService {
       if (!onWhatsApp) return null;
 
       const result = await onWhatsApp.call(sock, lidJid);
-      console.log(`[LID RESOLVE] ${lidJid} →`, JSON.stringify(result));
+      logger.debug(`[LID RESOLVE] ${lidJid} → ${JSON.stringify(result)}`);
       if (result && result[0]?.jid) {
         const phone = result[0].jid.split('@')[0].split(':')[0];
         this.lidPhoneCache.set(lidJid, phone);
         return phone;
       }
     } catch (err) {
-      console.log(`[LID RESOLVE ERROR] ${lidJid}:`, err);
+      logger.warn(`[LID RESOLVE ERROR] ${lidJid}: ${err}`);
     }
     return null;
   }
@@ -187,28 +182,27 @@ export class PermissionService {
     participants: GroupParticipant[],
     phoneNumber: string,
   ): Promise<GroupParticipant | null> {
-    console.log(`[FIND] Buscando teléfono: ${phoneNumber}`);
+    logger.debug(`[FIND] Buscando teléfono: ${phoneNumber}`);
     for (const p of participants) {
       if (isLidJid(p.id)) {
         const resolvedPhone = await this.resolveParticipantPhone(sock, p.id);
-        console.log(`[FIND] ${p.id} → resuelto: ${resolvedPhone}`);
+        logger.debug(`[FIND] ${p.id} → resuelto: ${resolvedPhone}`);
         if (resolvedPhone === phoneNumber) return p;
       } else {
         const pPhone = p.id.split('@')[0].split(':')[0];
-        console.log(`[FIND] ${p.id} → teléfono: ${pPhone}`);
+        logger.debug(`[FIND] ${p.id} → teléfono: ${pPhone}`);
         if (pPhone === phoneNumber) return p;
       }
     }
-    console.log(`[FIND] No encontrado para: ${phoneNumber}`);
+    logger.debug(`[FIND] No encontrado para: ${phoneNumber}`);
     return null;
   }
 
   static invalidateCache(groupJid: string): void {
-    this.groupMetadataCache.delete(groupJid);
+    cacheManager.invalidateGroupMetadata(groupJid);
   }
 
   static clearCache(): void {
-    this.groupMetadataCache.clear();
     this.lidPhoneCache.clear();
   }
 
