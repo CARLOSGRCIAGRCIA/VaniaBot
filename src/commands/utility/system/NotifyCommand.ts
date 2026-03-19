@@ -70,6 +70,7 @@ export class NotifyCommand extends Command {
 
   private buildContextInfo(ctx: MessageContext) {
     const thumbnail = this.getLogoBuffer();
+    const botName = ctx.sender.pushName || 'VaniaBot';
 
     return {
       externalAdReply: {
@@ -81,8 +82,8 @@ export class NotifyCommand extends Command {
         renderLargerThumbnail: false,
         showAdAttribution: true,
       },
-      quotedMessage: { conversation: ctx.sender.pushName || 'VaniaBot' },
-      participant: ctx.sock.user?.id ?? '0@s.whatsapp.net',
+      quotedMessage: { conversation: botName },
+      participant: ctx.sock.user?.id || '0@s.whatsapp.net',
     };
   }
 
