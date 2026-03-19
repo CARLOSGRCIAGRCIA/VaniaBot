@@ -4,6 +4,8 @@ import type { MessageContext } from '@/types/index.js';
 import type { proto, WAMessage } from '@whiskeysockets/baileys';
 import { downloadMediaMessage } from '@whiskeysockets/baileys';
 import { cacheManager } from '@/core/CacheManager.js';
+import { existsSync, readFileSync } from 'fs';
+import { join } from 'path';
 
 export class NotifyCommand extends Command {
   name = 'notify';
@@ -56,20 +58,35 @@ export class NotifyCommand extends Command {
     }
   }
 
-  async execute(ctx: MessageContext): Promise<void> {
-    const extraText = ctx.args.join(' ').trim();
-    const footer = '\n\n> _*By VaniaBot*_ 💝';
+  private getLogoBuffer(): Buffer | undefined {
+    try {
+      const logoPath = join(process.cwd(), 'data/assets/logo.png');
+      if (existsSync(logoPath)) return readFileSync(logoPath);
+    } catch {
+      // Si falla la lectura, continúa sin imagen
+    }
+    return undefined;
+  }
 
-    const contextInfo = {
+  private buildContextInfo(ctx: MessageContext) {
+    const thumbnail = this.getLogoBuffer();
+    const thumbnailUrl = 'https://i.imgur.com/placeholder.png';
+
+    return {
       externalAdReply: {
         title: '🌸 VaniaBot',
         body: 'Notificación de grupo',
-        thumbnailUrl: 'https://i.imgur.com/placeholder.png',
+        thumbnailUrl,
         mediaType: 1,
         renderLargerThumbnail: false,
         showAdAttribution: true,
       },
     };
+  }
+
+  async execute(ctx: MessageContext): Promise<void> {
+    const extraText = ctx.args.join(' ').trim();
+    const footer = '\n\n> _*By VaniaBot*_ 💝';
 
     try {
       const cached = cacheManager.getGroupMetadata(ctx.chat.jid);
@@ -87,11 +104,11 @@ export class NotifyCommand extends Command {
           return;
         }
 
-        await ctx.sock.sendMessage(
-          ctx.chat.jid,
-          { text: `${extraText}${footer}`, mentions: participants, contextInfo },
-          { quoted: ctx.message },
-        );
+        await ctx.sock.sendMessage(ctx.chat.jid, {
+          text: `${extraText}${footer}`,
+          mentions: participants,
+          contextInfo: this.buildContextInfo(ctx),
+        });
         return;
       }
 
@@ -146,7 +163,7 @@ export class NotifyCommand extends Command {
           caption,
           mentions: participants,
           mimetype: ctx.quoted.imageMessage?.mimetype || 'image/jpeg',
-          contextInfo,
+          contextInfo: this.buildContextInfo(ctx),
         });
         return;
       }
@@ -181,7 +198,7 @@ export class NotifyCommand extends Command {
           mentions: participants,
           mimetype: ctx.quoted.videoMessage?.mimetype || 'video/mp4',
           gifPlayback: ctx.quoted.videoMessage?.gifPlayback || false,
-          contextInfo,
+          contextInfo: this.buildContextInfo(ctx),
         });
         return;
       }
@@ -191,7 +208,7 @@ export class NotifyCommand extends Command {
           await ctx.sock.sendMessage(ctx.chat.jid, {
             text: `${extraText}${footer}`,
             mentions: participants,
-            contextInfo,
+            contextInfo: this.buildContextInfo(ctx),
           });
         }
 
@@ -213,7 +230,7 @@ export class NotifyCommand extends Command {
           await ctx.sock.sendMessage(ctx.chat.jid, {
             text: `${extraText}${footer}`,
             mentions: participants,
-            contextInfo,
+            contextInfo: this.buildContextInfo(ctx),
           });
         }
 
@@ -226,6 +243,7 @@ export class NotifyCommand extends Command {
         return;
       }
 
+      // Tipo: text
       const quotedText = ctx.quoted.conversation || ctx.quoted.extendedTextMessage?.text || '';
 
       let notificationText: string;
@@ -237,11 +255,11 @@ export class NotifyCommand extends Command {
         notificationText = `${extraText}${footer}`;
       }
 
-      await ctx.sock.sendMessage(
-        ctx.chat.jid,
-        { text: notificationText, mentions: participants, contextInfo },
-        { quoted: ctx.message },
-      );
+      await ctx.sock.sendMessage(ctx.chat.jid, {
+        text: notificationText,
+        mentions: participants,
+        contextInfo: this.buildContextInfo(ctx),
+      });
     } catch (error) {
       console.error('Error in NotifyCommand:', error);
       await ctx.react('❌');
