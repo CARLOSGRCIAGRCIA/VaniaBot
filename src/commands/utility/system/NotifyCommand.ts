@@ -100,10 +100,15 @@ export class NotifyCommand extends Command {
 
     const contextInfo = this.buildContextInfo(ctx);
     console.log('[NOTIFY] contextInfo keys:', Object.keys(contextInfo));
+    console.log('[NOTIFY] externalAdReply.title:', contextInfo.externalAdReply?.title);
+    console.log('[NOTIFY] externalAdReply.body:', contextInfo.externalAdReply?.body);
     console.log(
-      '[NOTIFY] contextInfo.externalAdReply:',
-      JSON.stringify(contextInfo.externalAdReply, null, 2),
+      '[NOTIFY] thumbnail:',
+      contextInfo.externalAdReply?.thumbnail
+        ? `Buffer(${contextInfo.externalAdReply.thumbnail.length})`
+        : 'undefined',
     );
+    console.log('[NOTIFY] quotedMessage:', contextInfo.quotedMessage ? 'si' : 'no');
 
     try {
       const cached = cacheManager.getGroupMetadata(ctx.chat.jid);
@@ -123,12 +128,6 @@ export class NotifyCommand extends Command {
         }
 
         console.log('[NOTIFY] Enviando mensaje de texto...');
-        console.log('[NOTIFY] sendMessage args:', {
-          jid: ctx.chat.jid,
-          text: `${extraText}${footer}`.substring(0, 100),
-          mentionsCount: participants.length,
-          hasContextInfo: !!contextInfo,
-        });
 
         try {
           const result = await ctx.sock.sendMessage(ctx.chat.jid, {
@@ -136,10 +135,10 @@ export class NotifyCommand extends Command {
             mentions: participants,
             contextInfo,
           });
-          console.log('[NOTIFY] Mensaje enviado exitosamente:', JSON.stringify(result));
+          console.log('[NOTIFY] Mensaje enviado OK, key:', result?.key?.id);
         } catch (sendError) {
           console.error('[NOTIFY] Error en sendMessage:', sendError);
-          console.error('[NOTIFY] Error details:', JSON.stringify(sendError, null, 2));
+          console.error('[NOTIFY] Error message:', (sendError as Error)?.message);
           throw sendError;
         }
         return;
@@ -296,8 +295,8 @@ export class NotifyCommand extends Command {
       });
     } catch (error) {
       console.error('[NOTIFY] === ERROR ===');
-      console.error('[NOTIFY] Error completo:', error);
       console.error('[NOTIFY] Error message:', (error as Error)?.message);
+      console.error('[NOTIFY] Error name:', (error as Error)?.name);
       console.error('[NOTIFY] Error stack:', (error as Error)?.stack);
       await ctx.react('❌');
       await ctx.reply('❌ Error al enviar la notificación.');
