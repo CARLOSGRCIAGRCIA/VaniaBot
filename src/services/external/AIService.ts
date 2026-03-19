@@ -21,6 +21,7 @@ import {
 } from '@/services/system/CircuitBreakerService.js';
 import { retryManager } from '@/services/system/RetryService.js';
 import { unifiedCache } from '@/services/system/UnifiedCacheService.js';
+import { logger, logError } from '@/utils/logger.js';
 import { createHash } from 'crypto';
 import fs from 'fs';
 import path from 'path';
@@ -194,10 +195,10 @@ export class AIService {
     this.persistTimer = setInterval(() => this.persistDirtySessions(), PERSIST_INTERVAL_MS);
     this.persistTimer.unref();
 
-    console.log(`[AI] AIService iniciado con Groq`);
-    console.log(`   Chat:   ${GROQ_MODELS.chat}`);
-    console.log(`   Fast:   ${GROQ_MODELS.fast}`);
-    console.log(`   Voice:  ${GROQ_MODELS.transcribe}`);
+    logger.info(`[AI] AIService iniciado con Groq`);
+    logger.info(`   Chat:   ${GROQ_MODELS.chat}`);
+    logger.info(`   Fast:   ${GROQ_MODELS.fast}`);
+    logger.info(`   Voice:  ${GROQ_MODELS.transcribe}`);
   }
 
   /**
@@ -214,9 +215,9 @@ export class AIService {
     try {
       await this.loadSessionsFromDb();
       this.initialized = true;
-      console.log(`[AI] ${this.sessions.size} sesiones cargadas desde DB`);
+      logger.info(`[AI] ${this.sessions.size} sesiones cargadas desde DB`);
     } catch (error) {
-      console.warn('[AI] Error loading sessions from DB, using in-memory only:', error);
+      logger.warn('[AI] Error loading sessions from DB, using in-memory only:', error);
       this.initialized = true;
     }
   }
@@ -229,7 +230,7 @@ export class AIService {
    */
   private async loadSessionsFromDb(): Promise<void> {
     if (!serviceManager.db?.isConnected()) {
-      console.log('[AI] Database not connected, skipping session load');
+      logger.info('[AI] Database not connected, skipping session load');
       return;
     }
 
@@ -247,7 +248,7 @@ export class AIService {
         }
       }
     } catch (error) {
-      console.error('[AI] Failed to load sessions from DB:', error);
+      logError('AIService.loadSessionsFromDb', error);
     }
   }
 
@@ -264,7 +265,7 @@ export class AIService {
       const key = this.sessionKey(session.chatJid, session.senderJid);
       await serviceManager.db.set(AI_SESSIONS_COLLECTION, key, session);
     } catch (error) {
-      console.error('[AI] Failed to persist session:', error);
+      logError('AIService.persistSession', error);
     }
   }
 
@@ -285,9 +286,9 @@ export class AIService {
 
     try {
       await Promise.all(sessionsToPersist.map(s => this.persistSession(s)));
-      console.log(`[AI] Persisted ${sessionsToPersist.length} sessions to DB`);
+      logger.info(`[AI] Persisted ${sessionsToPersist.length} sessions to DB`);
     } catch (error) {
-      console.error('[AI] Failed to persist sessions:', error);
+      logError('AIService.persistDirtySessions', error);
     }
 
     this.dirtySessions.clear();
@@ -471,7 +472,7 @@ export class AIService {
       }
     }
 
-    if (cleaned > 0) console.log(`[AI] ${cleaned} sesiones expiradas eliminadas`);
+    if (cleaned > 0) logger.info(`[AI] ${cleaned} sesiones expiradas eliminadas`);
   }
 
   /**
@@ -740,11 +741,11 @@ export class AIService {
     clearInterval(this.persistTimer);
 
     if (this.dirtySessions.size > 0) {
-      console.log(`[AI] Persisting ${this.dirtySessions.size} sessions before shutdown...`);
+      logger.info(`[AI] Persisting ${this.dirtySessions.size} sessions before shutdown...`);
       await this.persistDirtySessions();
     }
 
-    console.log('[AI] AIService shutdown complete');
+    logger.info('[AI] AIService shutdown complete');
   }
 }
 

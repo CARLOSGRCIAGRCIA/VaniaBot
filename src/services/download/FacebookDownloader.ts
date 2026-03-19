@@ -1,5 +1,6 @@
 import type { DownloadResult } from './DownloadService.js';
 import { DownloadService } from './DownloadService.js';
+import { logger } from '@/utils/logger.js';
 import fs from 'fs';
 
 export interface FacebookVideo {
@@ -69,7 +70,7 @@ export class FacebookDownloader extends DownloadService {
   ): Promise<DownloadResult> {
     for (const method of methods) {
       try {
-        console.log(`🔄 [Facebook] Trying ${method.name}...`);
+        logger.debug(`🔄 [Facebook] Trying ${method.name}...`);
 
         await this.runCommand(method.cmd, method.args, 120000);
 
@@ -84,7 +85,7 @@ export class FacebookDownloader extends DownloadService {
             };
           }
 
-          console.log(`✅ [Facebook] ${method.name} succeeded: ${sizeCheck.sizeMB}MB`);
+          logger.debug(`✅ [Facebook] ${method.name} succeeded: ${sizeCheck.sizeMB}MB`);
 
           return {
             success: true,
@@ -95,7 +96,7 @@ export class FacebookDownloader extends DownloadService {
         }
       } catch (error) {
         const commandError = error as CommandError;
-        console.log(`❌ [Facebook] ${method.name} failed:`, commandError.message);
+        logger.debug(`❌ [Facebook] ${method.name} failed: ${commandError.message}`);
         continue;
       }
     }

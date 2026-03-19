@@ -1,6 +1,7 @@
 import { Command } from '../../Command.js';
 import { CommandCategory, type MessageContext } from '@/types/index.js';
 import { YouTubeDownloader } from '@/services/download/YouTubeDownloader.js';
+import { logError } from '@/utils/logger.js';
 import fs from 'fs';
 
 export class YtMp3Command extends Command {
@@ -79,7 +80,7 @@ export class YtMp3Command extends Command {
 
       await this.downloader['cleanup'](filePath);
     } catch (error: unknown) {
-      console.error('Error in YtMp3Command:', error);
+      logError('YtMp3Command.execute', error);
       await ctx.react('❌');
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
       await ctx.reply(`❌ Error: ${errorMessage}`);

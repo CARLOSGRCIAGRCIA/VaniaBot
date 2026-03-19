@@ -4,6 +4,7 @@ import type { MessageContext } from '@/types/index.js';
 import { serviceManager } from '@/services/system/Servicemanager.js';
 import { formatNumber, formatTime } from '@/utils/helpers.js';
 import type { User } from '@/services/database/UserService.js';
+import { logError } from '@/utils/logger.js';
 import fs from 'fs';
 import path from 'path';
 
@@ -60,7 +61,7 @@ export class ProfileCommand extends Command {
 
       await this.sendProfileWithImage(ctx, targetJid, message);
     } catch (error) {
-      console.error('Error in ProfileCommand:', error);
+      logError('ProfileCommand.execute', error);
       await ctx.reply('❌ Error retrieving profile');
     }
   }

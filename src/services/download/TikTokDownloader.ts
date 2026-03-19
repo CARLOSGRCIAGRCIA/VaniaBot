@@ -1,5 +1,6 @@
 import type { DownloadResult } from './DownloadService.js';
 import { DownloadService } from './DownloadService.js';
+import { logger } from '@/utils/logger.js';
 import fs from 'fs';
 
 export interface TikTokVideo {
@@ -83,7 +84,7 @@ export class TikTokDownloader extends DownloadService {
   ): Promise<DownloadResult> {
     for (const method of methods) {
       try {
-        console.log(`🔄 [TikTok] Trying ${method.name}...`);
+        logger.debug(`🔄 [TikTok] Trying ${method.name}...`);
 
         await this.runCommand(method.cmd, method.args, 120000);
 
@@ -98,7 +99,7 @@ export class TikTokDownloader extends DownloadService {
             };
           }
 
-          console.log(`✅ [TikTok] ${method.name} succeeded: ${sizeCheck.sizeMB}MB`);
+          logger.debug(`✅ [TikTok] ${method.name} succeeded: ${sizeCheck.sizeMB}MB`);
 
           return {
             success: true,
@@ -109,7 +110,7 @@ export class TikTokDownloader extends DownloadService {
         }
       } catch (error) {
         const commandError = error as CommandError;
-        console.log(`❌ [TikTok] ${method.name} failed:`, commandError.message);
+        logger.debug(`❌ [TikTok] ${method.name} failed: ${commandError.message}`);
         continue;
       }
     }

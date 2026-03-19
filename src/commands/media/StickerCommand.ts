@@ -3,6 +3,7 @@ import { CommandCategory, CommandContext, type MessageContext } from '@/types/in
 import { downloadMediaMessage } from '@whiskeysockets/baileys';
 import { StickerService } from '@/services/media/StickerService.js';
 import type { proto } from '@whiskeysockets/baileys';
+import { logError } from '@/utils/logger.js';
 
 export class StickerCommand extends Command {
   name = 'sticker';
@@ -63,7 +64,7 @@ export class StickerCommand extends Command {
 
       await ctx.react('✅');
     } catch (error) {
-      console.error('Error in StickerCommand:', error);
+      logError('StickerCommand.execute', error);
     }
   }
 }

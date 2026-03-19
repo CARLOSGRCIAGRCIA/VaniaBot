@@ -5,6 +5,7 @@ import {
   CircuitOpenError,
 } from '@/services/system/CircuitBreakerService.js';
 import { retryManager } from '@/services/system/RetryService.js';
+import { logger, logError } from '@/utils/logger.js';
 import yts from 'yt-search';
 import fs from 'fs';
 
@@ -92,10 +93,10 @@ export class YouTubeDownloader extends DownloadService {
       return result.result;
     } catch (error) {
       if (error instanceof CircuitOpenError) {
-        console.warn('YouTube search circuit open');
+        logger.warn('YouTube search circuit open');
         return null;
       }
-      console.error('YouTube search error:', error);
+      logError('YouTubeDownloader.search', error);
       return null;
     }
   }
@@ -154,7 +155,7 @@ export class YouTubeDownloader extends DownloadService {
   ): Promise<DownloadResult> {
     for (const method of methods) {
       try {
-        console.log(`🔄 Trying ${method.name}...`);
+        logger.debug(`🔄 Trying ${method.name}...`);
 
         await this.runCommand(method.cmd, method.args, 180000);
 
@@ -169,7 +170,7 @@ export class YouTubeDownloader extends DownloadService {
             };
           }
 
-          console.log(`✅ ${method.name} succeeded: ${sizeCheck.sizeMB}MB`);
+          logger.debug(`✅ ${method.name} succeeded: ${sizeCheck.sizeMB}MB`);
 
           return {
             success: true,
@@ -180,7 +181,7 @@ export class YouTubeDownloader extends DownloadService {
         }
       } catch (error) {
         const commandError = error as CommandError;
-        console.log(`❌ ${method.name} failed:`, commandError.message);
+        logger.debug(`❌ ${method.name} failed: ${commandError.message}`);
         continue;
       }
     }

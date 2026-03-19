@@ -1,6 +1,7 @@
 import { Command } from '../../Command.js';
 import { CommandCategory, type MessageContext } from '@/types/index.js';
 import { TikTokDownloader } from '@/services/download/TikTokDownloader.js';
+import { logError } from '@/utils/logger.js';
 import fs from 'fs';
 
 export class TiktokCommand extends Command {
@@ -88,7 +89,7 @@ export class TiktokCommand extends Command {
 
       await this.downloader['cleanup'](filePath);
     } catch (error: unknown) {
-      console.error('Error in TiktokCommand:', error);
+      logError('TiktokCommand.execute', error);
       await ctx.react('❌');
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
       await ctx.reply(`❌ Error: ${errorMessage}`);

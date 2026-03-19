@@ -6,6 +6,7 @@ import {
   PermissionLevel,
   type MessageContext,
 } from '@/types/index.js';
+import { logError } from '@/utils/logger.js';
 
 const MEMES = [
   '¿Por qué los programs se sienta al lado de la pantalla? Porque están en modo DEBUG',
@@ -631,7 +632,7 @@ export class StickerRandomCommand extends Command {
       await ctx.sock.sendMessage(ctx.chat.jid, { sticker: stickerBuffer });
       await ctx.react('✅');
     } catch (error) {
-      console.error('StickerRandom error:', error);
+      logError('FunCommand.StickerRandom', error);
       await ctx.reply('Ocurrió un error generando el sticker. Intenta de nuevo.');
     }
   }
