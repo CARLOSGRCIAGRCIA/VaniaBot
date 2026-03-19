@@ -16,6 +16,7 @@ import { aiService } from '@/services/external/AIService.js';
 import type { MessageContext } from '@/types/index.js';
 import { serviceManager } from '@/services/system/Servicemanager.js';
 import { PermissionService } from '@/services/PermissionService.js';
+import { logError } from '@/utils/logger.js';
 
 /**
  * Handles mention events for AI chat.
@@ -82,7 +83,15 @@ export async function handleMention(ctx: MessageContext, botJid: string): Promis
 
   await ctx.react('🤔');
 
-  const response = await aiService.chat(ctx.chat.jid, ctx.sender.jid, cleanText);
+  let response;
+  try {
+    response = await aiService.chat(ctx.chat.jid, ctx.sender.jid, cleanText);
+  } catch (error) {
+    logError('AiMentionHandler.aiService.chat', error);
+    await ctx.react('❌');
+    await ctx.reply('❌ Ocurrió un error al procesar tu mensaje.');
+    return true;
+  }
 
   if (!response.success) {
     await ctx.react('❌');

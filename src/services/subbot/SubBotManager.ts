@@ -482,7 +482,9 @@ export class SubBotManager extends EventEmitter {
       if (antiSpam) {
         const rateLimit = antiSpam.check(ctx.sender.jid);
         if (!rateLimit.allowed) {
-          await ctx.reply(rateLimit.reason ?? '⚠️ Demasiados mensajes').catch(() => {});
+          await ctx
+            .reply(rateLimit.reason ?? '⚠️ Demasiados mensajes')
+            .catch(err => logError(`SubBot[${subConfig.id}].antiSpam.reply`, err));
           return;
         }
       }
@@ -516,7 +518,9 @@ export class SubBotManager extends EventEmitter {
           }
         } catch (error) {
           logError(`SubBot[${subConfig.id}]`, new CommandExecutionError(ctx.command, error));
-          await ctx.reply('Ocurrió un error al ejecutar el comando 💔').catch(() => {});
+          await ctx
+            .reply('Ocurrió un error al ejecutar el comando 💔')
+            .catch(err => logError(`SubBot[${subConfig.id}].command.reply`, err));
         }
       });
 
