@@ -91,11 +91,26 @@ export class NotifyCommand extends Command {
     const extraText = ctx.args.join(' ').trim();
     const footer = '\n\n> _*By VaniaBot*_ 💝';
 
+    console.log('[NOTIFY] === INICIO ===');
+    console.log('[NOTIFY] extraText:', extraText);
+    console.log('[NOTIFY] ctx.chat.jid:', ctx.chat.jid);
+    console.log('[NOTIFY] ctx.quoted:', ctx.quoted ? 'si' : 'no');
+    console.log('[NOTIFY] ctx.sender.pushName:', ctx.sender.pushName);
+    console.log('[NOTIFY] Bot user id:', ctx.sock.user?.id);
+
+    const contextInfo = this.buildContextInfo(ctx);
+    console.log('[NOTIFY] contextInfo keys:', Object.keys(contextInfo));
+    console.log(
+      '[NOTIFY] contextInfo.externalAdReply:',
+      JSON.stringify(contextInfo.externalAdReply, null, 2),
+    );
+
     try {
       const cached = cacheManager.getGroupMetadata(ctx.chat.jid);
       const groupMetadata = cached ?? (await ctx.sock.groupMetadata(ctx.chat.jid));
       if (!cached) cacheManager.setGroupMetadata(ctx.chat.jid, groupMetadata);
       const participants = groupMetadata.participants.map(p => p.id);
+      console.log('[NOTIFY] participants count:', participants.length);
 
       if (!ctx.quoted) {
         if (!extraText) {
@@ -107,19 +122,31 @@ export class NotifyCommand extends Command {
           return;
         }
 
-        await ctx.sock.sendMessage(
-          ctx.chat.jid,
-          {
+        console.log('[NOTIFY] Enviando mensaje de texto...');
+        console.log('[NOTIFY] sendMessage args:', {
+          jid: ctx.chat.jid,
+          text: `${extraText}${footer}`.substring(0, 100),
+          mentionsCount: participants.length,
+          hasContextInfo: !!contextInfo,
+        });
+
+        try {
+          const result = await ctx.sock.sendMessage(ctx.chat.jid, {
             text: `${extraText}${footer}`,
             mentions: participants,
-            contextInfo: this.buildContextInfo(ctx),
-          },
-          { quoted: ctx.message },
-        );
+            contextInfo,
+          });
+          console.log('[NOTIFY] Mensaje enviado exitosamente:', JSON.stringify(result));
+        } catch (sendError) {
+          console.error('[NOTIFY] Error en sendMessage:', sendError);
+          console.error('[NOTIFY] Error details:', JSON.stringify(sendError, null, 2));
+          throw sendError;
+        }
         return;
       }
 
       const type = this.getQuotedType(ctx.quoted);
+      console.log('[NOTIFY] quoted type:', type);
 
       if (type === 'sticker') {
         await ctx.react('⏳');
@@ -268,9 +295,13 @@ export class NotifyCommand extends Command {
         contextInfo: this.buildContextInfo(ctx),
       });
     } catch (error) {
-      console.error('Error in NotifyCommand:', error);
+      console.error('[NOTIFY] === ERROR ===');
+      console.error('[NOTIFY] Error completo:', error);
+      console.error('[NOTIFY] Error message:', (error as Error)?.message);
+      console.error('[NOTIFY] Error stack:', (error as Error)?.stack);
       await ctx.react('❌');
       await ctx.reply('❌ Error al enviar la notificación.');
     }
+    console.log('[NOTIFY] === FIN ===');
   }
 }
