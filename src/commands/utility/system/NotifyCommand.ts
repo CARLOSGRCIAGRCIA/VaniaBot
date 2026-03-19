@@ -70,17 +70,19 @@ export class NotifyCommand extends Command {
 
   private buildContextInfo(ctx: MessageContext) {
     const thumbnail = this.getLogoBuffer();
-    const thumbnailUrl = 'https://i.imgur.com/placeholder.png';
 
     return {
       externalAdReply: {
         title: '🌸 VaniaBot',
         body: 'Notificación de grupo',
-        thumbnailUrl,
+        thumbnail,
+        thumbnailUrl: 'https://i.imgur.com/placeholder.png',
         mediaType: 1,
         renderLargerThumbnail: false,
         showAdAttribution: true,
       },
+      quotedMessage: { conversation: ctx.sender.pushName || 'VaniaBot' },
+      participant: ctx.sock.user?.id ?? '0@s.whatsapp.net',
     };
   }
 
@@ -104,11 +106,15 @@ export class NotifyCommand extends Command {
           return;
         }
 
-        await ctx.sock.sendMessage(ctx.chat.jid, {
-          text: `${extraText}${footer}`,
-          mentions: participants,
-          contextInfo: this.buildContextInfo(ctx),
-        });
+        await ctx.sock.sendMessage(
+          ctx.chat.jid,
+          {
+            text: `${extraText}${footer}`,
+            mentions: participants,
+            contextInfo: this.buildContextInfo(ctx),
+          },
+          { quoted: ctx.message },
+        );
         return;
       }
 
