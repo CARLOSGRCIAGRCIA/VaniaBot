@@ -1,4 +1,5 @@
-import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'fs';
+import { existsSync, mkdirSync, readFile, writeFile } from 'fs';
+import { promisify } from 'util';
 import { dirname } from 'path';
 import { Database } from './Database.js';
 import { logger, logError } from '@/utils/logger.js';
@@ -93,7 +94,7 @@ export class JsonDatabase extends Database {
         mkdirSync(dir, { recursive: true });
       }
       if (existsSync(this.filePath)) {
-        const rawData = readFileSync(this.filePath, 'utf-8');
+        const rawData = await promisify(readFile)(this.filePath, 'utf-8');
         this.data = JSON.parse(rawData) as JsonData;
         if (process.env.NODE_ENV !== 'production') {
           logger.info(`DB cargada: ${this.filePath}`);
@@ -111,7 +112,7 @@ export class JsonDatabase extends Database {
 
   private async saveToFile(): Promise<void> {
     try {
-      writeFileSync(this.filePath, JSON.stringify(this.data, null, 2), 'utf-8');
+      await promisify(writeFile)(this.filePath, JSON.stringify(this.data, null, 2), 'utf-8');
     } catch (error) {
       logError('JsonDatabase.saveToFile', error);
       throw error;
