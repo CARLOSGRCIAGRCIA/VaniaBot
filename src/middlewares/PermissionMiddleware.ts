@@ -16,6 +16,7 @@ import type { MessageContext, ICommand } from '@/types/index.js';
 import type { CommandRegistry } from '@/core/CommandRegistry.js';
 import { PermissionLevel, BotPermission } from '@/types/index.js';
 import { serviceManager } from '@/services/system/Servicemanager.js';
+import { PermissionService } from '@/services/PermissionService.js';
 
 /**
  * Middleware that validates user and bot permissions before command execution.
@@ -59,15 +60,20 @@ export class PermissionMiddleware extends Middleware {
           return;
         }
       }
+
+      if (!ctx.sender.isOwner && ctx.sender.jid.endsWith('@lid')) {
+        const isOwner = await PermissionService.isOwnerAsync(ctx.sock, ctx.sender.jid);
+        ctx.setOwnerOverride(isOwner);
+      }
     }
 
     if (!this.checkUserPermissions(command, ctx)) {
-      await ctx.reply('❌ You do not have permission to use this command');
+      await ctx.reply('❌ No tienes permiso para usar este comando');
       return;
     }
 
     if (ctx.chat.isGroup && !this.checkBotPermissions(command, ctx)) {
-      await ctx.reply('❌ The bot needs to be an admin to execute this command');
+      await ctx.reply('❌ El bot necesita ser admin para ejecutar este comando');
       return;
     }
 

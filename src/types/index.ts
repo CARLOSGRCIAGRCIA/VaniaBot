@@ -72,6 +72,7 @@ export interface MessageContext {
   sendMessage(content: AnyMessageContent): Promise<void>;
   loadSenderPermissions(): Promise<void>;
   loadBotPermissions(): Promise<void>;
+  setOwnerOverride(isOwner: boolean): void;
 }
 
 export interface IMiddleware {

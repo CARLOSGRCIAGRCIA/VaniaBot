@@ -61,6 +61,17 @@ export class PermissionService {
     const normalizedJid = normalizeJid(jid);
     const phoneNumber = normalizedJid.split('@')[0];
 
+    if (isLidJid(normalizedJid)) {
+      const cachedPhone = this.lidPhoneCache.get(normalizedJid);
+      if (cachedPhone) {
+        return config.owners.some(owner => {
+          const ownerPhone = normalizeJid(owner).split('@')[0];
+          return cachedPhone === ownerPhone;
+        });
+      }
+      return false;
+    }
+
     for (const owner of config.owners) {
       const normalizedOwner = normalizeJid(owner);
       const ownerPhone = normalizedOwner.split('@')[0];
@@ -69,6 +80,60 @@ export class PermissionService {
       }
     }
     return false;
+  }
+
+  static async isOwnerAsync(sock: WASocket, jid: string): Promise<boolean> {
+    const normalizedJid = normalizeJid(jid);
+    const phoneNumber = normalizedJid.split('@')[0];
+
+    if (isLidJid(normalizedJid)) {
+      const cachedPhone = this.lidPhoneCache.get(normalizedJid);
+      if (cachedPhone) {
+        return config.owners.some(owner => {
+          const ownerPhone = normalizeJid(owner).split('@')[0];
+          return cachedPhone === ownerPhone;
+        });
+      }
+      const resolvedPhone = await this.resolveLidToPhone(sock, normalizedJid);
+      if (resolvedPhone) {
+        return config.owners.some(owner => {
+          const ownerPhone = normalizeJid(owner).split('@')[0];
+          return resolvedPhone === ownerPhone;
+        });
+      }
+      return false;
+    }
+
+    for (const owner of config.owners) {
+      const normalizedOwner = normalizeJid(owner);
+      const ownerPhone = normalizedOwner.split('@')[0];
+      if (normalizedJid === normalizedOwner || phoneNumber === ownerPhone) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  private static async resolveLidToPhone(sock: WASocket, lidJid: string): Promise<string | null> {
+    const cached = this.lidPhoneCache.get(lidJid);
+    if (cached) return cached;
+
+    try {
+      const onWhatsApp = (
+        sock as unknown as { onWhatsApp?: (jid: string) => Promise<Array<{ jid?: string }>> }
+      ).onWhatsApp;
+      if (!onWhatsApp) return null;
+
+      const result = await onWhatsApp.call(sock, lidJid);
+      if (result && result[0]?.jid) {
+        const phone = result[0].jid.split('@')[0].split(':')[0];
+        this.lidPhoneCache.set(lidJid, phone);
+        return phone;
+      }
+    } catch {
+      logger.debug(`[LID RESOLVE] Failed for ${lidJid}`);
+    }
+    return null;
   }
 
   private static async getGroupMetadata(

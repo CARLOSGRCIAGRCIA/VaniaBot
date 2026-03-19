@@ -31,6 +31,7 @@ export class MessageContext implements IMessageContext {
 
   private _senderPermissions?: { isAdmin: boolean; isOwner: boolean };
   private _botPermissions?: { isAdmin: boolean };
+  private _isOwnerOverride?: boolean;
 
   /**
    * Creates a new MessageContext instance.
@@ -85,7 +86,8 @@ export class MessageContext implements IMessageContext {
     const rawJid = this.message.key.participant ?? this.message.key.remoteJid ?? '';
     const jid = normalizeJid(rawJid);
     const pushName = this.message.pushName || 'User';
-    const isOwner = PermissionService.isOwner(jid);
+    const baseOwner = PermissionService.isOwner(jid);
+    const isOwner = this._isOwnerOverride ?? baseOwner;
 
     return {
       jid,
@@ -93,6 +95,10 @@ export class MessageContext implements IMessageContext {
       isOwner,
       isAdmin: this._senderPermissions?.isAdmin ?? false,
     };
+  }
+
+  setOwnerOverride(isOwner: boolean): void {
+    this._isOwnerOverride = isOwner;
   }
 
   /**
