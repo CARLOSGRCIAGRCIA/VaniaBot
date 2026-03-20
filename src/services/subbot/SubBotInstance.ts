@@ -114,11 +114,13 @@ export class SubBotInstance extends EventEmitter {
       });
 
       this.sock.ev.on('creds.update', () => {
-        saveCreds().catch(() => {});
+        saveCreds().catch(err => logError(`SubBotInstance[${this.config.id}].saveCreds`, err));
       });
 
       this.sock.ev.on('connection.update', update => {
-        void this.handleConnection(update);
+        void this.handleConnection(update).catch(err =>
+          logError(`SubBotInstance[${this.config.id}].handleConnection`, err),
+        );
       });
 
       this.sock.ev.on('messages.upsert', ({ messages, type }) => {
@@ -355,9 +357,18 @@ export class SubBotInstance extends EventEmitter {
       clearTimeout(this.pairingCodeTimer);
       this.pairingCodeTimer = undefined;
     }
+    if (this.sock?.ev) {
+      this.sock.ev.removeAllListeners('creds.update');
+      this.sock.ev.removeAllListeners('connection.update');
+      this.sock.ev.removeAllListeners('messages.upsert');
+      this.sock.ev.removeAllListeners('group-participants.update');
+      this.sock.ev.removeAllListeners('groups.update');
+    }
     try {
       await this.sock?.ws?.close();
-    } catch {}
+    } catch (err) {
+      logError(`SubBotInstance[${this.config.id}].stop`, err);
+    }
     subBotDatabase.update(this.config.id, { status: 'disconnected' });
     this.emit('status', 'disconnected');
     logger.info(`✅ SubBot[${this.config.id}] stopped`);

@@ -21,6 +21,7 @@ export class CommandRegistry {
   private commands = new Map<string, ICommand>();
   private aliases = new Map<string, string>();
   private cooldowns = new Map<string, Map<string, number>>();
+  private cooldownTimers = new Map<string, Map<string, NodeJS.Timeout>>();
 
   register(command: ICommand): void {
     this.commands.set(command.name, command);
@@ -43,33 +44,54 @@ export class CommandRegistry {
   }
 
   checkCooldown(commandName: string, userId: string, cooldownTime: number): boolean {
-    if (!this.cooldowns.has(commandName)) {
-      this.cooldowns.set(commandName, new Map());
-    }
-
-    const timestamps = this.cooldowns.get(commandName);
+    let timestamps = this.cooldowns.get(commandName);
     if (!timestamps) {
-      return true;
+      timestamps = new Map();
+      this.cooldowns.set(commandName, timestamps);
+    }
+    let timers = this.cooldownTimers.get(commandName);
+    if (!timers) {
+      timers = new Map();
+      this.cooldownTimers.set(commandName, timers);
     }
 
     const now = Date.now();
 
     if (timestamps.has(userId)) {
       const userTimestamp = timestamps.get(userId);
-      // This should exist because we just checked has()
       if (userTimestamp !== undefined) {
         const expirationTime = userTimestamp + cooldownTime;
-
         if (now < expirationTime) {
           return false;
         }
       }
     }
 
+    const existingTimer = timers.get(userId);
+    if (existingTimer) {
+      clearTimeout(existingTimer);
+    }
+
     timestamps.set(userId, now);
-    setTimeout(() => timestamps.delete(userId), cooldownTime);
+    timers.set(
+      userId,
+      setTimeout(() => {
+        timestamps.delete(userId);
+        timers.delete(userId);
+      }, cooldownTime),
+    );
 
     return true;
+  }
+
+  clearCooldowns(): void {
+    for (const timers of this.cooldownTimers.values()) {
+      for (const timer of timers.values()) {
+        clearTimeout(timer);
+      }
+    }
+    this.cooldowns.clear();
+    this.cooldownTimers.clear();
   }
 
   get size(): number {

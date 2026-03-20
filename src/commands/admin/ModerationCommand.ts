@@ -22,17 +22,9 @@ export class AntiWeleCommand extends Command {
       return;
     }
 
-    const isEnable = ['on', 'activar'].includes(action);
-
-    try {
-      await ctx.reply(
-        isEnable
-          ? '✅ *Anti-WhatsApp Web activado*\nLos usuarios que usen WhatsApp Web serán detectados.'
-          : '🔕 *Anti-WhatsApp Web desactivado*',
-      );
-    } catch {
-      await ctx.reply('❌ Error al configurar anti-wele');
-    }
+    await ctx.reply(
+      '⚠️ *Función no implementada*\n\nAnti-WhatsApp Web requiere integración con la API de WhatsApp para detectar dispositivos. [PLANNED]',
+    );
   }
 }
 
@@ -56,17 +48,9 @@ export class AntiFakeCommand extends Command {
       return;
     }
 
-    const isEnable = ['on', 'activar'].includes(action);
-
-    try {
-      await ctx.reply(
-        isEnable
-          ? '✅ *Anti-Fake activado*\nLos usuarios con números no registrados serán bloqueados.'
-          : '🔕 *Anti-Fake desactivado*',
-      );
-    } catch {
-      await ctx.reply('❌ Error al configurar anti-fake');
-    }
+    await ctx.reply(
+      '⚠️ *Función no implementada*\n\nAnti-Fake requiere validación de números contra la API de WhatsApp. [PLANNED]',
+    );
   }
 }
 

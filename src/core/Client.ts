@@ -264,7 +264,7 @@ export class WhatsAppClient {
     });
 
     this.sock.ev.on('group-participants.update', update => {
-      void this.handleGroupUpdate(update);
+      void this.handleGroupUpdate(update).catch(err => logError('Client.handleGroupUpdate', err));
     });
 
     this.sock.ev.on('groups.update', updates => {
@@ -343,6 +343,11 @@ export class WhatsAppClient {
             }
 
             if (ctx.chat.isGroup && !ctx.command) {
+              const isEnabled = await serviceManager.vaniaToggleService.isEnabled(ctx.chat.jid);
+              if (!isEnabled) {
+                cacheManager.markMessageProcessed(messageId);
+                return;
+              }
               const quizHandled = await quizAnswerHandler.handle(ctx);
               if (quizHandled) {
                 cacheManager.markMessageProcessed(messageId);
@@ -459,6 +464,9 @@ export class WhatsAppClient {
     try {
       cacheManager.invalidateGroupMetadata(groupJid);
       await serviceManager.groupService.getGroup(groupJid);
+
+      const isEnabled = await serviceManager.vaniaToggleService.isEnabled(groupJid);
+      if (!isEnabled) return;
 
       if (action === 'add') {
         for (const participant of participants) {

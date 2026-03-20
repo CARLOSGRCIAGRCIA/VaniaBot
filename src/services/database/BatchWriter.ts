@@ -50,10 +50,10 @@ export class BatchWriter {
     this.isWriting = true;
 
     const writes = Array.from(this.pendingWrites.values());
-    this.pendingWrites.clear();
 
     try {
       await this.writeCallback(writes);
+      this.pendingWrites.clear();
     } catch (error) {
       console.error('Error en batch write:', error);
       for (const w of writes) {

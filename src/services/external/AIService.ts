@@ -277,15 +277,33 @@ export class AIService {
   private async persistDirtySessions(): Promise<void> {
     if (this.dirtySessions.size === 0) return;
 
-    const sessionsToPersist = Array.from(this.dirtySessions)
-      .map(key => this.sessions.get(key))
-      .filter((s): s is ConversationSession => s !== undefined);
+    const sessionsToPersist: Array<{ key: string; session: ConversationSession }> = [];
+    for (const key of this.dirtySessions) {
+      const session = this.sessions.get(key);
+      if (session) sessionsToPersist.push({ key, session });
+    }
 
     if (sessionsToPersist.length === 0) return;
 
     try {
-      await Promise.all(sessionsToPersist.map(s => this.persistSession(s)));
-      console.log(`[AI] Persisted ${sessionsToPersist.length} sessions to DB`);
+      const results = await Promise.allSettled(
+        sessionsToPersist.map(({ session }) => this.persistSession(session)),
+      );
+      const failed = results.filter(r => r.status === 'rejected').length;
+      const succeeded = results.filter(r => r.status === 'fulfilled').length;
+      if (failed > 0) {
+        for (let i = 0; i < results.length; i++) {
+          if (results[i].status === 'rejected') {
+            this.dirtySessions.add(sessionsToPersist[i].key);
+          }
+        }
+        console.error(`[AI] ${failed}/${sessionsToPersist.length} sessions failed to persist`);
+        console.log(
+          `[AI] Persisted ${succeeded}/${sessionsToPersist.length} sessions, ${failed} re-marked dirty`,
+        );
+      } else {
+        console.log(`[AI] Persisted ${sessionsToPersist.length} sessions to DB`);
+      }
     } catch (error) {
       console.error('[AI] Failed to persist sessions:', error);
     }

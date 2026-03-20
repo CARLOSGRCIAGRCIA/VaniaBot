@@ -1,5 +1,5 @@
 import { Command } from '../../Command.js';
-import { CommandCategory, CommandContext } from '@/types/index.js';
+import { CommandCategory, CommandContext, PermissionLevel } from '@/types/index.js';
 import type { MessageContext } from '@/types/index.js';
 import type { proto, WAMessage } from '@whiskeysockets/baileys';
 import { downloadMediaMessage } from '@whiskeysockets/baileys';
@@ -17,7 +17,8 @@ export class NotifyCommand extends Command {
     '!n Miren esto jajaja (respondiendo sticker/imagen/video)',
   ];
   contexts = [CommandContext.GROUP];
-  cooldown = 5000;
+  cooldown = 60000;
+  permissions = { user: [PermissionLevel.ADMIN] };
 
   private getQuotedType(quoted: proto.IMessage): string {
     if (!quoted) return 'none';

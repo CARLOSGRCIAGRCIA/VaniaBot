@@ -31,6 +31,7 @@ import { AntiSpamMiddleware } from '@/middlewares/AntiSpamMiddleware.js';
 import { AutoRegisterMiddleware } from '@/middlewares/AutoRegisterMiddleware.js';
 import { MuteMiddleware } from '@/middlewares/MuteMiddleware.js';
 import { LoggerMiddleware } from '@/middlewares/LoggerMiddleware.js';
+import { VaniaToggleMiddleware } from '@/middlewares/VaniaToggleMiddleware.js';
 import { serviceManager } from '@/services/system/Servicemanager.js';
 import { handleReaccion } from '@/handlers/ReaccionHandler.js';
 import { quizAnswerHandler } from '@/handlers/QuizAnswerHandler.js';
@@ -240,12 +241,13 @@ export class SubBotManager extends EventEmitter {
     logger.debug(`🔧 SubBot[${subBotId}] construyendo pipeline de middlewares...`);
     const mws: MiddlewareConfig[] = [
       { middleware: new AutoRegisterMiddleware(), priority: 1, canRunParallel: false },
-      { middleware: new MuteMiddleware(), priority: 2, canRunParallel: false },
-      { middleware: new LoggerMiddleware(), priority: 3, canRunParallel: true },
-      { middleware: new ValidationMiddleware(commandRegistry), priority: 4, canRunParallel: true },
-      { middleware: new PermissionMiddleware(commandRegistry), priority: 5, canRunParallel: false },
-      { middleware: new AntiSpamMiddleware(), priority: 6, canRunParallel: false },
-      { middleware: new CooldownMiddleware(commandRegistry), priority: 7, canRunParallel: false },
+      { middleware: new VaniaToggleMiddleware(), priority: 2, canRunParallel: false },
+      { middleware: new MuteMiddleware(), priority: 3, canRunParallel: false },
+      { middleware: new LoggerMiddleware(), priority: 4, canRunParallel: true },
+      { middleware: new ValidationMiddleware(commandRegistry), priority: 5, canRunParallel: true },
+      { middleware: new PermissionMiddleware(commandRegistry), priority: 6, canRunParallel: false },
+      { middleware: new AntiSpamMiddleware(), priority: 7, canRunParallel: false },
+      { middleware: new CooldownMiddleware(commandRegistry), priority: 8, canRunParallel: false },
     ];
     mws.sort((a, b) => a.priority - b.priority);
     logger.debug(`✅ SubBot[${subBotId}] pipeline listo (${mws.length} middlewares)`);
@@ -398,12 +400,16 @@ export class SubBotManager extends EventEmitter {
     });
 
     instance.on('message', (msg: WAMessage, sock: WASocket) => {
-      void this.handleSubBotMessage(msg, sock, subConfig);
+      void this.handleSubBotMessage(msg, sock, subConfig).catch(err =>
+        logError(`SubBotManager[${subConfig.id}].handleSubBotMessage`, err),
+      );
     });
 
     instance.on('groupUpdate', (update: GroupParticipantsUpdate) => {
       if (instance.sock) {
-        void this.handleGroupUpdate(update, instance.sock);
+        void this.handleGroupUpdate(update, instance.sock).catch(err =>
+          logError(`SubBotManager[${subConfig.id}].handleGroupUpdate`, err),
+        );
       }
     });
 
@@ -469,6 +475,8 @@ export class SubBotManager extends EventEmitter {
       }
 
       if (ctx.chat.isGroup && !ctx.command) {
+        const isEnabled = await serviceManager.vaniaToggleService.isEnabled(ctx.chat.jid);
+        if (!isEnabled) return;
         const quizHandled = await quizAnswerHandler.handle(ctx);
         if (quizHandled) return;
         const botJid = sock.user?.id ?? '';
@@ -532,6 +540,8 @@ export class SubBotManager extends EventEmitter {
     try {
       cacheManager.invalidateGroupMetadata(groupJid);
       await serviceManager.groupService.getGroup(groupJid);
+      const isEnabled = await serviceManager.vaniaToggleService.isEnabled(groupJid);
+      if (!isEnabled) return;
       if (action === 'add') {
         for (const participant of participants) {
           welcomeService

@@ -407,11 +407,12 @@ export class HoroscopoCommand extends Command {
       piscis: '♓ Piscis (Feb 19 - Mar 20)',
     };
 
-    const signoIngresado = ctx.args?.[0]?.toLowerCase();
-    let signo = signoIngresado;
+    const rawSigno = ctx.args?.[0]?.toLowerCase() ?? '';
+    const safeSigno = rawSigno.replace(/[\n\r\t]/g, '').slice(0, 20);
+    let signo = safeSigno;
     let esRandom = false;
 
-    if (!signoIngresado || !signos[signoIngresado]) {
+    if (!safeSigno || !signos[safeSigno]) {
       const keys = Object.keys(signos);
       signo = keys[Math.floor(Math.random() * keys.length)];
       esRandom = true;
@@ -453,13 +454,14 @@ export class PeliculaCommand extends Command {
   permissions = { user: [PermissionLevel.USER], bot: [] };
 
   async execute(ctx: MessageContext): Promise<void> {
-    const genero = ctx.args?.join(' ') || '';
+    const rawGenero = ctx.args?.join(' ') ?? '';
+    const safeGenero = rawGenero.replace(/[\n\r\t]/g, '').slice(0, 100);
 
     await ctx.react('🎬');
 
     try {
-      const prompt = genero
-        ? `Eres un experto en cine. Recomiéndame UNA sola película de ${genero}. Incluye: título, año, y una razón breve de por qué verla (1 oración). SOLO genera la recomendación, sin preámbulos.`
+      const prompt = safeGenero
+        ? `Eres un experto en cine. Recomiéndame UNA sola película.\n---INPUT---\n${safeGenero}\n---INPUT---\nIncluye: título, año, y una razón breve de por qué verla (1 oración). SOLO genera la recomendación, sin preámbulos.`
         : `Eres un experto en cine. Recomiéndame UNA sola película popular. Incluye: título, año, y una razón breve de por qué verla (1 oración). SOLO genera la recomendación, sin preámbulos.`;
 
       const response = await aiService.generate(prompt, 200);
@@ -499,13 +501,14 @@ export class AnimeCommand extends Command {
   permissions = { user: [PermissionLevel.USER], bot: [] };
 
   async execute(ctx: MessageContext): Promise<void> {
-    const genero = ctx.args?.join(' ') || '';
+    const rawGenero = ctx.args?.join(' ') ?? '';
+    const safeGenero = rawGenero.replace(/[\n\r\t]/g, '').slice(0, 100);
 
     await ctx.react('🎌');
 
     try {
-      const prompt = genero
-        ? `Eres un experto en anime. Recomiéndame UN solo anime de ${genero}. Incluye: título, año/episodios, y una razón breve de por qué verlo (1 oración). SOLO genera la recomendación, sin preámbulos.`
+      const prompt = safeGenero
+        ? `Eres un experto en anime. Recomiéndame UN solo anime.\n---INPUT---\n${safeGenero}\n---INPUT---\nIncluye: título, año/episodios, y una razón breve de por qué verlo (1 oración). SOLO genera la recomendación, sin preámbulos.`
         : `Eres un experto en anime. Recomiéndame UN solo anime popular. Incluye: título, año/episodios, y una razón breve de por qué verlo (1 oración). SOLO genera la recomendación, sin preámbulos.`;
 
       const response = await aiService.generate(prompt, 200);
