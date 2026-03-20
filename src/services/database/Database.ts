@@ -15,6 +15,7 @@ export interface IDatabase {
 
   getAll<T>(collection: string): Promise<T[]>;
   clear(collection: string): Promise<void>;
+  flush(): Promise<void>;
 }
 
 export abstract class Database implements IDatabase {
@@ -31,6 +32,7 @@ export abstract class Database implements IDatabase {
   abstract update<T>(collection: string, key: string, updates: Partial<T>): Promise<void>;
   abstract getAll<T>(collection: string): Promise<T[]>;
   abstract clear(collection: string): Promise<void>;
+  abstract flush(): Promise<void>;
 
   isConnected(): boolean {
     return this.connected;

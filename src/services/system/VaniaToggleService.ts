@@ -41,6 +41,7 @@ export class VaniaToggleService {
     };
 
     await this.db.set(this.COLLECTION, key, record);
+    await this.db.flush();
   }
 
   async disable(chatJid: string, disabledBy: string): Promise<void> {
@@ -57,6 +58,7 @@ export class VaniaToggleService {
     };
 
     await this.db.set(this.COLLECTION, key, record);
+    await this.db.flush();
   }
 
   async toggle(chatJid: string, toggledBy: string): Promise<boolean> {
@@ -64,11 +66,10 @@ export class VaniaToggleService {
 
     if (isCurrentlyEnabled) {
       await this.disable(chatJid, toggledBy);
-      return false;
     } else {
       await this.enable(chatJid, toggledBy);
-      return true;
     }
+    return !isCurrentlyEnabled;
   }
 
   async getStatus(chatJid: string): Promise<{ enabled: boolean; record: ToggleRecord | null }> {

@@ -132,4 +132,6 @@ export class MongoDatabase extends Database {
       },
     });
   }
+
+  async flush(): Promise<void> {}
 }

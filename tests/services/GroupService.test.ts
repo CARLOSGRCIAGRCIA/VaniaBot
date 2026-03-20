@@ -52,6 +52,7 @@ describe('GroupService', () => {
       update: vi.fn().mockResolvedValue(undefined),
       getAll: vi.fn().mockResolvedValue([]),
       clear: vi.fn().mockResolvedValue(undefined),
+      flush: vi.fn().mockResolvedValue(undefined),
     };
 
     groupService = new GroupService(mockDb);
