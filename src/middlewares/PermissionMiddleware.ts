@@ -51,19 +51,23 @@ export class PermissionMiddleware extends Middleware {
     }
 
     if (ctx.chat.isGroup) {
-      const onlyAdmin = await serviceManager.groupService.getOnlyAdmin(ctx.chat.jid);
-
-      if (onlyAdmin && !ctx.sender.isOwner) {
-        await ctx.loadSenderPermissions();
-
-        if (!ctx.sender.isAdmin) {
-          return;
+      if (ctx.sender.jid.endsWith('@lid')) {
+        const isOwner = await PermissionService.isOwnerAsync(ctx.sock, ctx.sender.jid);
+        if (isOwner) {
+          ctx.setOwnerOverride(true);
         }
       }
 
-      if (!ctx.sender.isOwner && ctx.sender.jid.endsWith('@lid')) {
-        const isOwner = await PermissionService.isOwnerAsync(ctx.sock, ctx.sender.jid);
-        ctx.setOwnerOverride(isOwner);
+      const onlyAdmin = await serviceManager.groupService.getOnlyAdmin(ctx.chat.jid);
+
+      if (onlyAdmin) {
+        await ctx.loadSenderPermissions();
+        if (!ctx.sender.isOwner && !ctx.sender.isAdmin) {
+          await ctx.reply('❌ Solo los admins pueden usar comandos en este grupo');
+          return;
+        }
+      } else {
+        await ctx.loadSenderPermissions();
       }
     }
 

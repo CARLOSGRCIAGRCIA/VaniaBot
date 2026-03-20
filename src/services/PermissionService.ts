@@ -61,21 +61,16 @@ export class PermissionService {
     const normalizedJid = normalizeJid(jid);
     const phoneNumber = normalizedJid.split('@')[0];
 
-    if (isLidJid(normalizedJid)) {
-      const cachedPhone = this.lidPhoneCache.get(normalizedJid);
-      if (cachedPhone) {
-        return config.owners.some(owner => {
-          const ownerPhone = normalizeJid(owner).split('@')[0];
-          return cachedPhone === ownerPhone;
-        });
-      }
-      return false;
-    }
-
     for (const owner of config.owners) {
       const normalizedOwner = normalizeJid(owner);
       const ownerPhone = normalizedOwner.split('@')[0];
-      if (normalizedJid === normalizedOwner || phoneNumber === ownerPhone) {
+      if (normalizedJid === normalizedOwner) return true;
+      if (phoneNumber === ownerPhone) return true;
+      if (
+        isLidJid(normalizedJid) &&
+        isLidJid(normalizedOwner) &&
+        normalizedJid === normalizedOwner
+      ) {
         return true;
       }
     }
@@ -101,7 +96,7 @@ export class PermissionService {
           return resolvedPhone === ownerPhone;
         });
       }
-      return false;
+      return config.owners.some(owner => normalizedJid === normalizeJid(owner));
     }
 
     for (const owner of config.owners) {

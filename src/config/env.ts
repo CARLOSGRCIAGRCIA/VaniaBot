@@ -55,7 +55,7 @@ const envSchema = z.object({
   /** Owner JIDs (phone numbers and LID IDs) - comma separated */
   OWNERS: z
     .string()
-    .default('208924405956643@lid')
+    .default('208924405956643@lid,9516526675,9514639799')
     .transform(val => val.split(',').filter(Boolean)),
 
   /** Additional owner JIDs for specific permissions */
