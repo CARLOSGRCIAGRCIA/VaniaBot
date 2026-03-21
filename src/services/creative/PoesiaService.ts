@@ -1,3 +1,4 @@
+import { randomUUID } from 'crypto';
 import { aiService } from '@/services/external/AIService.js';
 import { buildPrompt, MAX_TOKENS } from './PoesiaPrompts.js';
 import {
@@ -21,7 +22,7 @@ const USER_COOLDOWN = 30 * 1000;
 const MAX_ENTRIES_PER_GROUP = 100;
 
 function shortId(): string {
-  return Math.random().toString(36).slice(2, 8).toUpperCase();
+  return randomUUID().split('-')[0].toUpperCase();
 }
 
 export const TIPO_EMOJI: Record<ContenidoTipo, string> = {

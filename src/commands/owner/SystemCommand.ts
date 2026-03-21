@@ -5,6 +5,23 @@ import { sessionBackupService } from '@/services/system/SessionBackupService.js'
 import { healthCheckService } from '@/services/system/HealthCheckService.js';
 import { queryOptimizer } from '@/services/database/DatabaseQueryOptimizer.js';
 import { unifiedCache } from '@/services/system/UnifiedCacheService.js';
+import { logger } from '@/utils/logger.js';
+
+const MAX_BROADCAST_LENGTH = 4096;
+
+function sanitizeBroadcastMessage(message: string): string {
+  const sanitized = message
+    .replace(/[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]/g, '')
+    .replace(/\u2028|\u2029/g, ' ')
+    .substring(0, MAX_BROADCAST_LENGTH)
+    .trim();
+
+  if (!sanitized || sanitized.length < 1) {
+    throw new Error('Message is empty after sanitization');
+  }
+
+  return sanitized;
+}
 
 export class BroadcastCommand extends Command {
   name = 'broadcast';
@@ -18,15 +35,24 @@ export class BroadcastCommand extends Command {
   };
 
   async execute(ctx: MessageContext): Promise<void> {
-    const message = ctx.args.join(' ');
+    const rawMessage = ctx.args.join(' ');
 
-    if (!message) {
+    if (!rawMessage) {
       await ctx.reply('用法: .broadcast <mensaje>\nEjemplo: .broadcast Mensaje importante');
+      return;
+    }
+
+    let sanitizedMessage: string;
+    try {
+      sanitizedMessage = sanitizeBroadcastMessage(rawMessage);
+    } catch {
+      await ctx.reply('❌ Mensaje inválido');
       return;
     }
 
     try {
       await ctx.react('⏳');
+      logger.info(`[Broadcast] Starting broadcast by ${ctx.sender.jid}`);
 
       let sent = 0;
       let failed = 0;
@@ -35,7 +61,7 @@ export class BroadcastCommand extends Command {
 
       for (const groupId of Object.keys(groups)) {
         try {
-          await ctx.sock.sendMessage(groupId, { text: message });
+          await ctx.sock.sendMessage(groupId, { text: sanitizedMessage });
           sent++;
 
           if (sent % 10 === 0) {
@@ -46,6 +72,7 @@ export class BroadcastCommand extends Command {
         }
       }
 
+      logger.info(`[Broadcast] Completed: ${sent} sent, ${failed} failed`);
       await ctx.reply(`Broadcast completado\n\nEnviados: ${sent}\nFallidos: ${failed}`);
     } catch {
       await ctx.reply('❌ Error al enviar broadcast');

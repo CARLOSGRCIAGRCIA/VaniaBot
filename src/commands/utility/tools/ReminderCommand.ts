@@ -1,6 +1,7 @@
 import { Command } from '../../Command.js';
 import { CommandCategory, CommandContext, type MessageContext } from '@/types/index.js';
 import type { WASocket } from '@whiskeysockets/baileys';
+import { randomUUID } from 'crypto';
 
 interface Reminder {
   id: string;
@@ -70,7 +71,7 @@ export class ReminderCommand extends Command {
   }
 
   private generateId(): string {
-    return Math.random().toString(36).substring(2, 7).toUpperCase();
+    return randomUUID().split('-')[0].toUpperCase();
   }
 
   private scheduleReminder(reminder: Reminder, sock: WASocket): void {

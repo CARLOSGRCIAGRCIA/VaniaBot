@@ -38,6 +38,11 @@ export class FacebookDownloader extends DownloadService {
   }
 
   async downloadVideo(url: string): Promise<DownloadResult> {
+    const validation = this.validateUrl(url);
+    if (!validation.valid) {
+      return { success: false, error: validation.error };
+    }
+
     const outputPath = this.generateOutputPath('facebook', 'mp4');
 
     const methods = [

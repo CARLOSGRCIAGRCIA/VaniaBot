@@ -1,5 +1,6 @@
 import { Command } from '../../Command.js';
 import { CommandCategory, CommandContext, type MessageContext } from '@/types/index.js';
+import { randomUUID } from 'crypto';
 
 interface PollOption {
   label: string;
@@ -37,7 +38,7 @@ export class PollCommand extends Command {
   contexts = [CommandContext.BOTH];
 
   private generateId(): string {
-    return Math.random().toString(36).substring(2, 7).toUpperCase();
+    return randomUUID().split('-')[0].toUpperCase();
   }
 
   private buildResultsText(poll: Poll, showBar = true): string {

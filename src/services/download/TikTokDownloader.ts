@@ -33,6 +33,11 @@ export class TikTokDownloader extends DownloadService {
   }
 
   async downloadVideo(url: string): Promise<DownloadResult> {
+    const validation = this.validateUrl(url);
+    if (!validation.valid) {
+      return { success: false, error: validation.error };
+    }
+
     const outputPath = this.generateOutputPath('tiktok', 'mp4');
 
     const methods = [
@@ -52,6 +57,11 @@ export class TikTokDownloader extends DownloadService {
   }
 
   async downloadAudio(url: string): Promise<DownloadResult> {
+    const validation = this.validateUrl(url);
+    if (!validation.valid) {
+      return { success: false, error: validation.error };
+    }
+
     const outputPath = this.generateOutputPath('tiktok_audio', 'mp3');
 
     const methods = [

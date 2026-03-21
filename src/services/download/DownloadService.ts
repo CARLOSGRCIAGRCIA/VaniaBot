@@ -11,6 +11,19 @@ export interface DownloadResult {
   error?: string;
 }
 
+const BLOCKED_URL_PATTERNS = [
+  /[;&|`$<>{}]/, // Shell metacharacters
+  /localhost/i, // Localhost
+  /127\.\d+\.\d+\.\d+/, // Loopback
+  /10\.\d+\.\d+\.\d+/, // Private Class A
+  /172\.(1[6-9]|2\d|3[01])\.\d+\.\d+/, // Private Class B
+  /192\.168\.\d+\.\d+/, // Private Class C
+  /0\.0\.0\.0/, // All interfaces
+  /::1/, // IPv6 loopback
+  /fc00:/i, // IPv6 private
+  /fe80:/i, // IPv6 link-local
+];
+
 export class DownloadService {
   private static readonly TEMP_DIR = './data/temp/downloads';
   private static readonly MAX_AUDIO_SIZE_MB = 50;
@@ -27,6 +40,39 @@ export class DownloadService {
   }
 
   protected resolveOutputPath?(expectedPath: string): string | null;
+
+  protected validateUrl(url: string): { valid: boolean; error?: string } {
+    if (!url || url.trim().length === 0) {
+      return { valid: false, error: 'URL is empty' };
+    }
+
+    if (url.length > 2048) {
+      return { valid: false, error: 'URL too long' };
+    }
+
+    try {
+      const parsed = new URL(url);
+
+      if (!['http:', 'https:'].includes(parsed.protocol)) {
+        return { valid: false, error: 'Only HTTP/HTTPS URLs allowed' };
+      }
+
+      for (const pattern of BLOCKED_URL_PATTERNS) {
+        if (pattern.test(url)) {
+          return { valid: false, error: 'URL contains blocked patterns' };
+        }
+      }
+
+      const hostname = parsed.hostname.toLowerCase();
+      if (hostname === 'localhost' || hostname === '127.0.0.1') {
+        return { valid: false, error: 'Localhost URLs not allowed' };
+      }
+
+      return { valid: true };
+    } catch {
+      return { valid: false, error: 'Invalid URL format' };
+    }
+  }
 
   protected runCommand(cmd: string, args: string[], timeout: number = 90000): Promise<string> {
     return new Promise((resolve, reject) => {

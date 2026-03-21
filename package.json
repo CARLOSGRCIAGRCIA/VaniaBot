@@ -46,6 +46,7 @@
     "jimp": "^1.6.0",
     "lowdb": "^7.0.1",
     "lru-cache": "^11.2.6",
+    "mathjs": "^15.1.1",
     "mongodb": "^7.1.0",
     "node-webpmux": "^3.2.1",
     "pino": "^9.5.0",

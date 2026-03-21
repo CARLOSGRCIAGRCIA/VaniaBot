@@ -61,6 +61,11 @@ export class InstagramDownloader extends DownloadService {
   }
 
   async downloadVideo(url: string): Promise<DownloadResult> {
+    const validation = this.validateUrl(url);
+    if (!validation.valid) {
+      return { success: false, error: validation.error };
+    }
+
     const outputPath = this.generateOutputPath('instagram', 'mp4');
 
     const methods = [
@@ -80,6 +85,11 @@ export class InstagramDownloader extends DownloadService {
   }
 
   async downloadImage(url: string): Promise<DownloadResult> {
+    const validation = this.validateUrl(url);
+    if (!validation.valid) {
+      return { success: false, error: validation.error };
+    }
+
     const outputPath = this.generateOutputPath('instagram_img', 'jpg');
 
     const methods = [

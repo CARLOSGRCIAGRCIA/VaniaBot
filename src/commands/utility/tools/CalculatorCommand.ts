@@ -1,6 +1,52 @@
 import { Command } from '../../Command.js';
 import { CommandCategory, CommandContext, type MessageContext } from '@/types/index.js';
 import { logError } from '@/utils/logger.js';
+import { create, all } from 'mathjs';
+
+const math = create(all);
+
+const ALLOWED_FUNCTIONS = [
+  'sqrt',
+  'abs',
+  'ceil',
+  'floor',
+  'round',
+  'sign',
+  'sin',
+  'cos',
+  'tan',
+  'asin',
+  'acos',
+  'atan',
+  'log',
+  'log10',
+  'log2',
+  'exp',
+  'pow',
+  'min',
+  'max',
+  'sum',
+  'mean',
+  'median',
+  'factorial',
+  'gamma',
+  'combinations',
+  'permutations',
+];
+
+const ALLOWED_CONSTANTS = [
+  'pi',
+  'e',
+  'phi',
+  'tau',
+  'lambda',
+  'EX',
+  'E',
+  'LOG2E',
+  'LOG10E',
+  'SQRT1_2',
+  'SQRT2',
+];
 
 export class CalculatorCommand extends Command {
   name = 'calc';
@@ -120,7 +166,8 @@ export class CalculatorCommand extends Command {
   private safeEval(expr: string): number {
     const sanitized = expr.replace(/\s+/g, ' ').trim();
 
-    if (!/^[\d\s\+\-\*\/\(\)\.\%\^]+$/.test(sanitized)) {
+    const allowedChars = /^[\d\s\+\-\*\/\(\)\.\%\^\,a-zA-Z_]+$/;
+    if (!allowedChars.test(sanitized)) {
       throw new Error('Expresión inválida');
     }
 
@@ -133,13 +180,28 @@ export class CalculatorCommand extends Command {
 
     const exprWithPercent = withPow.replace(/([\d.]+)%/g, '($1/100)');
 
-    const result = new Function(`"use strict"; return (${exprWithPercent})`)();
+    const scope: Record<string, unknown> = {};
+    for (const fn of ALLOWED_FUNCTIONS) {
+      scope[fn] = math[fn as keyof typeof math];
+    }
+    for (const c of ALLOWED_CONSTANTS) {
+      scope[c] = math.number(math[c as keyof typeof math] as Parameters<typeof math.number>[0]);
+    }
 
-    if (typeof result !== 'number' || !isFinite(result)) {
+    const result = math.evaluate(exprWithPercent, scope);
+
+    const numResult =
+      typeof result === 'number'
+        ? result
+        : typeof result === 'object' && result !== null && 'toNumber' in result
+          ? (result as { toNumber: () => number }).toNumber()
+          : Number(result);
+
+    if (isNaN(numResult) || !isFinite(numResult)) {
       throw new Error('Resultado inválido');
     }
 
-    return result;
+    return numResult;
   }
 
   private formatResult(n: number): string {
