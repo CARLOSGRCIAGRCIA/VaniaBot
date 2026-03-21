@@ -6,10 +6,18 @@ import { BatchWriter } from './BatchWriter.js';
 import { cacheManager } from '@/core/CacheManager.js';
 import type { CachedUser } from '@/core/CacheManager.js';
 import { ErrorHandler } from '@/utils/ErrorHandler.js';
+import { databaseMigration } from './DatabaseMigration.js';
 
-// The on-disk shape — collection → key → JSON value
+type JsonDataCollection = Record<string, unknown>;
+
+interface RawJsonData {
+  _meta?: JsonDataCollection;
+  [key: string]: JsonDataCollection | undefined;
+}
+
 interface JsonData {
-  [collection: string]: Record<string, unknown>;
+  _meta: JsonDataCollection;
+  [key: string]: JsonDataCollection;
 }
 
 class MemoryCache {
@@ -67,7 +75,7 @@ class MemoryCache {
 }
 
 export class JsonDatabase extends Database {
-  private data: JsonData = {};
+  private data!: JsonData;
   private filePath: string;
   private batchWriter: BatchWriter;
   private cache = new MemoryCache();
@@ -94,18 +102,42 @@ export class JsonDatabase extends Database {
       }
       if (existsSync(this.filePath)) {
         const rawData = readFileSync(this.filePath, 'utf-8');
-        this.data = JSON.parse(rawData) as JsonData;
+        const parsed = JSON.parse(rawData) as RawJsonData;
+        this.data = this.ensureDataStructure(parsed);
+        await this.runMigrations();
         if (process.env.NODE_ENV !== 'production') {
           logger.info(`DB cargada: ${this.filePath}`);
         }
       } else {
-        this.data = {};
+        this.data = { _meta: { version: 0 } };
+        await this.runMigrations();
         await this.saveToFile();
       }
       this.connected = true;
     } catch (error) {
       logError('JsonDatabase.connect', error);
       throw new Error('Error al conectar con la base de datos JSON');
+    }
+  }
+
+  private ensureDataStructure(raw: RawJsonData): JsonData {
+    const result: JsonData = { _meta: raw._meta ?? { version: 0 } };
+    for (const [key, value] of Object.entries(raw)) {
+      if (key !== '_meta' && value !== undefined) {
+        result[key] = value;
+      }
+    }
+    return result;
+  }
+
+  private async runMigrations(): Promise<void> {
+    try {
+      const newVersion = await databaseMigration.migrate(this.data);
+      if (newVersion > 0) {
+        await this.saveToFile();
+      }
+    } catch (error) {
+      logError('JsonDatabase.runMigrations', error);
     }
   }
 
@@ -211,7 +243,7 @@ export class JsonDatabase extends Database {
   async update<T>(collection: string, key: string, updates: Partial<T>): Promise<void> {
     this.ensureCollection(collection);
     if (this.data[collection][key] !== undefined) {
-      const updated = { ...(this.data[collection][key] as object), ...updates };
+      const updated = { ...this.data[collection][key], ...updates };
       await this.set(collection, key, updated);
     } else {
       throw new Error(`Key ${key} not found in collection ${collection}`);

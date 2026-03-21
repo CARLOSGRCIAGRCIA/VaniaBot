@@ -1,51 +1,6 @@
 import { Command } from '../../Command.js';
 import { CommandCategory, CommandContext, type MessageContext } from '@/types/index.js';
-import type { WASocket } from '@whiskeysockets/baileys';
-import { randomUUID } from 'crypto';
-
-interface Reminder {
-  id: string;
-  userJid: string;
-  chatJid: string;
-  message: string;
-  triggerAt: number;
-  createdAt: number;
-}
-
-const reminders = new Map<string, Reminder>();
-const reminderTimers = new Map<string, NodeJS.Timeout>();
-const MAX_TOTAL_REMINDERS = 1000;
-
-let globalSock: WASocket | null = null;
-
-function cleanupExpiredReminders(): void {
-  const now = Date.now();
-  for (const [id, reminder] of reminders.entries()) {
-    if (reminder.triggerAt < now) {
-      reminders.delete(id);
-      const timer = reminderTimers.get(id);
-      if (timer) {
-        clearTimeout(timer);
-        reminderTimers.delete(id);
-      }
-    }
-  }
-
-  if (reminders.size > MAX_TOTAL_REMINDERS) {
-    const sorted = [...reminders.entries()].sort((a, b) => a[1].triggerAt - b[1].triggerAt);
-    const toDelete = sorted.slice(0, reminders.size - MAX_TOTAL_REMINDERS);
-    for (const [id] of toDelete) {
-      reminders.delete(id);
-      const timer = reminderTimers.get(id);
-      if (timer) {
-        clearTimeout(timer);
-        reminderTimers.delete(id);
-      }
-    }
-  }
-}
-
-setInterval(cleanupExpiredReminders, 60 * 60 * 1000);
+import { persistenceService } from '@/services/system/PersistenceService.js';
 
 export class ReminderCommand extends Command {
   name = 'recordatorio';
@@ -100,42 +55,11 @@ export class ReminderCommand extends Command {
     return `${seconds}s`;
   }
 
-  private generateId(): string {
-    return randomUUID().split('-')[0].toUpperCase();
-  }
-
-  private scheduleReminder(reminder: Reminder, sock: WASocket): void {
-    const delay = reminder.triggerAt - Date.now();
-    if (delay <= 0) return;
-
-    const timer = setTimeout(async () => {
-      try {
-        await sock.sendMessage(reminder.chatJid, {
-          text:
-            `⏰ *¡Recordatorio!*\n` +
-            `━━━━━━━━━━━━━━━━\n` +
-            `📝 ${reminder.message}\n` +
-            `━━━━━━━━━━━━━━━━\n` +
-            `👤 @${reminder.userJid.split('@')[0]}`,
-          mentions: [reminder.userJid],
-        });
-      } catch {
-        // Ignorar errores de envío
-      }
-      reminders.delete(reminder.id);
-      reminderTimers.delete(reminder.id);
-    }, delay);
-
-    reminderTimers.set(reminder.id, timer);
-  }
-
   async execute(ctx: MessageContext): Promise<void> {
-    if (!globalSock) globalSock = ctx.sock;
-
     const sub = ctx.args[0]?.toLowerCase();
 
     if (sub === 'lista' || sub === 'list') {
-      const userReminders = [...reminders.values()].filter(r => r.userJid === ctx.sender.jid);
+      const userReminders = persistenceService.getUserReminders(ctx.sender.jid);
 
       if (!userReminders.length) {
         await ctx.reply('📭 No tienes recordatorios activos.');
@@ -164,7 +88,7 @@ export class ReminderCommand extends Command {
         return;
       }
 
-      const reminder = reminders.get(id);
+      const reminder = persistenceService.getReminder(id);
       if (!reminder) {
         await ctx.reply(`❌ Recordatorio *${id}* no encontrado.`);
         return;
@@ -175,10 +99,7 @@ export class ReminderCommand extends Command {
         return;
       }
 
-      const timer = reminderTimers.get(id);
-      if (timer) clearTimeout(timer);
-      reminders.delete(id);
-      reminderTimers.delete(id);
+      persistenceService.removeReminder(id);
 
       await ctx.reply(`✅ Recordatorio *[${id}]* cancelado.`);
       return;
@@ -215,7 +136,7 @@ export class ReminderCommand extends Command {
       return;
     }
 
-    const userReminders = [...reminders.values()].filter(r => r.userJid === ctx.sender.jid);
+    const userReminders = persistenceService.getUserReminders(ctx.sender.jid);
     if (userReminders.length >= this.MAX_REMINDERS_PER_USER) {
       await ctx.reply(
         `❌ Límite alcanzado (máx. ${this.MAX_REMINDERS_PER_USER} recordatorios).\n` +
@@ -224,20 +145,17 @@ export class ReminderCommand extends Command {
       return;
     }
 
-    const id = this.generateId();
+    const id = persistenceService.generateId();
     const triggerAt = Date.now() + delayMs;
 
-    const reminder: Reminder = {
+    persistenceService.addReminder({
       id,
       userJid: ctx.sender.jid,
       chatJid: ctx.chat.jid,
       message: messageText,
       triggerAt,
       createdAt: Date.now(),
-    };
-
-    reminders.set(id, reminder);
-    this.scheduleReminder(reminder, ctx.sock);
+    });
 
     await ctx.react('✅');
     await ctx.reply(

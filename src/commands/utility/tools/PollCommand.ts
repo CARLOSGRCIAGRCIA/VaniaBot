@@ -1,25 +1,7 @@
 import { Command } from '../../Command.js';
 import { CommandCategory, CommandContext, type MessageContext } from '@/types/index.js';
-import { randomUUID } from 'crypto';
-
-interface PollOption {
-  label: string;
-  votes: Set<string>;
-}
-
-interface Poll {
-  id: string;
-  chatJid: string;
-  creatorJid: string;
-  question: string;
-  options: PollOption[];
-  allowMultiple: boolean;
-  createdAt: number;
-  endsAt?: number;
-  closed: boolean;
-}
-
-const polls = new Map<string, Poll>();
+import type { Poll } from '@/services/system/PersistenceService.js';
+import { persistenceService } from '@/services/system/PersistenceService.js';
 
 export class PollCommand extends Command {
   name = 'encuesta';
@@ -37,15 +19,11 @@ export class PollCommand extends Command {
   cooldown = 3000;
   contexts = [CommandContext.BOTH];
 
-  private generateId(): string {
-    return randomUUID().split('-')[0].toUpperCase();
-  }
-
   private buildResultsText(poll: Poll, showBar = true): string {
-    const totalVotes = poll.options.reduce((sum, o) => sum + o.votes.size, 0);
+    const totalVotes = poll.options.reduce((sum, o) => sum + o.votes.length, 0);
 
     const optionLines = poll.options.map((opt, i) => {
-      const count = opt.votes.size;
+      const count = opt.votes.length;
       const pct = totalVotes > 0 ? Math.round((count / totalVotes) * 100) : 0;
       const bar = showBar ? this.buildBar(pct) : '';
       return (
@@ -68,6 +46,7 @@ export class PollCommand extends Command {
     if (hours > 0) return `${hours}h ${mins % 60}m`;
     return `${mins}m`;
   }
+
   private parseQuotedArgs(input: string): string[] {
     const result: string[] = [];
     const regex = /"([^"]+)"/g;
@@ -146,7 +125,7 @@ export class PollCommand extends Command {
       return;
     }
 
-    const existing = polls.get(ctx.chat.jid);
+    const existing = persistenceService.getPoll(ctx.chat.jid);
     if (existing && !existing.closed) {
       await ctx.reply(
         `❌ Ya hay una encuesta activa en este chat.\n` +
@@ -178,41 +157,21 @@ export class PollCommand extends Command {
       const unit = timeMatch[2];
       const ms = unit === 'h' ? val * 3_600_000 : val * 60_000;
       endsAt = Date.now() + ms;
-
-      setTimeout(async () => {
-        const poll = polls.get(ctx.chat.jid);
-        if (poll && !poll.closed) {
-          poll.closed = true;
-          const totalVotes = poll.options.reduce((s, o) => s + o.votes.size, 0);
-          const winner = poll.options.reduce((a, b) => (b.votes.size > a.votes.size ? b : a));
-
-          await ctx.sock.sendMessage(ctx.chat.jid, {
-            text:
-              `⏰ *La encuesta ha cerrado automáticamente*\n\n` +
-              `📊 *${poll.question}*\n` +
-              `━━━━━━━━━━━━━━━━\n` +
-              `${this.buildResultsText(poll)}\n` +
-              `━━━━━━━━━━━━━━━━\n` +
-              `📌 *Total de votos:* ${totalVotes}\n` +
-              (totalVotes > 0 ? `🏆 *Ganador:* ${winner.label}` : `_(sin votos)_`),
-          });
-        }
-      }, endsAt - Date.now());
     }
 
     const poll: Poll = {
-      id: this.generateId(),
+      id: persistenceService.generateId(),
       chatJid: ctx.chat.jid,
       creatorJid: ctx.sender.jid,
       question,
-      options: optionLabels.map(label => ({ label, votes: new Set() })),
+      options: optionLabels.map(label => ({ label, votes: [] })),
       allowMultiple,
       createdAt: Date.now(),
       endsAt,
       closed: false,
     };
 
-    polls.set(ctx.chat.jid, poll);
+    persistenceService.addPoll(ctx.chat.jid, poll);
 
     const numbers = ['1️⃣', '2️⃣', '3️⃣', '4️⃣', '5️⃣', '6️⃣', '7️⃣', '8️⃣', '9️⃣', '🔟'];
     const optLines = poll.options.map((opt, i) => `${numbers[i]} ${opt.label}`).join('\n');
@@ -235,16 +194,10 @@ export class PollCommand extends Command {
   }
 
   private async handleVote(ctx: MessageContext): Promise<void> {
-    const poll = polls.get(ctx.chat.jid);
+    const poll = persistenceService.getPoll(ctx.chat.jid);
 
     if (!poll || poll.closed) {
       await ctx.reply('❌ No hay ninguna encuesta activa en este chat.');
-      return;
-    }
-
-    if (poll.endsAt && Date.now() > poll.endsAt) {
-      poll.closed = true;
-      await ctx.reply('❌ La encuesta ya expiró.');
       return;
     }
 
@@ -269,35 +222,43 @@ export class PollCommand extends Command {
     const chosenOption = poll.options[voteIndex];
 
     if (!poll.allowMultiple) {
-      const alreadyVoted = poll.options.find(o => o.votes.has(userJid));
+      const alreadyVotedIndex = poll.options.findIndex(o => o.votes.includes(userJid));
 
-      if (alreadyVoted) {
-        if (alreadyVoted.label === chosenOption.label) {
-          alreadyVoted.votes.delete(userJid);
+      if (alreadyVotedIndex !== -1) {
+        if (alreadyVotedIndex === voteIndex) {
+          poll.options[alreadyVotedIndex].votes = poll.options[alreadyVotedIndex].votes.filter(
+            v => v !== userJid,
+          );
+          persistenceService.updatePoll(ctx.chat.jid, poll);
           await ctx.react('↩️');
-          await ctx.reply(`↩️ Retiraste tu voto de *"${alreadyVoted.label}"*.`);
+          await ctx.reply(`↩️ Retiraste tu voto de *"${chosenOption.label}"*.`);
           return;
         }
-        alreadyVoted.votes.delete(userJid);
-        chosenOption.votes.add(userJid);
+        poll.options[alreadyVotedIndex].votes = poll.options[alreadyVotedIndex].votes.filter(
+          v => v !== userJid,
+        );
+        poll.options[voteIndex].votes.push(userJid);
+        persistenceService.updatePoll(ctx.chat.jid, poll);
         await ctx.react('🔄');
         await ctx.reply(
           `🔄 Cambiaste tu voto a *"${chosenOption.label}"*.\n` +
-            `_(Voto anterior: "${alreadyVoted.label}")_`,
+            `_(Voto anterior: "${poll.options[alreadyVotedIndex].label}")_`,
         );
         return;
       }
     } else {
-      if (chosenOption.votes.has(userJid)) {
-        chosenOption.votes.delete(userJid);
+      if (chosenOption.votes.includes(userJid)) {
+        chosenOption.votes = chosenOption.votes.filter(v => v !== userJid);
+        persistenceService.updatePoll(ctx.chat.jid, poll);
         await ctx.react('↩️');
         await ctx.reply(`↩️ Retiraste tu voto de *"${chosenOption.label}"*.`);
         return;
       }
     }
 
-    chosenOption.votes.add(userJid);
-    const totalVotes = poll.options.reduce((s, o) => s + o.votes.size, 0);
+    chosenOption.votes.push(userJid);
+    persistenceService.updatePoll(ctx.chat.jid, poll);
+    const totalVotes = poll.options.reduce((s, o) => s + o.votes.length, 0);
 
     await ctx.react('✅');
     await ctx.reply(
@@ -307,14 +268,14 @@ export class PollCommand extends Command {
   }
 
   private async handleResults(ctx: MessageContext): Promise<void> {
-    const poll = polls.get(ctx.chat.jid);
+    const poll = persistenceService.getPoll(ctx.chat.jid);
 
     if (!poll) {
       await ctx.reply('❌ No hay ninguna encuesta activa en este chat.');
       return;
     }
 
-    const totalVotes = poll.options.reduce((s, o) => s + o.votes.size, 0);
+    const totalVotes = poll.options.reduce((s, o) => s + o.votes.length, 0);
     const status = poll.closed ? '🔒 *Cerrada*' : '🟢 *En curso*';
 
     const msg =
@@ -332,7 +293,7 @@ export class PollCommand extends Command {
   }
 
   private async handleClose(ctx: MessageContext): Promise<void> {
-    const poll = polls.get(ctx.chat.jid);
+    const poll = persistenceService.getPoll(ctx.chat.jid);
 
     if (!poll || poll.closed) {
       await ctx.reply('❌ No hay ninguna encuesta activa para cerrar.');
@@ -347,11 +308,12 @@ export class PollCommand extends Command {
     }
 
     poll.closed = true;
+    persistenceService.updatePoll(ctx.chat.jid, poll);
 
-    const totalVotes = poll.options.reduce((s, o) => s + o.votes.size, 0);
-    const sorted = [...poll.options].sort((a, b) => b.votes.size - a.votes.size);
+    const totalVotes = poll.options.reduce((s, o) => s + o.votes.length, 0);
+    const sorted = [...poll.options].sort((a, b) => b.votes.length - a.votes.length);
     const winner = sorted[0];
-    const isDraw = sorted.length > 1 && sorted[0].votes.size === sorted[1].votes.size;
+    const isDraw = sorted.length > 1 && sorted[0].votes.length === sorted[1].votes.length;
 
     const msg =
       `🔒 *Encuesta cerrada*\n\n` +
@@ -363,14 +325,14 @@ export class PollCommand extends Command {
       (totalVotes > 0
         ? isDraw
           ? `🤝 *Empate entre las primeras opciones*`
-          : `🏆 *Ganador:* ${winner.label} con ${winner.votes.size} voto${winner.votes.size !== 1 ? 's' : ''}`
+          : `🏆 *Ganador:* ${winner.label} con ${winner.votes.length} voto${winner.votes.length !== 1 ? 's' : ''}`
         : `_(sin votos)_`);
 
     await ctx.reply(msg);
   }
 
   private async handleCancel(ctx: MessageContext): Promise<void> {
-    const poll = polls.get(ctx.chat.jid);
+    const poll = persistenceService.getPoll(ctx.chat.jid);
 
     if (!poll) {
       await ctx.reply('❌ No hay ninguna encuesta activa para cancelar.');
@@ -385,7 +347,7 @@ export class PollCommand extends Command {
       return;
     }
 
-    polls.delete(ctx.chat.jid);
+    persistenceService.removePoll(ctx.chat.jid);
     await ctx.react('🗑️');
     await ctx.reply('🗑️ Encuesta cancelada y eliminada.');
   }

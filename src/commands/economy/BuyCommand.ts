@@ -2,16 +2,7 @@ import { Command } from '../Command.js';
 import { CommandCategory, type MessageContext } from '@/types/index.js';
 import { logError } from '@/utils/logger.js';
 import { serviceManager } from '@/services/system/Servicemanager.js';
-
-interface ShopItem {
-  id: string;
-  name: string;
-  description: string;
-  price: number;
-  emoji: string;
-  type: 'role' | 'feature' | 'cosmetic';
-  duration?: number;
-}
+import { shopService } from '@/services/economy/ShopService.js';
 
 export class BuyCommand extends Command {
   name = 'buy';
@@ -21,62 +12,6 @@ export class BuyCommand extends Command {
   usage = '!buy <item_number>';
   examples = ['!buy 1', '!buy 5'];
   cooldown = 5000;
-
-  private readonly SHOP_ITEMS: ShopItem[] = [
-    {
-      id: 'vip_role',
-      name: 'VIP Role',
-      description: 'VIP status for 7 days',
-      price: 5000,
-      emoji: '👑',
-      type: 'role',
-      duration: 7 * 24 * 60 * 60 * 1000,
-    },
-    {
-      id: 'legend_role',
-      name: 'Legend Role',
-      description: 'Legend status for 7 days',
-      price: 10000,
-      emoji: '💎',
-      type: 'role',
-      duration: 7 * 24 * 60 * 60 * 1000,
-    },
-    {
-      id: 'name_color',
-      name: 'Custom Name Color',
-      description: 'Customize your name color',
-      price: 3000,
-      emoji: '🎨',
-      type: 'cosmetic',
-    },
-    {
-      id: 'cooldown_bypass',
-      name: 'Cooldown Bypass',
-      description: 'Reduce cooldowns by 50% for 24h',
-      price: 2000,
-      emoji: '⚡',
-      type: 'feature',
-      duration: 24 * 60 * 60 * 1000,
-    },
-    {
-      id: 'xp_boost',
-      name: 'XP Boost',
-      description: 'Double XP for 24 hours',
-      price: 1500,
-      emoji: '✨',
-      type: 'feature',
-      duration: 24 * 60 * 60 * 1000,
-    },
-    {
-      id: 'lucky_charm',
-      name: 'Lucky Charm',
-      description: 'Increase game win chance by 10%',
-      price: 2500,
-      emoji: '🍀',
-      type: 'feature',
-      duration: 24 * 60 * 60 * 1000,
-    },
-  ];
 
   async execute(ctx: MessageContext): Promise<void> {
     if (!ctx.args.length) {
@@ -89,17 +24,17 @@ export class BuyCommand extends Command {
     }
 
     const itemNumber = parseInt(ctx.args[0]);
+    const item = shopService.getItemByIndex(itemNumber);
 
-    if (isNaN(itemNumber) || itemNumber < 1 || itemNumber > this.SHOP_ITEMS.length) {
+    if (!item) {
       await ctx.reply(
         `❌ Invalid item number\n\n` +
-          `Valid range: 1-${this.SHOP_ITEMS.length}\n` +
+          `Valid range: 1-${shopService.getItems().length}\n` +
           `Use !shop to see items`,
       );
       return;
     }
 
-    const item = this.SHOP_ITEMS[itemNumber - 1];
     const user = await serviceManager.userService.getUser(ctx.sender.jid);
 
     if (user.money < item.price) {
@@ -133,7 +68,6 @@ export class BuyCommand extends Command {
       let message = `✅ *Purchase Successful!*\n\n`;
       message += `${item.emoji} *${item.name}*\n`;
       message += `${item.description}\n\n`;
-
       message += `💵 Paid: $${item.price.toLocaleString()}\n`;
       message += `💰 New Balance: $${updatedUser.money.toLocaleString()}\n\n`;
 
@@ -147,7 +81,6 @@ export class BuyCommand extends Command {
 
       message += `📦 Item added to your inventory\n`;
       message += `Use !inventory to see your items\n\n`;
-
       message += `> _*VaniaBot💝*_`;
 
       await ctx.reply(message);

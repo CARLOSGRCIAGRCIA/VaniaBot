@@ -11,6 +11,7 @@ import { logger, logError } from '@/utils/logger.js';
 import { cleanupService } from './CleanupService.js';
 import { healthCheckService } from './HealthCheckService.js';
 import { sessionBackupService } from './SessionBackupService.js';
+import { persistenceService } from './PersistenceService.js';
 
 export class ServiceManager {
   private static instance: ServiceManager;
@@ -23,6 +24,7 @@ export class ServiceManager {
   public vaniaToggleService!: VaniaToggleService;
   public healthCheckService = healthCheckService;
   public sessionBackupService = sessionBackupService;
+  public persistenceService = persistenceService;
 
   private constructor() {}
 
@@ -38,6 +40,9 @@ export class ServiceManager {
       logger.info('🔧 Inicializando servicios...');
 
       await this.initializeDatabase();
+
+      persistenceService.setDatabase(this.db);
+      await persistenceService.initialize();
 
       this.userService = new UserService(this.db);
       this.groupService = new GroupService(this.db);
