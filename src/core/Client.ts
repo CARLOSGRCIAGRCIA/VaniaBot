@@ -33,128 +33,17 @@ import { handleReaccion } from '@/handlers/ReaccionHandler.js';
 import { quizAnswerHandler } from '@/handlers/QuizAnswerHandler.js';
 import { handleMention } from '@/handlers/AiMentionHandler.js';
 import type { IMiddleware } from '@/types/index.js';
-import { EventEmitter } from 'events';
 import { welcomeService } from '@/services/system/WelcomeService.js';
 import { subBotManager } from '@/services/subbot/SubBotManager.js';
 import { rateLimitService } from '@/services/system/RateLimitService.js';
 import { PermissionService } from '@/services/PermissionService.js';
-
-interface RateLimitResult {
-  allowed: boolean;
-  reason?: string;
-  waitTime?: number;
-}
+import { AntiSpamService } from '@/services/system/AntiSpamService.js';
+import { MessageProcessorService } from '@/services/system/MessageProcessorService.js';
 
 type GroupParticipantsUpdate = BaileysEventMap['group-participants.update'];
 
 declare global {
   var client: WhatsAppClient | undefined;
-}
-
-/**
- * Real-time anti-spam system that tracks user message rates.
- * Bans users who exceed message limits.
- */
-class RealTimeAntiSpam {
-  private userMessages = new Map<string, number[]>();
-  private bannedUsers = new Set<string>();
-  private readonly MAX_MESSAGES_PER_SECOND = 3;
-  private readonly MAX_MESSAGES_PER_MINUTE = 20;
-  private readonly BAN_DURATION = 5 * 60 * 1000;
-
-  checkRateLimit(userJid: string): RateLimitResult {
-    if (this.bannedUsers.has(userJid)) {
-      return { allowed: false, reason: '⛔ Bloqueado temporalmente por spam', waitTime: 300000 };
-    }
-
-    const now = Date.now();
-    const userMsgs = this.userMessages.get(userJid) ?? [];
-    const recentMessages = userMsgs.filter(time => now - time < 60000);
-
-    if (recentMessages.length >= this.MAX_MESSAGES_PER_MINUTE) {
-      this.banUser(userJid);
-      return {
-        allowed: false,
-        reason: '⚠️ Demasiados mensajes. Bloqueado 5 minutos.',
-        waitTime: 300000,
-      };
-    }
-
-    const lastSecondMessages = recentMessages.filter(time => now - time < 1000);
-    if (lastSecondMessages.length >= this.MAX_MESSAGES_PER_SECOND) {
-      return { allowed: false, reason: '⚠️ Estás escribiendo muy rápido', waitTime: 2000 };
-    }
-
-    recentMessages.push(now);
-    this.userMessages.set(userJid, recentMessages);
-    return { allowed: true };
-  }
-
-  private banUser(userJid: string): void {
-    this.bannedUsers.add(userJid);
-    setTimeout(() => this.bannedUsers.delete(userJid), this.BAN_DURATION);
-  }
-
-  startCleanup(): void {
-    setInterval(
-      () => {
-        try {
-          const now = Date.now();
-          for (const [userJid, messages] of this.userMessages.entries()) {
-            const recent = messages.filter(time => now - time < 60000);
-            if (recent.length === 0) this.userMessages.delete(userJid);
-            else this.userMessages.set(userJid, recent);
-          }
-        } catch (error) {
-          logger.error('[RealTimeAntiSpam] Cleanup failed:', error);
-        }
-      },
-      5 * 60 * 1000,
-    );
-  }
-}
-
-/**
- * Processes messages in real-time with queue management.
- * Prevents duplicate processing of messages.
- */
-class RealTimeMessageProcessor extends EventEmitter {
-  private processing = new Set<string>();
-  private queue: Array<{ id: string; handler: () => Promise<void> }> = [];
-  private isProcessingQueue = false;
-
-  async process(messageId: string, handler: () => Promise<void>): Promise<boolean> {
-    if (this.processing.has(messageId)) return false;
-    this.queue.push({ id: messageId, handler });
-    // processQueue errors surface via the inherited 'error' EventEmitter event
-    this.processQueue().catch(err => this.emit('error', messageId, err));
-    return true;
-  }
-
-  private async processQueue(): Promise<void> {
-    if (this.isProcessingQueue || this.queue.length === 0) return;
-    this.isProcessingQueue = true;
-
-    while (this.queue.length > 0) {
-      const item = this.queue.shift();
-      if (!item) break;
-      this.processing.add(item.id);
-      try {
-        await item.handler();
-        this.emit('processed', item.id);
-      } catch (error) {
-        this.emit('error', item.id, error);
-      } finally {
-        this.processing.delete(item.id);
-      }
-    }
-
-    this.isProcessingQueue = false;
-  }
-
-  getStats() {
-    return { processing: this.processing.size, queued: this.queue.length };
-  }
 }
 
 interface MiddlewareConfig {
@@ -163,17 +52,13 @@ interface MiddlewareConfig {
   canRunParallel: boolean;
 }
 
-/**
- * Main WhatsApp client class.
- * Handles initialization, message processing, middleware execution, and event listeners.
- */
 export class WhatsAppClient {
   private sock!: WASocket;
   private readonly middlewares: MiddlewareConfig[] = [];
   private readonly authManager: AuthManager;
   private isReady = false;
-  private messageProcessor = new RealTimeMessageProcessor();
-  private antiSpam = new RealTimeAntiSpam();
+  private messageProcessor = new MessageProcessorService();
+  private antiSpam = new AntiSpamService();
   private stats = {
     messagesReceived: 0,
     messagesProcessed: 0,
@@ -406,7 +291,7 @@ export class WhatsAppClient {
   }
 
   private async checkCommandRateLimits(ctx: MessageContext): Promise<boolean> {
-    const rateLimit = this.antiSpam.checkRateLimit(ctx.sender.jid);
+    const rateLimit = this.antiSpam.check(ctx.sender.jid);
     if (!rateLimit.allowed) {
       this.stats.spamBlocked++;
       await ctx.reply(rateLimit.reason ?? '⚠️ Demasiados mensajes').catch(() => {});

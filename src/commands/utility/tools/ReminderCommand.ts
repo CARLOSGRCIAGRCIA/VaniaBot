@@ -14,8 +14,38 @@ interface Reminder {
 
 const reminders = new Map<string, Reminder>();
 const reminderTimers = new Map<string, NodeJS.Timeout>();
+const MAX_TOTAL_REMINDERS = 1000;
 
 let globalSock: WASocket | null = null;
+
+function cleanupExpiredReminders(): void {
+  const now = Date.now();
+  for (const [id, reminder] of reminders.entries()) {
+    if (reminder.triggerAt < now) {
+      reminders.delete(id);
+      const timer = reminderTimers.get(id);
+      if (timer) {
+        clearTimeout(timer);
+        reminderTimers.delete(id);
+      }
+    }
+  }
+
+  if (reminders.size > MAX_TOTAL_REMINDERS) {
+    const sorted = [...reminders.entries()].sort((a, b) => a[1].triggerAt - b[1].triggerAt);
+    const toDelete = sorted.slice(0, reminders.size - MAX_TOTAL_REMINDERS);
+    for (const [id] of toDelete) {
+      reminders.delete(id);
+      const timer = reminderTimers.get(id);
+      if (timer) {
+        clearTimeout(timer);
+        reminderTimers.delete(id);
+      }
+    }
+  }
+}
+
+setInterval(cleanupExpiredReminders, 60 * 60 * 1000);
 
 export class ReminderCommand extends Command {
   name = 'recordatorio';

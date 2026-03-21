@@ -2,6 +2,7 @@ import type { WASocket } from '@whiskeysockets/baileys';
 import { serviceManager } from './Servicemanager.js';
 import { logger, logError } from '@/utils/logger.js';
 import { existsSync, readFileSync } from 'fs';
+import { circuitBreakerManager } from './CircuitBreakerService.js';
 
 export interface WelcomeConfig {
   enabled: boolean;
@@ -27,19 +28,29 @@ const VANIABOT_FACTS: string[] = [
 async function translateToSpanish(text: string): Promise<string> {
   try {
     const params = new URLSearchParams({ q: text, langpair: 'en|es' });
-    const res = await fetch(`https://api.mymemory.translated.net/get?${params}`, {
-      signal: AbortSignal.timeout(6000),
+    const circuitBreaker = circuitBreakerManager.getOrCreate('mymemory-translate', {
+      failureThreshold: 3,
+      successThreshold: 2,
+      timeout: 10000,
+      monitoringPeriod: 60000,
+      name: 'mymemory-translate',
     });
-    if (!res.ok) throw new Error(`status ${res.status}`);
-    const data = (await res.json()) as {
-      responseData?: { translatedText?: string };
-      responseStatus?: number;
-    };
-    const translated = data.responseData?.translatedText?.trim();
-    if (!translated || data.responseStatus !== 200) {
-      throw new Error('respuesta invalida de MyMemory');
-    }
-    return translated;
+
+    return await circuitBreaker.execute(async () => {
+      const res = await fetch(`https://api.mymemory.translated.net/get?${params}`, {
+        signal: AbortSignal.timeout(6000),
+      });
+      if (!res.ok) throw new Error(`status ${res.status}`);
+      const data = (await res.json()) as {
+        responseData?: { translatedText?: string };
+        responseStatus?: number;
+      };
+      const translated = data.responseData?.translatedText?.trim();
+      if (!translated || data.responseStatus !== 200) {
+        throw new Error('respuesta invalida de MyMemory');
+      }
+      return translated;
+    });
   } catch (_err) {
     logger.warn(`[Translate] FAIL MyMemory — usando texto original`);
     return text;
@@ -52,13 +63,25 @@ async function getRandomFact(): Promise<string> {
     return VANIABOT_FACTS[Math.floor(Math.random() * VANIABOT_FACTS.length)];
   }
   try {
-    const res = await fetch('https://uselessfacts.jsph.pl/api/v2/facts/random?language=en', {
-      signal: AbortSignal.timeout(5000),
+    const circuitBreaker = circuitBreakerManager.getOrCreate('uselessfacts', {
+      failureThreshold: 3,
+      successThreshold: 2,
+      timeout: 10000,
+      monitoringPeriod: 60000,
+      name: 'uselessfacts',
     });
-    if (!res.ok) throw new Error(`status ${res.status}`);
-    const data = (await res.json()) as { text?: string };
-    const raw = data.text?.trim();
-    if (!raw) throw new Error('respuesta vacia de la API');
+
+    const raw = await circuitBreaker.execute(async () => {
+      const res = await fetch('https://uselessfacts.jsph.pl/api/v2/facts/random?language=en', {
+        signal: AbortSignal.timeout(5000),
+      });
+      if (!res.ok) throw new Error(`status ${res.status}`);
+      const data = (await res.json()) as { text?: string };
+      const text = data.text?.trim();
+      if (!text) throw new Error('respuesta vacia de la API');
+      return text;
+    });
+
     return await translateToSpanish(raw);
   } catch (_err) {
     return VANIABOT_FACTS[Math.floor(Math.random() * VANIABOT_FACTS.length)];

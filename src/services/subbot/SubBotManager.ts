@@ -41,6 +41,7 @@ import { PermissionService } from '@/services/PermissionService.js';
 import { CommandExecutionError } from '@/utils/errors.js';
 import type { IMiddleware } from '@/types/index.js';
 import type { BaileysEventMap } from '@whiskeysockets/baileys';
+import { AntiSpamService } from '@/services/system/AntiSpamService.js';
 
 /**
  * Maximum number of subbots allowed in the system
@@ -55,82 +56,6 @@ interface MiddlewareConfig {
   middleware: IMiddleware;
   priority: number;
   canRunParallel: boolean;
-}
-
-interface RateLimitResult {
-  allowed: boolean;
-  reason?: string;
-}
-
-/**
- * Manejador de anti-spam específico para subbots.
- * Controla la tasa de mensajes por usuario para prevenir spam.
- *
- * @example
- * ```typescript
- * const antiSpam = new SubBotAntiSpam();
- * const result = antiSpam.check(userJid);
- * if (!result.allowed) {
- *   console.log(result.reason);
- * }
- * ```
- */
-class SubBotAntiSpam {
-  private userMessages = new Map<string, number[]>();
-  private bannedUsers = new Set<string>();
-  private readonly MAX_PER_SECOND = 3;
-  private readonly MAX_PER_MINUTE = 20;
-  private readonly BAN_DURATION = 5 * 60 * 1000;
-
-  /**
-   * Verifica si un usuario puede enviar mensajes según las reglas de anti-spam.
-   *
-   * @param userJid - El JID del usuario a verificar
-   * @returns Objeto con 'allowed' indicando si puede enviar, y 'reason' con el mensaje de error
-   * @throws No lanza errores, retorna resultados de forma segura
-   */
-  check(userJid: string): RateLimitResult {
-    if (this.bannedUsers.has(userJid)) {
-      return { allowed: false, reason: '⛔ Bloqueada temporalmente por spam' };
-    }
-    const now = Date.now();
-    const msgs = (this.userMessages.get(userJid) ?? []).filter(t => now - t < 60000);
-    if (msgs.length >= this.MAX_PER_MINUTE) {
-      this.bannedUsers.add(userJid);
-      setTimeout(() => this.bannedUsers.delete(userJid), this.BAN_DURATION);
-      return { allowed: false, reason: '⚠️ Demasiados mensajes. Bloqueada por 5 minutos.' };
-    }
-    if (msgs.filter(t => now - t < 1000).length >= this.MAX_PER_SECOND) {
-      return { allowed: false, reason: '⚠️ Estás escribiendo muy rápido' };
-    }
-    msgs.push(now);
-    this.userMessages.set(userJid, msgs);
-    return { allowed: true };
-  }
-
-  /**
-   * Inicia el proceso de limpieza periódica de mensajes antiguos.
-   * Ejecuta cleanup cada 5 minutos para liberar memoria.
-   *
-   * @returns void
-   */
-  startCleanup(): void {
-    setInterval(
-      () => {
-        try {
-          const now = Date.now();
-          for (const [jid, msgs] of this.userMessages.entries()) {
-            const recent = msgs.filter(t => now - t < 60000);
-            if (recent.length === 0) this.userMessages.delete(jid);
-            else this.userMessages.set(jid, recent);
-          }
-        } catch (error) {
-          logError('[SubBotAntiSpam] Cleanup error', error);
-        }
-      },
-      5 * 60 * 1000,
-    );
-  }
 }
 
 type GroupParticipantsUpdate = BaileysEventMap['group-participants.update'];
@@ -154,7 +79,7 @@ export class SubBotManager extends EventEmitter {
   private static instance: SubBotManager;
   private instances = new Map<string, SubBotInstance>();
   private middlewaresPerInstance = new Map<string, MiddlewareConfig[]>();
-  private antiSpamPerInstance = new Map<string, SubBotAntiSpam>();
+  private antiSpamPerInstance = new Map<string, AntiSpamService>();
   private processedMessages = new Set<string>();
   private mainSock?: WASocket;
 
@@ -270,7 +195,7 @@ export class SubBotManager extends EventEmitter {
     const middlewares = this.buildMiddlewares(subConfig.id);
     this.middlewaresPerInstance.set(subConfig.id, middlewares);
 
-    const antiSpam = new SubBotAntiSpam();
+    const antiSpam = new AntiSpamService();
     antiSpam.startCleanup();
     this.antiSpamPerInstance.set(subConfig.id, antiSpam);
 
