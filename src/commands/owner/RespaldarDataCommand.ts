@@ -1,0 +1,60 @@
+import { Command } from '../Command.js';
+import { CommandCategory, CommandContext, type MessageContext } from '@/types/index.js';
+import { serviceManager } from '@/services/system/Servicemanager.js';
+
+export class RespaldarDataCommand extends Command {
+  name = 'respaldar';
+  description = 'Genera un respaldo de tus datos';
+  category = CommandCategory.OWNER;
+  aliases = ['backup', 'export', 'misdatos'];
+  usage = '!respaldar';
+  examples = ['!respaldar'];
+  cooldown = 30000;
+  contexts = [CommandContext.BOTH];
+
+  async execute(ctx: MessageContext): Promise<void> {
+    await ctx.react('📦');
+    await ctx.reply('🔄 Generando respaldo de tus datos...');
+
+    try {
+      const user = await serviceManager.userService.getUser(ctx.sender.jid);
+
+      let message = `📦 *Tu Respaldo de Datos*\n`;
+      message += `━━━━━━━━━━━━━━━━\n\n`;
+      message += `👤 *Usuario:* ${ctx.sender.jid.split('@')[0]}\n`;
+      message += `💰 *Dinero:* $${user.money.toLocaleString()}\n`;
+      message += `⭐ *XP:* ${user.xp.toLocaleString()}\n`;
+      message += `🎖️ *Nivel:* ${user.level}\n`;
+      message += `⚡ *Comandos totales:* ${user.totalCommands.toLocaleString()}\n\n`;
+
+      if (user.inventory && user.inventory.length > 0) {
+        message += `🎒 *Inventario:*\n`;
+        for (const item of user.inventory) {
+          const expires = item.expiresAt
+            ? `\n   ⏰ Expira: ${new Date(item.expiresAt).toLocaleDateString()}`
+            : '';
+          message += `  • ${item.name}${expires}\n`;
+        }
+        message += '\n';
+      }
+
+      if (user.achievements && user.achievements.length > 0) {
+        message += `🏆 *Logros:*\n`;
+        for (const achievement of user.achievements.slice(0, 5)) {
+          message += `  • ${achievement}\n`;
+        }
+        if (user.achievements.length > 5) {
+          message += `  ...y ${user.achievements.length - 5} más\n`;
+        }
+      }
+
+      message += `\n📅 *Fecha:* ${new Date().toLocaleString()}\n`;
+      message += `> _*VaniaBot💝*_`;
+
+      await ctx.reply(message);
+      await ctx.react('✅');
+    } catch (_error) {
+      await ctx.reply(`❌ Error al generar respaldo.`);
+    }
+  }
+}
