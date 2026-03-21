@@ -1,17 +1,5 @@
 import type { IDatabase } from '../database/Database';
-
-function normalizeJid(jid: string): string {
-  if (!jid) return jid;
-  if (jid.includes('@s.whatsapp.net')) {
-    const phone = jid.split('@')[0].split(':')[0];
-    return `${phone}@s.whatsapp.net`;
-  }
-  if (jid.includes('@lid')) {
-    const phone = jid.split('@')[0];
-    return `${phone}@lid`;
-  }
-  return jid;
-}
+import { normalizeJid } from '../PermissionService.js';
 
 export interface ModerationAction {
   userId: string;

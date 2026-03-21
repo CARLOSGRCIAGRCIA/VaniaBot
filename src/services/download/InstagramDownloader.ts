@@ -1,5 +1,6 @@
 import type { DownloadResult } from './DownloadService.js';
 import { DownloadService } from './DownloadService.js';
+import { logError } from '@/utils/logger.js';
 import fs from 'fs';
 
 export interface InstagramMedia {
@@ -9,12 +10,28 @@ export interface InstagramMedia {
   type: 'video' | 'image' | 'unknown';
 }
 
-// Tipo para error de comando
-interface CommandError extends Error {
-  message: string;
-}
-
 export class InstagramDownloader extends DownloadService {
+  protected getDownloadPrefix(): string {
+    return 'Instagram';
+  }
+
+  protected resolveOutputPath(expectedPath: string): string | null {
+    if (fs.existsSync(expectedPath)) return expectedPath;
+
+    const dir = expectedPath.substring(0, expectedPath.lastIndexOf('/'));
+    const base = expectedPath.substring(expectedPath.lastIndexOf('/') + 1).replace(/\.[^.]+$/, '');
+
+    try {
+      const files = fs.readdirSync(dir);
+      const match = files.find(f => f.startsWith(base));
+      if (match) return `${dir}/${match}`;
+    } catch {
+      // Ignorar errores de lectura
+    }
+
+    return null;
+  }
+
   isValidUrl(url: string): boolean {
     return /instagram\.com\/(p|reel|reels|tv|stories)\//i.test(url);
   }
@@ -38,7 +55,7 @@ export class InstagramDownloader extends DownloadService {
         type,
       };
     } catch (error) {
-      console.error('Instagram getMediaInfo error:', error);
+      logError('Instagram getMediaInfo', error);
       return null;
     }
   }
@@ -74,70 +91,5 @@ export class InstagramDownloader extends DownloadService {
     ];
 
     return await this.tryDownloadMethods(methods, outputPath, 'video');
-  }
-
-  private async tryDownloadMethods(
-    methods: Array<{ name: string; cmd: string; args: string[] }>,
-    outputPath: string,
-    type: 'audio' | 'video',
-  ): Promise<DownloadResult> {
-    for (const method of methods) {
-      try {
-        console.log(`🔄 [Instagram] Trying ${method.name}...`);
-
-        await this.runCommand(method.cmd, method.args, 120000);
-
-        const resolvedPath = this.resolveOutputPath(outputPath);
-
-        if (resolvedPath && fs.existsSync(resolvedPath)) {
-          const sizeCheck = this.checkFileSize(resolvedPath, type);
-
-          if (!sizeCheck.valid) {
-            fs.unlinkSync(resolvedPath);
-            return {
-              success: false,
-              error: `File too large: ${sizeCheck.sizeMB}MB`,
-            };
-          }
-
-          console.log(`✅ [Instagram] ${method.name} succeeded: ${sizeCheck.sizeMB}MB`);
-
-          return {
-            success: true,
-            filePath: resolvedPath,
-            size: sizeCheck.sizeMB.toString(),
-            source: method.name,
-          };
-        }
-      } catch (error) {
-        const commandError = error as CommandError;
-        console.log(`❌ [Instagram] ${method.name} failed:`, commandError.message);
-        continue;
-      }
-    }
-
-    return {
-      success: false,
-      error:
-        'Download failed. Instagram may require login for some content.\n' +
-        'Make sure yt-dlp is updated: yt-dlp -U',
-    };
-  }
-
-  private resolveOutputPath(expectedPath: string): string | null {
-    if (fs.existsSync(expectedPath)) return expectedPath;
-
-    const dir = expectedPath.substring(0, expectedPath.lastIndexOf('/'));
-    const base = expectedPath.substring(expectedPath.lastIndexOf('/') + 1).replace(/\.[^.]+$/, '');
-
-    try {
-      const files = fs.readdirSync(dir);
-      const match = files.find(f => f.startsWith(base));
-      if (match) return `${dir}/${match}`;
-    } catch {
-      // Ignorar errores de lectura
-    }
-
-    return null;
   }
 }

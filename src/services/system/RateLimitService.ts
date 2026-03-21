@@ -197,21 +197,25 @@ export class RateLimitService {
 
   private startCleanup(): void {
     setInterval(() => {
-      const now = Date.now();
-      const maxAge = 5 * 60 * 1000;
+      try {
+        const now = Date.now();
+        const maxAge = 5 * 60 * 1000;
 
-      for (const [groupJid, tracker] of this.groupTrackers.entries()) {
-        tracker.messages = tracker.messages.filter(time => now - time < maxAge);
-        if (tracker.messages.length === 0 && tracker.warnings === 0) {
-          this.groupTrackers.delete(groupJid);
+        for (const [groupJid, tracker] of this.groupTrackers.entries()) {
+          tracker.messages = tracker.messages.filter(time => now - time < maxAge);
+          if (tracker.messages.length === 0 && tracker.warnings === 0) {
+            this.groupTrackers.delete(groupJid);
+          }
         }
-      }
 
-      for (const [userJid, tracker] of this.userTrackers.entries()) {
-        tracker.messages = tracker.messages.filter(time => now - time < maxAge);
-        if (tracker.messages.length === 0) {
-          this.userTrackers.delete(userJid);
+        for (const [userJid, tracker] of this.userTrackers.entries()) {
+          tracker.messages = tracker.messages.filter(time => now - time < maxAge);
+          if (tracker.messages.length === 0) {
+            this.userTrackers.delete(userJid);
+          }
         }
+      } catch (error) {
+        logger.error('[RateLimit] Cleanup error:', error);
       }
     }, 60 * 1000);
   }

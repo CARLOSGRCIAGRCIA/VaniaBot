@@ -6,6 +6,7 @@ import {
   BotPermission,
   type MessageContext,
 } from '@/types/index.js';
+import { logError } from '@/utils/logger.js';
 import { serviceManager } from '@/services/system/Servicemanager.js';
 
 export class PromoteCommand extends Command {
@@ -79,7 +80,7 @@ export class PromoteCommand extends Command {
 
       await ctx.react('✅');
     } catch (error: unknown) {
-      console.error('Error in PromoteCommand:', error);
+      logError('[PromoteCommand] Error', error);
       const message = error instanceof Error ? error.message : 'Unknown error';
       await ctx.reply(`❌ Error promoting user: ${message}`);
       await ctx.react('❌');

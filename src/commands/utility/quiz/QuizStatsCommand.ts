@@ -1,6 +1,7 @@
 import { Command } from '../../Command.js';
 import { quizService } from '@/services/study/QuizService.js';
 import type { UserQuizStats } from '@/services/study/QuizTypes.js';
+import { logError } from '@/utils/logger.js';
 import {
   CommandCategory,
   CommandContext,
@@ -52,7 +53,7 @@ export class QuizStatsCommand extends Command {
 
       await ctx.reply(quizService.formatStatsMessage(stats, targetName));
     } catch (err) {
-      console.error('[QuizStatsCommand]', err);
+      logError('[QuizStatsCommand] Error', err);
       await ctx.reply('❌ No pude obtener tus estadísticas. Intenta de nuevo.');
     }
   }

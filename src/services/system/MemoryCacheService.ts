@@ -17,6 +17,8 @@ const DEFAULT_OPTIONS: MemoryCacheOptions = {
   cleanupInterval: 60000,
 };
 
+import { logError } from '@/utils/logger.js';
+
 export class LruMemoryCache<T> {
   private cache: Map<string, CacheEntry<T>> = new Map();
   private options: MemoryCacheOptions;
@@ -118,7 +120,11 @@ export class LruMemoryCache<T> {
 
   private startCleanup(): void {
     this.cleanupTimer = setInterval(() => {
-      this.cleanup();
+      try {
+        this.cleanup();
+      } catch (error) {
+        logError('[LruMemoryCache] Cleanup error', error);
+      }
     }, this.options.cleanupInterval);
 
     this.cleanupTimer.unref();

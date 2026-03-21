@@ -17,13 +17,17 @@ export class CleanupService {
     // void marks the floating promise as intentionally fire-and-forget
     setTimeout(
       () => {
-        void this.cleanup();
+        void this.cleanup().catch(error => {
+          logError('[CleanupService] Initial cleanup error', error);
+        });
       },
       5 * 60 * 1000,
     );
 
     this.cleanupInterval = setInterval(() => {
-      void this.cleanup();
+      void this.cleanup().catch(error => {
+        logError('[CleanupService] Scheduled cleanup error', error);
+      });
     }, this.CLEANUP_INTERVAL);
   }
 

@@ -50,7 +50,9 @@ export class HelpCommand extends Command {
   async execute(ctx: MessageContext): Promise<void> {
     try {
       await ctx.react('💝');
-    } catch {}
+    } catch {
+      // Ignore reaction errors
+    }
 
     if (ctx.args.length > 0) {
       await this.showCommandHelp(ctx, ctx.args[0]);

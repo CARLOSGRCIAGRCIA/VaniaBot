@@ -1,5 +1,6 @@
 import { Command } from '../Command.js';
 import { CommandCategory, PermissionLevel } from '@/types/index.js';
+import { logError } from '@/utils/logger.js';
 import type { MessageContext } from '@/types/index.js';
 import { serviceManager } from '@/services/system/Servicemanager.js';
 
@@ -108,7 +109,7 @@ export class SetOwnerCommand extends Command {
           await ctx.reply(' Invalid action. Use: add or remove');
       }
     } catch (error) {
-      console.error('Error in SetOwnerCommand:', error);
+      logError('[SetOwnerCommand] Error', error);
       await ctx.reply(` Error: ${error instanceof Error ? error.message : 'Unknown'}`);
     }
   }

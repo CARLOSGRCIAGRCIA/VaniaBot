@@ -6,6 +6,7 @@ import {
   BotPermission,
   type MessageContext,
 } from '@/types/index.js';
+import { logError } from '@/utils/logger.js';
 import { serviceManager } from '@/services/system/Servicemanager.js';
 
 export class AutoAdminCommand extends Command {
@@ -70,7 +71,7 @@ export class AutoAdminCommand extends Command {
 
       await ctx.react('✅');
     } catch (error: unknown) {
-      console.error('Error in AutoAdminCommand:', error);
+      logError('[AutoAdminCommand] Error', error);
 
       let errorMsg = `❌ *Auto-Admin Failed*\n\n`;
       const errorObj = error instanceof Error ? error : new Error('Unknown error');

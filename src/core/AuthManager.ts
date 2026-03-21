@@ -66,7 +66,7 @@ async function getWAVersion(): Promise<[number, number, number]> {
     return _cachedVersion;
   } catch (error) {
     logger.warn('No se pudo obtener la última versión, usando fallback');
-    console.error('Error:', error);
+    logError('[AuthManager] getWAVersion error', error);
     _cachedVersion = [2, 3000, 1015901307];
     return _cachedVersion;
   }

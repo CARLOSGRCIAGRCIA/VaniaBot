@@ -1,5 +1,6 @@
 import { Command } from '../../Command.js';
 import { CommandCategory, type MessageContext } from '@/types/index.js';
+import { logError } from '@/utils/logger.js';
 import { InstagramDownloader } from '@/services/download/InstagramDownloader.js';
 import fs from 'fs';
 
@@ -99,7 +100,7 @@ export class InstagramCommand extends Command {
 
       await this.downloader['cleanup'](filePath);
     } catch (error: unknown) {
-      console.error('Error in InstagramCommand:', error);
+      logError('[InstagramCommand] Error', error);
       await ctx.react('❌');
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
       await ctx.reply(`❌ Error: ${errorMessage}`);

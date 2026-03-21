@@ -1,6 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 import { spawn } from 'child_process';
+import { logError, logger } from '@/utils/logger.js';
 
 export interface DownloadResult {
   success: boolean;
@@ -20,6 +21,12 @@ export class DownloadService {
       fs.mkdirSync(DownloadService.TEMP_DIR, { recursive: true });
     }
   }
+
+  protected getDownloadPrefix(): string {
+    return '';
+  }
+
+  protected resolveOutputPath?(expectedPath: string): string | null;
 
   protected runCommand(cmd: string, args: string[], timeout: number = 90000): Promise<string> {
     return new Promise((resolve, reject) => {
@@ -80,9 +87,9 @@ export class DownloadService {
       if (fs.existsSync(filePath)) {
         try {
           fs.unlinkSync(filePath);
-          console.log(`🗑️ Cleaned up: ${path.basename(filePath)}`);
+          logger.debug(`🗑️ Cleaned up: ${path.basename(filePath)}`);
         } catch (error) {
-          console.error('Cleanup error:', error);
+          logError('DownloadService cleanup', error);
         }
       }
     }, delay);
@@ -95,5 +102,57 @@ export class DownloadService {
   protected generateOutputPath(filename: string, extension: string): string {
     const sanitized = this.sanitizeFilename(filename);
     return path.join(this.getTempDir(), `${sanitized}_${Date.now()}.${extension}`);
+  }
+
+  protected async tryDownloadMethods(
+    methods: Array<{ name: string; cmd: string; args: string[] }>,
+    outputPath: string,
+    type: 'audio' | 'video',
+  ): Promise<DownloadResult> {
+    const prefix = this.getDownloadPrefix();
+    const tag = prefix ? `[${prefix}]` : '';
+
+    for (const method of methods) {
+      try {
+        logger.debug(`${tag} Trying ${method.name}...`);
+
+        await this.runCommand(method.cmd, method.args, 180000);
+
+        let resolvedPath = outputPath;
+        if (this.resolveOutputPath) {
+          resolvedPath = this.resolveOutputPath(outputPath) ?? outputPath;
+        }
+
+        if (fs.existsSync(resolvedPath)) {
+          const sizeCheck = this.checkFileSize(resolvedPath, type);
+
+          if (!sizeCheck.valid) {
+            fs.unlinkSync(resolvedPath);
+            return {
+              success: false,
+              error: `File too large: ${sizeCheck.sizeMB}MB`,
+            };
+          }
+
+          logger.debug(`${tag} ${method.name} succeeded: ${sizeCheck.sizeMB}MB`);
+
+          return {
+            success: true,
+            filePath: resolvedPath,
+            size: sizeCheck.sizeMB.toString(),
+            source: method.name,
+          };
+        }
+      } catch (error) {
+        const err = error as Error;
+        logger.debug(`${tag} ${method.name} failed: ${err.message}`);
+        continue;
+      }
+    }
+
+    return {
+      success: false,
+      error: 'Download failed. Make sure yt-dlp is installed: sudo apt install yt-dlp ffmpeg',
+    };
   }
 }

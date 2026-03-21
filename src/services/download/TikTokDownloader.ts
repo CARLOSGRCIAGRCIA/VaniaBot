@@ -1,6 +1,6 @@
 import type { DownloadResult } from './DownloadService.js';
 import { DownloadService } from './DownloadService.js';
-import fs from 'fs';
+import { logError } from '@/utils/logger.js';
 
 export interface TikTokVideo {
   title: string;
@@ -8,12 +8,11 @@ export interface TikTokVideo {
   url: string;
 }
 
-// Tipo para error de comando
-interface CommandError extends Error {
-  message: string;
-}
-
 export class TikTokDownloader extends DownloadService {
+  protected getDownloadPrefix(): string {
+    return 'TikTok';
+  }
+
   isValidUrl(url: string): boolean {
     return /tiktok\.com\//i.test(url) || /vm\.tiktok\.com\//i.test(url);
   }
@@ -28,7 +27,7 @@ export class TikTokDownloader extends DownloadService {
         url,
       };
     } catch (error) {
-      console.error('TikTok getVideoInfo error:', error);
+      logError('TikTok getVideoInfo', error);
       return null;
     }
   }
@@ -74,49 +73,5 @@ export class TikTokDownloader extends DownloadService {
     ];
 
     return await this.tryDownloadMethods(methods, outputPath, 'audio');
-  }
-
-  private async tryDownloadMethods(
-    methods: Array<{ name: string; cmd: string; args: string[] }>,
-    outputPath: string,
-    type: 'audio' | 'video',
-  ): Promise<DownloadResult> {
-    for (const method of methods) {
-      try {
-        console.log(`🔄 [TikTok] Trying ${method.name}...`);
-
-        await this.runCommand(method.cmd, method.args, 120000);
-
-        if (fs.existsSync(outputPath)) {
-          const sizeCheck = this.checkFileSize(outputPath, type);
-
-          if (!sizeCheck.valid) {
-            fs.unlinkSync(outputPath);
-            return {
-              success: false,
-              error: `File too large: ${sizeCheck.sizeMB}MB`,
-            };
-          }
-
-          console.log(`✅ [TikTok] ${method.name} succeeded: ${sizeCheck.sizeMB}MB`);
-
-          return {
-            success: true,
-            filePath: outputPath,
-            size: sizeCheck.sizeMB.toString(),
-            source: method.name,
-          };
-        }
-      } catch (error) {
-        const commandError = error as CommandError;
-        console.log(`❌ [TikTok] ${method.name} failed:`, commandError.message);
-        continue;
-      }
-    }
-
-    return {
-      success: false,
-      error: 'Download failed. Make sure yt-dlp is installed: sudo apt install yt-dlp ffmpeg',
-    };
   }
 }

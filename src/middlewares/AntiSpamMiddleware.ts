@@ -1,6 +1,7 @@
 import { Middleware } from './Middleware.js';
 import type { MessageContext } from '@/types/index.js';
 import { serviceManager } from '@/services/system/Servicemanager.js';
+import { logError } from '@/utils/logger.js';
 
 interface UserMessageTracker {
   messages: number[];
@@ -15,7 +16,13 @@ export class AntiSpamMiddleware extends Middleware {
 
   constructor() {
     super();
-    setInterval(() => this.cleanup(), this.CLEANUP_INTERVAL);
+    setInterval(() => {
+      try {
+        this.cleanup();
+      } catch (error) {
+        logError('[AntiSpam] Cleanup error', error);
+      }
+    }, this.CLEANUP_INTERVAL);
   }
 
   async execute(ctx: MessageContext, next: () => Promise<void>): Promise<void> {
@@ -66,7 +73,8 @@ export class AntiSpamMiddleware extends Middleware {
           });
           this.userMessages.delete(key);
           return;
-        } catch (_err) {
+        } catch (err) {
+          logError('[AntiSpam] Kick error', err);
           await ctx.reply('❌ No pude expulsar al usuario (falta permisos)');
         }
       }

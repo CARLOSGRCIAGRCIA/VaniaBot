@@ -1,5 +1,6 @@
 import { Command } from '../../Command.js';
 import { CommandCategory, CommandContext, PermissionLevel } from '@/types/index.js';
+import { logError } from '@/utils/logger.js';
 import type { MessageContext } from '@/types/index.js';
 import type { proto, WAMessage } from '@whiskeysockets/baileys';
 import { downloadMediaMessage } from '@whiskeysockets/baileys';
@@ -229,7 +230,7 @@ export class NotifyCommand extends Command {
         { quoted: ctx.message },
       );
     } catch (error) {
-      console.error('Error in NotifyCommand:', error);
+      logError('[NotifyCommand] Error', error);
       await ctx.react('❌');
       await ctx.reply('❌ Error al enviar la notificación.');
     }

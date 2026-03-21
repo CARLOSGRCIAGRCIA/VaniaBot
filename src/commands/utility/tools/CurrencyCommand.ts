@@ -1,5 +1,6 @@
 import { Command } from '../../Command.js';
 import { CommandCategory, CommandContext, type MessageContext } from '@/types/index.js';
+import { logError } from '@/utils/logger.js';
 
 interface FrankfurterResponse {
   rates: Record<string, number>;
@@ -196,7 +197,7 @@ export class CurrencyCommand extends Command {
       await ctx.reply(msg);
     } catch (error) {
       await ctx.react('❌');
-      console.error('Error in CurrencyCommand:', error);
+      logError('[CurrencyCommand] Error', error);
       await ctx.reply('❌ Error al obtener tasas de cambio. Intenta más tarde.');
     }
   }

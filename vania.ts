@@ -149,7 +149,9 @@ async function gracefulShutdown(signal: string): Promise<void> {
 
   try {
     if (existsSync(BOOT_FLAG)) unlinkSync(BOOT_FLAG);
-  } catch (_) {}
+  } catch (error) {
+    console.debug('[Vania] Boot flag cleanup error (non-fatal):', error);
+  }
 
   console.log(chalk.green('✓ VaniaBot cerrado correctamente'));
   process.exit(0);
@@ -169,6 +171,8 @@ process.on('uncaughtException', err => {
 
 process.on('unhandledRejection', reason => {
   console.error(chalk.red(' Promesa rechazada no manejada:'), reason);
+  if (childProcess) childProcess.kill('SIGTERM');
+  process.exit(1);
 });
 
 async function promptPhoneNumber(): Promise<void> {

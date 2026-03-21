@@ -5,6 +5,8 @@ interface PendingWrite<T = unknown> {
   timestamp: number;
 }
 
+import { logError } from '@/utils/logger.js';
+
 export class BatchWriter {
   private pendingWrites = new Map<string, PendingWrite>();
   private writeTimer: NodeJS.Timeout | null = null;
@@ -55,7 +57,7 @@ export class BatchWriter {
       await this.writeCallback(writes);
       this.pendingWrites.clear();
     } catch (error) {
-      console.error('Error en batch write:', error);
+      logError('Batch write error', error);
       for (const w of writes) {
         this.pendingWrites.set(`${w.collection}:${w.key}`, w);
       }

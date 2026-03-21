@@ -1,6 +1,7 @@
 import { writeFileSync, readFileSync, unlinkSync, existsSync, mkdirSync } from 'fs';
 import { join } from 'path';
 import { spawn } from 'child_process';
+import { logError, logger } from '@/utils/logger.js';
 
 export interface StickerOptions {
   pack?: string;
@@ -63,7 +64,7 @@ export class StickerService {
         });
         return await sticker.toBuffer();
       } catch (error) {
-        console.error('Error with wa-sticker-formatter, using fallback:', error);
+        logError('[StickerService] wa-sticker-formatter error', error);
       }
     }
     return await this.createStickerManual(buffer, options);
@@ -113,7 +114,7 @@ export class StickerService {
       img.exif = exif;
       return await img.save(null);
     } catch (e) {
-      console.error('addExifManual error:', e);
+      logError('[StickerService] addExifManual error', e);
       return buffer;
     }
   }
@@ -193,7 +194,7 @@ export class StickerService {
         .webp({ quality: 100, lossless: false })
         .toBuffer();
     } catch {
-      console.warn('⚠️ sharp no disponible, usando jimp como fallback');
+      logger.warn('[StickerService] sharp not available, using jimp fallback');
       return await this.imageToStickerJimp(buffer);
     }
   }
@@ -276,7 +277,9 @@ export class StickerService {
     files.forEach(file => {
       try {
         if (existsSync(file)) unlinkSync(file);
-      } catch {}
+      } catch {
+        // Ignore cleanup errors - file may already be deleted
+      }
     });
   }
 

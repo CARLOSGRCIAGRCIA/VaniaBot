@@ -5,6 +5,7 @@ import {
   PermissionLevel,
   type MessageContext,
 } from '@/types/index.js';
+import { logError } from '@/utils/logger.js';
 import { serviceManager } from '@/services/system/Servicemanager.js';
 
 export class VaniaOffCommand extends Command {
@@ -36,7 +37,7 @@ export class VaniaOffCommand extends Command {
           `_Desactivado por @${ctx.sender.pushName || 'admin'}_`,
       );
     } catch (error) {
-      console.error('VaniaOff error:', error);
+      logError('[VaniaOff] Error', error);
       await ctx.reply('❌ Ocurrió un error. Intenta de nuevo.');
     }
   }
@@ -71,7 +72,7 @@ export class VaniaOnCommand extends Command {
           `_Activado por @${ctx.sender.pushName || 'admin'}_`,
       );
     } catch (error) {
-      console.error('VaniaOn error:', error);
+      logError('[VaniaOn] Error', error);
       await ctx.reply('❌ Ocurrió un error. Intenta de nuevo.');
     }
   }
@@ -108,7 +109,7 @@ export class VaniaStatusCommand extends Command {
 
       await ctx.reply(info);
     } catch (error) {
-      console.error('VaniaStatus error:', error);
+      logError('[VaniaStatus] Error', error);
       await ctx.reply('❌ Ocurrió un error. Intenta de nuevo.');
     }
   }

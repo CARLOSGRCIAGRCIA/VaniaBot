@@ -19,8 +19,8 @@ describe('BatchWriter', () => {
   let mockWriteCallback: ReturnType<typeof vi.fn>;
 
   beforeEach(() => {
-    mockWriteCallback = vi.fn().mockResolvedValue(undefined);
-    batchWriter = new BatchWriter(mockWriteCallback);
+    mockWriteCallback = vi.fn<() => Promise<void>>().mockResolvedValue(undefined);
+    batchWriter = new BatchWriter(mockWriteCallback as any);
   });
 
   afterEach(() => {
@@ -78,13 +78,13 @@ describe('BatchWriter', () => {
       vi.useFakeTimers();
 
       let flushResolve!: () => void;
-      mockWriteCallback = vi.fn().mockImplementation(() => {
+      mockWriteCallback = vi.fn<() => Promise<void>>().mockImplementation(() => {
         return new Promise<void>(resolve => {
           flushResolve = resolve;
         });
       });
 
-      batchWriter = new BatchWriter(mockWriteCallback);
+      batchWriter = new BatchWriter(mockWriteCallback as any);
       batchWriter.schedule('users', 'user1', { name: 'Test' });
 
       const flush1 = batchWriter.flushNow();
@@ -97,8 +97,8 @@ describe('BatchWriter', () => {
     });
 
     it('should restore writes on error', async () => {
-      mockWriteCallback = vi.fn().mockRejectedValue(new Error('Write error'));
-      batchWriter = new BatchWriter(mockWriteCallback);
+      mockWriteCallback = vi.fn().mockRejectedValue(new Error('Write error')) as any;
+      batchWriter = new BatchWriter(mockWriteCallback as (writes: any[]) => Promise<void>);
 
       batchWriter.schedule('users', 'user1', { name: 'Test' });
 

@@ -79,7 +79,11 @@ export class SessionBackupService {
 
     this.backupInterval = setInterval(
       () => {
-        void this.performBackup();
+        try {
+          void this.performBackup();
+        } catch (error) {
+          logger.error('[SessionBackup] Scheduled backup error:', error);
+        }
       },
       this.options.intervalMinutes * 60 * 1000,
     );

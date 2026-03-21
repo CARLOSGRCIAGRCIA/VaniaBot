@@ -84,7 +84,7 @@ const envSchema = z.object({
   DB_URI: z.string().optional(),
 
   /** Node environment: 'development' or 'production' */
-  NODE_ENV: z.enum(['development', 'production']).default('development'),
+  NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
 
   /** Maximum reconnection attempts on connection failure */
   MAX_RECONNECT_ATTEMPTS: z

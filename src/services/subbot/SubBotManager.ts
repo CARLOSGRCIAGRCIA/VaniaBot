@@ -117,11 +117,15 @@ class SubBotAntiSpam {
   startCleanup(): void {
     setInterval(
       () => {
-        const now = Date.now();
-        for (const [jid, msgs] of this.userMessages.entries()) {
-          const recent = msgs.filter(t => now - t < 60000);
-          if (recent.length === 0) this.userMessages.delete(jid);
-          else this.userMessages.set(jid, recent);
+        try {
+          const now = Date.now();
+          for (const [jid, msgs] of this.userMessages.entries()) {
+            const recent = msgs.filter(t => now - t < 60000);
+            if (recent.length === 0) this.userMessages.delete(jid);
+            else this.userMessages.set(jid, recent);
+          }
+        } catch (error) {
+          logError('[SubBotAntiSpam] Cleanup error', error);
         }
       },
       5 * 60 * 1000,
@@ -396,7 +400,9 @@ export class SubBotManager extends EventEmitter {
             `   Estoy aquí 💗\n` +
             `╰━━━━━━━━━━━━━━━━━━━━╯`,
         });
-      } catch {}
+      } catch {
+        // Ignore notification errors during reconnection
+      }
     });
 
     instance.on('message', (msg: WAMessage, sock: WASocket) => {
@@ -620,7 +626,9 @@ export class SubBotManager extends EventEmitter {
     if (existsSync(subConfig.sessionPath)) {
       try {
         rmSync(subConfig.sessionPath, { recursive: true, force: true });
-      } catch {}
+      } catch {
+        // Ignore cleanup errors if session path doesn't exist
+      }
     }
     subBotDatabase.delete(subConfig.id);
     logger.info(`✅ SubBot[${subConfig.id}] eliminada completamente`);

@@ -1,5 +1,6 @@
 import { Command } from '../../Command.js';
 import { quizService } from '@/services/study/QuizService.js';
+import { logError } from '@/utils/logger.js';
 import { difficultyEngine } from '@/services/study/DifficultyEngine.js';
 import { QuizCategory, type UserQuizStats } from '@/services/study/QuizTypes.js';
 import {
@@ -156,20 +157,24 @@ export class QuizCommand extends Command {
           typeof serviceManager.userService.updateUser
         >[1]);
       } catch (e) {
-        console.error('[QuizCommand] updateStats error:', e);
+        logError('[QuizCommand] updateStats error', e);
       }
     };
 
     const awardCoins = async (jid: string, amount: number): Promise<void> => {
       try {
         await serviceManager.userService.addMoney(jid, amount);
-      } catch {}
+      } catch {
+        // Ignore reward errors - don't block quiz for reward failures
+      }
     };
 
     const awardXP = async (jid: string, amount: number): Promise<void> => {
       try {
         await serviceManager.userService.addXP(jid, amount);
-      } catch {}
+      } catch {
+        // Ignore XP reward errors - don't block quiz for reward failures
+      }
     };
 
     await ctx.reply(`Generando preguntas de *${category}*...`);

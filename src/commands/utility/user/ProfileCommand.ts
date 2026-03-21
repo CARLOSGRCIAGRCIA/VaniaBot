@@ -1,5 +1,6 @@
 import { Command } from '../../Command.js';
 import { CommandCategory } from '@/types/index.js';
+import { logError } from '@/utils/logger.js';
 import type { MessageContext } from '@/types/index.js';
 import { serviceManager } from '@/services/system/Servicemanager.js';
 import { formatNumber, formatTime } from '@/utils/helpers.js';
@@ -60,7 +61,7 @@ export class ProfileCommand extends Command {
 
       await this.sendProfileWithImage(ctx, targetJid, message);
     } catch (error) {
-      console.error('Error in ProfileCommand:', error);
+      logError('[ProfileCommand] Error', error);
       await ctx.reply('❌ Error retrieving profile');
     }
   }
@@ -68,12 +69,8 @@ export class ProfileCommand extends Command {
   private isBotJid(targetJid: string, botJid?: string): boolean {
     if (!botJid) return false;
 
-    const normalizeJid = (jid: string) => {
-      return jid.split('@')[0].split(':')[0];
-    };
-
-    const targetNumber = normalizeJid(targetJid);
-    const botNumber = normalizeJid(botJid);
+    const targetNumber = targetJid.split('@')[0].split(':')[0];
+    const botNumber = botJid.split('@')[0].split(':')[0];
 
     return targetNumber === botNumber;
   }

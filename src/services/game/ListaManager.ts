@@ -235,7 +235,16 @@ export class ListaManager {
   private cleanupInterval: NodeJS.Timeout;
 
   constructor() {
-    this.cleanupInterval = setInterval(() => this.limpiarExpiradas(), 30 * 60 * 1000);
+    this.cleanupInterval = setInterval(
+      () => {
+        try {
+          this.limpiarExpiradas();
+        } catch (error) {
+          logError('[ListaManager] Cleanup error', error);
+        }
+      },
+      30 * 60 * 1000,
+    );
   }
 
   crearLista(params: {

@@ -14,6 +14,7 @@
 import { LRUCache } from 'lru-cache';
 import type { GroupMetadata } from '@whiskeysockets/baileys';
 import type { UserPermissions, BotPermissions } from '@/services/PermissionService.js';
+import { logError } from '@/utils/logger.js';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -80,7 +81,16 @@ export class UnifiedCacheManager {
     });
 
     this.messageIdCache = new Set();
-    setInterval(() => this.messageIdCache.clear(), 5 * 60 * 1000);
+    setInterval(
+      () => {
+        try {
+          this.messageIdCache.clear();
+        } catch (error) {
+          logError('[CacheManager] messageIdCache cleanup error', error);
+        }
+      },
+      5 * 60 * 1000,
+    );
   }
 
   // ─── Permissions ────────────────────────────────────────────────────────────

@@ -50,7 +50,7 @@ describe('Middleware', () => {
   });
 
   it('should execute and call next', async () => {
-    await middleware.execute(mockCtx, mockNext);
+    await middleware.execute(mockCtx, mockNext as () => Promise<void>);
 
     expect(middleware.executeCalled).toBe(true);
     expect(mockNext).toHaveBeenCalled();
@@ -59,6 +59,8 @@ describe('Middleware', () => {
   it('should call next even if it throws', async () => {
     mockNext.mockRejectedValueOnce(new Error('Next error'));
 
-    await expect(middleware.execute(mockCtx, mockNext)).rejects.toThrow('Next error');
+    await expect(middleware.execute(mockCtx, mockNext as () => Promise<void>)).rejects.toThrow(
+      'Next error',
+    );
   });
 });

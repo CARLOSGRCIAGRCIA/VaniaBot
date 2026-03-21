@@ -1,6 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 import { exec } from 'child_process';
+import { logError, logger } from '@/utils/logger.js';
 import { promisify } from 'util';
 import { aiService } from '@/services/external/AIService.js';
 
@@ -144,7 +145,7 @@ class AudioService {
     }
 
     if (!(await ffmpegDisponible())) {
-      console.log('[AudioService] ffmpeg no disponible, saltando compresión');
+      logger.debug('[AudioService] ffmpeg not available, skipping compression');
       return { buffer, comprimido: false, extension: extensionOrigen };
     }
 
@@ -164,21 +165,25 @@ class AudioService {
 
       const compressed = fs.readFileSync(tmpOut);
       const ratio = ((1 - compressed.length / buffer.length) * 100).toFixed(0);
-      console.log(
-        `[AudioService] Compresión: ${tamañoMB.toFixed(1)}MB → ${(compressed.length / 1024 / 1024).toFixed(1)}MB (-${ratio}%)`,
+      logger.debug(
+        `[AudioService] Compression: ${tamañoMB.toFixed(1)}MB → ${(compressed.length / 1024 / 1024).toFixed(1)}MB (-${ratio}%)`,
       );
 
       return { buffer: compressed, comprimido: true, extension: 'ogg' };
     } catch (err) {
-      console.error('[AudioService] Error en compresión:', err);
+      logError('[AudioService] Error en compresión', err);
       return { buffer, comprimido: false, extension: extensionOrigen };
     } finally {
       try {
         fs.unlinkSync(tmpIn);
-      } catch {}
+      } catch {
+        // Ignore cleanup errors
+      }
       try {
         fs.unlinkSync(tmpOut);
-      } catch {}
+      } catch {
+        // Ignore cleanup errors
+      }
     }
   }
 

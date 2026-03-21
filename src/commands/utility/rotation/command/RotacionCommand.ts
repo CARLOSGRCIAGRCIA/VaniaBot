@@ -142,7 +142,9 @@ export class RotacionCommand extends Command {
 
     try {
       await ctx.react('🗺️');
-    } catch {}
+    } catch {
+      // Ignore reaction errors
+    }
 
     const myZone = inferZone(start.nodeId);
 

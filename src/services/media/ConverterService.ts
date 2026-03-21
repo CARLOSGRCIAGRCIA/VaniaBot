@@ -187,7 +187,9 @@ export class ConverterService {
         if (existsSync(file)) {
           unlinkSync(file);
         }
-      } catch {}
+      } catch {
+        // Ignore file cleanup errors
+      }
     });
   }
 

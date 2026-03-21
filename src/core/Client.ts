@@ -98,11 +98,15 @@ class RealTimeAntiSpam {
   startCleanup(): void {
     setInterval(
       () => {
-        const now = Date.now();
-        for (const [userJid, messages] of this.userMessages.entries()) {
-          const recent = messages.filter(time => now - time < 60000);
-          if (recent.length === 0) this.userMessages.delete(userJid);
-          else this.userMessages.set(userJid, recent);
+        try {
+          const now = Date.now();
+          for (const [userJid, messages] of this.userMessages.entries()) {
+            const recent = messages.filter(time => now - time < 60000);
+            if (recent.length === 0) this.userMessages.delete(userJid);
+            else this.userMessages.set(userJid, recent);
+          }
+        } catch (error) {
+          logger.error('[RealTimeAntiSpam] Cleanup failed:', error);
         }
       },
       5 * 60 * 1000,
@@ -304,60 +308,17 @@ export class WhatsAppClient {
         await this.messageProcessor.process(messageId, async () => {
           logger.debug(`📝 Creating MessageContext...`);
           try {
-            // WAMessage and proto.IWebMessageInfo are the same shape in Baileys
             const ctx = new MessageContext(this.sock, message as proto.IWebMessageInfo);
 
             logger.debug(
               `📋 MessageContext created: command="${ctx.command}", text="${ctx.text.slice(0, 50)}", isGroup=${ctx.chat.isGroup}`,
             );
 
-            if (ctx.chat.isGroup) {
-              logger.debug(`[MUTE] Verificando mute para ${ctx.sender.jid} en ${ctx.chat.jid}`);
-
-              const isMuted = await serviceManager.moderationService.isMuted(
-                ctx.chat.jid,
-                ctx.sender.jid,
-              );
-
-              logger.debug(`[MUTE] Resultado: ${isMuted}`);
-
-              if (isMuted) {
-                const botJid = this.sock.user?.id ?? '';
-                if (botJid) {
-                  cacheManager.invalidateGroupMetadata(ctx.chat.jid);
-                }
-                await ctx.loadBotPermissions();
-
-                if (ctx.chat.isBotAdmin) {
-                  try {
-                    await this.sock.sendMessage(ctx.chat.jid, { delete: message.key });
-                    logger.info(`[MUTE] Mensaje eliminado: ${message.key.id}`);
-                  } catch (error) {
-                    logError('[MUTE] Error al eliminar mensaje', error);
-                  }
-                }
-
-                cacheManager.markMessageProcessed(messageId);
-                return;
-              }
+            if (await this.handleMuteCheck(ctx, message)) {
+              return;
             }
 
-            if (ctx.chat.isGroup && !ctx.command) {
-              const isEnabled = await serviceManager.vaniaToggleService.isEnabled(ctx.chat.jid);
-              if (!isEnabled) {
-                cacheManager.markMessageProcessed(messageId);
-                return;
-              }
-              const quizHandled = await quizAnswerHandler.handle(ctx);
-              if (quizHandled) {
-                cacheManager.markMessageProcessed(messageId);
-                return;
-              }
-
-              const botJid = this.sock.user?.id ?? '';
-              await handleMention(ctx, botJid);
-
-              cacheManager.markMessageProcessed(messageId);
+            if (await this.handleGroupAutoResponses(ctx)) {
               return;
             }
 
@@ -369,77 +330,11 @@ export class WhatsAppClient {
               return;
             }
 
-            logger.debug(`✅ Command detected: ${ctx.command}`);
-
-            const rateLimit = this.antiSpam.checkRateLimit(ctx.sender.jid);
-            if (!rateLimit.allowed) {
-              this.stats.spamBlocked++;
-              await ctx.reply(rateLimit.reason ?? '⚠️ Demasiados mensajes').catch(() => {});
+            if (await this.checkCommandRateLimits(ctx)) {
               return;
             }
 
-            if (ctx.chat.isGroup) {
-              const floodCheck = rateLimitService.checkFlood(ctx.sender.jid);
-              if (!floodCheck.allowed) {
-                this.stats.spamBlocked++;
-                await ctx
-                  .reply(floodCheck.reason ?? '⚠️ Estás escribiendo muy rápido')
-                  .catch(() => {});
-                return;
-              }
-
-              const groupRateLimit = rateLimitService.checkGroupRateLimit(ctx.chat.jid);
-              if (!groupRateLimit.allowed) {
-                this.stats.spamBlocked++;
-                await ctx
-                  .reply(groupRateLimit.reason ?? '⚠️ El grupo está muy activo')
-                  .catch(() => {});
-                return;
-              }
-            }
-
-            const fullCommand = ctx.args.length > 0 ? `${ctx.command} ${ctx.args[0]}` : null;
-
-            logger.debug(`🔍 Looking for command: "${ctx.command}" or "${fullCommand}"`);
-
-            const command =
-              (fullCommand ? commandRegistry.get(fullCommand) : null) ??
-              commandRegistry.get(ctx.command);
-
-            logger.debug(`📦 Command found: ${command?.name || 'NULL'}`);
-
-            if (!command) {
-              logger.warn(`❌ Command not found in registry: ${ctx.command}`);
-              cacheManager.markMessageProcessed(messageId);
-              return;
-            }
-
-            logger.debug(`✅ Executing command: ${command.name}`);
-            if (fullCommand && commandRegistry.get(fullCommand)) {
-              ctx.args.shift();
-            }
-            if (command.permissions?.user || command.permissions?.bot) {
-              if (ctx.chat.isGroup) {
-                await Promise.all([ctx.loadSenderPermissions(), ctx.loadBotPermissions()]);
-              } else {
-                await ctx.loadSenderPermissions();
-              }
-            }
-
-            await this.executeWithMiddlewares(ctx, async () => {
-              logger.debug(`🚀 Running command: ${command.name}`);
-              try {
-                await command.execute(ctx);
-                this.stats.commandsExecuted++;
-                logger.debug(`✅ Command executed successfully: ${command.name}`);
-              } catch (error) {
-                this.stats.errorsCount++;
-                logError('Command', new CommandExecutionError(ctx.command, error));
-                await ctx.reply('Error al ejecutar el comando.').catch(() => {});
-              }
-            });
-
-            cacheManager.markMessageProcessed(messageId);
+            await this.executeCommand(ctx, messageId);
 
             const processingTime = Date.now() - startTime;
             this.stats.totalProcessingTime += processingTime;
@@ -455,6 +350,130 @@ export class WhatsAppClient {
         }
       })();
     });
+  }
+
+  private async handleMuteCheck(ctx: MessageContext, message: WAMessage): Promise<boolean> {
+    if (!ctx.chat.isGroup) return false;
+
+    logger.debug(`[MUTE] Verificando mute para ${ctx.sender.jid} en ${ctx.chat.jid}`);
+
+    const isMuted = await serviceManager.moderationService.isMuted(ctx.chat.jid, ctx.sender.jid);
+
+    logger.debug(`[MUTE] Resultado: ${isMuted}`);
+
+    if (!isMuted) return false;
+
+    const botJid = this.sock.user?.id ?? '';
+    if (botJid) {
+      cacheManager.invalidateGroupMetadata(ctx.chat.jid);
+    }
+    await ctx.loadBotPermissions();
+
+    if (ctx.chat.isBotAdmin) {
+      try {
+        await this.sock.sendMessage(ctx.chat.jid, { delete: message.key });
+        logger.info(`[MUTE] Mensaje eliminado: ${message.key.id}`);
+      } catch (error) {
+        logError('[MUTE] Error al eliminar mensaje', error);
+      }
+    }
+
+    if (!message.key.id) return false;
+    cacheManager.markMessageProcessed(message.key.id);
+    return true;
+  }
+
+  private async handleGroupAutoResponses(ctx: MessageContext): Promise<boolean> {
+    if (!ctx.chat.isGroup || ctx.command) return false;
+
+    const isEnabled = await serviceManager.vaniaToggleService.isEnabled(ctx.chat.jid);
+    if (!isEnabled) {
+      if (ctx.message.key.id) cacheManager.markMessageProcessed(ctx.message.key.id);
+      return true;
+    }
+
+    const quizHandled = await quizAnswerHandler.handle(ctx);
+    if (quizHandled) {
+      if (ctx.message.key.id) cacheManager.markMessageProcessed(ctx.message.key.id);
+      return true;
+    }
+
+    const botJid = this.sock.user?.id ?? '';
+    await handleMention(ctx, botJid);
+
+    if (ctx.message.key.id) cacheManager.markMessageProcessed(ctx.message.key.id);
+    return true;
+  }
+
+  private async checkCommandRateLimits(ctx: MessageContext): Promise<boolean> {
+    const rateLimit = this.antiSpam.checkRateLimit(ctx.sender.jid);
+    if (!rateLimit.allowed) {
+      this.stats.spamBlocked++;
+      await ctx.reply(rateLimit.reason ?? '⚠️ Demasiados mensajes').catch(() => {});
+      return true;
+    }
+
+    if (ctx.chat.isGroup) {
+      const floodCheck = rateLimitService.checkFlood(ctx.sender.jid);
+      if (!floodCheck.allowed) {
+        this.stats.spamBlocked++;
+        await ctx.reply(floodCheck.reason ?? '⚠️ Estás escribiendo muy rápido').catch(() => {});
+        return true;
+      }
+
+      const groupRateLimit = rateLimitService.checkGroupRateLimit(ctx.chat.jid);
+      if (!groupRateLimit.allowed) {
+        this.stats.spamBlocked++;
+        await ctx.reply(groupRateLimit.reason ?? '⚠️ El grupo está muy activo').catch(() => {});
+        return true;
+      }
+    }
+
+    return false;
+  }
+
+  private async executeCommand(ctx: MessageContext, messageId: string): Promise<void> {
+    const fullCommand = ctx.args.length > 0 ? `${ctx.command} ${ctx.args[0]}` : null;
+
+    logger.debug(`🔍 Looking for command: "${ctx.command}" or "${fullCommand}"`);
+
+    const command =
+      (fullCommand ? commandRegistry.get(fullCommand) : null) ?? commandRegistry.get(ctx.command);
+
+    logger.debug(`📦 Command found: ${command?.name || 'NULL'}`);
+
+    if (!command) {
+      logger.warn(`❌ Command not found in registry: ${ctx.command}`);
+      cacheManager.markMessageProcessed(messageId);
+      return;
+    }
+
+    logger.debug(`✅ Executing command: ${command.name}`);
+    if (fullCommand && commandRegistry.get(fullCommand)) {
+      ctx.args.shift();
+    }
+    if (command.permissions?.user || command.permissions?.bot) {
+      if (ctx.chat.isGroup) {
+        await Promise.all([ctx.loadSenderPermissions(), ctx.loadBotPermissions()]);
+      } else {
+        await ctx.loadSenderPermissions();
+      }
+    }
+
+    await this.executeWithMiddlewares(ctx, async () => {
+      logger.debug(`🚀 Running command: ${command.name}`);
+      try {
+        await command.execute(ctx);
+        this.stats.commandsExecuted++;
+        logger.debug(`✅ Command executed successfully: ${command.name}`);
+      } catch (error) {
+        this.stats.errorsCount++;
+        logError('Command', new CommandExecutionError(ctx.command, error));
+        await ctx.reply('Error al ejecutar el comando.').catch(() => {});
+      }
+    });
+
+    cacheManager.markMessageProcessed(messageId);
   }
 
   private async handleGroupUpdate(update: GroupParticipantsUpdate): Promise<void> {
@@ -525,9 +544,13 @@ export class WhatsAppClient {
   private startMaintenance(): void {
     setInterval(
       () => {
-        const queueStats = this.messageProcessor.getStats();
-        if (queueStats.queued > 20)
-          logger.warn(`⚠️ Cola: ${queueStats.queued} mensajes pendientes`);
+        try {
+          const queueStats = this.messageProcessor.getStats();
+          if (queueStats.queued > 20)
+            logger.warn(`⚠️ Cola: ${queueStats.queued} mensajes pendientes`);
+        } catch (error) {
+          logger.error('[Client] Maintenance check failed:', error);
+        }
       },
       5 * 60 * 1000,
     );
@@ -608,7 +631,9 @@ export class WhatsAppClient {
     this.isReady = false;
     try {
       await Promise.resolve(this.sock?.ws?.close()).catch(() => {});
-    } catch (_) {}
+    } catch (error) {
+      logger.debug('[Client] WebSocket close error (non-fatal):', error);
+    }
     await subBotManager.shutdown();
     await serviceManager.shutdown();
     this.logStats();

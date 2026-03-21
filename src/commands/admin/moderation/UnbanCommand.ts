@@ -5,6 +5,7 @@ import {
   PermissionLevel,
   type MessageContext,
 } from '@/types/index.js';
+import { logError } from '@/utils/logger.js';
 import { serviceManager } from '@/services/system/Servicemanager.js';
 
 export class UnbanCommand extends Command {
@@ -48,7 +49,7 @@ export class UnbanCommand extends Command {
 
       await ctx.react('✅');
     } catch (error: unknown) {
-      console.error('Error in UnbanCommand:', error);
+      logError('[UnbanCommand] Error', error);
       const message = error instanceof Error ? error.message : 'Unknown error';
       await ctx.reply(`❌ Error unbanning user: ${message}`);
       await ctx.react('❌');

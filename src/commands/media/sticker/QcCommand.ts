@@ -1,6 +1,7 @@
 import { Command } from '../../Command.js';
 import { CommandCategory, type MessageContext } from '@/types/index.js';
 import { StickerService } from '@/services/media/StickerService.js';
+import { logger } from '@/utils/logger.js';
 import axios from 'axios';
 // import { join } from 'path';
 
@@ -59,7 +60,7 @@ export class QcCommand extends Command {
         const profilePic = await ctx.sock.profilePictureUrl(targetJid, 'image');
         if (profilePic) pp = profilePic;
       } catch {
-        console.warn('Could not fetch profile picture');
+        logger.warn('[QcCommand] Could not fetch profile picture');
       }
 
       const nombre = ctx.sender.pushName || 'User';

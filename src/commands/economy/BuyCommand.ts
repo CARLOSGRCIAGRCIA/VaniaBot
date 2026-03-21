@@ -1,5 +1,6 @@
 import { Command } from '../Command.js';
 import { CommandCategory, type MessageContext } from '@/types/index.js';
+import { logError } from '@/utils/logger.js';
 import { serviceManager } from '@/services/system/Servicemanager.js';
 
 interface ShopItem {
@@ -152,7 +153,7 @@ export class BuyCommand extends Command {
       await ctx.reply(message);
       await ctx.react('✅');
     } catch (error) {
-      console.error('Error in BuyCommand:', error);
+      logError('[BuyCommand] Error', error);
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
       await ctx.reply(`❌ Error processing purchase: ${errorMessage}`);
       await ctx.react('❌');

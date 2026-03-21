@@ -388,7 +388,9 @@ export class SubBotInstance extends EventEmitter {
       for (const file of files) {
         try {
           unlinkSync(join(this.config.sessionPath, file));
-        } catch {}
+        } catch {
+          // Ignore file deletion errors during cleanup
+        }
       }
       logger.info(`✅ SubBot[${this.config.id}] session cleared (${files.length} files)`);
     } catch (err) {

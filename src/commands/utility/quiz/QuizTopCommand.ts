@@ -5,6 +5,7 @@ import {
   PermissionLevel,
   type MessageContext,
 } from '@/types/index.js';
+import { logError } from '@/utils/logger.js';
 import { serviceManager } from '@/services/system/Servicemanager.js';
 
 interface QuizStats {
@@ -116,7 +117,7 @@ export class QuizTopCommand extends Command {
           `\n\n> _VaniaBot💝 — Modo Estudio_`,
       );
     } catch (err) {
-      console.error('[QuizTopCommand]', err);
+      logError('[QuizTopCommand] Error', err);
       await ctx.reply('❌ Error al obtener el ranking. Intenta de nuevo.');
     }
   }

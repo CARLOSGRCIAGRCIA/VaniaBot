@@ -10,6 +10,7 @@
 
 import { aiService } from '@/services/external/AIService.js';
 import type { QuizDifficulty } from './QuizTypes.js';
+import { logError } from '@/utils/logger.js';
 import type { QuizQuestion } from './QuizTypes.js';
 
 const CACHE_TTL = 2 * 60 * 60 * 1000;
@@ -149,7 +150,7 @@ Reglas:
           }),
         );
     } catch (err) {
-      console.error('[QuizGen] Error parseando preguntas:', err);
+      logError('[QuizGen] Error parseando preguntas', err);
       return [];
     }
   }
