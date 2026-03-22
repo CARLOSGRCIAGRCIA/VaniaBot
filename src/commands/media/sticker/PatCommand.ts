@@ -1,6 +1,7 @@
 import { Command } from '../../Command.js';
 import { CommandCategory, type MessageContext } from '@/types/index.js';
 import { StickerService } from '@/services/media/StickerService.js';
+import type { Sharp } from 'sharp';
 import path from 'path';
 
 export class PatCommand extends Command {
@@ -31,9 +32,9 @@ export class PatCommand extends Command {
     await ctx.react('⏳');
 
     try {
-      let sharp: unknown;
+      let sharpFn: (input: string) => Sharp;
       try {
-        sharp = (await import('sharp')).default;
+        sharpFn = (await import('sharp')).default as (input: string) => Sharp;
       } catch {
         await ctx.reply(
           '❌ Este comando no está disponible en esta plataforma (sharp no instalado)',
@@ -45,7 +46,7 @@ export class PatCommand extends Command {
       const randomNum = Math.floor(Math.random() * 4) + 1;
       const imagePath = path.join(process.cwd(), 'data', 'assets', `pat${randomNum}.jpg`);
 
-      const image = sharp(imagePath);
+      const image = sharpFn(imagePath);
       const metadata = await image.metadata();
 
       const width = metadata.width || 512;

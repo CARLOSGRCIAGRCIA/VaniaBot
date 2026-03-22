@@ -1,6 +1,7 @@
 import { Command } from '../../Command.js';
 import { CommandCategory, type MessageContext } from '@/types/index.js';
 import { StickerService } from '@/services/media/StickerService.js';
+import type { Sharp } from 'sharp';
 import axios from 'axios';
 
 export class QcCommand extends Command {
@@ -54,9 +55,9 @@ export class QcCommand extends Command {
     await ctx.react('⏳');
 
     try {
-      let sharp: unknown;
+      let sharpFn: (input: Buffer) => Sharp;
       try {
-        sharp = (await import('sharp')).default;
+        sharpFn = (await import('sharp')).default as (input: Buffer) => Sharp;
       } catch {
         await ctx.reply(
           '❌ Este comando no está disponible en esta plataforma (sharp no instalado)',
@@ -111,7 +112,7 @@ export class QcCommand extends Command {
 
       const buffer = Buffer.from(res.data.result.image, 'base64');
 
-      const resizedBuffer = await sharp(buffer)
+      const resizedBuffer = await sharpFn(buffer)
         .resize(512, 512, {
           fit: 'contain',
           background: { r: 0, g: 0, b: 0, alpha: 0 },
