@@ -17,7 +17,7 @@ export class NoticiasCommand extends Command {
   name = 'noticias';
   description = 'Consulta las últimas noticias';
   category = CommandCategory.UTILITY;
-  aliases = ['noticias', 'news', 'n'];
+  aliases = ['noticias', 'news'];
   usage = '!noticias [categoría]';
   examples = ['!noticias', '!noticias tecnologia', '!noticias deportes'];
   cooldown = 15000;
