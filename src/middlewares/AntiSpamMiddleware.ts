@@ -1,7 +1,6 @@
 import { Middleware } from './Middleware.js';
 import type { MessageContext } from '@/types/index.js';
 import { serviceManager } from '@/services/system/Servicemanager.js';
-import { logError } from '@/utils/logger.js';
 
 interface UserMessageTracker {
   messages: number[];
@@ -13,16 +12,11 @@ export class AntiSpamMiddleware extends Middleware {
 
   private userMessages = new Map<string, UserMessageTracker>();
   private readonly CLEANUP_INTERVAL = 60000;
+  private cleanupTimer: ReturnType<typeof setInterval> | null = null;
 
   constructor() {
     super();
-    setInterval(() => {
-      try {
-        this.cleanup();
-      } catch (error) {
-        logError('[AntiSpam] Cleanup error', error);
-      }
-    }, this.CLEANUP_INTERVAL);
+    this.cleanupTimer = setInterval(() => this.cleanup(), this.CLEANUP_INTERVAL);
   }
 
   async execute(ctx: MessageContext, next: () => Promise<void>): Promise<void> {
@@ -71,12 +65,12 @@ export class AntiSpamMiddleware extends Middleware {
           await ctx.sock.sendMessage(ctx.chat.jid, {
             text: `❌ ${ctx.sender.pushName} fue expulsado por spam`,
           });
-          this.userMessages.delete(key);
-          return;
-        } catch (err) {
-          logError('[AntiSpam] Kick error', err);
+        } catch (_err) {
           await ctx.reply('❌ No pude expulsar al usuario (falta permisos)');
+        } finally {
+          this.userMessages.delete(key);
         }
+        return;
       }
 
       if (tracker.warnings >= 3) {
@@ -91,25 +85,18 @@ export class AntiSpamMiddleware extends Middleware {
   private cleanup(): void {
     const now = Date.now();
     const maxAge = 5 * 60 * 1000;
-    const warningResetTime = 10 * 60 * 1000;
 
     for (const [key, tracker] of this.userMessages.entries()) {
-      const allMessagesExpired =
-        tracker.messages.length === 0 || tracker.messages.every(time => now - time > maxAge);
-
-      const warningsExpired =
-        tracker.warnings > 0 &&
-        (tracker.messages.length === 0 ||
-          tracker.messages.every(time => now - time > warningResetTime));
-
-      if (allMessagesExpired && tracker.warnings === 0) {
+      if (tracker.messages.length === 0 || tracker.messages.every(time => now - time > maxAge)) {
         this.userMessages.delete(key);
-      } else if (warningsExpired) {
-        tracker.warnings = 0;
-        if (tracker.messages.length === 0) {
-          this.userMessages.delete(key);
-        }
       }
+    }
+  }
+
+  stop(): void {
+    if (this.cleanupTimer) {
+      clearInterval(this.cleanupTimer);
+      this.cleanupTimer = null;
     }
   }
 }

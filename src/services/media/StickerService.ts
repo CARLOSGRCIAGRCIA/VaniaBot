@@ -1,6 +1,7 @@
 import { writeFileSync, readFileSync, unlinkSync, existsSync, mkdirSync } from 'fs';
 import { join } from 'path';
 import { spawn } from 'child_process';
+import { logError, logger } from '@/utils/logger.js';
 
 export interface StickerOptions {
   pack?: string;
@@ -14,7 +15,6 @@ interface FileTypeResult {
   ext: string;
   mime: string;
 }
-
 interface FileTypeModule {
   fileTypeFromBuffer?: (buffer: Buffer) => Promise<FileTypeResult | undefined>;
   fromBuffer?: (buffer: Buffer) => Promise<FileTypeResult | undefined>;
@@ -27,6 +27,8 @@ interface FileTypeModule {
 export class StickerService {
   private static readonly TEMP_DIR = './data/temp';
   private static readonly STICKER_SIZE = 512;
+  private static readonly IS_ANDROID =
+    process.platform === 'android' || (process.platform === 'linux' && process.arch === 'arm64');
 
   constructor() {
     if (!existsSync(StickerService.TEMP_DIR)) {
@@ -34,27 +36,16 @@ export class StickerService {
     }
   }
 
-  private async getFileType(buffer: Buffer): Promise<{
-    mime: string;
-    ext: string;
-  } | null> {
+  private async getFileType(buffer: Buffer): Promise<{ mime: string; ext: string } | null> {
     try {
       const fileType = (await import('file-type')) as FileTypeModule;
-
       let result: FileTypeResult | undefined;
-
-      if (fileType.fileTypeFromBuffer) {
-        result = await fileType.fileTypeFromBuffer(buffer);
-      } else if (fileType.fromBuffer) {
-        result = await fileType.fromBuffer(buffer);
-      } else if (fileType.default?.fromBuffer) {
-        result = await fileType.default.fromBuffer(buffer);
-      } else if (fileType.default?.fileTypeFromBuffer) {
+      if (fileType.fileTypeFromBuffer) result = await fileType.fileTypeFromBuffer(buffer);
+      else if (fileType.fromBuffer) result = await fileType.fromBuffer(buffer);
+      else if (fileType.default?.fromBuffer) result = await fileType.default.fromBuffer(buffer);
+      else if (fileType.default?.fileTypeFromBuffer)
         result = await fileType.default.fileTypeFromBuffer(buffer);
-      } else {
-        return { mime: 'image/jpeg', ext: 'jpg' };
-      }
-
+      else return { mime: 'image/jpeg', ext: 'jpg' };
       return result || { mime: 'image/jpeg', ext: 'jpg' };
     } catch {
       return { mime: 'image/jpeg', ext: 'jpg' };
@@ -62,38 +53,82 @@ export class StickerService {
   }
 
   async createSticker(buffer: Buffer, options: StickerOptions = {}): Promise<Buffer> {
-    try {
-      const { Sticker } = await import('wa-sticker-formatter');
+    if (!StickerService.IS_ANDROID) {
+      try {
+        const { Sticker } = await import('wa-sticker-formatter');
+        const sticker = new Sticker(buffer, {
+          pack: options.pack || 'VaniaBot',
+          author: options.author || 'VaniaBot',
+          type: 'default',
+          quality: options.quality || 100,
+        });
+        return await sticker.toBuffer();
+      } catch (error) {
+        logError('[StickerService] wa-sticker-formatter error', error);
+      }
+    }
+    return await this.createStickerManual(buffer, options);
+  }
 
-      const sticker = new Sticker(buffer, {
-        pack: options.pack || 'VaniaBot',
-        author: options.author || 'VaniaBot',
-        type: 'default',
-        quality: options.quality || 100,
+  async addExif(buffer: Buffer, pack: string, author: string): Promise<Buffer> {
+    if (!StickerService.IS_ANDROID) {
+      try {
+        const { Sticker } = await import('wa-sticker-formatter');
+        const sticker = new Sticker(buffer, {
+          pack,
+          author,
+          type: 'default',
+          quality: 100,
+        });
+        return await sticker.toBuffer();
+      } catch {
+        // continúa al fallback
+      }
+    }
+    return await this.addExifManual(buffer, pack, author);
+  }
+
+  private async addExifManual(buffer: Buffer, pack: string, author: string): Promise<Buffer> {
+    try {
+      const webp = await import('node-webpmux');
+      const Image = webp.default?.Image ?? webp.Image;
+      const img = new Image();
+
+      const packJson = JSON.stringify({
+        'sticker-pack-name': pack,
+        'sticker-pack-publisher': author,
+        emojis: [''],
       });
 
-      return await sticker.toBuffer();
-    } catch (error) {
-      console.error('Error with wa-sticker-formatter, using fallback:', error);
-      return await this.createStickerManual(buffer, options);
+      const jsonBuffer = Buffer.from(packJson, 'utf8');
+
+      const exifAttr = Buffer.from([
+        0x49, 0x49, 0x2a, 0x00, 0x08, 0x00, 0x00, 0x00, 0x01, 0x00, 0x41, 0x57, 0x07, 0x00, 0x00,
+        0x00, 0x00, 0x00, 0x16, 0x00, 0x00, 0x00,
+      ]);
+
+      const exif = Buffer.concat([exifAttr, jsonBuffer]);
+      exif.writeUIntLE(jsonBuffer.length, 14, 4);
+
+      await img.load(buffer);
+      img.exif = exif;
+      return await img.save(null);
+    } catch (e) {
+      logError('[StickerService] addExifManual error', e);
+      return buffer;
     }
   }
 
   private async createStickerManual(buffer: Buffer, options: StickerOptions = {}): Promise<Buffer> {
     const type = await this.getFileType(buffer);
     const isVideo = type?.mime.includes('video') || type?.ext === 'gif';
-
-    if (isVideo) {
-      return await this.videoToSticker(buffer, options);
-    } else {
-      return await this.imageToSticker(buffer, options);
-    }
+    if (isVideo) return await this.videoToSticker(buffer, options);
+    return await this.imageToSticker(buffer, options);
   }
 
   async imageToSticker(buffer: Buffer, _options: StickerOptions = {}): Promise<Buffer> {
     const tempInput = join(StickerService.TEMP_DIR, `input-${Date.now()}.png`);
     const tempOutput = join(StickerService.TEMP_DIR, `output-${Date.now()}.webp`);
-
     try {
       writeFileSync(tempInput, buffer);
       await this.ffmpegImageProcess(tempInput, tempOutput);
@@ -120,72 +155,75 @@ export class StickerService {
         '100',
         output,
       ];
-
       const ffmpeg = spawn('ffmpeg', args);
       let stderr = '';
-
       ffmpeg.stderr.on('data', data => {
         stderr += data.toString();
       });
-
       ffmpeg.on('close', code => {
-        if (code === 0) {
-          resolve();
-        } else {
-          reject(new Error(`FFmpeg failed: ${stderr}`));
-        }
+        code === 0 ? resolve() : reject(new Error(`FFmpeg failed: ${stderr}`));
       });
-
       ffmpeg.on('error', reject);
     });
   }
 
   private async imageToStickerFallback(buffer: Buffer): Promise<Buffer> {
-    let sharp: any;
     try {
-      sharp = (await import('sharp')).default;
+      const sharp = (await import('sharp')).default;
+      const image = sharp(buffer);
+      const metadata = await image.metadata();
+      const imgWidth = metadata.width ?? 512;
+      const imgHeight = metadata.height ?? 512;
+      let width: number, height: number;
+      if (imgWidth > imgHeight) {
+        width = StickerService.STICKER_SIZE;
+        height = Math.round((imgHeight / imgWidth) * StickerService.STICKER_SIZE);
+      } else {
+        height = StickerService.STICKER_SIZE;
+        width = Math.round((imgWidth / imgHeight) * StickerService.STICKER_SIZE);
+      }
+      return await image
+        .resize(width, height, { fit: 'contain', background: { r: 0, g: 0, b: 0, alpha: 0 } })
+        .extend({
+          top: Math.floor((StickerService.STICKER_SIZE - height) / 2),
+          bottom: Math.ceil((StickerService.STICKER_SIZE - height) / 2),
+          left: Math.floor((StickerService.STICKER_SIZE - width) / 2),
+          right: Math.ceil((StickerService.STICKER_SIZE - width) / 2),
+          background: { r: 0, g: 0, b: 0, alpha: 0 },
+        })
+        .webp({ quality: 100, lossless: false })
+        .toBuffer();
     } catch {
-      console.warn('⚠️ sharp no disponible en esta plataforma, devolviendo buffer sin procesar');
-      return buffer;
+      logger.warn('[StickerService] sharp not available, using jimp fallback');
+      return await this.imageToStickerJimp(buffer);
     }
+  }
 
-    const image = sharp(buffer);
-    const metadata = await image.metadata();
+  private async imageToStickerJimp(buffer: Buffer): Promise<Buffer> {
+    const { Jimp } = await import('jimp');
+    const image = await Jimp.read(buffer);
+    image.cover({ w: StickerService.STICKER_SIZE, h: StickerService.STICKER_SIZE });
 
-    const imgWidth = metadata.width ?? 512;
-    const imgHeight = metadata.height ?? 512;
+    const tempInput = join(StickerService.TEMP_DIR, `jimp-${Date.now()}.png`);
+    const tempOutput = join(StickerService.TEMP_DIR, `jimp-${Date.now()}.webp`);
 
-    let width: number, height: number;
-
-    if (imgWidth > imgHeight) {
-      width = StickerService.STICKER_SIZE;
-      height = Math.round((imgHeight / imgWidth) * StickerService.STICKER_SIZE);
-    } else {
-      height = StickerService.STICKER_SIZE;
-      width = Math.round((imgWidth / imgHeight) * StickerService.STICKER_SIZE);
+    try {
+      const pngBuffer = await image.getBuffer('image/png');
+      writeFileSync(tempInput, pngBuffer);
+      await this.ffmpegImageProcess(tempInput, tempOutput);
+      const result = readFileSync(tempOutput);
+      this.cleanup(tempInput, tempOutput);
+      return result;
+    } catch {
+      this.cleanup(tempInput, tempOutput);
+      return await image.getBuffer('image/png');
     }
-
-    return await image
-      .resize(width, height, {
-        fit: 'contain',
-        background: { r: 0, g: 0, b: 0, alpha: 0 },
-      })
-      .extend({
-        top: Math.floor((StickerService.STICKER_SIZE - height) / 2),
-        bottom: Math.ceil((StickerService.STICKER_SIZE - height) / 2),
-        left: Math.floor((StickerService.STICKER_SIZE - width) / 2),
-        right: Math.ceil((StickerService.STICKER_SIZE - width) / 2),
-        background: { r: 0, g: 0, b: 0, alpha: 0 },
-      })
-      .webp({ quality: 100, lossless: false })
-      .toBuffer();
   }
 
   async videoToSticker(buffer: Buffer, _options: StickerOptions = {}): Promise<Buffer> {
     const type = await this.getFileType(buffer);
     const tempInput = join(StickerService.TEMP_DIR, `video-${Date.now()}.${type?.ext || 'mp4'}`);
     const tempOutput = join(StickerService.TEMP_DIR, `sticker-${Date.now()}.webp`);
-
     try {
       writeFileSync(tempInput, buffer);
       await this.ffmpegVideoProcess(tempInput, tempOutput);
@@ -223,22 +261,14 @@ export class StickerService {
         '00:00:10',
         output,
       ];
-
       const ffmpeg = spawn('ffmpeg', args);
       let stderr = '';
-
       ffmpeg.stderr.on('data', data => {
         stderr += data.toString();
       });
-
       ffmpeg.on('close', code => {
-        if (code === 0) {
-          resolve();
-        } else {
-          reject(new Error(`FFmpeg video conversion failed: ${stderr}`));
-        }
+        code === 0 ? resolve() : reject(new Error(`FFmpeg video failed: ${stderr}`));
       });
-
       ffmpeg.on('error', reject);
     });
   }
@@ -246,11 +276,9 @@ export class StickerService {
   private cleanup(...files: string[]): void {
     files.forEach(file => {
       try {
-        if (existsSync(file)) {
-          unlinkSync(file);
-        }
+        if (existsSync(file)) unlinkSync(file);
       } catch {
-        // Ignorar errores de cleanup
+        // Ignore cleanup errors - file may already be deleted
       }
     });
   }

@@ -31,7 +31,7 @@ export class PatCommand extends Command {
     await ctx.react('⏳');
 
     try {
-      let sharp: any;
+      let sharp: unknown;
       try {
         sharp = (await import('sharp')).default;
       } catch {

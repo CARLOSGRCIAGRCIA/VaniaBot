@@ -1,6 +1,6 @@
 {
   "name": "vaniabot",
-  "version": "4.9.0",
+  "version": "4.5.0",
   "main": "dist/index.js",
   "type": "module",
   "scripts": {
@@ -40,13 +40,12 @@
     "cheerio": "^1.2.0",
     "child_process": "^1.0.2",
     "dotenv": "^16.4.7",
-    "file-type": "^21.3.3",
+    "file-type": "^19.6.0",
     "groq-sdk": "^0.37.0",
     "ioredis": "^5.9.3",
     "jimp": "^1.6.0",
     "lowdb": "^7.0.1",
     "lru-cache": "^11.2.6",
-    "mathjs": "^15.1.1",
     "mongodb": "^7.1.0",
     "node-webpmux": "^3.2.1",
     "pino": "^9.5.0",
@@ -56,6 +55,7 @@
     "redis": "^5.11.0",
     "sharp": "^0.34.5",
     "wa-sticker-formatter": "^4.4.4",
+    "yt-search": "^2.13.1",
     "zod": "^3.24.1"
   },
   "devDependencies": {
@@ -63,7 +63,7 @@
     "@types/qrcode-terminal": "^0.12.2",
     "@typescript-eslint/eslint-plugin": "^8.57.0",
     "@typescript-eslint/parser": "^8.57.0",
-    "@vitest/coverage-v8": "^4.1.0",
+    "@vitest/coverage-v8": "^2.1.8",
     "eslint": "^9.39.4",
     "eslint-config-prettier": "^10.1.8",
     "eslint-plugin-prettier": "^5.5.5",
@@ -73,7 +73,7 @@
     "rimraf": "^6.0.1",
     "tsx": "^4.19.2",
     "typescript": "^5.7.2",
-    "vitest": "^4.1.0"
+    "vitest": "^2.1.8"
   },
   "engines": {
     "node": ">=18.0.0"
