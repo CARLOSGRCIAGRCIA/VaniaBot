@@ -13,18 +13,33 @@
 
 import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
 import { BatchWriter } from '../../src/services/database/BatchWriter.js';
+import { existsSync, mkdirSync, writeFileSync, unlinkSync, readdirSync, rmSync } from 'fs';
+import { join } from 'path';
+
+const TEST_WAL_DIR = './data/test-wal';
+
+function cleanupTestDir() {
+  try {
+    if (existsSync(TEST_WAL_DIR)) {
+      rmSync(TEST_WAL_DIR, { recursive: true, force: true });
+    }
+  } catch {}
+}
 
 describe('BatchWriter', () => {
   let batchWriter: BatchWriter;
   let mockWriteCallback: ReturnType<typeof vi.fn>;
 
   beforeEach(() => {
+    cleanupTestDir();
     mockWriteCallback = vi.fn<() => Promise<void>>().mockResolvedValue(undefined);
-    batchWriter = new BatchWriter(mockWriteCallback as any);
+    batchWriter = new BatchWriter(mockWriteCallback as any, './data/test.json');
+    batchWriter.resetForTesting();
   });
 
   afterEach(() => {
     vi.useRealTimers();
+    cleanupTestDir();
   });
 
   describe('schedule', () => {
@@ -84,7 +99,7 @@ describe('BatchWriter', () => {
         });
       });
 
-      batchWriter = new BatchWriter(mockWriteCallback as any);
+      batchWriter = new BatchWriter(mockWriteCallback as any, './data/test2.json');
       batchWriter.schedule('users', 'user1', { name: 'Test' });
 
       const flush1 = batchWriter.flushNow();
@@ -98,7 +113,10 @@ describe('BatchWriter', () => {
 
     it('should restore writes on error', async () => {
       mockWriteCallback = vi.fn().mockRejectedValue(new Error('Write error')) as any;
-      batchWriter = new BatchWriter(mockWriteCallback as (writes: any[]) => Promise<void>);
+      batchWriter = new BatchWriter(
+        mockWriteCallback as (writes: any[]) => Promise<void>,
+        './data/test3.json',
+      );
 
       batchWriter.schedule('users', 'user1', { name: 'Test' });
 
@@ -119,6 +137,17 @@ describe('BatchWriter', () => {
       batchWriter.schedule('groups', 'group1', { name: 'Test 3' });
 
       expect(batchWriter.getPendingCount()).toBe(3);
+    });
+  });
+
+  describe('hasPendingWrites', () => {
+    it('should return false for empty batch', () => {
+      expect(batchWriter.hasPendingWrites()).toBe(false);
+    });
+
+    it('should return true when writes are pending', () => {
+      batchWriter.schedule('users', 'user1', { name: 'Test' });
+      expect(batchWriter.hasPendingWrites()).toBe(true);
     });
   });
 });

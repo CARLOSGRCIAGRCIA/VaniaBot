@@ -102,8 +102,24 @@ export class ModerationService {
   }
 
   async getGroupBans(groupId: string): Promise<BanRecord[]> {
-    const allBans = await this.db.getAll<BanRecord>(this.BANS_COLLECTION);
-    return allBans.filter(ban => ban.groupId === groupId);
+    const result = await this.db.getPaginated<BanRecord>(this.BANS_COLLECTION, {
+      page: 1,
+      limit: 500,
+      sortBy: 'timestamp',
+      sortOrder: 'desc',
+      filter: { groupId },
+    });
+    return result.items;
+  }
+
+  async getGroupBansPaginated(groupId: string, page: number = 1, limit: number = 20) {
+    return await this.db.getPaginated<BanRecord>(this.BANS_COLLECTION, {
+      page,
+      limit,
+      sortBy: 'timestamp',
+      sortOrder: 'desc',
+      filter: { groupId },
+    });
   }
 
   async muteUser(
@@ -202,12 +218,42 @@ export class ModerationService {
   }
 
   async getUserHistory(userId: string): Promise<ModerationAction[]> {
-    const allLogs = await this.db.getAll<ModerationAction>(this.MODERATION_LOG_COLLECTION);
-    return allLogs.filter(log => log.userId === userId).sort((a, b) => b.timestamp - a.timestamp);
+    const result = await this.db.getPaginated<ModerationAction>(this.MODERATION_LOG_COLLECTION, {
+      page: 1,
+      limit: 100,
+      sortBy: 'timestamp',
+      sortOrder: 'desc',
+      filter: { userId },
+    });
+    return result.items;
+  }
+
+  async getUserHistoryPaginated(userId: string, page: number = 1, limit: number = 20) {
+    return await this.db.getPaginated<ModerationAction>(this.MODERATION_LOG_COLLECTION, {
+      page,
+      limit,
+      sortBy: 'timestamp',
+      sortOrder: 'desc',
+      filter: { userId },
+    });
   }
 
   async getRecentActions(limit: number = 50): Promise<ModerationAction[]> {
-    const allLogs = await this.db.getAll<ModerationAction>(this.MODERATION_LOG_COLLECTION);
-    return allLogs.sort((a, b) => b.timestamp - a.timestamp).slice(0, limit);
+    const result = await this.db.getPaginated<ModerationAction>(this.MODERATION_LOG_COLLECTION, {
+      page: 1,
+      limit,
+      sortBy: 'timestamp',
+      sortOrder: 'desc',
+    });
+    return result.items;
+  }
+
+  async getRecentActionsPaginated(page: number = 1, limit: number = 20) {
+    return await this.db.getPaginated<ModerationAction>(this.MODERATION_LOG_COLLECTION, {
+      page,
+      limit,
+      sortBy: 'timestamp',
+      sortOrder: 'desc',
+    });
   }
 }

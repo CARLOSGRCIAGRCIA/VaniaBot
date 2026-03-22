@@ -1,6 +1,7 @@
 import type { Db, Collection, Filter, Document } from 'mongodb';
 import { MongoClient, ObjectId } from 'mongodb';
 import { Database } from './Database.js';
+import type { PaginatedResult } from './Database.js';
 import { logger, logError } from '@/utils/logger.js';
 import { ErrorHandler } from '@/utils/ErrorHandler.js';
 
@@ -114,6 +115,64 @@ export class MongoDatabase extends Database {
     const coll = this.getCollection(collection);
     const results = await coll.find({}).toArray();
     return results as T[];
+  }
+
+  async getPaginated<T>(
+    collection: string,
+    options: {
+      page?: number;
+      limit?: number;
+      sortBy?: string;
+      sortOrder?: 'asc' | 'desc';
+      filter?: Record<string, unknown>;
+    } = {},
+  ): Promise<PaginatedResult<T>> {
+    const coll = this.getCollection(collection);
+    const page = Math.max(1, options.page ?? 1);
+    const limit = Math.min(100, Math.max(1, options.limit ?? 20));
+    const skip = (page - 1) * limit;
+
+    const sortField = options.sortBy || '_id';
+    const sortDirection = options.sortOrder === 'asc' ? 1 : -1;
+    const sort: Record<string, 1 | -1> = { [sortField]: sortDirection };
+
+    const filter = options.filter ?? {};
+    const mongoFilter = this.convertFilter(filter);
+
+    const [items, total] = await Promise.all([
+      coll.find(mongoFilter).sort(sort).skip(skip).limit(limit).toArray(),
+      coll.countDocuments(mongoFilter),
+    ]);
+
+    const totalPages = Math.ceil(total / limit);
+
+    return {
+      items: items as T[],
+      total,
+      page,
+      limit,
+      totalPages,
+      hasNext: page < totalPages,
+      hasPrev: page > 1,
+    };
+  }
+
+  async count(collection: string, filter?: Record<string, unknown>): Promise<number> {
+    const coll = this.getCollection(collection);
+    const mongoFilter = filter ? this.convertFilter(filter) : {};
+    return await coll.countDocuments(mongoFilter);
+  }
+
+  private convertFilter(filter: Record<string, unknown>): Filter<Document> {
+    const result: Record<string, unknown> = {};
+    for (const [key, value] of Object.entries(filter)) {
+      if (key === '_id') {
+        result[key] = this.createIdFilter(String(value));
+      } else {
+        result[key] = value;
+      }
+    }
+    return result as Filter<Document>;
   }
 
   async clear(collection: string): Promise<void> {

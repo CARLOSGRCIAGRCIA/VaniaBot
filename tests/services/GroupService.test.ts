@@ -51,6 +51,16 @@ describe('GroupService', () => {
       findOne: vi.fn().mockResolvedValue(null),
       update: vi.fn().mockResolvedValue(undefined),
       getAll: vi.fn().mockResolvedValue([]),
+      getPaginated: vi.fn().mockResolvedValue({
+        items: [],
+        total: 0,
+        page: 1,
+        limit: 20,
+        totalPages: 0,
+        hasNext: false,
+        hasPrev: false,
+      }),
+      count: vi.fn().mockResolvedValue(0),
       clear: vi.fn().mockResolvedValue(undefined),
       flush: vi.fn().mockResolvedValue(undefined),
     };

@@ -91,10 +91,24 @@ export class AntiSpamMiddleware extends Middleware {
   private cleanup(): void {
     const now = Date.now();
     const maxAge = 5 * 60 * 1000;
+    const warningResetTime = 10 * 60 * 1000;
 
     for (const [key, tracker] of this.userMessages.entries()) {
-      if (tracker.messages.length === 0 || tracker.messages.every(time => now - time > maxAge)) {
+      const allMessagesExpired =
+        tracker.messages.length === 0 || tracker.messages.every(time => now - time > maxAge);
+
+      const warningsExpired =
+        tracker.warnings > 0 &&
+        (tracker.messages.length === 0 ||
+          tracker.messages.every(time => now - time > warningResetTime));
+
+      if (allMessagesExpired && tracker.warnings === 0) {
         this.userMessages.delete(key);
+      } else if (warningsExpired) {
+        tracker.warnings = 0;
+        if (tracker.messages.length === 0) {
+          this.userMessages.delete(key);
+        }
       }
     }
   }

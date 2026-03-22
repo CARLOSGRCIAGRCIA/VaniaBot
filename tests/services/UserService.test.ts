@@ -55,6 +55,16 @@ describe('UserService', () => {
       findOne: vi.fn().mockResolvedValue(null),
       update: vi.fn().mockResolvedValue(undefined),
       getAll: vi.fn().mockResolvedValue([]),
+      getPaginated: vi.fn().mockResolvedValue({
+        items: [],
+        total: 0,
+        page: 1,
+        limit: 20,
+        totalPages: 0,
+        hasNext: false,
+        hasPrev: false,
+      }),
+      count: vi.fn().mockResolvedValue(0),
       clear: vi.fn().mockResolvedValue(undefined),
       flush: vi.fn().mockResolvedValue(undefined),
     };
@@ -281,7 +291,15 @@ describe('UserService', () => {
         createMockUser({ xp: 500 }),
         createMockUser({ xp: 800, isOwner: true }),
       ];
-      vi.mocked(mockDb.getAll).mockResolvedValueOnce(users);
+      vi.mocked(mockDb.getPaginated).mockResolvedValueOnce({
+        items: users,
+        total: 3,
+        page: 1,
+        limit: 100,
+        totalPages: 1,
+        hasNext: false,
+        hasPrev: false,
+      });
 
       const top = await userService.getTopByXP(10);
 
@@ -295,7 +313,15 @@ describe('UserService', () => {
         createMockUser({ money: 500 }),
         createMockUser({ money: 800, isOwner: true }),
       ];
-      vi.mocked(mockDb.getAll).mockResolvedValueOnce(users);
+      vi.mocked(mockDb.getPaginated).mockResolvedValueOnce({
+        items: users,
+        total: 3,
+        page: 1,
+        limit: 100,
+        totalPages: 1,
+        hasNext: false,
+        hasPrev: false,
+      });
 
       const top = await userService.getTopByMoney(10);
 
@@ -309,7 +335,15 @@ describe('UserService', () => {
         createMockUser({ level: 5 }),
         createMockUser({ level: 8, isOwner: true }),
       ];
-      vi.mocked(mockDb.getAll).mockResolvedValueOnce(users);
+      vi.mocked(mockDb.getPaginated).mockResolvedValueOnce({
+        items: users,
+        total: 3,
+        page: 1,
+        limit: 100,
+        totalPages: 1,
+        hasNext: false,
+        hasPrev: false,
+      });
 
       const top = await userService.getTopByLevel(10);
 

@@ -1,6 +1,7 @@
 import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'fs';
 import { dirname } from 'path';
 import { Database } from './Database.js';
+import type { PaginatedResult } from './Database.js';
 import { logger, logError } from '@/utils/logger.js';
 import { BatchWriter } from './BatchWriter.js';
 import { cacheManager } from '@/core/CacheManager.js';
@@ -20,57 +21,109 @@ interface JsonData {
   [key: string]: JsonDataCollection;
 }
 
-class MemoryCache {
-  private cache = new Map<string, unknown>();
-  private readonly maxSize = 10000;
+class UnifiedCache {
   private hits = 0;
   private misses = 0;
 
   get(collection: string, key: string): unknown {
-    const cacheKey = `${collection}:${key}`;
-    const value = this.cache.get(cacheKey);
-    if (value !== undefined) {
-      this.hits++;
-      return value;
+    if (collection === 'users') {
+      const cached = cacheManager.getUser(key);
+      if (cached !== null) {
+        this.hits++;
+        return cached;
+      }
     }
+
+    const cached = this.getFromCache(collection, key);
+    if (cached !== undefined) {
+      this.hits++;
+      return cached;
+    }
+
     this.misses++;
     return undefined;
   }
 
   set(collection: string, key: string, value: unknown): void {
-    const cacheKey = `${collection}:${key}`;
-    if (this.cache.size >= this.maxSize) {
-      const iterator = this.cache.keys();
-      const firstKey = iterator.next();
-      if (!firstKey.done && firstKey.value !== undefined) {
-        this.cache.delete(firstKey.value);
-      }
+    if (collection === 'users' && typeof value === 'object' && value !== null) {
+      cacheManager.setUser(key, value as CachedUser);
     }
-    this.cache.set(cacheKey, value);
+    this.setToCache(collection, key, value);
   }
 
   delete(collection: string, key: string): void {
-    this.cache.delete(`${collection}:${key}`);
+    if (collection === 'users') {
+      cacheManager.invalidateUser(key);
+    }
+    this.deleteFromCache(collection, key);
   }
 
   clear(collection?: string): void {
     if (collection) {
-      for (const key of [...this.cache.keys()]) {
-        if (key.startsWith(`${collection}:`)) this.cache.delete(key);
+      for (const key of [...this.cacheKeys(collection)]) {
+        this.deleteFromCache(collection, key);
       }
-    } else {
-      this.cache.clear();
+      if (collection === 'users') {
+        for (const key of this.getAllUserKeys()) {
+          cacheManager.invalidateUser(key);
+        }
+      }
     }
   }
 
   getStats() {
+    const cacheStats = cacheManager.getStats();
     const total = this.hits + this.misses;
     return {
-      size: this.cache.size,
-      hits: this.hits,
+      hits:
+        this.hits +
+        (parseInt(cacheStats.hitRate) > 0
+          ? Math.floor((this.hits * parseFloat(cacheStats.hitRate)) / 100)
+          : 0),
       misses: this.misses,
       hitRate: total > 0 ? ((this.hits / total) * 100).toFixed(2) + '%' : '0%',
+      size: this.cache.size + cacheManager.getStats().sizes.users,
     };
+  }
+
+  private cache = new Map<string, unknown>();
+  private readonly maxSize = 5000;
+
+  private getCacheKey(collection: string, key: string): string {
+    return `${collection}:${key}`;
+  }
+
+  private getFromCache(collection: string, key: string): unknown {
+    const cacheKey = this.getCacheKey(collection, key);
+    return this.cache.get(cacheKey);
+  }
+
+  private setToCache(collection: string, key: string, value: unknown): void {
+    const cacheKey = this.getCacheKey(collection, key);
+
+    if (this.cache.size >= this.maxSize && !this.cache.has(cacheKey)) {
+      const firstKey = this.cache.keys().next();
+      if (!firstKey.done) {
+        this.cache.delete(firstKey.value);
+      }
+    }
+
+    this.cache.set(cacheKey, value);
+  }
+
+  private deleteFromCache(collection: string, key: string): void {
+    const cacheKey = this.getCacheKey(collection, key);
+    this.cache.delete(cacheKey);
+  }
+
+  private cacheKeys(collection: string): string[] {
+    const prefix = `${collection}:`;
+    return [...this.cache.keys()].filter(k => k.startsWith(prefix));
+  }
+
+  private getAllUserKeys(): string[] {
+    const usersData = this.cache.get('__users__') as string[] | undefined;
+    return usersData || [];
   }
 }
 
@@ -78,7 +131,7 @@ export class JsonDatabase extends Database {
   private data!: JsonData;
   private filePath: string;
   private batchWriter: BatchWriter;
-  private cache = new MemoryCache();
+  private cache = new UnifiedCache();
 
   constructor(filePath: string = './data/database.json') {
     super();
@@ -91,7 +144,7 @@ export class JsonDatabase extends Database {
         this.data[write.collection][write.key] = write.value;
       }
       await this.saveToFile();
-    });
+    }, filePath);
   }
 
   async connect(): Promise<void> {
@@ -157,21 +210,13 @@ export class JsonDatabase extends Database {
   }
 
   async get<T>(collection: string, key: string): Promise<T | null> {
-    if (collection === 'users') {
-      const cached = cacheManager.getUser(key);
-      if (cached !== null) return cached as unknown as T;
-    }
-
-    const localCached = this.cache.get(collection, key);
-    if (localCached !== undefined) return localCached as T;
+    const cached = this.cache.get(collection, key);
+    if (cached !== undefined) return cached as T;
 
     this.ensureCollection(collection);
     const value = this.data[collection][key] ?? null;
     if (value !== null) {
       this.cache.set(collection, key, value);
-      if (collection === 'users') {
-        cacheManager.setUser(key, value as CachedUser);
-      }
     }
     return value as T | null;
   }
@@ -180,9 +225,6 @@ export class JsonDatabase extends Database {
     this.ensureCollection(collection);
     this.data[collection][key] = value as unknown;
     this.cache.set(collection, key, value);
-    if (collection === 'users') {
-      cacheManager.setUser(key, value as unknown as CachedUser);
-    }
     this.batchWriter.schedule(collection, key, value);
   }
 
@@ -191,9 +233,6 @@ export class JsonDatabase extends Database {
     if (this.data[collection][key] !== undefined) {
       delete this.data[collection][key];
       this.cache.delete(collection, key);
-      if (collection === 'users') {
-        cacheManager.invalidateUser(key);
-      }
       this.batchWriter.schedule(collection, key, undefined);
       return true;
     }
@@ -253,6 +292,64 @@ export class JsonDatabase extends Database {
   async getAll<T>(collection: string): Promise<T[]> {
     this.ensureCollection(collection);
     return Object.values(this.data[collection]) as T[];
+  }
+
+  async getPaginated<T>(
+    collection: string,
+    options: {
+      page?: number;
+      limit?: number;
+      sortBy?: string;
+      sortOrder?: 'asc' | 'desc';
+      filter?: Record<string, unknown>;
+    } = {},
+  ): Promise<PaginatedResult<T>> {
+    const page = Math.max(1, options.page ?? 1);
+    const limit = Math.min(100, Math.max(1, options.limit ?? 20));
+    const sortBy = options.sortBy;
+    const sortOrder = options.sortOrder ?? 'desc';
+    const filter = options.filter ?? {};
+
+    let items = await this.find<T>(collection, filter);
+
+    if (sortBy) {
+      items = items.sort((a, b) => {
+        const aVal = (a as Record<string, unknown>)[sortBy];
+        const bVal = (b as Record<string, unknown>)[sortBy];
+
+        if (typeof aVal === 'number' && typeof bVal === 'number') {
+          return sortOrder === 'asc' ? aVal - bVal : bVal - aVal;
+        }
+
+        const aStr = String(aVal ?? '');
+        const bStr = String(bVal ?? '');
+        return sortOrder === 'asc' ? aStr.localeCompare(bStr) : bStr.localeCompare(aStr);
+      });
+    }
+
+    const total = items.length;
+    const totalPages = Math.ceil(total / limit);
+    const start = (page - 1) * limit;
+    const paginatedItems = items.slice(start, start + limit);
+
+    return {
+      items: paginatedItems,
+      total,
+      page,
+      limit,
+      totalPages,
+      hasNext: page < totalPages,
+      hasPrev: page > 1,
+    };
+  }
+
+  async count(collection: string, filter?: Record<string, unknown>): Promise<number> {
+    if (!filter || Object.keys(filter).length === 0) {
+      this.ensureCollection(collection);
+      return Object.keys(this.data[collection]).length;
+    }
+    const results = await this.find(collection, filter);
+    return results.length;
   }
 
   async clear(collection: string): Promise<void> {

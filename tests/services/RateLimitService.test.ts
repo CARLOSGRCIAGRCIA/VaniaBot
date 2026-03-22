@@ -95,7 +95,7 @@ describe('RateLimitService', () => {
     it('should block when flooding', () => {
       const userJid = 'user@test.com';
 
-      for (let i = 0; i < 5; i++) {
+      for (let i = 0; i < 12; i++) {
         service.checkFlood(userJid);
       }
 

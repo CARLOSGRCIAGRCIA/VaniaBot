@@ -327,28 +327,82 @@ export class UserService {
     return await this.db.getAll<User>(this.COLLECTION);
   }
 
+  async getAllUsersPaginated(page: number = 1, limit: number = 20) {
+    return await this.db.getPaginated<User>(this.COLLECTION, {
+      page,
+      limit,
+      sortBy: 'createdAt',
+      sortOrder: 'desc',
+    });
+  }
+
   async getTopByXP(limit: number = 10): Promise<User[]> {
-    const users = await this.getAllUsers();
-    return users
-      .filter(u => !u.isOwner)
-      .sort((a, b) => b.xp - a.xp)
-      .slice(0, limit);
+    const result = await this.db.getPaginated<User>(this.COLLECTION, {
+      page: 1,
+      limit: Math.min(limit * 10, 1000),
+      sortBy: 'xp',
+      sortOrder: 'desc',
+    });
+    return result.items.filter(u => !u.isOwner).slice(0, limit);
   }
 
   async getTopByMoney(limit: number = 10): Promise<User[]> {
-    const users = await this.getAllUsers();
-    return users
-      .filter(u => !u.isOwner)
-      .sort((a, b) => b.money - a.money)
-      .slice(0, limit);
+    const result = await this.db.getPaginated<User>(this.COLLECTION, {
+      page: 1,
+      limit: Math.min(limit * 10, 1000),
+      sortBy: 'money',
+      sortOrder: 'desc',
+    });
+    return result.items.filter(u => !u.isOwner).slice(0, limit);
   }
 
   async getTopByLevel(limit: number = 10): Promise<User[]> {
-    const users = await this.getAllUsers();
-    return users
-      .filter(u => !u.isOwner)
-      .sort((a, b) => b.level - a.level)
-      .slice(0, limit);
+    const result = await this.db.getPaginated<User>(this.COLLECTION, {
+      page: 1,
+      limit: Math.min(limit * 10, 1000),
+      sortBy: 'level',
+      sortOrder: 'desc',
+    });
+    return result.items.filter(u => !u.isOwner).slice(0, limit);
+  }
+
+  async getTopByXPWithPagination(page: number = 1, limit: number = 10) {
+    const result = await this.db.getPaginated<User>(this.COLLECTION, {
+      page,
+      limit,
+      sortBy: 'xp',
+      sortOrder: 'desc',
+    });
+    return {
+      ...result,
+      items: result.items.filter(u => !u.isOwner),
+    };
+  }
+
+  async getTopByMoneyWithPagination(page: number = 1, limit: number = 10) {
+    const result = await this.db.getPaginated<User>(this.COLLECTION, {
+      page,
+      limit,
+      sortBy: 'money',
+      sortOrder: 'desc',
+    });
+    return {
+      ...result,
+      items: result.items.filter(u => !u.isOwner),
+    };
+  }
+
+  async getTopByLevelWithPagination(page: number = 1, limit: number = 10) {
+    const result = await this.db.getPaginated<User>(this.COLLECTION, {
+      page,
+      limit,
+      sortBy: 'level',
+      sortOrder: 'desc',
+    });
+    return {
+      ...result,
+      items: result.items.filter(u => !u.isOwner),
+    };
   }
 
   private calculateLevel(xp: number): number {

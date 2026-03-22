@@ -273,6 +273,14 @@ export class WhatsAppClient {
 
     const isEnabled = await serviceManager.vaniaToggleService.isEnabled(ctx.chat.jid);
     if (!isEnabled) {
+      const wasMentioned = this.checkIfBotWasMentioned(ctx);
+      if (wasMentioned) {
+        await ctx
+          .reply(
+            '🤫 *VaniaBot está descansando en este grupo*\nUsa comandos en otro grupo o espera a que lo activen',
+          )
+          .catch(() => {});
+      }
       if (ctx.message.key.id) cacheManager.markMessageProcessed(ctx.message.key.id);
       return true;
     }
@@ -288,6 +296,18 @@ export class WhatsAppClient {
 
     if (ctx.message.key.id) cacheManager.markMessageProcessed(ctx.message.key.id);
     return true;
+  }
+
+  private checkIfBotWasMentioned(ctx: MessageContext): boolean {
+    const message = ctx.message.message;
+    const mentionedJids: string[] = message?.extendedTextMessage?.contextInfo?.mentionedJid ?? [];
+    const botJid = this.sock.user?.id ?? '';
+    const botNumber = botJid.split('@')[0].split(':')[0];
+
+    return mentionedJids.some((jid: string) => {
+      const jidClean = jid.split('@')[0].split(':')[0];
+      return jidClean === botNumber;
+    });
   }
 
   private async checkCommandRateLimits(ctx: MessageContext): Promise<boolean> {
