@@ -48,11 +48,11 @@ export class WelcomeCommand extends Command {
         const message = ctx.args.slice(1).join(' ');
         if (!message) {
           await ctx.reply(
-            '⚠️ Falta el mensaje\n\n' +
-              'Ejemplo:\n' +
-              '!welcome set qué onda @user, bienvenid@ a @group\n\n' +
-              'Variables disponibles:\n' +
-              '@user  @group  @desc  @count  @fact',
+            '˚₊· ͟͟͞͞➳ oops, falta el mensajito ˚₊· ͟͟͞͞➳\n\n' +
+              '✿ así me gusta ✿\n' +
+              '`!welcome set qué onda @user, bienvenid@ a @group`\n\n' +
+              '✩ mis variables ✩\n' +
+              '`@user` ﹒`@group` ﹒`@desc` ﹒`@count` ﹒`@fact`',
           );
           return;
         }
@@ -90,17 +90,17 @@ export class WelcomeCommand extends Command {
 
       default:
         await ctx.reply(
-          '❓ Comando no reconocido\n\n' +
-            'Opciones disponibles:\n' +
-            'on      → activar bienvenida\n' +
-            'off     → desactivar bienvenida\n' +
-            'set     → cambiar mensaje\n' +
-            'test    → probar bienvenida\n' +
-            'reset   → volver al mensaje por defecto\n' +
-            'pic     → activar foto de perfil\n' +
-            'nopic   → quitar foto de perfil\n\n' +
-            'Variables en el mensaje:\n' +
-            '@user  @group  @desc  @count  @fact',
+          '*: ̗̀➛ hmm, no sé eso ̖́-*\n\n' +
+            '✿ comanditos\n' +
+            '`on` → activar bienvenida\n' +
+            '`off` → desactivar bienvenida\n' +
+            '`set` → cambiar mensaje\n' +
+            '`test` → probar bienvenida\n' +
+            '`reset` → volver al defecto\n' +
+            '`pic` → activar foto\n' +
+            '`nopic` → quitar foto\n\n' +
+            '✿ variables\n' +
+            '`@user` ✩ `@group` ✩ `@desc` ✩ `@count` ✩ `@fact`',
         );
     }
   }

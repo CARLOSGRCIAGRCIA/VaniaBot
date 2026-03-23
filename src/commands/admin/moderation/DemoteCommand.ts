@@ -8,6 +8,7 @@ import {
 } from '@/types/index.js';
 import { logError } from '@/utils/logger.js';
 import { serviceManager } from '@/services/system/Servicemanager.js';
+import { cacheManager } from '@/core/CacheManager.js';
 
 export class DemoteCommand extends Command {
   name = 'demote';
@@ -43,7 +44,7 @@ export class DemoteCommand extends Command {
     await ctx.react('⏳');
 
     try {
-      const groupMetadata = await ctx.sock.groupMetadata(ctx.chat.jid);
+      const groupMetadata = await cacheManager.getGroupMetadataSafe(ctx.sock, ctx.chat.jid);
       const participant = groupMetadata.participants.find(p => p.id === mentionedJid);
 
       if (!participant) {
@@ -75,12 +76,12 @@ export class DemoteCommand extends Command {
       });
 
       await ctx.reply(
-        `📉 *User Demoted*\n\n` +
-          `👤 User: ${targetUser.name}\n` +
-          `👥 New Role: Member\n` +
-          `👮 By: ${ctx.sender.pushName}\n` +
-          `📅 Date: ${new Date().toLocaleString()}\n\n` +
-          `ℹ️ User is now a regular member`,
+        `˚₊· ͟͟͞͞➳ *bajó de rango* ˚₊· ͟͟͞͞➳\n\n` +
+          `✩ *quién:* ${targetUser.name}\n` +
+          `✩ *ahora es:* miembro\n` +
+          `✩ *por:* ${ctx.sender.pushName}\n` +
+          `✩ *cuándo:* ${new Date().toLocaleString()}\n\n` +
+          `✿ ya es parte del grupo ✿`,
       );
 
       await ctx.react('✅');

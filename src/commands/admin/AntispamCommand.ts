@@ -53,12 +53,12 @@ export class AntispamCommand extends Command {
     }
 
     await ctx.reply(
-      `*ANTI-SPAM*\n\n` +
-        `📊 *Stats:* Ver estadísticas de rate limit\n` +
-        `✅ *Whitelist:* Gestionar lista blanca\n` +
-        `🔄 *Reset:* Reiniciar contadores\n` +
-        `⚙️ *Config:* Ver configuración\n\n` +
-        `Ejemplo: !antispam stats`,
+      `*: ̗̀➛ anti-spam ̖́-*\n\n` +
+        `✿ stats ﹒ver estadísticas\n` +
+        `✿ whitelist ﹒gestionar lista blanca\n` +
+        `✿ reset ﹒reiniciar contadores\n` +
+        `✿ config ﹒ver configuración\n\n` +
+        `*๑ ˖ ejemplo ˖ ๑* \`!antispam stats\``,
     );
   }
 
@@ -88,10 +88,10 @@ export class AntispamCommand extends Command {
   ): Promise<void> {
     if (!action) {
       await ctx.reply(
-        `*WHITELIST*\n\n` +
-          `Agregar: !antispam whitelist add <user|group>\n` +
-          `Eliminar: !antispam whitelist remove <user|group>\n` +
-          `Listar: !antispam whitelist list`,
+        `*˚₊· ͟͟͞͞➳ whitelist ˚₊· ͟͟͞͞➳*\n\n` +
+          `✩ agregar ﹒\`!antispam whitelist add <user|group>\`\n` +
+          `✩ eliminar ﹒\`!antispam whitelist remove <user|group>\`\n` +
+          `✩ listar ﹒\`!antispam whitelist list\``,
       );
       return;
     }
@@ -177,9 +177,9 @@ export class AntispamCommand extends Command {
     }
 
     await ctx.reply(
-      `*RESET*\n\n` +
-        `!antispam reset group - Reiniciar este grupo\n` +
-        `!antispam reset user - Reiniciar tu usuario`,
+      `*˚₊· ͟͟͞͞➳ reiniciar ˚₊· ͟͟͞͞➳*\n\n` +
+        `✩ \`!antispam reset group\` ﹒limpiar este grupo\n` +
+        `✩ \`!antispam reset user\` ﹒limpiar mi perfil`,
     );
   }
 
@@ -187,11 +187,11 @@ export class AntispamCommand extends Command {
     const cfg = config.rateLimit;
 
     await ctx.reply(
-      `*ANTI-SPAM CONFIG*\n\n` +
-        `📊 *Límite por grupo:* ${cfg.maxMessagesPerGroup} msgs/min\n` +
-        `⏱️ *Ventana:* ${cfg.windowMs / 1000}s\n` +
-        `⚡ *Flood:* ${cfg.floodMaxPerSecond} msgs/s\n` +
-        `🌊 *Ventana flood:* ${cfg.floodWindowMs}ms`,
+      `*: ̗̀➛ mis reglas ̖́-*\n\n` +
+        `✿ grupo ﹒${cfg.maxMessagesPerGroup} msgs/min\n` +
+        `✿ tiempo ﹒${cfg.windowMs / 1000}s\n` +
+        `✿ ráfaga ﹒${cfg.floodMaxPerSecond} msgs/s\n` +
+        `✿ ventana ﹒${cfg.floodWindowMs}ms`,
     );
   }
 }

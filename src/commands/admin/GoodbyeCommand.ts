@@ -50,11 +50,11 @@ export class GoodbyeCommand extends Command {
 
         if (!message) {
           await ctx.reply(
-            'Falta el mensaje\n\n' +
-              'Ejemplo:\n' +
-              '!goodbye set @user dijo adiós, qué pendejada\n\n' +
-              'Variables:\n' +
-              '@user  @group  @desc  @count',
+            '*: ̗̀➛ lindo, falta algo ̖́-*\n\n' +
+              '✿ así es\n' +
+              '`!goodbye set @user dijo adiós, qué pendejada`\n\n' +
+              '✿ mis varibles\n' +
+              '`@user` ✩ `@group` ✩ `@desc` ✩ `@count`',
           );
           return;
         }
@@ -76,13 +76,13 @@ export class GoodbyeCommand extends Command {
 
       default:
         await ctx.reply(
-          'Comando no reconocido\n\n' +
-            'Opciones:\n' +
-            'on       → activar\n' +
-            'off      → desactivar\n' +
-            'set      → cambiar mensaje\n' +
-            'test     → probar\n' +
-            'reset    → volver a defecto',
+          '✿ ups, no conozco ese comando ✿\n\n' +
+            '♡ mis opciones ♡\n' +
+            '✩ `on` — activar\n' +
+            '✩ `off` — desactivar\n' +
+            '✩ `set` — cambiar mensaje\n' +
+            '✩ `test` — probar\n' +
+            '✩ `reset` — volver a defecto',
         );
     }
   }

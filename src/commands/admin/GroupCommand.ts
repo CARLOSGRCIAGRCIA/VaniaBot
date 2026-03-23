@@ -2,6 +2,7 @@ import { Command } from '../Command.js';
 import { CommandCategory, CommandContext, PermissionLevel } from '@/types/index.js';
 import type { MessageContext } from '@/types/index.js';
 import type { GroupParticipant } from '@whiskeysockets/baileys';
+import { cacheManager } from '@/core/CacheManager.js';
 
 export class GroupCommand extends Command {
   name = 'group';
@@ -64,7 +65,7 @@ export class GroupCommand extends Command {
 
   private async groupInfo(ctx: MessageContext): Promise<void> {
     try {
-      const metadata = await ctx.sock.groupMetadata(ctx.chat.jid);
+      const metadata = await cacheManager.getGroupMetadataSafe(ctx.sock, ctx.chat.jid);
 
       const creationDate = metadata.creation
         ? new Date(metadata.creation * 1000).toLocaleDateString()
@@ -90,7 +91,7 @@ export class GroupCommand extends Command {
 
   private async groupSettings(ctx: MessageContext): Promise<void> {
     try {
-      const metadata = await ctx.sock.groupMetadata(ctx.chat.jid);
+      const metadata = await cacheManager.getGroupMetadataSafe(ctx.sock, ctx.chat.jid);
 
       let message = `*⚙️ Configuración del Grupo*\n\n`;
       message += `*Nombre:* ${metadata.subject}\n`;
@@ -165,7 +166,7 @@ export class TagadminCommand extends Command {
 
   async execute(ctx: MessageContext): Promise<void> {
     try {
-      const metadata = await ctx.sock.groupMetadata(ctx.chat.jid);
+      const metadata = await cacheManager.getGroupMetadataSafe(ctx.sock, ctx.chat.jid);
       const admins = metadata.participants.filter((p: GroupParticipant) => p.admin);
 
       if (admins.length === 0) {

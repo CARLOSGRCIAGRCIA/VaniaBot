@@ -63,12 +63,12 @@ export class KickCommand extends Command {
       await ctx.sock.groupParticipantsUpdate(ctx.chat.jid, [mentionedJid], 'remove');
 
       await ctx.reply(
-        `👢 *User Kicked*\n\n` +
-          `👤 User: ${targetUser.name}\n` +
-          `📝 Reason: ${reason}\n` +
-          `👮 By: ${ctx.sender.pushName}\n` +
-          `📅 Date: ${new Date().toLocaleString()}\n\n` +
-          `ℹ️ User can rejoin with invite link`,
+        `˚₊· ͟͟͞͞➳ *se fue* ˚₊· ͟͟͞͞➳\n\n` +
+          `✩ *quién:* ${targetUser.name}\n` +
+          `✩ *por qué:* ${reason}\n` +
+          `✩ *por:* ${ctx.sender.pushName}\n` +
+          `✩ *cuándo:* ${new Date().toLocaleString()}\n\n` +
+          `✿ la puerta no está abierta para volver ✿`,
       );
 
       await ctx.react('✅');

@@ -69,11 +69,10 @@ export class BanCommand extends Command {
       await ctx.sock.groupParticipantsUpdate(ctx.chat.jid, [mentionedJid], 'remove');
 
       await ctx.reply(
-        `🔨 *User Banned*\n\n` +
-          `👤 User: ${targetUser.name}\n` +
-          `📝 Reason: ${reason}\n` +
-          `👮 By: ${ctx.sender.pushName}\n` +
-          `📅 Date: ${new Date().toLocaleString()}`,
+        `˚₊· ͟͟͞͞➳ *baneadito* ˚₊· ͟͟͞͞➳\n\n` +
+          `✩ *quién:* ${targetUser.name}\n` +
+          `✩ *quién lo hizo:* ${ctx.sender.pushName}\n` +
+          `✩ *cuándo:* ${new Date().toLocaleString()}`,
       );
 
       await ctx.react('✅');

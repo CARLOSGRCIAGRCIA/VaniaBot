@@ -32,9 +32,11 @@ export class MuteCommand extends Command {
 
     if (!cleanArgs.length) {
       await ctx.reply(
-        '❌ You must specify a duration\n\n' +
-          'Usage: !mute @user <duration> [reason]\n' +
-          '⏱️ Examples: 10m, 1h, 2d',
+        '˚₊· ͟͟͞͞➳ oops, necesito saber por cuánto tiempo ˚₊· ͟͟͞͞➳\n\n' +
+          '✿ así lo haces ✿\n' +
+          '`!mute @user <tiempo> [razón]`\n\n' +
+          '✩ por ejemplo ✩\n' +
+          '`10m` ﹒`1h` ﹒`2d`',
       );
       return;
     }
@@ -55,11 +57,12 @@ export class MuteCommand extends Command {
 
     if (duration === null) {
       await ctx.reply(
-        '❌ Invalid duration format\n\n' +
-          '✅ Valid formats: 10m, 1h, 2d\n' +
-          '• m = minutes\n' +
-          '• h = hours\n' +
-          '• d = days',
+        '˚₊· ͟͟͞͞➳ oops, ese formato no lo conozco ˚₊· ͟͟͞͞➳\n\n' +
+          '✿ así me gusta ✿\n' +
+          '`10m` ﹒`1h` ﹒`2d`\n\n' +
+          '✩ m — minutitos\n' +
+          '✩ h — horitas\n' +
+          '✩ d — días',
       );
       return;
     }
@@ -88,12 +91,12 @@ export class MuteCommand extends Command {
       const durationText = this.formatDuration(duration);
 
       await ctx.reply(
-        `🔇 *User Muted*\n\n` +
-          `👤 User: ${targetUser.name}\n` +
-          `⏱️ Duration: ${durationText}\n` +
-          `📝 Reason: ${reason}\n` +
-          `👮 By: ${ctx.sender.pushName}\n` +
-          `📅 Date: ${new Date().toLocaleString()}`,
+        `˚₊· ͟͟͞͞➳ *en silencio* ˚₊· ͟͟͞͞➳\n\n` +
+          `✩ *quién:* ${targetUser.name}\n` +
+          `✩ *por cuánto:* ${durationText}\n` +
+          `✩ *por qué:* ${reason}\n` +
+          `✩ *por:* ${ctx.sender.pushName}\n` +
+          `✩ *cuándo:* ${new Date().toLocaleString()}`,
       );
 
       await ctx.react('✅');

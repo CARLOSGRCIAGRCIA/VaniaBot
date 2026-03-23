@@ -40,30 +40,30 @@ export class WarnCommand extends Command {
           await ctx.sock.groupParticipantsUpdate(ctx.chat.jid, [mentionedJid], 'remove');
 
           await ctx.reply(
-            `*USER KICKED*\n\n` +
-              `User: ${user.name}\n` +
-              `Warnings reached: 3/3\n` +
-              `Last reason: ${reason}`,
+            `˚₊· ͟͟͞͞➳ *se tuvo que ir* ˚₊· ͟͟͞͞➳\n\n` +
+              `✩ *quién:* ${user.name}\n` +
+              `✩ *advertencias:* 3/3\n` +
+              `✩ *por:* ${reason}`,
           );
         } catch {
           await ctx.reply('Could not kick the user (missing permissions?).');
         }
       } else {
         await ctx.reply(
-          `*WARNING LIMIT REACHED*\n\n` +
-            `User: ${user.name}\n` +
-            `Warnings: 3/3\n` +
-            `Last reason: ${reason}\n\n` +
-            `The bot is not admin, so automatic kick failed.`,
+          `˚₊· ͟͟͞͞➳ *ya tenía muchas* ˚₊· ͟͟͞͞➳\n\n` +
+            `✩ *quién:* ${user.name}\n` +
+            `✩ *advertencias:* 3/3\n` +
+            `✩ *por:* ${reason}\n\n` +
+            `✿ ay, no soy admin, no pude hacer nada ✿`,
         );
       }
     } else {
       await ctx.reply(
-        `*WARNING ISSUED*\n\n` +
-          `User: ${user.name}\n` +
-          `Current warnings: ${newWarnings}/3\n` +
-          `Reason: ${reason}\n\n` +
-          `At 3 warnings, the user will be automatically kicked.`,
+        `˚₊· ͟͟͞͞➳ *una notita* ˚₊· ͟͟͞͞➳\n\n` +
+          `✩ *quién:* ${user.name}\n` +
+          `✩ *lleva:* ${newWarnings}/3\n` +
+          `✩ *por:* ${reason}\n\n` +
+          `✿ cuidado, a las 3 se tiene que ir ✿`,
       );
     }
   }

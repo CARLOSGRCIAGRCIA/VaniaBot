@@ -41,10 +41,10 @@ export class UnbanCommand extends Command {
       await serviceManager.moderationService.unbanUser(ctx.chat.jid, mentionedJid);
 
       await ctx.reply(
-        `✅ *User Unbanned*\n\n` +
-          `👤 User: ${banInfo.userName}\n` +
-          `👮 By: ${ctx.sender.pushName}\n` +
-          `📅 Date: ${new Date().toLocaleString()}`,
+        `˚₊· ͟͟͞͞➳ *de vuelta* ˚₊· ͟͟͞͞➳\n\n` +
+          `✩ *quién:* ${banInfo.userName}\n` +
+          `✩ *por:* ${ctx.sender.pushName}\n` +
+          `✩ *cuándo:* ${new Date().toLocaleString()}`,
       );
 
       await ctx.react('✅');

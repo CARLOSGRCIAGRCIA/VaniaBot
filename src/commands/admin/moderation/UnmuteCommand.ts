@@ -44,10 +44,10 @@ export class UnmuteCommand extends Command {
       await serviceManager.moderationService.unmuteUser(ctx.chat.jid, mentionedJid);
 
       await ctx.reply(
-        `🔊 *User Unmuted*\n\n` +
-          `👤 User: ${muteInfo.userName}\n` +
-          `👮 By: ${ctx.sender.pushName}\n` +
-          `📅 Date: ${new Date().toLocaleString()}`,
+        `˚₊· ͟͟͞͞➳ *voz liberada* ˚₊· ͟͟͞͞➳\n\n` +
+          `✩ *quién:* ${muteInfo.userName}\n` +
+          `✩ *por:* ${ctx.sender.pushName}\n` +
+          `✩ *cuándo:* ${new Date().toLocaleString()}`,
       );
 
       await ctx.react('✅');
