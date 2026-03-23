@@ -184,14 +184,13 @@ export class AcrosticoCommand extends Command {
   async execute(ctx: MessageContext): Promise<void> {
     if (!ctx.args?.length) {
       await ctx.reply(
-        `🔤 *Acróstico*\n\n` +
-          `Necesito un nombre para crear el acróstico.\n\n` +
-          `*Uso:* !acrostico [NOMBRE] [tema] [estilo]\n\n` +
-          `*Ejemplos:*\n` +
-          `• !acrostico Alejandra\n` +
-          `• !acrostico Daniela amor romántico\n` +
-          `• !acrostico Valeria vida tierno\n\n` +
-          `> _VaniaBot💝 — Poesía & Amor_`,
+        `˚₊· ͟͟͞͞➳ *acróstico* ˚₊· ͟͟͞͞➳\n\n` +
+          `Necesito un nombre para escribirte un verso por cada letra ✩\n\n` +
+          `✿ *ejemplos:*\n` +
+          `﹒!acrostico Alejandra\n` +
+          `﹒!acrostico Daniela amor romántico\n` +
+          `﹒!acrostico Valeria vida tierno\n\n` +
+          `> _VaniaBot 💝 — versitos & ternura_`,
       );
       return;
     }
@@ -253,32 +252,32 @@ export class PoesiaMenuCommand extends Command {
 
   async execute(ctx: MessageContext): Promise<void> {
     await ctx.reply(
-      `🌹 *Sistema de Poesía — VaniaBot*\n` +
-        `━━━━━━━━━━━\n\n` +
-        `✍️ *Tipos de contenido:*\n` +
-        `• *!poema* [tema] [estilo] [para:nombre]\n` +
-        `• *!frases* [tema] [estilo]\n` +
-        `• *!piropo* [estilo] [para:nombre]\n` +
-        `• *!dedicatoria* [tema] [estilo] [para:nombre]\n` +
-        `• *!haiku* [tema] [estilo]\n` +
-        `• *!soneto* [tema] [estilo]\n` +
-        `• *!copla* [tema] [estilo]\n` +
-        `• *!acrostico* [NOMBRE] [tema]\n` +
-        `• *!carta* [motivo] [estilo] [para:nombre]\n` +
-        `• *!historia* [tema] [estilo]\n\n` +
-        `🎨 *Estilos disponibles:*\n${ESTILOS_LIST}\n\n` +
-        `📂 *Temas:*\n${TEMAS_LIST}\n\n` +
-        `📊 *Más comandos:*\n` +
-        `• *!votar* [ID?] — vota el último contenido\n` +
-        `• *!poetop* — ranking del grupo\n` +
-        `• *!poetop poema* — top por tipo\n` +
-        `• *!poetastats* — tus estadísticas\n\n` +
-        `💡 *Ejemplos rápidos:*\n` +
+      `˚₊· ͟͟͞͞➳ *VaniaBot — poesía para el alma* ˚₊· ͟͟͞͞➳\n` +
+        `﹒﹒﹒﹒﹒﹒﹒﹒﹒﹒﹒﹒﹒﹒﹒﹒﹒﹒﹒﹒﹒﹒﹒\n\n` +
+        `✿ *mis poemitas:*\n` +
+        `﹒!poema [tema] [estilo] [para:nombre]\n` +
+        `﹒!frases [tema] [estilo]\n` +
+        `﹒!piropo [estilo] [para:nombre]\n` +
+        `﹒!dedicatoria [tema] [estilo] [para:nombre]\n` +
+        `﹒!haiku [tema] [estilo]\n` +
+        `﹒!soneto [tema] [estilo]\n` +
+        `﹒!copla [tema] [estilo]\n` +
+        `﹒!acrostico [NOMBRE] [tema]\n` +
+        `﹒!carta [motivo] [estilo] [para:nombre]\n` +
+        `﹒!historia [tema] [estilo]\n\n` +
+        `✩ *estilos:*\n${ESTILOS_LIST}\n\n` +
+        `✩ *temas:*\n${TEMAS_LIST}\n\n` +
+        `✿ *otros comanditos:*\n` +
+        `﹒!votar [ID?] — votar el último contenido\n` +
+        `﹒!poetop — ranking del grupo\n` +
+        `﹒!poetop poema — top por tipo\n` +
+        `﹒!poetastats — tus estadísticas\n\n` +
+        `✿ *ejemplitos:*\n` +
         `_!poema amor romántico para:valeria_\n` +
         `_!piropo pícaro_\n` +
         `_!acrostico Valeria amor_\n` +
         `_!carta despedida melancólico para:Juan_\n\n` +
-        `> _VaniaBot💝 — Poesía & Amor_`,
+        `> _VaniaBot 💝 — versitos con amorcito_`,
     );
   }
 }
@@ -366,8 +365,8 @@ export class PoesiaStatsCommand extends Command {
 
     if (stats.total === 0) {
       await ctx.reply(
-        `📊 Aún no has pedido ningún poema.\n` +
-          `Usa *!poema*, *!frases*, *!piropo* y más para empezar. 🌹`,
+        `˚₊· ͟͟͞͞➳ todavía no me has pedido nada lindo ˚₊· ͟͟͞͞➳\n\n` +
+          `Prueba con *!poema*, *!frases*, *!piropo* y más ✿`,
       );
       return;
     }

@@ -27,7 +27,9 @@ export class SlotsCommand extends Command {
   async execute(ctx: MessageContext): Promise<void> {
     if (!ctx.args.length) {
       await ctx.reply(
-        '❌ Specify your bet\n\n' + '📖 Usage: !slots <amount>\n' + '💡 Example: !slots 100',
+        `˚₊· ͟͟͞͞➳ *oops, cuánto quieres apostar?* ˚₊· ͟͟͞͞➳\n\n` +
+          `✿ *!slots* <cantidad>\n` +
+          `✩ ejemplo: *!slots 100*`,
       );
       return;
     }

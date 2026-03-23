@@ -25,10 +25,10 @@ export class WeeklyCommand extends Command {
       const hours = Math.floor((remaining % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
 
       await ctx.reply(
-        `⏰ *Weekly Reward*\n\n` +
-          `❌ Already claimed\n` +
-          `⏳ Next claim in: ${days}d ${hours}h\n\n` +
-          `💡 Come back later!`,
+        `˚₊· ͟͟͞͞➳ *tu regalito semanal* ˚₊· ͟͟͞͞➳\n\n` +
+          `✿ ya lo tienes guardado\n` +
+          `✿ puedes volver en: *${days}d ${hours}h*\n\n` +
+          `♡ te espero ♡`,
       );
       return;
     }

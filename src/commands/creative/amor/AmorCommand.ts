@@ -114,9 +114,10 @@ export class ShipCommand extends Command {
 
     if (!mentioned || mentioned.length < 2) {
       await ctx.reply(
-        '💕 *Comando Ship* 💕\n\n' +
-          'Debes mencionar a 2 personas para calcular su compatibilidad.\n\n' +
-          `Ejemplo: ${ctx.args?.[0] || '!ship'} @persona1 @persona2`,
+        `˚₊· ͟͟͞͞➳ *shippeo* ˚₊· ͟͟͞͞➳\n\n` +
+          `Menciona a dos personas y veo qué tan bien se llevan ✿\n\n` +
+          `✩ ejemplo ✩\n` +
+          `${ctx.args?.[0] || '!ship'} @persona1 @persona2`,
       );
       return;
     }

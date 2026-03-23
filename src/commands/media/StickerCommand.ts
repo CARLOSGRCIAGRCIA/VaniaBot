@@ -26,9 +26,9 @@ export class StickerCommand extends Command {
 
     if (!quotedMsg) {
       await ctx.reply(
-        ' Reply to an image or video\n\n' +
-          'Usage: Reply to a photo/video with !sticker\n' +
-          '💡 Videos must be less than 10 seconds',
+        `˚₊· ͟͟͞͞➳ *oops, necesito una imagen o video* ˚₊· ͟͟͞͞➳\n\n` +
+          `✿ responde a una foto/video con *!sticker*\n` +
+          `✩ videos cortitos, menos de 10 segundos ✩`,
       );
       return;
     }
@@ -38,9 +38,9 @@ export class StickerCommand extends Command {
 
     if (!hasImage && !hasVideo) {
       await ctx.reply(
-        ' Reply to an image or video\n\n' +
-          '✅ Supported: JPG, PNG, WebP, MP4, GIF\n' +
-          '⏱️ Max video: 10 seconds',
+        `˚₊· ͟͟͞͞➳ *responde a una imagen o video* ˚₊· ͟͟͞͞➳\n\n` +
+          `✿ *formatos permitidos:* JPG, PNG, WebP, MP4, GIF\n` +
+          `✩ *videos:* máximito 10 segundos ✩`,
       );
       return;
     }

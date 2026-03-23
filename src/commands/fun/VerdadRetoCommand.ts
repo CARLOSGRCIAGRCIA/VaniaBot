@@ -36,9 +36,9 @@ export class VerdadRetoCommand extends Command {
       }
 
       await ctx.reply(
-        `🎭 *Verdad o Reto* 🎭\n\n` +
+        `˚₊· ͟͟͞͞➳ *verdad o reto* ˚₊· ͟͟͞͞➳\n\n` +
           `${response.text.trim()}\n\n` +
-          `_Generado para @${ctx.sender.pushName || 'ti'}_`,
+          `✩ _para @${ctx.sender.pushName || 'ti'}_ ✩`,
       );
 
       await ctx.react('🎲');

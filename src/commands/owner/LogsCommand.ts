@@ -61,18 +61,18 @@ export class LogsCommand extends Command {
         const display = firstCut > 0 ? truncated.slice(firstCut + 1) : truncated;
 
         await ctx.reply(
-          `📋 *Logs - ${files[0].name}*\n` +
-            `━━━━━━━━━━━━━━━━\n` +
-            `*(Últimas ${lines} líneas, truncado)*\n\n` +
+          `˚₊· ͟͟͞͞➳ *logs de ${files[0].name}* ˚₊· ͟͟͞͞➳\n` +
+            `﹒﹒﹒﹒﹒﹒﹒﹒﹒﹒﹒﹒﹒﹒﹒﹒﹒\n` +
+            `✩ *te muestro las últimas ${lines} líneas* ✩\n\n` +
             '```\n' +
             display +
             '\n```',
         );
       } else {
         await ctx.reply(
-          `📋 *Logs - ${files[0].name}*\n` +
-            `━━━━━━━━━━━━━━━━\n` +
-            `*(Últimas ${lines} líneas)*\n\n` +
+          `˚₊· ͟͟͞͞➳ *logs de ${files[0].name}* ˚₊· ͟͟͞͞➳\n` +
+            `﹒﹒﹒﹒﹒﹒﹒﹒﹒﹒﹒﹒﹒﹒﹒﹒﹒\n` +
+            `✩ *últimas ${lines} líneas* ✩\n\n` +
             '```\n' +
             logText +
             '\n```',

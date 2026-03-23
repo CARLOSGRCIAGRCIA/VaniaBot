@@ -16,9 +16,9 @@ export class BuyCommand extends Command {
   async execute(ctx: MessageContext): Promise<void> {
     if (!ctx.args.length) {
       await ctx.reply(
-        '❌ Specify item number\n\n' +
-          '📖 Usage: !buy <item_number>\n' +
-          '💡 Use !shop to see available items',
+        `˚₊· ͟͟͞͞➳ oops, dime qué número quieres ˚₊· ͟͟͞͞➳\n\n` +
+          `✩ *!buy* <número>\n` +
+          `✿ Echa un vistazo a *!shop* para ver lo que tengo`,
       );
       return;
     }
@@ -28,9 +28,9 @@ export class BuyCommand extends Command {
 
     if (!item) {
       await ctx.reply(
-        `❌ Invalid item number\n\n` +
-          `Valid range: 1-${shopService.getItems().length}\n` +
-          `Use !shop to see items`,
+        `˚₊· ͟͟͞͞➳ oops, no encontré ese número ˚₊· ͟͟͞͞➳\n\n` +
+          `✩ elige del *1* al *${shopService.getItems().length}*\n` +
+          `✿ mira *!shop* para ver lo que tengo`,
       );
       return;
     }
@@ -39,11 +39,11 @@ export class BuyCommand extends Command {
 
     if (user.money < item.price) {
       await ctx.reply(
-        `❌ Insufficient funds\n\n` +
+        `˚₊· ͟͟͞͞➳ oops, faltan moneditas ˚₊· ͟͟͞͞➳\n\n` +
           `${item.emoji} *${item.name}*\n` +
-          `💵 Price: $${item.price.toLocaleString()}\n` +
-          `💰 Your balance: $${user.money.toLocaleString()}\n` +
-          `📉 Need: $${(item.price - user.money).toLocaleString()} more`,
+          `✿ vale: *$${item.price.toLocaleString()}*\n` +
+          `✿ tienes: *$${user.money.toLocaleString()}*\n` +
+          `✩ necesitas: *$${(item.price - user.money).toLocaleString()}* más`,
       );
       return;
     }

@@ -20,9 +20,9 @@ export class SetOwnerCommand extends Command {
 
     if (args.length < 2) {
       await ctx.reply(
-        ` Incorrect usage\n\n` +
-          `Usage: ${this.usage}\n\n` +
-          `📝 Examples:\n${this.examples.join('\n')}`,
+        `˚₊· ͟͟͞͞➳ *oops, algo no está bien* ˚₊· ͟͟͞͞➳\n\n` +
+          `✿ así lo haces: ${this.usage}\n\n` +
+          `✩ *ejemplos:*\n${this.examples.map(ex => `  ﹒${ex}`).join('\n')}`,
       );
       return;
     }
@@ -63,17 +63,17 @@ export class SetOwnerCommand extends Command {
           const updatedUser = await serviceManager.userService.getUser(mentionedJid);
 
           await ctx.reply(
-            `✅ ${targetUser.name} is now an owner\n\n` +
-              `👑 *Granted privileges:*\n` +
-              `• Unlimited permissions\n` +
-              `• Infinite resources\n` +
-              `• Max stats\n` +
-              `• Bypass all restrictions\n` +
-              `• Cannot be banned or warned\n\n` +
-              `📊 *Stats upgrade:*\n` +
-              `• Level: ${oldStats.level} → ${updatedUser.level}\n` +
-              `• XP: ${oldStats.xp.toLocaleString()} → ${updatedUser.xp.toLocaleString()}\n` +
-              `• Money: $${oldStats.money.toLocaleString()} → $${updatedUser.money.toLocaleString()}`,
+            `˚₊· ͟͟͞͞➳ *${targetUser.name} ahora es owner* ˚₊· ͟͟͞͞➳\n\n` +
+              `✩ *lo que puede hacer:*\n` +
+              `  ﹒todo lo que quiera\n` +
+              `  ﹒recursos sin fin\n` +
+              `  ﹒stats al tope\n` +
+              `  ﹒sin límites\n` +
+              `  ﹒no recibe warns ni bans\n\n` +
+              `✿ *subió así:*\n` +
+              `  ﹒nivel: ${oldStats.level} → ${updatedUser.level}\n` +
+              `  ﹒XP: ${oldStats.xp.toLocaleString()} → ${updatedUser.xp.toLocaleString()}\n` +
+              `  ﹒dinero: $${oldStats.money.toLocaleString()} → $${updatedUser.money.toLocaleString()} ✿`,
           );
           break;
 
@@ -96,12 +96,12 @@ export class SetOwnerCommand extends Command {
           const demotedUser = await serviceManager.userService.getUser(mentionedJid);
 
           await ctx.reply(
-            `✅ Owner permissions removed from ${targetUser.name}\n\n` +
-              `📊 *Stats reset:*\n` +
-              `• Level: ${beforeRemoval.level} → ${demotedUser.level}\n` +
-              `• XP: ${beforeRemoval.xp.toLocaleString()} → ${demotedUser.xp.toLocaleString()}\n` +
-              `• Money: $${beforeRemoval.money.toLocaleString()} → $${demotedUser.money.toLocaleString()}\n\n` +
-              `⚠️ User has been reset to default values`,
+            `˚₊· ͟͟͞͞➳ *${targetUser.name} perdió sus podercitos* ˚₊· ͟͟͞͞➳\n\n` +
+              `✩ *esto cambió:*\n` +
+              `  ﹒nivel: ${beforeRemoval.level} → ${demotedUser.level}\n` +
+              `  ﹒XP: ${beforeRemoval.xp.toLocaleString()} → ${demotedUser.xp.toLocaleString()}\n` +
+              `  ﹒dinero: $${beforeRemoval.money.toLocaleString()} → $${demotedUser.money.toLocaleString()}\n\n` +
+              `♡ volvió a sus valores iniciales ♡`,
           );
           break;
 

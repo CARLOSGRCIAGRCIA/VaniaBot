@@ -25,7 +25,9 @@ export class GrantCommand extends Command {
 
     if (args.length < 3) {
       await ctx.reply(
-        ` Uso incorrecto\n\nUso: ${this.usage}\n\nEjemplos:\n${this.examples.join('\n')}`,
+        `˚₊· ͟͟͞͞➳ *oops, algo no está bien* ˚₊· ͟͟͞͞➳\n\n` +
+          `✿ así lo haces: ${this.usage}\n\n` +
+          `✩ *ejemplos:*\n${this.examples.map(ex => `  ﹒${ex}`).join('\n')}`,
       );
       return;
     }
@@ -104,7 +106,8 @@ export class GrantCommand extends Command {
     const updatedUser = await serviceManager.userService.getUser(targetJid);
 
     await ctx.reply(
-      ` Se han concedido ${formatNumber(amount)} XP a ${targetName}\n\n🎯 Nivel alcanzado: ${updatedUser.level}`,
+      `˚₊· ͟͟͞͞➳ *${targetName} recibió ${formatNumber(amount)} XP* ˚₊· ͟͟͞͞➳\n\n` +
+        `✩ ahora está en nivel: *${updatedUser.level}* ✩`,
     );
   }
 

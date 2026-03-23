@@ -41,11 +41,11 @@ export class DailyCommand extends Command {
       const updatedUser = await serviceManager.userService.getUser(ctx.sender.jid);
 
       await ctx.reply(
-        `*DAILY REWARD*\n\n` +
-          `+$${formatNumber(totalReward)}\n` +
-          `Streak: ${streak} days\n` +
-          `+50 XP\n\n` +
-          `Balance: $${formatNumber(updatedUser.money)}`,
+        `˚₊· ͟͟͞͞➳ *para ti* ˚₊· ͟͟͞͞➳\n\n` +
+          `✿ *+$${formatNumber(totalReward)}* moneditas\n` +
+          `✩ racha: *${streak}* días\n` +
+          `✿ *+50 XP*\n\n` +
+          `♡ tu saldo: *$${formatNumber(updatedUser.money)}* ♡`,
       );
     } catch (error) {
       const message = errorHandler.handleCommandError(error, 'daily', {

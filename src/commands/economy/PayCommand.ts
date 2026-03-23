@@ -49,10 +49,10 @@ export class PayCommand extends Command {
     const receiver = await serviceManager.userService.getUser(mentionedJid);
 
     await ctx.reply(
-      `*SUCCESSFUL TRANSFER*\n\n` +
-        `You sent: $${formatNumber(amount)}\n` +
-        `For: ${receiver.name}\n\n` +
-        `Your new balance: $${formatNumber(sender.money - amount)}`,
+      `˚₊· ͟͟͞͞➳ *regalito enviado* ˚₊· ͟͟͞͞➳\n\n` +
+        `✿ *$${formatNumber(amount)}* se fueron volando\n` +
+        `✿ para: ${receiver.name}\n\n` +
+        `♡ te quedan: *$${formatNumber(sender.money - amount)}* ♡`,
     );
   }
 }

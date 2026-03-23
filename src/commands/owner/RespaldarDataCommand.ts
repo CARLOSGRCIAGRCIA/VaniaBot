@@ -19,13 +19,13 @@ export class RespaldarDataCommand extends Command {
     try {
       const user = await serviceManager.userService.getUser(ctx.sender.jid);
 
-      let message = `📦 *Tu Respaldo de Datos*\n`;
-      message += `━━━━━━━━━━━━━━━━\n\n`;
-      message += `👤 *Usuario:* ${ctx.sender.jid.split('@')[0]}\n`;
-      message += `💰 *Dinero:* $${user.money.toLocaleString()}\n`;
-      message += `⭐ *XP:* ${user.xp.toLocaleString()}\n`;
-      message += `🎖️ *Nivel:* ${user.level}\n`;
-      message += `⚡ *Comandos totales:* ${user.totalCommands.toLocaleString()}\n\n`;
+      let message = `˚₊· ͟͟͞͞➳ *tu respaldo* ˚₊· ͟͟͞͞➳\n`;
+      message += `﹒﹒﹒﹒﹒﹒﹒﹒﹒﹒﹒﹒﹒﹒﹒﹒﹒\n\n`;
+      message += `✿ *usuario:* ${ctx.sender.jid.split('@')[0]}\n`;
+      message += `✿ *dinero:* $${user.money.toLocaleString()}\n`;
+      message += `✿ *XP:* ${user.xp.toLocaleString()}\n`;
+      message += `✿ *nivel:* ${user.level}\n`;
+      message += `✩ *comandos totales:* ${user.totalCommands.toLocaleString()} ✩\n\n`;
 
       if (user.inventory && user.inventory.length > 0) {
         message += `🎒 *Inventario:*\n`;

@@ -32,11 +32,11 @@ export class WorkCommand extends Command {
     const user = await serviceManager.userService.getUser(ctx.sender.jid);
 
     await ctx.reply(
-      `${job.emoji} *WORK COMPLETED*\n\n` +
-        `You worked as: ${job.name}\n` +
-        `💰 Earned: $${formatNumber(earned)}\n` +
-        `⚡ XP: +${xpGained}\n\n` +
-        `💵 Balance: $${formatNumber(user.money)}`,
+      `˚₊· ͟͟͞͞➳ *bien ahí!* ˚₊· ͟͟͞͞➳\n\n` +
+        `${job.emoji} *${job.name}* 💼\n` +
+        `✿ ganaste: *$${formatNumber(earned)}* moneditas\n` +
+        `✿ +${xpGained} XP\n\n` +
+        `♡ tu bolsita: *$${formatNumber(user.money)}* ♡`,
     );
   }
 }

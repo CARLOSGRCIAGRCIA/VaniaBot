@@ -18,12 +18,12 @@ export class ImagenCommand extends Command {
 
     if (!query) {
       await ctx.reply(
-        `🖼️ *Buscador de Imágenes*\n\n` +
-          `*Uso:* !imagen <búsqueda>\n\n` +
-          `*Ejemplos:*\n` +
-          `  !imagen atardecer\n` +
-          `  !imagen gato\n` +
-          `  !imagen paisaje`,
+        `˚₊· ͟͟͞͞➳ *buscador de imágenes* ˚₊· ͟͟͞͞➳\n\n` +
+          `✿ *cómo usar:* !imagen <búsqueda>\n\n` +
+          `✩ *ejemplos:*\n` +
+          `  ﹒!imagen atardecer\n` +
+          `  ﹒!imagen gato\n` +
+          `  ﹒!imagen paisaje`,
       );
       return;
     }

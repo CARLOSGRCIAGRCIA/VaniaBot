@@ -99,13 +99,13 @@ export class RandomCommand extends Command {
 
       default:
         await ctx.reply(
-          '❌ *Tipo no válido*\n\n' +
-            '📌 *Tipos disponibles:*\n\n' +
-            '🎲 num - Número del 1 al 100\n' +
-            '🎭 emoji - Emoji random\n' +
-            '📚 dato - Dato curioso\n' +
-            '🪙 coin - Cara o sello\n' +
-            '🎨 color - Color random',
+          `˚₊· ͟͟͞͞➳ *oops, ese no está en mi lista* ˚₊· ͟͟͞͞➳\n\n` +
+            `✿ *mis tipos:*\n\n` +
+            `﹒num — número del 1 al 100\n` +
+            `﹒emoji — emoji random\n` +
+            `﹒dato — dato curioso\n` +
+            `﹒coin — cara o sello\n` +
+            `﹒color — color random`,
         );
     }
   }
