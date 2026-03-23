@@ -14,6 +14,7 @@ export class CoinflipCommand extends Command {
   usage = '!coinflip <heads|tails> <amount>';
   examples = ['!cf heads 500', '!coinflip tails 1000'];
   cooldown = 5000;
+  parallelizable = true;
 
   async execute(ctx: MessageContext): Promise<void> {
     const rawChoice = ctx.args[0]?.toLowerCase();
@@ -66,12 +67,12 @@ export class CoinflipCommand extends Command {
     const change = won ? `+$${formatNumber(amount)}` : `-$${formatNumber(amount)}`;
 
     await ctx.reply(
-      `*COIN FLIP*\n\n` +
-        `You chose: **${userChoice.toUpperCase()}**\n` +
-        `Result: **${result.toUpperCase()}**\n\n` +
-        `**${status}**\n` +
+      `˚₊· ͟͟͞͞➳ *moneda al aire* ˚₊· ͟͟͞͞➳\n\n` +
+        `✿ tú: *${userChoice}*\n` +
+        `✿ salió: *${result}*\n\n` +
+        `♡ *${status}* ♡\n` +
         `${change}\n\n` +
-        `Balance: $${formatNumber(updatedUser.money)}`,
+        `✩ tu bolsita: *$${formatNumber(updatedUser.money)}*`,
     );
   }
 }

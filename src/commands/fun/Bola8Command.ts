@@ -16,6 +16,7 @@ export class Bola8Command extends Command {
   usage = '!8ball <pregunta>';
   examples = ['!8ball ¿Me quiere?', '!bola8 ¿Voy a ser rico?'];
   permissions = { user: [PermissionLevel.USER], bot: [] };
+  parallelizable = true;
 
   async execute(ctx: MessageContext): Promise<void> {
     const pregunta = ctx.args?.join(' ') || 'la vida';
@@ -32,9 +33,9 @@ export class Bola8Command extends Command {
     await ctx.react('🎱');
 
     await ctx.reply(
-      `🎱 *Bola 8 Mágica* 🎱\n\n` +
-        `❓ *Pregunta:* ${pregunta}\n\n` +
-        `✨ *Respuesta:* ${respuesta}`,
+      `˚₊· ͟͟͞͞➳ *bolita mágica* ˚₊· ͟͟͞͞➳\n\n` +
+        `✿ *tu pregunta:* ${pregunta}\n\n` +
+        `✩ *mi respuesta:* ${respuesta} ✩`,
     );
 
     await ctx.react('🔮');

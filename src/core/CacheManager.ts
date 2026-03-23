@@ -12,7 +12,7 @@
  */
 
 import { LRUCache } from 'lru-cache';
-import type { GroupMetadata } from '@whiskeysockets/baileys';
+import type { GroupMetadata, WASocket } from '@whiskeysockets/baileys';
 import type { UserPermissions, BotPermissions } from '@/services/PermissionService.js';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -51,6 +51,7 @@ export class UnifiedCacheManager {
   private permissionsCache: LRUCache<string, PermissionData>;
   private groupMetadataCache: LRUCache<string, GroupMetadata>;
   private userCache: LRUCache<string, CachedUser>;
+  private participantsCache: LRUCache<string, string[]>;
   private messageIdCache: Set<string>;
   private messageIdCacheTimer: ReturnType<typeof setInterval> | null = null;
 
@@ -77,6 +78,12 @@ export class UnifiedCacheManager {
     this.userCache = new LRUCache({
       max: 5000,
       ttl: 30 * 60 * 1000,
+      updateAgeOnGet: true,
+    });
+
+    this.participantsCache = new LRUCache({
+      max: 300,
+      ttl: 5 * 60 * 1000,
       updateAgeOnGet: true,
     });
 
@@ -128,11 +135,39 @@ export class UnifiedCacheManager {
 
   setGroupMetadata(groupJid: string, metadata: GroupMetadata): void {
     this.groupMetadataCache.set(groupJid, metadata);
+    const participants = metadata.participants.map(p => p.id);
+    this.participantsCache.set(groupJid, participants);
+  }
+
+  async getGroupMetadataSafe(sock: WASocket, groupJid: string): Promise<GroupMetadata> {
+    const cached = this.getGroupMetadata(groupJid);
+    if (cached) return cached;
+
+    const metadata = await sock.groupMetadata(groupJid);
+    this.setGroupMetadata(groupJid, metadata);
+    return metadata;
   }
 
   invalidateGroupMetadata(groupJid: string): void {
     this.groupMetadataCache.delete(groupJid);
+    this.participantsCache.delete(groupJid);
     this.invalidatePermissions(groupJid);
+  }
+
+  // ─── Participants (Fast Cache) ───────────────────────────────────────────────
+
+  getGroupParticipants(groupJid: string): string[] | null {
+    const cached = this.participantsCache.get(groupJid);
+    if (cached) {
+      this.stats.hits++;
+      return cached;
+    }
+    this.stats.misses++;
+    return null;
+  }
+
+  setGroupParticipants(groupJid: string, participants: string[]): void {
+    this.participantsCache.set(groupJid, participants);
   }
 
   // ─── Users ───────────────────────────────────────────────────────────────────
@@ -175,6 +210,7 @@ export class UnifiedCacheManager {
       sizes: {
         permissions: this.permissionsCache.size,
         metadata: this.groupMetadataCache.size,
+        participants: this.participantsCache.size,
         users: this.userCache.size,
         messages: this.messageIdCache.size,
       },
@@ -192,6 +228,7 @@ export class UnifiedCacheManager {
   clear(): void {
     this.permissionsCache.clear();
     this.groupMetadataCache.clear();
+    this.participantsCache.clear();
     this.userCache.clear();
     this.messageIdCache.clear();
   }

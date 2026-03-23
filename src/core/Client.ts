@@ -118,29 +118,65 @@ class RealTimeAntiSpam {
   }
 }
 
-/**
- * Processes messages in real-time with queue management.
- * Prevents duplicate processing of messages.
- */
+interface QueuedMessage {
+  id: string;
+  handler: () => Promise<void>;
+  parallel?: boolean;
+}
+
 class RealTimeMessageProcessor extends EventEmitter {
   private processing = new Set<string>();
-  private queue: Array<{ id: string; handler: () => Promise<void> }> = [];
-  private isProcessingQueue = false;
+  private sequentialQueue: QueuedMessage[] = [];
+  private parallelQueue: QueuedMessage[] = [];
+  private isProcessingSequential = false;
+  private maxParallel = 3;
+  private activeParallel = 0;
 
-  async process(messageId: string, handler: () => Promise<void>): Promise<boolean> {
+  async process(
+    messageId: string,
+    handler: () => Promise<void>,
+    parallel = false,
+  ): Promise<boolean> {
     if (this.processing.has(messageId)) return false;
-    this.queue.push({ id: messageId, handler });
-    // processQueue errors surface via the inherited 'error' EventEmitter event
-    this.processQueue().catch(err => this.emit('error', messageId, err));
+
+    if (parallel) {
+      this.parallelQueue.push({ id: messageId, handler, parallel: true });
+    } else {
+      this.sequentialQueue.push({ id: messageId, handler, parallel: false });
+    }
+
+    this.processParallelQueue().catch(err => this.emit('error', messageId, err));
+    this.processSequentialQueue().catch(err => this.emit('error', messageId, err));
     return true;
   }
 
-  private async processQueue(): Promise<void> {
-    if (this.isProcessingQueue || this.queue.length === 0) return;
-    this.isProcessingQueue = true;
+  private async processParallelQueue(): Promise<void> {
+    if (this.activeParallel >= this.maxParallel || this.parallelQueue.length === 0) return;
 
-    while (this.queue.length > 0) {
-      const item = this.queue.shift();
+    const item = this.parallelQueue.shift();
+    if (!item) return;
+
+    this.activeParallel++;
+    this.processing.add(item.id);
+
+    try {
+      await item.handler();
+      this.emit('processed', item.id);
+    } catch (error) {
+      this.emit('error', item.id, error);
+    } finally {
+      this.processing.delete(item.id);
+      this.activeParallel--;
+      void this.processParallelQueue();
+    }
+  }
+
+  private async processSequentialQueue(): Promise<void> {
+    if (this.isProcessingSequential || this.sequentialQueue.length === 0) return;
+    this.isProcessingSequential = true;
+
+    while (this.sequentialQueue.length > 0) {
+      const item = this.sequentialQueue.shift();
       if (!item) break;
       this.processing.add(item.id);
       try {
@@ -153,11 +189,16 @@ class RealTimeMessageProcessor extends EventEmitter {
       }
     }
 
-    this.isProcessingQueue = false;
+    this.isProcessingSequential = false;
   }
 
   getStats() {
-    return { processing: this.processing.size, queued: this.queue.length };
+    return {
+      processing: this.processing.size,
+      sequentialQueued: this.sequentialQueue.length,
+      parallelQueued: this.parallelQueue.length,
+      activeParallel: this.activeParallel,
+    };
   }
 }
 
@@ -188,6 +229,7 @@ export class WhatsAppClient {
     totalProcessingTime: 0,
     lastStatsLog: Date.now(),
   };
+  private commandMetrics = new Map<string, { count: number; totalTime: number; errors: number }>();
 
   constructor() {
     this.authManager = new AuthManager();
@@ -216,6 +258,9 @@ export class WhatsAppClient {
         logger.info(`✅ Registered commands: ${commandRegistry.size}`);
       }),
     ]);
+
+    const { listaManager } = await import('@/services/game/ListaManager.js');
+    await listaManager.initialize();
 
     if (process.env.NODE_ENV !== 'production') {
       logger.info(`Servicios: ${Date.now() - startTime}ms`);
@@ -301,6 +346,22 @@ export class WhatsAppClient {
       return;
     }
 
+    const text = message.message?.conversation || message.message?.extendedTextMessage?.text || '';
+    const isCommand =
+      text.startsWith(config.prefix) || text.startsWith('.') || text.startsWith('!');
+    const commandName = text.slice(1).split(' ')[0].toLowerCase();
+    const fullCommandName = text.startsWith(config.prefix)
+      ? text.slice(1).toLowerCase()
+      : text.startsWith('.') || text.startsWith('!')
+        ? text.slice(1).toLowerCase()
+        : null;
+
+    let isParallelizable = false;
+    if (isCommand && fullCommandName) {
+      const cmd = commandRegistry.get(fullCommandName) || commandRegistry.get(commandName);
+      isParallelizable = cmd?.parallelizable || false;
+    }
+
     this.stats.messagesReceived++;
     logger.debug(`✅ Message received: ${messageId}`);
 
@@ -310,117 +371,124 @@ export class WhatsAppClient {
 
         logger.debug(`🔄 Processing message ${messageId}...`);
 
-        await this.messageProcessor.process(messageId, async () => {
-          logger.debug(`📝 Creating MessageContext...`);
-          try {
-            // WAMessage and proto.IWebMessageInfo are the same shape in Baileys
-            const ctx = new MessageContext(this.sock, message as proto.IWebMessageInfo);
+        await this.messageProcessor.process(
+          messageId,
+          async () => {
+            logger.debug(`📝 Creating MessageContext...`);
+            try {
+              // WAMessage and proto.IWebMessageInfo are the same shape in Baileys
+              const ctx = new MessageContext(this.sock, message as proto.IWebMessageInfo);
 
-            logger.debug(
-              `📋 MessageContext created: command="${ctx.command}", text="${ctx.text.slice(0, 50)}", isGroup=${ctx.chat.isGroup}`,
-            );
+              logger.debug(
+                `📋 MessageContext created: command="${ctx.command}", text="${ctx.text.slice(0, 50)}", isGroup=${ctx.chat.isGroup}`,
+              );
 
-            if (ctx.chat.isGroup && !ctx.command) {
-              const quizHandled = await quizAnswerHandler.handle(ctx);
-              if (quizHandled) {
+              if (ctx.chat.isGroup && !ctx.command) {
+                const quizHandled = await quizAnswerHandler.handle(ctx);
+                if (quizHandled) {
+                  cacheManager.markMessageProcessed(messageId);
+                  return;
+                }
+
+                const botJid = this.sock.user?.id ?? '';
+                await handleMention(ctx, botJid);
+
                 cacheManager.markMessageProcessed(messageId);
                 return;
               }
 
-              const botJid = this.sock.user?.id ?? '';
-              await handleMention(ctx, botJid);
-
-              cacheManager.markMessageProcessed(messageId);
-              return;
-            }
-
-            if (!ctx.command) {
-              logger.info(
-                `❌ No command detected, text: "${ctx.text}", prefix: "${config.prefix}"`,
-              );
-              cacheManager.markMessageProcessed(messageId);
-              return;
-            }
-
-            logger.debug(`✅ Command detected: ${ctx.command}`);
-
-            const rateLimit = this.antiSpam.checkRateLimit(ctx.sender.jid);
-            if (!rateLimit.allowed) {
-              this.stats.spamBlocked++;
-              await ctx.reply(rateLimit.reason ?? '⚠️ Demasiados mensajes').catch(() => {});
-              return;
-            }
-
-            if (ctx.chat.isGroup) {
-              const floodCheck = rateLimitService.checkFlood(ctx.sender.jid);
-              if (!floodCheck.allowed) {
-                this.stats.spamBlocked++;
-                await ctx
-                  .reply(floodCheck.reason ?? '⚠️ Estás escribiendo muy rápido')
-                  .catch(() => {});
+              if (!ctx.command) {
+                logger.info(
+                  `❌ No command detected, text: "${ctx.text}", prefix: "${config.prefix}"`,
+                );
+                cacheManager.markMessageProcessed(messageId);
                 return;
               }
 
-              const groupRateLimit = rateLimitService.checkGroupRateLimit(ctx.chat.jid);
-              if (!groupRateLimit.allowed) {
+              logger.debug(`✅ Command detected: ${ctx.command}`);
+
+              const rateLimit = this.antiSpam.checkRateLimit(ctx.sender.jid);
+              if (!rateLimit.allowed) {
                 this.stats.spamBlocked++;
-                await ctx
-                  .reply(groupRateLimit.reason ?? '⚠️ El grupo está muy activo')
-                  .catch(() => {});
+                await ctx.reply(rateLimit.reason ?? '⚠️ Demasiados mensajes').catch(() => {});
                 return;
               }
-            }
 
-            const fullCommand = ctx.args.length > 0 ? `${ctx.command} ${ctx.args[0]}` : null;
-
-            logger.debug(`🔍 Looking for command: "${ctx.command}" or "${fullCommand}"`);
-
-            const command =
-              (fullCommand ? commandRegistry.get(fullCommand) : null) ??
-              commandRegistry.get(ctx.command);
-
-            logger.debug(`📦 Command found: ${command?.name || 'NULL'}`);
-
-            if (!command) {
-              logger.warn(`❌ Command not found in registry: ${ctx.command}`);
-              cacheManager.markMessageProcessed(messageId);
-              return;
-            }
-
-            logger.debug(`✅ Executing command: ${command.name}`);
-            if (fullCommand && commandRegistry.get(fullCommand)) {
-              ctx.args.shift();
-            }
-            if (command.permissions?.user || command.permissions?.bot) {
               if (ctx.chat.isGroup) {
-                await Promise.all([ctx.loadSenderPermissions(), ctx.loadBotPermissions()]);
-              } else {
-                await ctx.loadSenderPermissions();
+                const floodCheck = rateLimitService.checkFlood(ctx.sender.jid);
+                if (!floodCheck.allowed) {
+                  this.stats.spamBlocked++;
+                  await ctx
+                    .reply(floodCheck.reason ?? '⚠️ Estás escribiendo muy rápido')
+                    .catch(() => {});
+                  return;
+                }
+
+                const groupRateLimit = rateLimitService.checkGroupRateLimit(ctx.chat.jid);
+                if (!groupRateLimit.allowed) {
+                  this.stats.spamBlocked++;
+                  await ctx
+                    .reply(groupRateLimit.reason ?? '⚠️ El grupo está muy activo')
+                    .catch(() => {});
+                  return;
+                }
               }
+
+              const fullCommand = ctx.args.length > 0 ? `${ctx.command} ${ctx.args[0]}` : null;
+
+              logger.debug(`🔍 Looking for command: "${ctx.command}" or "${fullCommand}"`);
+
+              const command =
+                (fullCommand ? commandRegistry.get(fullCommand) : null) ??
+                commandRegistry.get(ctx.command);
+
+              logger.debug(`📦 Command found: ${command?.name || 'NULL'}`);
+
+              if (!command) {
+                logger.warn(`❌ Command not found in registry: ${ctx.command}`);
+                cacheManager.markMessageProcessed(messageId);
+                return;
+              }
+
+              logger.debug(`✅ Executing command: ${command.name}`);
+              if (fullCommand && commandRegistry.get(fullCommand)) {
+                ctx.args.shift();
+              }
+              if (command.permissions?.user || command.permissions?.bot) {
+                if (ctx.chat.isGroup) {
+                  await Promise.all([ctx.loadSenderPermissions(), ctx.loadBotPermissions()]);
+                } else {
+                  await ctx.loadSenderPermissions();
+                }
+              }
+
+              await this.executeWithMiddlewares(ctx, async () => {
+                logger.debug(`🚀 Running command: ${command.name}`);
+                const cmdStartTime = Date.now();
+                try {
+                  await command.execute(ctx);
+                  this.stats.commandsExecuted++;
+                  this.trackCommandMetric(command.name, Date.now() - cmdStartTime, false);
+                  logger.debug(`✅ Command executed successfully: ${command.name}`);
+                } catch (error) {
+                  this.stats.errorsCount++;
+                  this.trackCommandMetric(command.name, Date.now() - cmdStartTime, true);
+                  logError('Command', new CommandExecutionError(ctx.command, error));
+                  await ctx.reply('Error al ejecutar el comando.').catch(() => {});
+                }
+              });
+
+              cacheManager.markMessageProcessed(messageId);
+
+              const processingTime = Date.now() - startTime;
+              this.stats.totalProcessingTime += processingTime;
+              if (processingTime > 500) logger.warn(`⚠️ ${ctx.command}: ${processingTime}ms`);
+            } catch (error) {
+              logError('handleMessageRealTime', error);
             }
-
-            await this.executeWithMiddlewares(ctx, async () => {
-              logger.debug(`🚀 Running command: ${command.name}`);
-              try {
-                await command.execute(ctx);
-                this.stats.commandsExecuted++;
-                logger.debug(`✅ Command executed successfully: ${command.name}`);
-              } catch (error) {
-                this.stats.errorsCount++;
-                logError('Command', new CommandExecutionError(ctx.command, error));
-                await ctx.reply('Error al ejecutar el comando.').catch(() => {});
-              }
-            });
-
-            cacheManager.markMessageProcessed(messageId);
-
-            const processingTime = Date.now() - startTime;
-            this.stats.totalProcessingTime += processingTime;
-            if (processingTime > 500) logger.warn(`⚠️ ${ctx.command}: ${processingTime}ms`);
-          } catch (error) {
-            logError('handleMessageRealTime', error);
-          }
-        });
+          },
+          isParallelizable,
+        );
 
         if (Date.now() - this.stats.lastStatsLog > 300000) {
           this.logStats();
@@ -492,12 +560,33 @@ export class WhatsAppClient {
     await next();
   }
 
+  private trackCommandMetric(name: string, time: number, error: boolean): void {
+    const existing = this.commandMetrics.get(name) || { count: 0, totalTime: 0, errors: 0 };
+    this.commandMetrics.set(name, {
+      count: existing.count + 1,
+      totalTime: existing.totalTime + time,
+      errors: existing.errors + (error ? 1 : 0),
+    });
+  }
+
+  getCommandMetrics(): Array<{ command: string; count: number; avgTime: number; errors: number }> {
+    return Array.from(this.commandMetrics.entries()).map(([command, data]) => ({
+      command,
+      count: data.count,
+      avgTime: Math.round(data.totalTime / data.count),
+      errors: data.errors,
+    }));
+  }
+
   private startMaintenance(): void {
     this.maintenanceTimer = setInterval(
       () => {
         const queueStats = this.messageProcessor.getStats();
-        if (queueStats.queued > 20)
-          logger.warn(`⚠️ Cola: ${queueStats.queued} mensajes pendientes`);
+        const totalQueued = queueStats.sequentialQueued + queueStats.parallelQueued;
+        if (totalQueued > 20)
+          logger.warn(
+            `⚠️ Cola: ${totalQueued} mensajes pendientes (seq: ${queueStats.sequentialQueued}, par: ${queueStats.parallelQueued})`,
+          );
       },
       5 * 60 * 1000,
     );
@@ -564,12 +653,13 @@ export class WhatsAppClient {
         : 0;
     const queueStats = this.messageProcessor.getStats();
     const cacheStats = cacheManager.getStats();
+    const totalQueued = queueStats.sequentialQueued + queueStats.parallelQueued;
     logger.info(
       `${this.stats.messagesReceived} recv | ` +
         `${this.stats.commandsExecuted} cmds | ` +
         `${this.stats.spamBlocked}⛔ | ` +
         `${avgTime.toFixed(0)}ms avg | ` +
-        `queue ${queueStats.queued} | ` +
+        `queue ${totalQueued} | ` +
         `cache ${cacheStats.hitRate}`,
     );
   }
@@ -621,6 +711,7 @@ export class WhatsAppClient {
           : 0,
       queue: this.messageProcessor.getStats(),
       cache: cacheManager.getStats(),
+      commandMetrics: this.getCommandMetrics(),
     };
   }
 }

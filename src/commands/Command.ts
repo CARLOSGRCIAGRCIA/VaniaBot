@@ -10,6 +10,7 @@ export abstract class Command implements ICommand {
   usage?: string;
   examples?: string[] = [];
   cooldown?: number = 3000;
+  parallelizable?: boolean = false;
 
   permissions?: {
     user?: PermissionLevel[];

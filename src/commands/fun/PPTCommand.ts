@@ -13,6 +13,7 @@ export class PPTCommand extends Command {
   aliases = ['piedra', 'ppt'];
   cooldown = 5000;
   contexts = [CommandContext.BOTH];
+  parallelizable = true;
   usage = '!ppt <piedra|papel|tijera>';
   examples = ['!ppt piedra', '!ppt papel'];
   permissions = { user: [PermissionLevel.USER], bot: [] };
@@ -23,11 +24,11 @@ export class PPTCommand extends Command {
 
     if (!eleccion || !opciones.includes(eleccion)) {
       await ctx.reply(
-        '❌ *Elige una opción:*\n\n' +
-          '🪨 piedra\n' +
-          '📄 papel\n' +
-          '✂️ tijera\n\n' +
-          `Ejemplo: !ppt piedra`,
+        `˚₊· ͟͟͞͞➳ *qué eliges?* ˚₊· ͟͟͞͞➳\n\n` +
+          `✿ piedra\n` +
+          `✿ papel\n` +
+          `✿ tijera\n\n` +
+          `✩ ejemplo: *!ppt piedra* ✩`,
       );
       return;
     }
@@ -58,10 +59,10 @@ export class PPTCommand extends Command {
     }
 
     await ctx.reply(
-      `🎮 *Piedra, Papel o Tijera* 🎮\n\n` +
-        `Tu: ${eleccionEmoji[eleccion]} *${eleccion}*\n` +
-        `Bot: ${eleccionEmoji[eleccionBot]} *${eleccionBot}*\n\n` +
-        `*${resultado}*`,
+      `˚₊· ͟͟͞͞➳ *ppt* ˚₊· ͟͟͞͞➳\n\n` +
+        `✿ tu: ${eleccionEmoji[eleccion]} *${eleccion}*\n` +
+        `✿ yo: ${eleccionEmoji[eleccionBot]} *${eleccionBot}*\n\n` +
+        `✩ *${resultado}* ✩`,
     );
 
     await ctx.react(emoji);

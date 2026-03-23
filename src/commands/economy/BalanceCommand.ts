@@ -10,6 +10,7 @@ export class BalanceCommand extends Command {
   usage = '!balance [@user]';
   examples = ['!balance', '!balance @user', '!bal'];
   cooldown = 3000;
+  parallelizable = true;
 
   async execute(ctx: MessageContext): Promise<void> {
     const mentionedJid = ctx.message.message?.extendedTextMessage?.contextInfo?.mentionedJid?.[0];
