@@ -60,7 +60,9 @@ export class QcCommand extends Command {
         sharpFn = (await import('sharp')).default as (input: Buffer) => Sharp;
       } catch {
         await ctx.reply(
-          '❌ Este comando no está disponible en esta plataforma (sharp no instalado)',
+          `˚₊· ͟͟͞͞➳ *oops, esta función está dormidita* ˚₊· ͟͟͞͞➳\n\n` +
+            `✿ todavía no tengo todo lo que necesito\n` +
+            `✩ prometo que pronto estará lista, espérame ✩`,
         );
         await ctx.react('❌');
         return;

@@ -23,9 +23,9 @@ export class YtMp3Command extends Command {
   async execute(ctx: MessageContext): Promise<void> {
     if (!ctx.args.length) {
       await ctx.reply(
-        '❌ Provide a search query or URL\n\n' +
-          'Usage: !ytmp3 <search or URL>\n' +
-          '📝 Example: !ytmp3 bad bunny',
+        `˚₊· ͟͟͞͞➳ *oops, necesito una búsqueda o enlace* ˚₊· ͟͟͞͞➳\n\n` +
+          `✿ *!ytmp3* <búsqueda o URL>\n` +
+          `✩ ejemplo: *!ytmp3 bad bunny* ✩`,
       );
       return;
     }
@@ -44,9 +44,10 @@ export class YtMp3Command extends Command {
       }
 
       await ctx.reply(
-        `🎵 *Found:* ${video.title}\n` +
-          `⏱️ *Duration:* ${video.duration}\n\n` +
-          `⬇️ Downloading audio...`,
+        `˚₊· ͟͟͞͞➳ *encontré esto* ˚₊· ͟͟͞͞➳\n` +
+          `✿ *título:* ${video.title}\n` +
+          `✩ *duración:* ${video.duration}\n\n` +
+          `✿ descargando el audio, espera un momentito ✿`,
       );
 
       await ctx.react('⏳');

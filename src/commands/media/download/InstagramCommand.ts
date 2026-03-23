@@ -26,9 +26,9 @@ export class InstagramCommand extends Command {
   async execute(ctx: MessageContext): Promise<void> {
     if (!ctx.args.length) {
       await ctx.reply(
-        '❌ Provide an Instagram URL\n\n' +
-          'Usage: !instagram <URL>\n' +
-          '📝 Example: !instagram https://www.instagram.com/reel/XXXXXXXXXX/',
+        `˚₊· ͟͟͞͞➳ *oops, necesito el enlace de Instagram* ˚₊· ͟͟͞͞➳\n\n` +
+          `✿ *!instagram* <URL>\n` +
+          `✩ ejemplo: *!instagram https://www.instagram.com/reel/XXXXXXXXXX/* ✩`,
       );
       return;
     }
@@ -37,8 +37,9 @@ export class InstagramCommand extends Command {
 
     if (!this.downloader.isValidUrl(url)) {
       await ctx.reply(
-        '❌ Invalid URL. Please send a valid Instagram link.\n' +
-          '🔗 Supported: /reel/, /p/, /tv/, /stories/',
+        `˚₊· ͟͟͞͞➳ *oops, ese enlace no me sirve* ˚₊· ͟͟͞͞➳\n\n` +
+          `✿ necesito un link válido de Instagram\n` +
+          `✩ acepto: */reel/*, */p/*, */tv/*, */stories/* ✩`,
       );
       return;
     }
@@ -52,9 +53,9 @@ export class InstagramCommand extends Command {
 
       await ctx.reply(
         (info
-          ? `${isImage ? '🖼️' : '🎬'} *Author:* @${info.author}\n` +
-            `📝 *Title:* ${info.title.substring(0, 80)}\n\n`
-          : '') + `⬇️ Downloading...`,
+          ? `${isImage ? '˚₊·' : '✩'} *autor:* @${info.author}\n` +
+            `✿ *título:* ${info.title.substring(0, 80)}\n\n`
+          : '') + `✩ un momentito, descargando... ✩`,
       );
 
       await ctx.react('⏳');

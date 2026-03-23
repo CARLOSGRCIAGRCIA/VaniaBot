@@ -26,9 +26,9 @@ export class TiktokCommand extends Command {
   async execute(ctx: MessageContext): Promise<void> {
     if (!ctx.args.length) {
       await ctx.reply(
-        '❌ Provide a TikTok URL\n\n' +
-          'Usage: !tiktok <URL>\n' +
-          '📝 Example: !tiktok https://vm.tiktok.com/XXXXXXXX/',
+        `˚₊· ͟͟͞͞➳ *oops, necesito el enlace de TikTok* ˚₊· ͟͟͞͞➳\n\n` +
+          `✿ *!tiktok* <URL>\n` +
+          `✩ ejemplo: *!tiktok https://vm.tiktok.com/XXXXXXXX/* ✩`,
       );
       return;
     }
@@ -37,8 +37,9 @@ export class TiktokCommand extends Command {
 
     if (!this.downloader.isValidUrl(url)) {
       await ctx.reply(
-        '❌ Invalid URL. Please send a valid TikTok link.\n' +
-          '🔗 Example: https://www.tiktok.com/@user/video/123456789',
+        `˚₊· ͟͟͞͞➳ *oops, ese enlace no me sirve* ˚₊· ͟͟͞͞➳\n\n` +
+          `✿ necesito un link válido de TikTok\n` +
+          `✩ ejemplo: *https://www.tiktok.com/@user/video/123456789* ✩`,
       );
       return;
     }
@@ -50,9 +51,9 @@ export class TiktokCommand extends Command {
 
       if (info) {
         await ctx.reply(
-          `🎵 *Author:* @${info.author}\n` +
-            `📝 *Title:* ${info.title.substring(0, 80)}\n\n` +
-            `⬇️ Downloading...`,
+          `˚₊· ͟͟͞͞➳ *autor:* @${info.author} ˚₊· ͟͟͞͞➳\n` +
+            `✿ *título:* ${info.title.substring(0, 80)}\n\n` +
+            `✩ un momentito, estoy descargando ✩`,
         );
       } else {
         await ctx.reply('⬇️ Downloading TikTok video...');

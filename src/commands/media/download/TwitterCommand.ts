@@ -24,11 +24,11 @@ export class TwitterCommand extends Command {
 
     if (!url) {
       await ctx.reply(
-        `🐦 *Twitter Downloader*\n\n` +
-          `*Uso:* !twitter <url>\n\n` +
-          `*Ejemplos:*\n` +
-          `  !twitter https://twitter.com/user/status/123\n` +
-          `  !twitter https://x.com/user/status/123`,
+        `˚₊· ͟͟͞͞➳ *twitter downloader* ˚₊· ͟͟͞͞➳\n\n` +
+          `✿ *cómo usar:* !twitter <url>\n\n` +
+          `✩ *ejemplos:*\n` +
+          `  ﹒!twitter https://twitter.com/user/status/123\n` +
+          `  ﹒!twitter https://x.com/user/status/123`,
       );
       return;
     }

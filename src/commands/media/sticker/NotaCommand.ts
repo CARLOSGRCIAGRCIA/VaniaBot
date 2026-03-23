@@ -37,7 +37,9 @@ export class NotaCommand extends Command {
         sharpFn = (await import('sharp')).default as (input: string) => Sharp;
       } catch {
         await ctx.reply(
-          '❌ Este comando no está disponible en esta plataforma (sharp no instalado)',
+          `˚₊· ͟͟͞͞➳ *oops, esta función no está lista* ˚₊· ͟͟͞͞➳\n\n` +
+            `✿ me falta una herramientita para hacer esto\n` +
+            `✩ espérame un poquito, pronto estará listo ✩`,
         );
         await ctx.react('❌');
         return;

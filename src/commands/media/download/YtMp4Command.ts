@@ -23,9 +23,9 @@ export class YtMp4Command extends Command {
   async execute(ctx: MessageContext): Promise<void> {
     if (!ctx.args.length) {
       await ctx.reply(
-        '❌ Provide a search query or URL\n\n' +
-          'Usage: !ytmp4 <search or URL>\n' +
-          '📝 Example: !ytmp4 tutorial',
+        `˚₊· ͟͟͞͞➳ *oops, necesito una búsqueda o enlace* ˚₊· ͟͟͞͞➳\n\n` +
+          `✿ *!ytmp4* <búsqueda o URL>\n` +
+          `✩ ejemplo: *!ytmp4 tutorial* ✩`,
       );
       return;
     }
@@ -44,9 +44,10 @@ export class YtMp4Command extends Command {
       }
 
       await ctx.reply(
-        `🎬 *Found:* ${video.title}\n` +
-          `⏱️ *Duration:* ${video.duration}\n\n` +
-          `⬇️ Downloading video...`,
+        `˚₊· ͟͟͞͞➳ *encontré esto* ˚₊· ͟͟͞͞➳\n` +
+          `✿ *título:* ${video.title}\n` +
+          `✩ *duración:* ${video.duration}\n\n` +
+          `✿ descargando el video, espera un momentito ✿`,
       );
 
       await ctx.react('⏳');

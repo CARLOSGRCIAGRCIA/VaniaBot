@@ -26,9 +26,9 @@ export class FacebookCommand extends Command {
   async execute(ctx: MessageContext): Promise<void> {
     if (!ctx.args.length) {
       await ctx.reply(
-        '❌ Provide a Facebook video URL\n\n' +
-          'Usage: !facebook <URL>\n' +
-          ' Example: !facebook https://fb.watch/XXXXXXXXXX/',
+        `˚₊· ͟͟͞͞➳ *oops, necesito el enlace de Facebook* ˚₊· ͟͟͞͞➳\n\n` +
+          `✿ *!facebook* <URL>\n` +
+          `✩ ejemplo: *!facebook https://fb.watch/XXXXXXXXXX/* ✩`,
       );
       return;
     }
@@ -37,8 +37,9 @@ export class FacebookCommand extends Command {
 
     if (!this.downloader.isValidUrl(url)) {
       await ctx.reply(
-        '❌ Invalid URL. Please send a valid Facebook video link.\n' +
-          '⚠️ Only public videos are supported.',
+        `˚₊· ͟͟͞͞➳ *oops, ese enlace no me sirve* ˚₊· ͟͟͞͞➳\n\n` +
+          `✿ necesito un link válido de Facebook\n` +
+          `✩ solo videos públicos, por favor ✩`,
       );
       return;
     }
@@ -50,12 +51,12 @@ export class FacebookCommand extends Command {
 
       if (info) {
         await ctx.reply(
-          `📘 *Author:* ${info.author}\n` +
-            `📝 *Title:* ${info.title.substring(0, 80)}\n\n` +
-            `Downloading...`,
+          `˚₊· ͟͟͞͞➳ *autor:* ${info.author} ˚₊· ͟͟͞͞➳\n` +
+            `✿ *título:* ${info.title.substring(0, 80)}\n\n` +
+            `✩ un momentito, estoy descargando ✩`,
         );
       } else {
-        await ctx.reply('⬇️ Downloading Facebook video...');
+        await ctx.react('⬇️');
       }
 
       await ctx.react('⏳');
@@ -79,10 +80,10 @@ export class FacebookCommand extends Command {
         video: fs.readFileSync(filePath),
         mimetype: 'video/mp4',
         caption:
-          (info ? `📘 ${info.author}\n` : '') +
-          `📊 ${result.size}MB\n` +
-          `⚡ ${result.source}\n\n` +
-          `> By VaniaBot`,
+          (info ? `˚₊· ͟͟͞͞➳ ${info.author}\n` : '') +
+          `✩ ${result.size}MB\n` +
+          `✿ ${result.source}\n\n` +
+          `> VaniaBot 💝`,
       });
 
       await ctx.react('✅');

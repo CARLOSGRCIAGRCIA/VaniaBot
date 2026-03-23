@@ -32,9 +32,9 @@ export class VaniaOffCommand extends Command {
 
       await ctx.react('🔴');
       await ctx.reply(
-        '🔴 *Vania ha sido desactivada* en este grupo.\n\n' +
-          'El bot ya no responderá mensajes hasta que se active con *!vaniaon*.\n\n' +
-          `_Desactivado por @${ctx.sender.pushName || 'admin'}_`,
+        `˚₊· ͟͟͞͞➳ *Vania está descansando* ˚₊· ͟͟͞͞➳\n\n` +
+          `No voy a responder hasta que me activen con *!vaniaon*.\n\n` +
+          `_Me apagó @${ctx.sender.pushName || 'admin'}_ ✿`,
       );
     } catch (error) {
       logError('[VaniaOff] Error', error);
@@ -67,9 +67,9 @@ export class VaniaOnCommand extends Command {
 
       await ctx.react('🟢');
       await ctx.reply(
-        '🟢 *Vania ha sido activada* en este grupo.\n\n' +
-          '¡Listo para funcionar! 🌸\n\n' +
-          `_Activado por @${ctx.sender.pushName || 'admin'}_`,
+        `˚₊· ͟͟͞͞➳ *Vania ya está aquí* ˚₊· ͟͟͞͞➳\n\n` +
+          `¡Listo, ya puedo funcionar! ✿\n\n` +
+          `_Me encendió @${ctx.sender.pushName || 'admin'}_ ✩`,
       );
     } catch (error) {
       logError('[VaniaOn] Error', error);

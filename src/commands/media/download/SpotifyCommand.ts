@@ -21,10 +21,10 @@ export class SpotifyCommand extends Command {
 
     if (!url) {
       await ctx.reply(
-        `🎵 *Spotify Downloader*\n\n` +
-          `*Uso:* !spotify <url>\n\n` +
-          `*Ejemplo:*\n` +
-          `  !spotify https://open.spotify.com/track/4uLU6hMCjMI75M1A2tKUQC`,
+        `˚₊· ͟͟͞͞➳ *spotify downloader* ˚₊· ͟͟͞͞➳\n\n` +
+          `✿ *cómo usar:* !spotify <url>\n\n` +
+          `✩ *ejemplo:*\n` +
+          `  ﹒!spotify https://open.spotify.com/track/4uLU6hMCjMI75M1A2tKUQC`,
       );
       return;
     }
