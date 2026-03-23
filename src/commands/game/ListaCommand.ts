@@ -48,14 +48,14 @@ export class ListaCommand extends Command {
       const tempLista = listaManager.crearLista({
         tipo: this.config.tipo,
         chatJid: ctx.chat.jid,
-        messageId: 'temp',
+        messageId: 'temp_' + Date.now(),
         horaTexto: hora,
         liga,
         color,
       });
 
       const textoInicial = listaManager.renderizar(tempLista);
-      listaManager.desactivarLista('temp');
+      listaManager.desactivarLista(tempLista.messageId);
 
       const sent = await ctx.sock.sendMessage(ctx.chat.jid, {
         text: textoInicial,
@@ -64,6 +64,7 @@ export class ListaCommand extends Command {
 
       if (!sent?.key?.id) {
         await ctx.reply('❌ Error al crear la lista');
+        listaManager.desactivarLista(tempLista.messageId);
         return;
       }
 

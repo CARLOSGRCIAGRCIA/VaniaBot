@@ -29,12 +29,29 @@ export interface Poll {
   closed: boolean;
 }
 
+export interface ListaPersistida {
+  tipo: string;
+  chatJid: string;
+  messageId: string;
+  horaTexto: string;
+  horaMex: string;
+  horaCol: string;
+  liga?: string;
+  color?: string;
+  escuadras: Array<{ jugadores: Array<{ jid: string; nombre: string }>; capacidad: number }>;
+  suplentes: Array<{ jid: string; nombre: string }>;
+  maxSuplentes: number;
+  creadoEn: number;
+  activa: boolean;
+}
+
 export class PersistenceService {
   private static instance: PersistenceService;
   private reminders = new Map<string, Reminder>();
   private reminderTimers = new Map<string, NodeJS.Timeout>();
   private polls = new Map<string, Poll>();
   private pollTimers = new Map<string, NodeJS.Timeout>();
+  private listas = new Map<string, ListaPersistida>();
   private db: Database | null = null;
   private sock: WASocket | null = null;
   private initialized = false;
@@ -42,6 +59,7 @@ export class PersistenceService {
   private readonly MAX_TOTAL_REMINDERS = 1000;
   private readonly DB_REMINDERS_KEY = 'system:reminders';
   private readonly DB_POLLS_KEY = 'system:polls';
+  private readonly DB_LISTAS_KEY = 'game:listas';
 
   static getInstance(): PersistenceService {
     if (!PersistenceService.instance) {
@@ -64,11 +82,12 @@ export class PersistenceService {
 
     await this.loadReminders();
     await this.loadPolls();
+    await this.loadListas();
     this.rescheduleReminders();
     this.startCleanup();
 
     logger.info(
-      `PersistenceService: ${this.reminders.size} reminders, ${this.polls.size} polls loaded`,
+      `PersistenceService: ${this.reminders.size} reminders, ${this.polls.size} polls, ${this.listas.size} listas loaded`,
     );
   }
 
@@ -104,6 +123,30 @@ export class PersistenceService {
     }
   }
 
+  async loadListas(): Promise<void> {
+    if (!this.db) return;
+    try {
+      const stored = await this.db.get<Record<string, ListaPersistida>>(this.DB_LISTAS_KEY, 'data');
+      if (stored) {
+        const now = Date.now();
+        for (const [messageId, lista] of Object.entries(stored)) {
+          const ttl = this.getListaTTL();
+          if (lista.activa && now - lista.creadoEn < ttl) {
+            this.listas.set(messageId, lista);
+          }
+        }
+      }
+      logger.info(`[Persistence] ${this.listas.size} listas loaded from DB`);
+    } catch (error) {
+      logError('PersistenceService.loadListas', error);
+    }
+  }
+
+  private getListaTTL(): number {
+    const envTTL = parseInt(process.env.LISTA_TTL_HOURS || '12', 10);
+    return envTTL * 60 * 60 * 1000;
+  }
+
   private async saveReminders(): Promise<void> {
     if (!this.db) return;
     const data: Record<string, Reminder> = {};
@@ -120,6 +163,40 @@ export class PersistenceService {
       data[chatJid] = poll;
     }
     await this.db.set(this.DB_POLLS_KEY, 'data', data);
+  }
+
+  async saveLista(messageId: string, lista: ListaPersistida): Promise<void> {
+    this.listas.set(messageId, lista);
+    await this.persistListas();
+  }
+
+  async removeLista(messageId: string): Promise<void> {
+    this.listas.delete(messageId);
+    await this.persistListas();
+  }
+
+  getLista(messageId: string): ListaPersistida | undefined {
+    const lista = this.listas.get(messageId);
+    if (!lista) return undefined;
+    const ttl = this.getListaTTL();
+    if (Date.now() - lista.creadoEn > ttl) {
+      this.listas.delete(messageId);
+      return undefined;
+    }
+    return lista;
+  }
+
+  getAllListas(): ListaPersistida[] {
+    return [...this.listas.values()];
+  }
+
+  private async persistListas(): Promise<void> {
+    if (!this.db) return;
+    const data: Record<string, ListaPersistida> = {};
+    for (const [messageId, lista] of this.listas) {
+      data[messageId] = lista;
+    }
+    await this.db.set(this.DB_LISTAS_KEY, 'data', data);
   }
 
   private rescheduleReminders(): void {

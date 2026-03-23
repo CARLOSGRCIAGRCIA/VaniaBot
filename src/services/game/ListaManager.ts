@@ -1,5 +1,6 @@
 import type { WASocket, AnyMessageContent } from '@whiskeysockets/baileys';
 import { logger, logError } from '@/utils/logger.js';
+import { persistenceService } from '@/services/system/PersistenceService.js';
 
 export type ListaTipo =
   | 'clk'
@@ -36,7 +37,7 @@ interface Lista {
   activa: boolean;
 }
 
-const LISTA_TTL_MS = 12 * 60 * 60 * 1000;
+const DEFAULT_LISTA_TTL_MS = 6 * 60 * 60 * 1000;
 
 function parsearHora(horaTexto: string): { mex: string; col: string } | null {
   const match = horaTexto
@@ -233,6 +234,7 @@ function removerJugador(lista: Lista, jid: string): boolean {
 export class ListaManager {
   private listas = new Map<string, Lista>();
   private cleanupInterval: NodeJS.Timeout;
+  private listaTtlMs: number | null = null;
 
   constructor() {
     this.cleanupInterval = setInterval(
@@ -245,6 +247,31 @@ export class ListaManager {
       },
       30 * 60 * 1000,
     );
+  }
+
+  async initialize(): Promise<void> {
+    await this.loadFromPersistence();
+    logger.info(`[LISTA] ${this.listas.size} listas cargadas desde persistencia`);
+  }
+
+  private async loadFromPersistence(): Promise<void> {
+    const stored = persistenceService.getAllListas();
+    for (const lista of stored) {
+      if (lista.activa) {
+        this.listas.set(lista.messageId, lista as Lista);
+      }
+    }
+  }
+
+  private async syncToPersistence(lista: Lista): Promise<void> {
+    await persistenceService.saveLista(
+      lista.messageId,
+      lista as unknown as Parameters<typeof persistenceService.saveLista>[1],
+    );
+  }
+
+  private async removeFromPersistence(messageId: string): Promise<void> {
+    await persistenceService.removeLista(messageId);
   }
 
   crearLista(params: {
@@ -283,6 +310,9 @@ export class ListaManager {
     };
 
     this.listas.set(params.messageId, lista);
+    this.syncToPersistence(lista).catch(err =>
+      logError('[LISTA] Error guardando en persistencia', err),
+    );
     logger.info(
       `[LISTA] Creada: tipo=${params.tipo} messageId=${params.messageId} chatJid=${params.chatJid}`,
     );
@@ -314,30 +344,32 @@ export class ListaManager {
       senderNombre: string;
       emoji: string;
     },
-  ): Promise<void> {
+  ): Promise<{ success: boolean; reason?: string; listaActiva?: boolean }> {
     const lista = this.getLista(reaccion.messageId);
 
     if (!lista) {
-      logger.debug(`[LISTA REACCION] No hay lista con ese messageId, ignorando`);
-      return;
+      logger.debug(`[LISTA REACCION] No hay lista con ese messageId`);
+      return { success: false, reason: 'no_existe', listaActiva: false };
     }
 
     if (!lista.activa) {
-      logger.debug(`[LISTA REACCION] Lista inactiva, ignorando`);
-      return;
+      logger.debug(`[LISTA REACCION] Lista inactiva`);
+      return { success: false, reason: 'inactiva', listaActiva: false };
     }
 
     const eliminado = reaccion.emoji === '';
 
     if (eliminado) {
       const removido = removerJugador(lista, reaccion.senderJid);
-      if (!removido) return;
+      if (!removido) return { success: false, reason: 'no_en_lista', listaActiva: true };
     } else {
       const agregado = agregarJugador(lista, reaccion.senderJid, reaccion.senderNombre);
-      if (!agregado) return;
+      if (!agregado) return { success: false, reason: 'lista_llena', listaActiva: true };
     }
 
     await this.editarMensaje(sock, lista);
+    await this.syncToPersistence(lista);
+    return { success: true, listaActiva: true };
   }
 
   async editarMensaje(sock: WASocket, lista: Lista): Promise<void> {
@@ -361,18 +393,38 @@ export class ListaManager {
     const lista = this.listas.get(messageId);
     if (lista) {
       lista.activa = false;
+      this.removeFromPersistence(messageId).catch(err =>
+        logError('[LISTA] Error removiendo de persistencia', err),
+      );
       logger.info(`[LISTA] Desactivada: ${messageId}`);
     }
   }
 
   private limpiarExpiradas(): void {
     const now = Date.now();
+    const ttl = this.getTTL();
     for (const [id, lista] of this.listas.entries()) {
-      if (now - lista.creadoEn > LISTA_TTL_MS) {
+      if (now - lista.creadoEn > ttl) {
         this.listas.delete(id);
+        this.removeFromPersistence(id).catch(err =>
+          logError('[LISTA] Error removiendo expirada de persistencia', err),
+        );
         logger.info(`[LISTA] Expirada y eliminada: ${id}`);
       }
     }
+  }
+
+  getTTL(): number {
+    return this.listaTtlMs || DEFAULT_LISTA_TTL_MS;
+  }
+
+  setTTL(ttlHours: number): void {
+    this.listaTtlMs = ttlHours * 60 * 60 * 1000;
+    logger.info(`[LISTA] TTL configurado a ${ttlHours} horas`);
+  }
+
+  getDefaultTTL(): number {
+    return DEFAULT_LISTA_TTL_MS;
   }
 
   renderizar(lista: Lista): string {
