@@ -1,5 +1,6 @@
 import type { WASocket, GroupParticipant } from '@whiskeysockets/baileys';
 import { logError } from '@/utils/logger.js';
+import { cacheManager } from '@/core/CacheManager.js';
 
 interface GroupMetadataLike {
   participants: GroupParticipant[];
@@ -41,7 +42,7 @@ export class GroupMetadataCache {
     if (cached) return cached;
 
     try {
-      const metadata = await sock.groupMetadata(groupJid);
+      const metadata = await cacheManager.getGroupMetadataSafe(sock, groupJid);
       this.set(groupJid, metadata);
       return metadata;
     } catch (error) {

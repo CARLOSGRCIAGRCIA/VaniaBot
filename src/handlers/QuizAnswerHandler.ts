@@ -142,14 +142,13 @@ class QuizAnswerHandler {
     const hintPenalty = player.usedHint ? '\n_(reduced reward for using hint)_' : '';
 
     await ctx.reply(
-      `✅ *Correct, ${player.pushName}!*\n\n` +
-        `💰 +${coinsAwarded} coins\n` +
-        `⭐ +${xpAwarded} XP` +
+      `˚₊· ͟͟͞͞➳ *muy bien, ${player.pushName}!* ˚₊· ͟͟͞͞➳\n\n` +
+        `✿ +${coinsAwarded} moneditas\n` +
+        `✩ +${xpAwarded} XP ✩` +
         streakMsg +
         hintPenalty +
-        (sessionEnded ? '' : '\n\n_Next question in 4s..._'),
+        (sessionEnded ? '' : '\n\n_la siguiente viene en 4 segunditos..._'),
     );
-
     return true;
   }
 

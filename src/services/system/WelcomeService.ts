@@ -3,6 +3,7 @@ import { serviceManager } from './Servicemanager.js';
 import { logger, logError } from '@/utils/logger.js';
 import { existsSync, readFileSync } from 'fs';
 import { circuitBreakerManager } from './CircuitBreakerService.js';
+import { cacheManager } from '@/core/CacheManager.js';
 
 export interface WelcomeConfig {
   enabled: boolean;
@@ -116,7 +117,7 @@ hola @user ♡
         return;
       }
 
-      const metadata = await sock.groupMetadata(groupJid);
+      const metadata = await cacheManager.getGroupMetadataSafe(sock, groupJid);
       const rawFact = await getRandomFact();
       const formattedFact = formatFact(rawFact);
 
@@ -170,7 +171,7 @@ hola @user ♡
 
       let metadata;
       try {
-        metadata = await sock.groupMetadata(groupJid);
+        metadata = await cacheManager.getGroupMetadataSafe(sock, groupJid);
       } catch (metadataError) {
         const errMsg =
           metadataError instanceof Error ? metadataError.message : String(metadataError);

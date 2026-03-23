@@ -9,7 +9,7 @@ import { VaniaToggleService } from './VaniaToggleService.js';
 import { config } from '@/config/index.js';
 import { logger, logError } from '@/utils/logger.js';
 import { cleanupService } from './CleanupService.js';
-import { healthCheckService } from './HealthCheckService.js';
+import { healthCheckService, AutoRestartService } from './HealthCheckService.js';
 import { sessionBackupService } from './SessionBackupService.js';
 import { persistenceService } from './PersistenceService.js';
 
@@ -23,6 +23,7 @@ export class ServiceManager {
   public moderationService!: ModerationService;
   public vaniaToggleService!: VaniaToggleService;
   public healthCheckService = healthCheckService;
+  public autoRestartService = AutoRestartService.getInstance();
   public sessionBackupService = sessionBackupService;
   public persistenceService = persistenceService;
 
@@ -51,6 +52,12 @@ export class ServiceManager {
       this.vaniaToggleService = new VaniaToggleService(this.db);
 
       cleanupService.start();
+
+      this.autoRestartService.setOnRestartCallback(() => {
+        logger.error('🔄 Auto-restart triggered, exiting process...');
+        process.exit(1);
+      });
+      this.autoRestartService.start();
 
       await this.sessionBackupService.start();
 
