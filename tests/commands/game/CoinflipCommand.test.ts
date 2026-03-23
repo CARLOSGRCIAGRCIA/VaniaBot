@@ -326,7 +326,7 @@ describe('CoinflipCommand', () => {
       await command.execute(mockCtx);
 
       const replyCall = vi.mocked(mockCtx.reply).mock.calls[0][0];
-      expect(replyCall).toContain('HEADS');
+      expect(replyCall).toContain('heads');
     });
 
     it('should show balance in result', async () => {
@@ -344,7 +344,7 @@ describe('CoinflipCommand', () => {
       await command.execute(mockCtx);
 
       const replyCall = vi.mocked(mockCtx.reply).mock.calls[0][0];
-      expect(replyCall).toContain('Balance');
+      expect(replyCall).toContain('tu bolsita');
     });
   });
 });

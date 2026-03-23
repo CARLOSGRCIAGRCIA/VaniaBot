@@ -131,7 +131,7 @@ describe('SlotsCommand', () => {
 
       await command.execute(mockCtx);
 
-      expect(mockCtx.reply).toHaveBeenCalledWith(expect.stringContaining('Specify your bet'));
+      expect(mockCtx.reply).toHaveBeenCalledWith(expect.stringContaining('cuánto quieres'));
     });
 
     it('should reject invalid bet amount', async () => {

@@ -128,6 +128,7 @@ describe('UnifiedCacheManager', () => {
       const metadata = {
         id: groupJid,
         subject: 'Test Group',
+        participants: [] as any[],
       } as any;
 
       cache.setGroupMetadata(groupJid, metadata);
