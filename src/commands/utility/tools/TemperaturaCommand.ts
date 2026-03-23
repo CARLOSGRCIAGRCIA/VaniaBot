@@ -17,12 +17,12 @@ export class TemperaturaCommand extends Command {
 
     if (!city) {
       await ctx.reply(
-        `🌤️ *Clima - VaniaBot*\n\n` +
-          `*Uso:* !clima <ciudad>\n\n` +
-          `*Ejemplos:*\n` +
-          `  !clima Ciudad de México\n` +
-          `  !clima Tokio\n` +
-          `  !clima Buenos Aires`,
+        `˚₊· ͟͟͞͞➳ *clima — VaniaBot* ˚₊· ͟͟͞͞➳\n\n` +
+          `✿ *cómo usarlo:* !clima <ciudad>\n\n` +
+          `✩ *ejemplos:*\n` +
+          `  ﹒!clima Ciudad de México\n` +
+          `  ﹒!clima Tokio\n` +
+          `  ﹒!clima Buenos Aires ✩`,
       );
       return;
     }

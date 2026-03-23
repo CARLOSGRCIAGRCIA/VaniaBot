@@ -72,11 +72,11 @@ export class ReminderCommand extends Command {
       });
 
       await ctx.reply(
-        `⏰ *Tus recordatorios activos*\n` +
-          `━━━━━━━━━━━━━━━━\n` +
+        `˚₊· ͟͟͞͞➳ *tus recordatorios* ˚₊· ͟͟͞͞➳\n` +
+          `﹒﹒﹒﹒﹒﹒﹒﹒﹒﹒﹒﹒﹒﹒﹒﹒﹒\n` +
           lines.join('\n\n') +
-          `\n━━━━━━━━━━━━━━━━\n` +
-          `Para cancelar: !recordatorio cancelar <ID>`,
+          `\n﹒﹒﹒﹒﹒﹒﹒﹒﹒﹒﹒﹒﹒﹒﹒﹒﹒\n` +
+          `♡ si quieres cancelar: *!recordatorio cancelar* <ID> ♡`,
       );
       return;
     }
@@ -159,14 +159,14 @@ export class ReminderCommand extends Command {
 
     await ctx.react('✅');
     await ctx.reply(
-      `⏰ *Recordatorio programado*\n` +
-        `━━━━━━━━━━━━━━━━\n` +
-        `🆔 ID: *${id}*\n` +
-        `📝 Mensaje: ${messageText}\n` +
-        `⏳ En: *${this.formatTimeLeft(delayMs)}*\n` +
-        `🕐 A las: ${new Date(triggerAt).toLocaleTimeString('es-MX')}\n` +
-        `━━━━━━━━━━━━━━━━\n` +
-        `Para cancelar: !recordatorio cancelar ${id}`,
+      `˚₊· ͟͟͞͞➳ *recordatorio listo* ˚₊· ͟͟͞͞➳\n` +
+        `﹒﹒﹒﹒﹒﹒﹒﹒﹒﹒﹒﹒﹒﹒﹒﹒﹒\n` +
+        `✩ ID: *${id}*\n` +
+        `✿ mensaje: ${messageText}\n` +
+        `⏳ te aviso en: *${this.formatTimeLeft(delayMs)}*\n` +
+        `🕐 será a las: ${new Date(triggerAt).toLocaleTimeString('es-MX')}\n` +
+        `﹒﹒﹒﹒﹒﹒﹒﹒﹒﹒﹒﹒﹒﹒﹒﹒﹒\n` +
+        `♡ si quieres cancelar: *!recordatorio cancelar ${id}* ♡`,
     );
   }
 }

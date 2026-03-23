@@ -2,6 +2,7 @@ import { Command } from '../../Command.js';
 import { CommandCategory, CommandContext } from '@/types/index.js';
 import { logError } from '@/utils/logger.js';
 import type { MessageContext } from '@/types/index.js';
+import { cacheManager } from '@/core/CacheManager.js';
 
 export class AllCommand extends Command {
   name = 'all';
@@ -15,7 +16,7 @@ export class AllCommand extends Command {
 
   async execute(ctx: MessageContext): Promise<void> {
     try {
-      const groupMetadata = await ctx.sock.groupMetadata(ctx.chat.jid);
+      const groupMetadata = await cacheManager.getGroupMetadataSafe(ctx.sock, ctx.chat.jid);
       const participants = groupMetadata.participants;
 
       if (participants.length === 0) {

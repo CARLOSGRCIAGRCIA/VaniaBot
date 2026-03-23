@@ -152,23 +152,23 @@ export class TranscribeCommand extends Command {
 
     if (!audioData) {
       await ctx.reply(
-        `🎙️ *Transcriptor de Voz — VaniaBot*\n` +
-          `━━━━━━━━━━━\n\n` +
-          `Envía o responde un audio con *!transcribe* para convertirlo a texto.\n\n` +
-          `🛠️ *Modos disponibles:*\n` +
-          `• *!transcribe* — transcripción simple\n` +
-          `• *!transcribe resumen* — transcripción + resumen + puntos clave\n` +
-          `• *!transcribe completo* — transcripción + análisis + metadata\n\n` +
-          `🌍 *Forzar idioma:*\n` +
-          `• *!transcribe en* — inglés\n` +
-          `• *!transcribe es resumen* — español + resumen\n\n` +
-          `✅ *Formatos soportados:*\n` +
-          `Notas de voz · mp3 · ogg · mp4 · wav · flac · webm\n\n` +
-          `⚡ *Extras:*\n` +
-          `• Compresión automática para audios grandes\n` +
-          `• Filtros de voz (reducción de ruido)\n` +
-          `• Detección de tipo: voz, música, silencio\n\n` +
-          `> _VaniaBot🎙️ — Transcriptor IA_`,
+        `˚₊· ͟͟͞͞➳ *transcriptor de voz — VaniaBot* ˚₊· ͟͟͞͞➳\n` +
+          `﹒﹒﹒﹒﹒﹒﹒﹒﹒﹒﹒﹒﹒﹒﹒﹒﹒\n\n` +
+          `✿ mándame un audio con *!transcribe* y te lo escribo\n\n` +
+          `✩ *cómo usarme:*\n` +
+          `  ﹒*!transcribe* — solo el texto\n` +
+          `  ﹒*!transcribe resumen* — texto + resumen + puntos clave\n` +
+          `  ﹒*!transcribe completo* — texto + análisis + metadatos\n\n` +
+          `♡ *cambiar idioma:*\n` +
+          `  ﹒*!transcribe en* — inglés\n` +
+          `  ﹒*!transcribe es resumen* — español + resumen\n\n` +
+          `✿ *formatos que acepto:*\n` +
+          `  notas de voz · mp3 · ogg · mp4 · wav · flac · webm\n\n` +
+          `*extras:*\n` +
+          `  • compresión automática para audios grandes\n` +
+          `  • filtros de voz (menos ruido, más claridad)\n` +
+          `  • detecto si es voz, música o silencio\n\n` +
+          `> _VaniaBot 🎙️ — tu transcriptora favorita_`,
       );
       return;
     }

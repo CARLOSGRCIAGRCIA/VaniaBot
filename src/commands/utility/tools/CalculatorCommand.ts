@@ -216,24 +216,24 @@ export class CalculatorCommand extends Command {
   async execute(ctx: MessageContext): Promise<void> {
     if (!ctx.args.length) {
       await ctx.reply(
-        `🧮 *Calculadora y Conversor*\n\n` +
-          `*Operaciones básicas:*\n` +
-          `  !calc 25 * 4 + 100\n` +
-          `  !calc (5 + 3) ^ 2\n` +
-          `  !calc 15% de 340\n\n` +
-          `*Conversión de unidades:*\n` +
-          `  !calc 5 km a m\n` +
-          `  !calc 100 kg a lb\n` +
-          `  !calc 37 C a F\n` +
-          `  !calc 1 gb a mb\n\n` +
-          `*Unidades soportadas:*\n` +
-          `  📏 km, m, cm, mm, mi, ft, in\n` +
-          `  ⚖️ t, kg, g, lb, oz\n` +
-          `  🌡️ C, F, K\n` +
-          `  💧 l, ml, gal, cup, floz\n` +
-          `  💾 b, kb, mb, gb, tb\n` +
-          `  🏎️ m/s, km/h, mph\n` +
-          `  📐 m2, cm2, km2, ft2, ha, acre`,
+        `˚₊· ͟͟͞͞➳ *calculadora y conversora* ˚₊· ͟͟͞͞➳\n\n` +
+          `✿ *qué puedo hacer:*\n` +
+          `  ﹒!calc 25 * 4 + 100\n` +
+          `  ﹒!calc (5 + 3) ^ 2\n` +
+          `  ﹒!calc 15% de 340\n\n` +
+          `✩ *convierto cositas:*\n` +
+          `  ﹒!calc 5 km a m\n` +
+          `  ﹒!calc 100 kg a lb\n` +
+          `  ﹒!calc 37 C a F\n` +
+          `  ﹒!calc 1 gb a mb\n\n` +
+          `♡ *unidades que conozco:*\n` +
+          `  ﹒📏 km, m, cm, mm, mi, ft, in\n` +
+          `  ﹒⚖️ t, kg, g, lb, oz\n` +
+          `  ﹒🌡️ C, F, K\n` +
+          `  ﹒💧 l, ml, gal, cup, floz\n` +
+          `  ﹒💾 b, kb, mb, gb, tb\n` +
+          `  ﹒🏎️ m/s, km/h, mph\n` +
+          `  ﹒📐 m2, cm2, km2, ft2, ha, acre`,
       );
       return;
     }
@@ -255,8 +255,8 @@ export class CalculatorCommand extends Command {
       if (tempResult !== null) {
         await ctx.react('✅');
         await ctx.reply(
-          `🌡️ *Conversión de temperatura*\n` +
-            `━━━━━━━━━━━━━━━━\n` +
+          `˚₊· ͟͟͞͞➳ *temperatura* ˚₊· ͟͟͞͞➳\n` +
+            `﹒﹒﹒﹒﹒﹒﹒﹒﹒﹒﹒﹒﹒﹒﹒﹒﹒\n` +
             `${value}° ${fromUnit.toUpperCase()} = *${this.formatResult(tempResult)}° ${toUnit.toUpperCase()}*`,
         );
         return;
@@ -276,8 +276,8 @@ export class CalculatorCommand extends Command {
 
         await ctx.react('✅');
         await ctx.reply(
-          `${emoji} *Conversión de ${result.category}*\n` +
-            `━━━━━━━━━━━━━━━━\n` +
+          `˚₊· ͟͟͞͞➳ ${emoji} *${result.category}* ˚₊· ͟͟͞͞➳\n` +
+            `﹒﹒﹒﹒﹒﹒﹒﹒﹒﹒﹒﹒﹒﹒﹒﹒﹒\n` +
             `${value} ${fromUnit} = *${this.formatResult(result.result)} ${toUnit}*`,
         );
         return;
@@ -295,20 +295,20 @@ export class CalculatorCommand extends Command {
 
       await ctx.react('✅');
       await ctx.reply(
-        `🧮 *Calculadora*\n` +
-          `━━━━━━━━━━━━━━━━\n` +
-          `📝 ${input}\n` +
+        `˚₊· ͟͟͞͞➳ *calculadora* ˚₊· ͟͟͞͞➳\n` +
+          `﹒﹒﹒﹒﹒﹒﹒﹒﹒﹒﹒﹒﹒﹒﹒﹒﹒\n` +
+          `${input}\n` +
           `= *${this.formatResult(result)}*`,
       );
     } catch (error: unknown) {
       await ctx.react('❌');
       logError('[CalculatorCommand] Error', error);
       await ctx.reply(
-        `❌ Expresión inválida: *${input}*\n\n` +
-          `Ejemplos válidos:\n` +
-          `  !calc 25 * 4\n` +
-          `  !calc (10 + 5) * 2\n` +
-          `  !calc 15% de 200`,
+        `˚₊· ͟͟͞͞➳ *oops, no sé calcular eso* ˚₊· ͟͟͞͞➳\n\n` +
+          `✿ *prueba con estos:*\n` +
+          `  ﹒!calc 25 * 4\n` +
+          `  ﹒!calc (10 + 5) * 2\n` +
+          `  ﹒!calc 15% de 200`,
       );
     }
   }

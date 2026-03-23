@@ -5,6 +5,8 @@ import type { proto, WAMessage } from '@whiskeysockets/baileys';
 import { downloadMediaMessage } from '@whiskeysockets/baileys';
 import { cacheManager } from '@/core/CacheManager.js';
 
+const DOWNLOAD_TIMEOUT = 10000;
+
 export class NotifyCommand extends Command {
   name = 'notify';
   description = 'Notifica a todos mencionando un mensaje referenciado o texto.';
@@ -56,22 +58,61 @@ export class NotifyCommand extends Command {
     }
   }
 
+  private async downloadWithTimeout(msg: WAMessage): Promise<Buffer | null> {
+    try {
+      const buffer = await Promise.race([
+        downloadMediaMessage(msg, 'buffer', {}) as Promise<Buffer>,
+        new Promise<never>((_, reject) =>
+          setTimeout(() => reject(new Error('Download timeout')), DOWNLOAD_TIMEOUT),
+        ),
+      ]);
+      return buffer as Buffer;
+    } catch {
+      return null;
+    }
+  }
+
+  private async getParticipants(ctx: MessageContext): Promise<string[]> {
+    const cachedParticipants = cacheManager.getGroupParticipants(ctx.chat.jid);
+    if (cachedParticipants) return cachedParticipants;
+
+    const cachedMetadata = cacheManager.getGroupMetadata(ctx.chat.jid);
+    const groupMetadata = cachedMetadata ?? (await ctx.sock.groupMetadata(ctx.chat.jid));
+
+    const participants = groupMetadata.participants.map(p => p.id);
+
+    if (!cachedMetadata) {
+      cacheManager.setGroupMetadata(ctx.chat.jid, groupMetadata);
+    }
+    cacheManager.setGroupParticipants(ctx.chat.jid, participants);
+
+    return participants;
+  }
+
+  private buildCaption(extraText: string, originalCaption: string, footer: string): string {
+    if (extraText && originalCaption) {
+      return `${extraText}\n\n${originalCaption}${footer}`;
+    } else if (extraText) {
+      return `${extraText}${footer}`;
+    } else if (originalCaption) {
+      return `${originalCaption}${footer}`;
+    }
+    return footer.trim();
+  }
+
   async execute(ctx: MessageContext): Promise<void> {
     const extraText = ctx.args.join(' ').trim();
     const footer = '\n\n> _*By VaniaBot*_ 💝';
 
     try {
-      const cached = cacheManager.getGroupMetadata(ctx.chat.jid);
-      const groupMetadata = cached ?? (await ctx.sock.groupMetadata(ctx.chat.jid));
-      if (!cached) cacheManager.setGroupMetadata(ctx.chat.jid, groupMetadata);
-      const participants = groupMetadata.participants.map(p => p.id);
+      const participants = await this.getParticipants(ctx);
 
       if (!ctx.quoted) {
         if (!extraText) {
           await ctx.reply(
-            `❌ Escribe un mensaje o responde a uno.\n\n` +
-              `*Uso:* !n <texto>\n` +
-              `*O responde* a cualquier mensaje con !n`,
+            `˚₊· ͟͟͞͞➳ *oops, escríbeme algo* ˚₊· ͟͟͞͞➳\n\n` +
+              `✿ *!n* <texto>\n` +
+              `✩ o responde a un mensaje con *!n* ✩`,
           );
           return;
         }
@@ -85,18 +126,43 @@ export class NotifyCommand extends Command {
       }
 
       const type = this.getQuotedType(ctx.quoted);
+      const quotedMsgInfo = this.getQuotedMessageInfo(ctx);
 
-      if (type === 'sticker') {
-        await ctx.react('⏳');
+      if (type === 'text') {
+        const quotedText = ctx.quoted.conversation || ctx.quoted.extendedTextMessage?.text || '';
 
-        const quotedMsgInfo = this.getQuotedMessageInfo(ctx);
-        if (!quotedMsgInfo) {
-          await ctx.react('❌');
-          await ctx.reply('❌ No se pudo obtener el sticker referenciado.');
-          return;
+        let notificationText: string;
+        if (extraText && quotedText) {
+          notificationText = `${extraText}\n\n${quotedText}${footer}`;
+        } else if (quotedText) {
+          notificationText = `${quotedText}${footer}`;
+        } else {
+          notificationText = `${extraText}${footer}`;
         }
 
-        const buffer = (await downloadMediaMessage(quotedMsgInfo, 'buffer', {})) as Buffer;
+        await ctx.sock.sendMessage(
+          ctx.chat.jid,
+          { text: notificationText, mentions: participants },
+          { quoted: ctx.message },
+        );
+        return;
+      }
+
+      await ctx.react('📢');
+
+      if (!quotedMsgInfo) {
+        await ctx.react('❌');
+        await ctx.reply('❌ No se pudo obtener el mensaje referenciado.');
+        return;
+      }
+
+      if (type === 'sticker') {
+        const buffer = await this.downloadWithTimeout(quotedMsgInfo);
+        if (!buffer) {
+          await ctx.react('❌');
+          await ctx.reply('❌ Timeout al descargar el sticker.');
+          return;
+        }
 
         await ctx.sock.sendMessage(ctx.chat.jid, {
           sticker: buffer,
@@ -107,28 +173,15 @@ export class NotifyCommand extends Command {
       }
 
       if (type === 'image') {
-        await ctx.react('⏳');
-
-        const quotedMsgInfo = this.getQuotedMessageInfo(ctx);
-        if (!quotedMsgInfo) {
+        const buffer = await this.downloadWithTimeout(quotedMsgInfo);
+        if (!buffer) {
           await ctx.react('❌');
-          await ctx.reply('❌ No se pudo obtener la imagen referenciada.');
+          await ctx.reply('❌ Timeout al descargar la imagen.');
           return;
         }
 
-        const buffer = (await downloadMediaMessage(quotedMsgInfo, 'buffer', {})) as Buffer;
-
         const originalCaption = ctx.quoted.imageMessage?.caption || '';
-        let caption: string;
-        if (extraText && originalCaption) {
-          caption = `${extraText}\n\n${originalCaption}${footer}`;
-        } else if (extraText) {
-          caption = `${extraText}${footer}`;
-        } else if (originalCaption) {
-          caption = `${originalCaption}${footer}`;
-        } else {
-          caption = footer.trim();
-        }
+        const caption = this.buildCaption(extraText, originalCaption, footer);
 
         await ctx.sock.sendMessage(ctx.chat.jid, {
           image: buffer,
@@ -140,28 +193,15 @@ export class NotifyCommand extends Command {
       }
 
       if (type === 'video') {
-        await ctx.react('⏳');
-
-        const quotedMsgInfo = this.getQuotedMessageInfo(ctx);
-        if (!quotedMsgInfo) {
+        const buffer = await this.downloadWithTimeout(quotedMsgInfo);
+        if (!buffer) {
           await ctx.react('❌');
-          await ctx.reply('❌ No se pudo obtener el video referenciado.');
+          await ctx.reply('❌ Timeout al descargar el video.');
           return;
         }
 
-        const buffer = (await downloadMediaMessage(quotedMsgInfo, 'buffer', {})) as Buffer;
-
         const originalCaption = ctx.quoted.videoMessage?.caption || '';
-        let caption: string;
-        if (extraText && originalCaption) {
-          caption = `${extraText}\n\n${originalCaption}${footer}`;
-        } else if (extraText) {
-          caption = `${extraText}${footer}`;
-        } else if (originalCaption) {
-          caption = `${originalCaption}${footer}`;
-        } else {
-          caption = footer.trim();
-        }
+        const caption = this.buildCaption(extraText, originalCaption, footer);
 
         await ctx.sock.sendMessage(ctx.chat.jid, {
           video: buffer,
@@ -181,9 +221,8 @@ export class NotifyCommand extends Command {
           });
         }
 
-        const quotedMsgInfo = this.getQuotedMessageInfo(ctx);
-        if (quotedMsgInfo) {
-          const buffer = (await downloadMediaMessage(quotedMsgInfo, 'buffer', {})) as Buffer;
+        const buffer = await this.downloadWithTimeout(quotedMsgInfo);
+        if (buffer) {
           await ctx.sock.sendMessage(ctx.chat.jid, {
             audio: buffer,
             mentions: participants,
@@ -202,7 +241,6 @@ export class NotifyCommand extends Command {
           });
         }
 
-        const quotedMsgInfo = this.getQuotedMessageInfo(ctx);
         if (quotedMsgInfo?.message) {
           await ctx.sock.relayMessage(ctx.chat.jid, quotedMsgInfo.message, {
             messageId: ctx.sock.generateMessageTag(),
@@ -210,27 +248,10 @@ export class NotifyCommand extends Command {
         }
         return;
       }
-
-      const quotedText = ctx.quoted.conversation || ctx.quoted.extendedTextMessage?.text || '';
-
-      let notificationText: string;
-      if (extraText && quotedText) {
-        notificationText = `${extraText}\n\n${quotedText}${footer}`;
-      } else if (quotedText) {
-        notificationText = `${quotedText}${footer}`;
-      } else {
-        notificationText = `${extraText}${footer}`;
-      }
-
-      await ctx.sock.sendMessage(
-        ctx.chat.jid,
-        { text: notificationText, mentions: participants },
-        { quoted: ctx.message },
-      );
     } catch (error) {
       console.error('Error in NotifyCommand:', error);
-      await ctx.react('❌');
-      await ctx.reply('❌ Error al enviar la notificación.');
+      await ctx.react('❌').catch(() => {});
+      await ctx.reply('❌ Error al enviar la notificación.').catch(() => {});
     }
   }
 }

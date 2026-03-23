@@ -96,25 +96,26 @@ export class QuizCommand extends Command {
 
     if (!first) {
       await ctx.reply(
-        `🎓 *Modo Estudio — VaniaBot*\n` +
-          `━━━━━━━━━━━\n\n` +
-          `*Uso:* !quiz [categoría] [preguntas]\n\n` +
-          `*Categorías disponibles:*\n${CATEGORIES_LIST}\n\n` +
-          `*Ejemplos:*\n` +
-          `• !quiz javascript\n` +
-          `• !quiz historia 10\n` +
-          `• !quiz stop\n\n` +
-          `La dificultad sube automáticamente según tu rendimiento.\n` +
-          `Escribe *!hint* si necesitas una pista (reduce la recompensa).\n\n` +
-          `> _VaniaBot💝 — Modo Estudio_`,
+        `˚₊· ͟͟͞͞➳ *modo estudio — VaniaBot* ˚₊· ͟͟͞͞➳\n` +
+          `﹒﹒﹒﹒﹒﹒﹒﹒﹒﹒﹒﹒﹒﹒﹒﹒﹒\n\n` +
+          `✿ *cómo lo usas:* !quiz [categoría] [preguntas]\n\n` +
+          `✩ *categorías:*\n${CATEGORIES_LIST}\n\n` +
+          `♡ *ejemplos:*\n` +
+          `  ﹒!quiz javascript\n` +
+          `  ﹒!quiz historia 10\n` +
+          `  ﹒!quiz stop\n\n` +
+          `la dificultad sube solita mientras más aprendes\n` +
+          `si te atoras, usa *!hint* para una pista (la recompensa baja un poquito)\n\n` +
+          `> _VaniaBot 💝 — tu compi de estudio_`,
       );
       return;
     }
 
     if (quizService.hasActiveSession(ctx.chat.jid)) {
       await ctx.reply(
-        'Ya hay un quiz activo en este grupo.\n' +
-          'Usa *!quiz stop* para detenerlo antes de iniciar uno nuevo.',
+        `˚₊· ͟͟͞͞➳ *ya estamos jugando* ˚₊· ͟͟͞͞➳\n\n` +
+          `✿ si quieres uno nuevo, primero termina este con *!quiz stop*\n` +
+          `✩ no quiero mezclar las preguntas ✩`,
       );
       return;
     }
@@ -206,18 +207,18 @@ export class QuizCommand extends Command {
     const diff = result.difficulty;
 
     await ctx.reply(
-      `🎓 *Quiz iniciado* — ${total} preguntas\n` +
-        `━━━━━━━━━━━\n` +
-        `Categoría: *${category}*\n` +
-        `${difficultyEngine.emoji(diff)} Dificultad inicial: *${difficultyEngine.label(diff)}*\n` +
-        `Recompensas: hasta *${difficultyEngine.calculateCoins(diff, 5)} monedas* por respuesta\n\n` +
-        `_La dificultad sube con tu racha._\n` +
-        `_Usa !hint para pistas (reduce recompensa 50%)._\n\n` +
-        `━━━━━━━━━━━\n` +
-        `*Pregunta 1/${total}* ${difficultyEngine.emoji(diff)} ${difficultyEngine.label(diff)}\n` +
-        `━━━━━━━━━━━\n\n` +
+      `˚₊· ͟͟͞͞➳ *quiz iniciado* — ${total} preguntas ˚₊· ͟͟͞͞➳\n` +
+        `﹒﹒﹒﹒﹒﹒﹒﹒﹒﹒﹒﹒﹒﹒﹒﹒﹒\n` +
+        `✿ categoría: *${category}*\n` +
+        `${difficultyEngine.emoji(diff)} dificultad inicial: *${difficultyEngine.label(diff)}*\n` +
+        `✩ recompensas: hasta *${difficultyEngine.calculateCoins(diff, 5)} moneditas* por respuesta ✩\n\n` +
+        `_la dificultad sube solita con tu racha_ 🌸\n` +
+        `_usa !hint si necesitas ayuda (la recompensa baja un poquito)_\n\n` +
+        `﹒﹒﹒﹒﹒﹒﹒﹒﹒﹒﹒﹒﹒﹒﹒﹒﹒\n` +
+        `*pregunta 1/${total}* ${difficultyEngine.emoji(diff)} ${difficultyEngine.label(diff)}\n` +
+        `﹒﹒﹒﹒﹒﹒﹒﹒﹒﹒﹒﹒﹒﹒﹒﹒﹒\n\n` +
         `*${q.question}*\n\n` +
-        `_Tienes 30 segundos..._`,
+        `_tienes 30 segunditos..._`,
     );
   }
 }

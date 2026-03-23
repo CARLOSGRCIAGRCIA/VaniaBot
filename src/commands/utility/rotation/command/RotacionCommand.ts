@@ -135,7 +135,9 @@ export class RotacionCommand extends Command {
 
     if (start.nodeId === goal.nodeId) {
       await ctx.reply(
-        `⚠️ Ya estás en la zona segura (*${start.label}*). Mantén posición y controla coberturas.`,
+        `˚₊· ͟͟͞͞➳ *ya estás a salvo* ˚₊· ͟͟͞͞➳\n\n` +
+          `✿ estás en *${start.label}*\n` +
+          `✩ quédate quietecita y cuídate ✩`,
       );
       return;
     }
@@ -158,9 +160,9 @@ export class RotacionCommand extends Command {
     }
 
     await ctx.reply(
-      `🔍 _Calculando..._\n` +
-        `📍 *${start.label}* → 🔵 *${goal.label}*\n` +
-        `${teamCount} equipos | Fase: *${analysis.circlePhase}*`,
+      `˚₊· ͟͟͞͞➳ _calculando..._ ˚₊· ͟͟͞͞➳\n` +
+        `✩ *${start.label}* → 🌸 *${goal.label}*\n` +
+        `✿ ${teamCount} equipos | fase: *${analysis.circlePhase}*`,
     );
 
     const scored = scoreRoutes(

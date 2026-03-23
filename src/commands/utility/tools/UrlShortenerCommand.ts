@@ -27,10 +27,10 @@ export class UrlShortenerCommand extends Command {
   async execute(ctx: MessageContext): Promise<void> {
     if (!ctx.args.length) {
       await ctx.reply(
-        `🔗 *Acortador de URLs*\n\n` +
-          `*Uso:* !acortar <url>\n\n` +
-          `*Ejemplo:*\n` +
-          `!acortar https://www.example.com/pagina?muy=larga&con=parametros`,
+        `˚₊· ͟͟͞͞➳ *acortador de URLs* ˚₊· ͟͟͞͞➳\n\n` +
+          `✿ *cómo usarlo:* !acortar <url>\n\n` +
+          `✩ *ejemplo:*\n` +
+          `  ﹒!acortar https://www.example.com/pagina?muy=larga&con=parametros ✩`,
       );
       return;
     }

@@ -82,22 +82,21 @@ export class PollCommand extends Command {
 
     if (!ctx.args.length || sub === 'ayuda' || sub === 'help') {
       await ctx.reply(
-        `*Encuestas — VaniaBot*\n` +
-          `━━━━━━━━━━━━━━━━\n\n` +
-          `*Crear encuesta:*\n` +
-          `!encuesta "Pregunta" "Op1" "Op2" "Op3"...\n\n` +
-          `*Ejemplo:*\n` +
-          `!encuesta "¿Qué comemos?" "Pizza" "Tacos" "Sushi"\n\n` +
-          `*Gestionar:*\n` +
-          `  !encuesta votar <número>\n` +
-          `  !encuesta resultado\n` +
-          `  !encuesta cerrar\n` +
-          `  !encuesta cancelar\n\n` +
-          `*Opciones al crear:*\n` +
-          `  Añade \`multi\` al final para permitir\n` +
-          `  múltiples votos por persona.\n\n` +
-          `  Añade \`Xm\` o \`Xh\` para cierre automático.\n` +
-          `  Ej: !encuesta "¿Color?" "Rojo" "Azul" 30m`,
+        `˚₊· ͟͟͞͞➳ *encuestas — VaniaBot* ˚₊· ͟͟͞͞➳\n` +
+          `﹒﹒﹒﹒﹒﹒﹒﹒﹒﹒﹒﹒﹒﹒﹒﹒﹒\n\n` +
+          `✿ *para crear:*\n` +
+          `  ﹒!encuesta "Pregunta" "Op1" "Op2" "Op3"...\n\n` +
+          `✩ *ejemplo:*\n` +
+          `  ﹒!encuesta "¿Qué comemos?" "Pizza" "Tacos" "Sushi"\n\n` +
+          `♡ *qué más puedo hacer:*\n` +
+          `  ﹒!encuesta votar <número>\n` +
+          `  ﹒!encuesta resultado\n` +
+          `  ﹒!encuesta cerrar\n` +
+          `  ﹒!encuesta cancelar\n\n` +
+          `✨ *cositas extra:*\n` +
+          `  ﹒pon \`multi\` al final para permitir múltiples votos por persona\n` +
+          `  ﹒pon \`Xm\` o \`Xh\` para cierre automático\n` +
+          `  ﹒ejemplo: !encuesta "¿Color?" "Rojo" "Azul" 30m ✨`,
       );
       return;
     }

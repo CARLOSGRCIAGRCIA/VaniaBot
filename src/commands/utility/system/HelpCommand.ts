@@ -66,7 +66,8 @@ export class HelpCommand extends Command {
     const command = commandRegistry.get(commandName.toLowerCase());
     if (!command) {
       await ctx.reply(
-        `❌ Comando "${commandName}" no encontrado\n\n✨ Usa *!help* para ver todos los comandos`,
+        `˚₊· ͟͟͞͞➳ *oops, "${commandName}" no está en mi lista* ˚₊· ͟͟͞͞➳\n\n` +
+          `✿ prueba con *!help* para ver lo que sé hacer ✩`,
       );
       return;
     }

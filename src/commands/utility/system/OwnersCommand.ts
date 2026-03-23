@@ -29,13 +29,11 @@ export class OwnersCommand extends Command {
       });
 
       const message = `
-┏━━━━━━━━━━━━━━
-┃ 👑 *OWNERS DEL BOT*
-┣━━━━━━━━━━━━━━
-┃
-${ownersList}┃
-┃ Total: ${owners.length}
-┗━━━━━━━━━━━━━━
+      ˚₊· ͟͟͞͞➳ *owneres de VaniaBot* ˚₊· ͟͟͞͞➳
+      ﹒﹒﹒﹒﹒﹒﹒﹒﹒﹒﹒﹒﹒﹒﹒﹒﹒
+
+      ${ownersList}
+      ✿ total: ${owners.length} ✿
       `.trim();
 
       await ctx.reply(message);

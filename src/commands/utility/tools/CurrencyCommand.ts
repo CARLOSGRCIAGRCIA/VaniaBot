@@ -85,14 +85,15 @@ export class CurrencyCommand extends Command {
   async execute(ctx: MessageContext): Promise<void> {
     if (ctx.args.length < 3) {
       await ctx.reply(
-        '💱 *Conversor de Monedas*\n\n' +
-          '*Uso:* !moneda <cantidad> <de> <a>\n\n' +
-          '*Fiat:* USD, EUR, MXN, ARS, COP, CLP, BRL, GBP, JPY...\n' +
-          '*Cripto:* BTC, ETH, BNB, SOL, DOGE, XRP...\n\n' +
-          '*Ejemplos:*\n' +
-          '  !moneda 100 USD MXN\n' +
-          '  !moneda 1 BTC USD\n' +
-          '  !moneda 50 EUR MXN',
+        `˚₊· ͟͟͞͞➳ *conversor de monedas* ˚₊· ͟͟͞͞➳\n\n` +
+          `✿ *cómo usarlo:* !moneda <cantidad> <de> <a>\n\n` +
+          `✩ *monedas que manejo:*\n` +
+          `  ﹒fiat: USD, EUR, MXN, ARS, COP, CLP, BRL, GBP, JPY...\n` +
+          `  ﹒cripto: BTC, ETH, BNB, SOL, DOGE, XRP...\n\n` +
+          `♡ *ejemplitos:*\n` +
+          `  ﹒!moneda 100 USD MXN\n` +
+          `  ﹒!moneda 1 BTC USD\n` +
+          `  ﹒!moneda 50 EUR MXN`,
       );
       return;
     }
@@ -123,7 +124,8 @@ export class CurrencyCommand extends Command {
         if (!coinId) {
           await ctx.react('❌');
           await ctx.reply(
-            `❌ Cripto *${cryptoSymbol}* no soportada.\nCriptos disponibles: ${[...this.CRYPTO_SYMBOLS].join(', ')}`,
+            `˚₊· ͟͟͞͞➳ *oops, no conozco ${cryptoSymbol}* ˚₊· ͟͟͞͞➳\n\n` +
+              `✿ *mis criptos:* ${[...this.CRYPTO_SYMBOLS].join(', ')}`,
           );
           return;
         }

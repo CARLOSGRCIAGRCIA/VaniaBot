@@ -91,11 +91,11 @@ export class TranslateCommand extends Command {
         .join('\n');
 
       await ctx.reply(
-        `🌐 *Traductor*\n\n` +
-          `*Uso:*\n` +
-          `  !traducir <código> <texto>\n` +
-          `  (o responde un mensaje)\n\n` +
-          `*Idiomas disponibles:*\n${langs}`,
+        `˚₊· ͟͟͞͞➳ *traductor* ˚₊· ͟͟͞͞➳\n\n` +
+          `✿ *cómo lo usas:*\n` +
+          `  ﹒!traducir <código> <texto>\n` +
+          `  ﹒o responde a un mensaje\n\n` +
+          `✩ *idiomas que entiendo:*\n${langs} ✩`,
       );
       return;
     }

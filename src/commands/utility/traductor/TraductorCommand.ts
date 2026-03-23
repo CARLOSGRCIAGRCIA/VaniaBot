@@ -80,10 +80,10 @@ export class TraductorCommand extends Command {
 
     if (first === 'idiomas' || first === 'languages' || first === 'langs') {
       await ctx.reply(
-        `🌐 *Idiomas disponibles:*\n\n${idiomasDisponibles()}\n\n` +
-          `_Puedes usar el nombre, código ISO o variantes en español/inglés._\n` +
-          `_Ej: "inglés", "en", "english" son equivalentes._\n\n` +
-          `> _VaniaBot🌐 — Traductor contextual_`,
+        `˚₊· ͟͟͞͞➳ *idiomas que entiendo* ˚₊· ͟͟͞͞➳\n\n${idiomasDisponibles()}\n\n` +
+          `✩ *cómo pedírmelos:* nombre, código ISO, o como los digas en español/inglés\n` +
+          `♡ *ejemplo:* "inglés", "en", "english" — los entiendo todos ♡\n\n` +
+          `> _VaniaBot 🌸 — tu traductora favorita_`,
       );
       return;
     }

@@ -19,12 +19,12 @@ export class AiCommand extends Command {
   async execute(ctx: MessageContext): Promise<void> {
     if (!ctx.args.length) {
       await ctx.reply(
-        '*VaniaBot IA*\n\n' +
-          'Escríbeme algo para chatear.\n\n' +
-          '*Comandos:*\n' +
-          '  !ai <mensaje> — chatear con historial\n' +
-          '  !transcribe — transcribir un audio\n' +
-          '  !aiclear — limpiar mi historial',
+        `˚₊· ͟͟͞͞➳ *VaniaBot IA* ˚₊· ͟͟͞͞➳\n\n` +
+          `✿ háblame, quiero platicar contigo\n\n` +
+          `✩ *lo que puedo hacer:*\n` +
+          `  ﹒*!ai* <mensaje> — chateamos con recuerdos\n` +
+          `  ﹒*!transcribe* — paso audios a texto\n` +
+          `  ﹒*!aiclear* — borro mi memoria ✩`,
       );
       return;
     }

@@ -29,12 +29,12 @@ export class QrCommand extends Command {
   async execute(ctx: MessageContext): Promise<void> {
     if (!ctx.args.length) {
       await ctx.reply(
-        `📱 *Generador de QR*\n\n` +
-          `*Uso:* !qr <texto o URL>\n\n` +
-          `*Ejemplos:*\n` +
-          `  !qr https://google.com\n` +
-          `  !qr Mi número: +52 123 456 7890\n` +
-          `  !qr Texto secreto 🤫`,
+        `˚₊· ͟͟͞͞➳ *generador de QR* ˚₊· ͟͟͞͞➳\n\n` +
+          `✿ *cómo usarlo:* !qr <texto o URL>\n\n` +
+          `✩ *ejemplos:*\n` +
+          `  ﹒!qr https://google.com\n` +
+          `  ﹒!qr Mi número: +52 123 456 7890\n` +
+          `  ﹒!qr Texto secreto 🤫 ✩`,
       );
       return;
     }

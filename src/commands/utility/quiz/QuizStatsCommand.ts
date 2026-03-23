@@ -45,8 +45,8 @@ export class QuizStatsCommand extends Command {
         const isSelf = targetJid === ctx.sender.jid;
         await ctx.reply(
           isSelf
-            ? `📊 Aún no has jugado ningún quiz.\nUsa *!quiz [categoría]* para empezar. 🎓`
-            : `📊 *${targetName}* aún no ha jugado ningún quiz.`,
+            ? `˚₊· ͟͟͞͞➳ *aún no has hecho ningún quiz* ˚₊· ͟͟͞͞➳\n\n✿ prueba con *!quiz* [categoría] y empezamos a jugar ✿`
+            : `˚₊· ͟͟͞͞➳ *${targetName}* aún no ha hecho ningún quiz ˚₊· ͟͟͞͞➳`,
         );
         return;
       }

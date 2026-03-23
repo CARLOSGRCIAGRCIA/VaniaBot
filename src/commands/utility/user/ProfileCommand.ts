@@ -85,34 +85,34 @@ export class ProfileCommand extends Command {
     };
 
     const message = `
-✦━━━━━━━━━━━━━━━━━━✦
-   🤖 *VANIABOT PROFILE*
-✦━━━━━━━━━━━━━━━━━━✦
+˚₊· ͟͟͞͞➳━━━━━━━━━━━━━━━━━━ ˚₊· ͟͟͞͞➳
+   🌸 *VANIA BOT* 🌸
+˚₊· ͟͟͞͞➳━━━━━━━━━━━━━━━━━━ ˚₊· ͟͟͞͞➳
 
-🆔 *Bot Information*
-   • Name: ${ctx.sock.user?.name || 'VaniaBot'}
-   • Status: 🟢 Online
-   • Uptime: ${uptime}
+✿ *quién soy*
+   ﹒nombre: ${ctx.sock.user?.name || 'VaniaBot'}
+   ﹒estado: 🟢 online
+   ﹒desde: ${uptime}
 
-📊 *Statistics*
-   • Messages: ${formatNumber(stats.messagesReceived)}
-   • Commands: ${formatNumber(stats.commandsExecuted)}
-   • Processed: ${formatNumber(stats.messagesProcessed)}
+✩ *lo que he hecho*
+   ﹒mensajes: ${formatNumber(stats.messagesReceived)}
+   ﹒comandos: ${formatNumber(stats.commandsExecuted)}
+   ﹒procesados: ${formatNumber(stats.messagesProcessed)}
 
-⚡ *Performance*
-   • Avg Time: ${stats.avgProcessingTime?.toFixed(0) || 0}ms
-   • Queue: ${stats.queue?.queued || 0}
+⚡ *cómo voy*
+   ﹒tiempo promedio: ${stats.avgProcessingTime?.toFixed(0) || 0}ms
+   ﹒en espera: ${stats.queue?.queued || 0}
 
-🎯 *Features*
-   • Economy System ✅
-   • Games ✅
-   • Moderation ✅
-   • Leveling ✅
+♡ *mis habilidades*
+   ﹒economía 💰
+   ﹒juegos 🎮
+   ﹒moderación 🛡️
+   ﹒niveles ⭐
 
-✦━━━━━━━━━━━━━━━━━━✦
-   💝 Use !help for commands
-✦━━━━━━━━━━━━━━━━━━✦
-    `.trim();
+˚₊· ͟͟͞͞➳━━━━━━━━━━━━━━━━━━ ˚₊· ͟͟͞͞➳
+   💕 *!help* para más cositas
+˚₊· ͟͟͞͞➳━━━━━━━━━━━━━━━━━━ ˚₊· ͟͟͞͞➳
+`.trim();
 
     const logoBuffer = this.getDefaultLogo();
     if (logoBuffer) {

@@ -7,6 +7,7 @@ import {
 } from '@/types/index.js';
 import { logError } from '@/utils/logger.js';
 import { serviceManager } from '@/services/system/Servicemanager.js';
+import { cacheManager } from '@/core/CacheManager.js';
 
 interface QuizStats {
   totalCorrect: number;
@@ -47,7 +48,7 @@ export class QuizTopCommand extends Command {
     const category = ctx.args?.[0]?.toLowerCase();
 
     try {
-      const groupMeta = await ctx.sock.groupMetadata(ctx.chat.jid);
+      const groupMeta = await cacheManager.getGroupMetadataSafe(ctx.sock, ctx.chat.jid);
       const memberJids = groupMeta.participants.map(p => p.id);
 
       const entries: TopEntry[] = [];
@@ -90,8 +91,8 @@ export class QuizTopCommand extends Command {
       if (entries.length === 0) {
         await ctx.reply(
           category
-            ? `📊 Nadie tiene estadísticas de *${category}* aún.`
-            : `📊 Nadie ha jugado quiz en este grupo aún.\nUsa *!quiz [categoría]* para empezar. 🎓`,
+            ? `˚₊· ͟͟͞͞➳ *todavía nadie ha jugado ${category}* ˚₊· ͟͟͞͞➳`
+            : `˚₊· ͟͟͞͞➳ *nadie ha hecho un quiz aquí todavía* ˚₊· ͟͟͞͞➳\n\n✿ prueba con *!quiz* [categoría] y empezamos a jugar ✿`,
         );
         return;
       }
@@ -111,10 +112,10 @@ export class QuizTopCommand extends Command {
         .join('\n\n');
 
       await ctx.reply(
-        `🏆 *Top Quiz${category ? ` — ${category}` : ''}*\n` +
-          `━━━━━━━━━━━━━━━━━━━━━\n\n` +
+        `˚₊· ͟͟͞͞➳ *top quiz${category ? ` — ${category}` : ''}* ˚₊· ͟͟͞͞➳\n` +
+          `﹒﹒﹒﹒﹒﹒﹒﹒﹒﹒﹒﹒﹒﹒﹒﹒﹒﹒﹒\n\n` +
           rows +
-          `\n\n> _VaniaBot💝 — Modo Estudio_`,
+          `\n\n> _VaniaBot 💝 — tu compi de estudio_`,
       );
     } catch (err) {
       logError('[QuizTopCommand] Error', err);
