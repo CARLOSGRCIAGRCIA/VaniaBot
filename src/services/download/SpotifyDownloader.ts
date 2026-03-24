@@ -38,7 +38,15 @@ export class SpotifyDownloader extends DownloadService {
     try {
       const searchOutput = await this.runCommand(
         'yt-dlp',
-        ['--default-search', 'ytsearch1', '--dump-json', '--no-download', `${query} audio`],
+        [
+          '--default-search',
+          'ytsearch1',
+          '--extractor-args',
+          'youtube:player_client=android',
+          '--dump-json',
+          '--no-download',
+          `${query} audio`,
+        ],
         30000,
       );
 
