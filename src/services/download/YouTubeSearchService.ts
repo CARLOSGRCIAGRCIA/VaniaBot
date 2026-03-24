@@ -61,7 +61,14 @@ async function searchYouTube(query: string): Promise<InvidiousVideo[]> {
     throw new Error(`Invidious API error: ${response.status}`);
   }
 
-  const data = await response.json();
+  const text = await response.text();
+
+  if (!text.trim().startsWith('[')) {
+    cachedInstance = null;
+    throw new Error(`Invidious returned non-JSON response, trying new instance`);
+  }
+
+  const data = JSON.parse(text);
   return data as InvidiousVideo[];
 }
 
@@ -81,7 +88,14 @@ async function getVideoInfo(videoId: string): Promise<InvidiousVideo> {
     throw new Error(`Invidious API error: ${response.status}`);
   }
 
-  const data = await response.json();
+  const text = await response.text();
+
+  if (!text.trim().startsWith('{')) {
+    cachedInstance = null;
+    throw new Error(`Invidious returned non-JSON response, trying new instance`);
+  }
+
+  const data = JSON.parse(text);
   return data as InvidiousVideo;
 }
 
