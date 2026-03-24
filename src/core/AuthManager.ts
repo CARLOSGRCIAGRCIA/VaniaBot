@@ -455,8 +455,7 @@ export class AuthManager {
       );
       setTimeout(() => this.scheduleReconnectInternal(), ERROR_515_WAIT_TIME);
     } else {
-      logger.error('❌ Error 515 persistente → limpiando sesión');
-      this.clearSession();
+      logger.warn('⚠️ Error 515 persistente - forzando nueva conexión sin limpiar sesión');
       this.error515Count = 0;
       this.scheduleReconnectInternal();
     }

@@ -40,15 +40,12 @@ process.on('SIGTERM', () => {
 
 process.on('uncaughtException', error => {
   logError('Uncaught Exception', error);
-  process.exit(1);
 });
 
 process.on('unhandledRejection', reason => {
   logError('Unhandled Rejection', reason);
-  process.exit(1);
 });
 
 main().catch(error => {
   logError('main', error);
-  process.exit(1);
 });

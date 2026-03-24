@@ -54,8 +54,7 @@ export class ServiceManager {
       cleanupService.start();
 
       this.autoRestartService.setOnRestartCallback(() => {
-        logger.error('🔄 Auto-restart triggered, exiting process...');
-        process.exit(1);
+        logger.warn('⚠️ Auto-restart triggered but disabled - bot continues running');
       });
       this.autoRestartService.start();
 
