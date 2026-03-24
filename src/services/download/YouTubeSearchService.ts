@@ -4,6 +4,10 @@ import {
 } from '@/services/system/CircuitBreakerService.js';
 import { retryManager } from '@/services/system/RetryService.js';
 import { logError, logger } from '@/utils/logger.js';
+import { execFile } from 'child_process';
+import { promisify } from 'util';
+
+const execFileAsync = promisify(execFile);
 
 export interface YouTubeVideo {
   videoId: string;
@@ -22,15 +26,20 @@ interface InvidiousVideo {
   lengthSeconds?: string;
 }
 
+// Lista ampliada — fuente: https://api.invidious.io/instances.json
 const INVIDIOUS_INSTANCES = [
+  'https://inv.nadeko.net',
+  'https://invidious.privacydev.net',
+  'https://invidious.fdn.fr',
+  'https://iv.datura.network',
+  'https://invidious.perennialte.ch',
   'https://invidious.nerdvpn.de',
   'https://invidious.protokolla.fi',
   'https://invidious.lunar.icu',
 ];
 
-// Rastrear instancias que fallaron recientemente
-const failedInstances = new Map<string, number>(); // instance -> timestamp del fallo
-const INSTANCE_COOLDOWN_MS = 60_000; // 1 minuto de cooldown por instancia
+const failedInstances = new Map<string, number>();
+const INSTANCE_COOLDOWN_MS = 120_000;
 
 function isInstanceOnCooldown(instance: string): boolean {
   const failedAt = failedInstances.get(instance);
@@ -44,25 +53,17 @@ function isInstanceOnCooldown(instance: string): boolean {
 
 function markInstanceFailed(instance: string): void {
   failedInstances.set(instance, Date.now());
-  logger.warn(`⚠️ Invidious instance marked as failed: ${instance}`);
+  logger.warn(`⚠️ Invidious instance failed: ${instance}`);
 }
 
-/**
- * Verifica que la instancia responda JSON real, no HTML.
- * El HEAD no es suficiente — hay que verificar el Content-Type del API.
- */
 async function isInstanceWorking(instance: string): Promise<boolean> {
   try {
     const response = await fetch(`${instance}/api/v1/trending?type=video&fields=videoId`, {
       signal: AbortSignal.timeout(4000),
     });
-
     if (!response.ok) return false;
-
     const contentType = response.headers.get('content-type') ?? '';
     if (!contentType.includes('application/json')) return false;
-
-    // Leer un poco para confirmar que es JSON real
     const text = await response.text();
     return text.trim().startsWith('[') || text.trim().startsWith('{');
   } catch {
@@ -71,58 +72,83 @@ async function isInstanceWorking(instance: string): Promise<boolean> {
 }
 
 async function getWorkingInstance(): Promise<string | null> {
-  // Filtrar instancias en cooldown
   const candidates = INVIDIOUS_INSTANCES.filter(i => !isInstanceOnCooldown(i));
 
   if (candidates.length === 0) {
-    logger.warn('All Invidious instances are on cooldown, resetting...');
+    logger.warn('All Invidious instances on cooldown — resetting');
     failedInstances.clear();
     candidates.push(...INVIDIOUS_INSTANCES);
   }
 
-  for (const instance of candidates) {
-    if (await isInstanceWorking(instance)) {
-      logger.debug(`✓ Using Invidious instance: ${instance}`);
+  // Probar todas en paralelo, usar la primera que responda
+  const results = await Promise.allSettled(
+    candidates.map(async instance => {
+      const ok = await isInstanceWorking(instance);
+      if (!ok) throw new Error('not working');
       return instance;
+    }),
+  );
+
+  for (const result of results) {
+    if (result.status === 'fulfilled') {
+      logger.debug(`✓ Invidious instance OK: ${result.value}`);
+      return result.value;
     }
-    markInstanceFailed(instance);
   }
 
+  candidates.forEach(markInstanceFailed);
   return null;
 }
 
 async function fetchFromInvidious(path: string, expectedStart: '[' | '{'): Promise<unknown> {
-  // Nunca usar cache ciego — elegir instancia fresca si la actual falló
   const instance = await getWorkingInstance();
-
-  if (!instance) {
-    throw new Error('No Invidious instances available. All are down or rate-limited.');
-  }
+  if (!instance) throw new Error('No Invidious instances available');
 
   const url = `${instance}${path}`;
-  const response = await fetch(url, {
-    signal: AbortSignal.timeout(10000),
-  });
+  const response = await fetch(url, { signal: AbortSignal.timeout(10000) });
 
   if (!response.ok) {
     markInstanceFailed(instance);
-    throw new Error(`Invidious HTTP ${response.status} from ${instance}`);
+    throw new Error(`Invidious HTTP ${response.status}`);
   }
 
   const contentType = response.headers.get('content-type') ?? '';
   if (!contentType.includes('application/json')) {
     markInstanceFailed(instance);
-    throw new Error(`Invidious returned non-JSON content-type: ${contentType} from ${instance}`);
+    throw new Error(`Invidious returned non-JSON (${contentType})`);
   }
 
   const text = await response.text();
-
   if (!text.trim().startsWith(expectedStart)) {
     markInstanceFailed(instance);
-    throw new Error(`Invidious returned unexpected response (expected JSON) from ${instance}`);
+    throw new Error('Invidious returned unexpected response format');
   }
 
   return JSON.parse(text);
+}
+
+// Fallback: yt-dlp busca directamente en YouTube sin depender de Invidious
+async function searchWithYtDlp(query: string): Promise<YouTubeVideo | null> {
+  try {
+    logger.debug('[yt-dlp] Usando fallback de búsqueda...');
+    const { stdout } = await execFileAsync(
+      'yt-dlp',
+      ['ytsearch1:' + query, '--dump-json', '--no-playlist', '--skip-download', '--quiet'],
+      { timeout: 15000 },
+    );
+
+    const data = JSON.parse(stdout.trim());
+    return {
+      videoId: data.id,
+      title: data.title,
+      duration: formatDuration(data.duration ?? 0),
+      thumbnail: data.thumbnail ?? `https://i.ytimg.com/vi/${data.id}/hqdefault.jpg`,
+      url: `https://youtu.be/${data.id}`,
+    };
+  } catch (error) {
+    logError('yt-dlp search fallback', error);
+    return null;
+  }
 }
 
 async function searchYouTube(query: string): Promise<InvidiousVideo[]> {
@@ -154,36 +180,40 @@ export async function searchVideo(query: string): Promise<YouTubeVideo | null> {
           if (query.includes('youtube.com') || query.includes('youtu.be')) {
             const videoId = extractVideoId(query);
             if (!videoId) return null;
+            try {
+              const video = await getVideoInfo(videoId);
+              return {
+                videoId: video.videoId,
+                title: video.title,
+                duration: video.lengthSeconds
+                  ? formatDuration(parseInt(video.lengthSeconds))
+                  : '0:00',
+                thumbnail:
+                  video.thumbnail || `https://i.ytimg.com/vi/${video.videoId}/hqdefault.jpg`,
+                url: `https://youtu.be/${video.videoId}`,
+              };
+            } catch {
+              return await searchWithYtDlp(query);
+            }
+          }
 
-            const video = await getVideoInfo(videoId);
+          try {
+            const results = await searchYouTube(query);
+            if (!results.length) return null;
+            const video = results[0];
             return {
               videoId: video.videoId,
               title: video.title,
-              duration: video.lengthSeconds
-                ? formatDuration(parseInt(video.lengthSeconds))
-                : '0:00',
+              duration: video.timestamp || '0:00',
               thumbnail: video.thumbnail || `https://i.ytimg.com/vi/${video.videoId}/hqdefault.jpg`,
               url: `https://youtu.be/${video.videoId}`,
             };
+          } catch {
+            logger.warn('Invidious falló, usando yt-dlp como fallback');
+            return await searchWithYtDlp(query);
           }
-
-          const results = await searchYouTube(query);
-          if (!results.length) return null;
-
-          const video = results[0];
-          return {
-            videoId: video.videoId,
-            title: video.title,
-            duration: video.timestamp || '0:00',
-            thumbnail: video.thumbnail || `https://i.ytimg.com/vi/${video.videoId}/hqdefault.jpg`,
-            url: `https://youtu.be/${video.videoId}`,
-          };
         },
-        {
-          maxAttempts: 3, // +1 intento para dar oportunidad de rotar instancia
-          baseDelay: 1000,
-          maxDelay: 5000,
-        },
+        { maxAttempts: 2, baseDelay: 1000, maxDelay: 5000 },
       );
     });
 
@@ -195,8 +225,8 @@ export async function searchVideo(query: string): Promise<YouTubeVideo | null> {
     return result.result;
   } catch (error) {
     if (error instanceof CircuitOpenError) {
-      logger.warn('YouTube search circuit open — too many failures, cooling down');
-      return null;
+      logger.warn('YouTube search circuit open — intentando yt-dlp directo');
+      return await searchWithYtDlp(query);
     }
     logError('YouTube search', error);
     return null;

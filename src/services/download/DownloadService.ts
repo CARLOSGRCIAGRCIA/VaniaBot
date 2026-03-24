@@ -157,6 +157,7 @@ export class DownloadService {
   ): Promise<DownloadResult> {
     const prefix = this.getDownloadPrefix();
     const tag = prefix ? `[${prefix}]` : '';
+    let lastError = '';
 
     for (const method of methods) {
       try {
@@ -191,6 +192,7 @@ export class DownloadService {
         }
       } catch (error) {
         const err = error as Error;
+        lastError = err.message;
         logger.debug(`${tag} ${method.name} failed: ${err.message}`);
         continue;
       }
@@ -198,7 +200,7 @@ export class DownloadService {
 
     return {
       success: false,
-      error: 'Download failed. Make sure yt-dlp is installed: sudo apt install yt-dlp ffmpeg',
+      error: `Descarga fallida. Verifica que yt-dlp y ffmpeg estén instalados. Error: ${lastError}`,
     };
   }
 }
