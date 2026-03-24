@@ -54,42 +54,20 @@ export class SpotifyDownloader extends DownloadService {
         return { success: false, error: 'No se encontró la canción' };
       }
 
-      const info = JSON.parse(searchOutput.trim());
-      const videoUrl = info.webpage_url || info.url || info.id;
+      const lines = searchOutput.trim().split('\n');
+      const info = JSON.parse(lines[0]);
+      const videoId = info.id;
+      const videoUrl = `https://www.youtube.com/watch?v=${videoId}`;
 
-      if (!videoUrl) {
-        logError('Spotify searchAndDownload: videoUrl is undefined', searchOutput);
+      if (!videoId) {
+        logError('Spotify searchAndDownload: videoId is undefined', searchOutput);
         return {
           success: false,
-          error:
-            'No se pudo obtener la URL del video. Respuesta: ' + searchOutput.substring(0, 200),
+          error: 'No se pudo obtener el video. Respuesta: ' + searchOutput.substring(0, 200),
         };
       }
 
-      const outputPath = this.generateOutputPath(query.replace(/[^a-zA-Z0-9]/g, '_'), 'mp3');
-
-      const methods = [
-        {
-          name: 'yt-dlp download',
-          cmd: 'yt-dlp',
-          args: [
-            '--extractor-args',
-            'youtube:player_client=android',
-            '-x',
-            '--audio-format',
-            'mp3',
-            '--audio-quality',
-            '0',
-            '--no-check-certificate',
-            '--extract-audio',
-            '-o',
-            outputPath,
-            videoUrl,
-          ],
-        },
-      ];
-
-      return await this.tryDownloadMethods(methods, outputPath, 'audio');
+      return await this.downloadFromYouTube(videoUrl, query);
     } catch (error) {
       logError('Spotify searchAndDownload', error);
       return { success: false, error: 'Error al buscar la canción' };
@@ -102,18 +80,40 @@ export class SpotifyDownloader extends DownloadService {
       return { success: false, error: validation.error };
     }
 
-    const outputPath = this.generateOutputPath('spotify', 'mp3');
+    try {
+      const infoOutput = await this.runCommand(
+        'yt-dlp',
+        ['--dump-json', '--no-download', url],
+        30000,
+      );
+
+      if (!infoOutput || infoOutput.trim() === '') {
+        return { success: false, error: 'No se pudo obtener info de la URL' };
+      }
+
+      const info = JSON.parse(infoOutput.trim());
+      const title = info.title || 'spotify_track';
+
+      return await this.downloadFromYouTube(url, title);
+    } catch (error) {
+      logError('Spotify downloadTrack', error);
+      return {
+        success: false,
+        error: 'Error al procesar URL de Spotify. Prueba buscando por nombre de canción.',
+      };
+    }
+  }
+
+  private async downloadFromYouTube(videoUrl: string, title: string): Promise<DownloadResult> {
+    const outputPath = this.generateOutputPath(title.replace(/[^a-zA-Z0-9]/g, '_'), 'mp3');
 
     const methods = [
       {
-        name: 'spotify-dl',
-        cmd: 'spotifydl',
-        args: ['-o', outputPath.replace('.mp3', ''), url],
-      },
-      {
-        name: 'yt-dlp fallback',
+        name: 'yt-dlp download',
         cmd: 'yt-dlp',
         args: [
+          '--extractor-args',
+          'youtube:player_client=android',
           '-x',
           '--audio-format',
           'mp3',
@@ -123,7 +123,7 @@ export class SpotifyDownloader extends DownloadService {
           '--extract-audio',
           '-o',
           outputPath,
-          url,
+          videoUrl,
         ],
       },
     ];
