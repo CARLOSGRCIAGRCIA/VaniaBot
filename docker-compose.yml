@@ -30,14 +30,14 @@ services:
     deploy:
       resources:
         limits:
-          memory: 512M
-          cpus: "1.0"
+          memory: 1G
+          cpus: '1.5'
         reservations:
-          memory: 128M
-          cpus: "0.25"
+          memory: 256M
+          cpus: '0.5'
 
     healthcheck:
-      test: ["CMD", "pgrep", "-f", "tsx vania.ts"]
+      test: ['CMD', 'pgrep', '-f', 'tsx vania.ts']
       interval: 30s
       timeout: 10s
       retries: 3
@@ -46,8 +46,8 @@ services:
     logging:
       driver: json-file
       options:
-        max-size: "10m"
-        max-file: "5"
+        max-size: '10m'
+        max-file: '5'
 
     stop_signal: SIGTERM
     stop_grace_period: 15s
@@ -60,9 +60,9 @@ volumes:
       o: bind
       device: ./vaniasession
     labels:
-      description: "Baileys WhatsApp session credentials"
+      description: 'Baileys WhatsApp session credentials'
 
   vaniabot_temp:
     driver: local
     labels:
-      description: "Temporary files for media downloads"
+      description: 'Temporary files for media downloads'

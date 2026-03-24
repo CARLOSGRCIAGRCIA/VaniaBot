@@ -63,32 +63,38 @@ export class UnifiedCacheManager {
 
   constructor() {
     this.permissionsCache = new LRUCache({
-      max: 1000,
-      ttl: 3 * 60 * 1000,
+      max: 200,
+      ttl: 2 * 60 * 1000,
       updateAgeOnGet: true,
       allowStale: false,
     });
 
     this.groupMetadataCache = new LRUCache({
+      max: 100,
+      ttl: 5 * 60 * 1000,
+      updateAgeOnGet: true,
+    });
+
+    this.userCache = new LRUCache({
       max: 500,
       ttl: 10 * 60 * 1000,
       updateAgeOnGet: true,
     });
 
-    this.userCache = new LRUCache({
-      max: 5000,
-      ttl: 30 * 60 * 1000,
-      updateAgeOnGet: true,
-    });
-
     this.participantsCache = new LRUCache({
-      max: 300,
-      ttl: 5 * 60 * 1000,
+      max: 50,
+      ttl: 3 * 60 * 1000,
       updateAgeOnGet: true,
     });
 
     this.messageIdCache = new Set();
-    this.messageIdCacheTimer = setInterval(() => this.messageIdCache.clear(), 5 * 60 * 1000);
+    this.messageIdCacheTimer = setInterval(
+      () => {
+        this.messageIdCache.clear();
+        if (global.gc) global.gc();
+      },
+      3 * 60 * 1000,
+    );
   }
 
   // ─── Permissions ────────────────────────────────────────────────────────────

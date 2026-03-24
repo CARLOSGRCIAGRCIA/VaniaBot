@@ -87,7 +87,7 @@ class UnifiedCache {
   }
 
   private cache = new Map<string, unknown>();
-  private readonly maxSize = 5000;
+  private readonly maxSize = 500;
 
   private getCacheKey(collection: string, key: string): string {
     return `${collection}:${key}`;
