@@ -289,13 +289,59 @@ export class WhatsAppClient {
 
     this.middlewares.sort((a, b) => a.priority - b.priority);
 
+    this.authManager.setOnSocketRecreate(async oldSock => {
+      logger.info('🔄 Recreating socket...');
+
+      if (oldSock) {
+        try {
+          await Promise.race([
+            oldSock.ws.close(),
+            new Promise(resolve => setTimeout(resolve, 1000)),
+          ]);
+        } catch {}
+      }
+
+      const newSock = await this.authManager.createSocket();
+      this.sock = newSock;
+      subBotManager.setMainSocket(newSock);
+      this.registerSocketListeners();
+
+      logger.info('✅ Socket recreated successfully');
+      return newSock;
+    });
+
     this.sock = await this.authManager.createSocket();
     subBotManager.setMainSocket(this.sock);
     await subBotManager.initialize();
     this.registerSocketListeners();
     this.antiSpam.startCleanup();
     this.startMaintenance();
+
+    await this.warmup();
+
     this.isReady = true;
+    logger.info('🚀 Bot ready for instant response');
+  }
+
+  private async warmup(): Promise<void> {
+    logger.info('🔥 Warming up cache...');
+
+    try {
+      const cachedGroups = Array.from(cacheManager['groupMetadataCache'].keys()).slice(0, 10);
+
+      for (const groupJid of cachedGroups) {
+        try {
+          const metadata = cacheManager.getGroupMetadata(groupJid);
+          if (metadata) {
+            cacheManager.setGroupMetadata(groupJid, metadata);
+          }
+        } catch {}
+      }
+
+      logger.debug(`🔥 Warmup complete: ${cachedGroups.length} groups cached`);
+    } catch (error) {
+      logger.debug('Warmup skipped:', error);
+    }
   }
 
   private registerSocketListeners(): void {
@@ -365,7 +411,7 @@ export class WhatsAppClient {
     this.stats.messagesReceived++;
     logger.debug(`✅ Message received: ${messageId}`);
 
-    setImmediate(() => {
+    queueMicrotask(() => {
       void (async () => {
         const startTime = Date.now();
 
@@ -666,9 +712,10 @@ export class WhatsAppClient {
 
   async shutdown(): Promise<void> {
     this.isReady = false;
+
     try {
-      await Promise.resolve(this.sock?.ws?.close()).catch(() => {});
-    } catch (_) {}
+      await this.authManager.shutdown();
+    } catch {}
 
     if (this.maintenanceTimer) {
       clearInterval(this.maintenanceTimer);

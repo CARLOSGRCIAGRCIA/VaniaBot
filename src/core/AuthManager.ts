@@ -110,10 +110,8 @@ function patchStdout(): void {
   };
 }
 
-/**
- * Manages WhatsApp Web authentication and connection lifecycle.
- * Supports QR code and pairing code authentication with auto-reconnect.
- */
+export type SocketRecreateCallback = (oldSock: WASocket) => Promise<WASocket>;
+
 export class AuthManager {
   private pairingCodeRequested = false;
   private reconnectAttempts = 0;
@@ -129,8 +127,55 @@ export class AuthManager {
   private badSessionCount = 0;
   private loggedOutCount = 0;
 
+  private isReconnecting = false;
+  private reconnectDelay = 1000;
+  private currentSocket: WASocket | null = null;
+  private onSocketRecreate: SocketRecreateCallback | null = null;
+  private pingInterval: NodeJS.Timeout | null = null;
+  private lastPingTime = 0;
+
   constructor() {
     patchStdout();
+  }
+
+  setOnSocketRecreate(callback: SocketRecreateCallback): void {
+    this.onSocketRecreate = callback;
+  }
+
+  getCurrentSocket(): WASocket | null {
+    return this.currentSocket;
+  }
+
+  isConnected(): boolean {
+    return this.connectionEstablished && !this.isReconnecting;
+  }
+
+  private startPing(): void {
+    if (this.pingInterval) return;
+
+    this.pingInterval = setInterval(async () => {
+      if (!this.currentSocket || !this.connectionEstablished) return;
+
+      try {
+        const pingStart = Date.now();
+        await this.currentSocket.sendPresenceUpdate('available', 'status@broadcast');
+        this.lastPingTime = Date.now();
+        const latency = this.lastPingTime - pingStart;
+
+        if (latency > 10000) {
+          logger.warn(`⚠️ Ping alto: ${latency}ms - posible conexión lenta`);
+        }
+      } catch {
+        logger.warn('⚠️ Error en ping, podría haber conexión lenta');
+      }
+    }, 25000);
+  }
+
+  private stopPing(): void {
+    if (this.pingInterval) {
+      clearInterval(this.pingInterval);
+      this.pingInterval = null;
+    }
   }
 
   async createSocket(): Promise<WASocket> {
@@ -197,7 +242,30 @@ export class AuthManager {
       this.handleConnection(sock, update).catch(err => logError('handleConnection', err)),
     );
 
+    this.currentSocket = sock;
     return sock;
+  }
+
+  private async recreateSocket(): Promise<WASocket | null> {
+    if (!this.onSocketRecreate || !this.currentSocket) {
+      logger.error('❌ No hay callback para recrear socket');
+      return null;
+    }
+
+    this.isReconnecting = true;
+    this.stopPing();
+
+    try {
+      logger.info('🔄 Recreando socket de conexión...');
+      const newSocket = await this.onSocketRecreate(this.currentSocket);
+      this.currentSocket = newSocket;
+      return newSocket;
+    } catch (error) {
+      logError('recreateSocket', error);
+      return null;
+    } finally {
+      this.isReconnecting = false;
+    }
   }
 
   private async handleConnection(sock: WASocket, update: Partial<ConnectionState>): Promise<void> {
@@ -225,7 +293,9 @@ export class AuthManager {
       if (this.qrRetries > MAX_QR_RETRIES) {
         logger.error('❌ Demasiados QR sin escanear');
         this.clearSession();
-        process.exit(1);
+        this.qrRetries = 0;
+        this.scheduleReconnectInternal();
+        return;
       }
       logger.info(`QR generado (${this.qrRetries}/${MAX_QR_RETRIES})`);
       displayQR(qr);
@@ -285,6 +355,8 @@ export class AuthManager {
     this.error515Count = 0;
     this.badSessionCount = 0;
     this.loggedOutCount = 0;
+    this.reconnectDelay = 1000;
+    this.isReconnecting = false;
 
     if (!this.connectionEstablished) {
       this.connectionEstablished = true;
@@ -297,10 +369,13 @@ export class AuthManager {
       if (process.send) process.send('ready');
       logger.info('Bot operativo');
     }
+
+    this.startPing();
   }
 
   private onConnectionClose(lastDisconnect: Partial<ConnectionState>['lastDisconnect']): void {
     this.isConnecting = false;
+    this.stopPing();
 
     const error = lastDisconnect?.error as ErrorWithStatus | undefined;
     const statusCode = error?.output?.statusCode;
@@ -317,10 +392,8 @@ export class AuthManager {
           this.clearSession();
           this.connectionEstablished = false;
           this.badSessionCount = 0;
-          process.exit(1);
-        } else {
-          this.scheduleReconnectFast();
         }
+        this.scheduleReconnectInternal();
         break;
 
       case DisconnectReason.loggedOut:
@@ -333,14 +406,12 @@ export class AuthManager {
           this.clearSession();
           this.connectionEstablished = false;
           this.loggedOutCount = 0;
-          process.exit(1);
-        } else {
-          this.scheduleReconnectFast();
         }
+        this.scheduleReconnectInternal();
         break;
 
       case 515:
-        this.handle515ErrorFast();
+        this.handle515ErrorInternal();
         break;
 
       case 408:
@@ -349,32 +420,32 @@ export class AuthManager {
         } else {
           logger.error('❌ Timeout del código QR');
         }
-        this.scheduleReconnectFast();
+        this.scheduleReconnectInternal();
         break;
 
       case DisconnectReason.connectionReplaced:
         logger.warn('⚠️ Conexión reemplazada');
-        process.exit(0);
+        this.scheduleReconnectInternal();
         break;
 
       case DisconnectReason.connectionClosed:
       case DisconnectReason.connectionLost:
       case DisconnectReason.timedOut:
-        this.scheduleReconnectFast();
+        this.scheduleReconnectInternal();
         break;
 
       case DisconnectReason.restartRequired:
         logger.info('🔄 Reinicio requerido');
-        setTimeout(() => process.exit(0), 500);
+        this.scheduleReconnectInternal();
         break;
 
       default:
-        this.scheduleReconnectDefault(statusCode);
+        this.scheduleReconnectInternal(statusCode);
         break;
     }
   }
 
-  private handle515ErrorFast(): void {
+  private handle515ErrorInternal(): void {
     this.connectionEstablished = false;
     this.error515Count++;
 
@@ -382,42 +453,51 @@ export class AuthManager {
       logger.warn(
         `⚠️ Error 515 [${this.error515Count}/${ERROR_515_MAX_RETRIES}] — reintentando en ${ERROR_515_WAIT_TIME / 1000}s`,
       );
-      setTimeout(() => process.exit(0), ERROR_515_WAIT_TIME);
+      setTimeout(() => this.scheduleReconnectInternal(), ERROR_515_WAIT_TIME);
     } else {
       logger.error('❌ Error 515 persistente → limpiando sesión');
       this.clearSession();
-      process.exit(1);
+      this.error515Count = 0;
+      this.scheduleReconnectInternal();
     }
   }
 
-  private scheduleReconnectFast(): void {
-    if (this.reconnectAttempts < MAX_RECONNECT_ATTEMPTS) {
-      this.reconnectAttempts++;
-      logger.warn(`🔄 Reconexión [${this.reconnectAttempts}/${MAX_RECONNECT_ATTEMPTS}]`);
-      setTimeout(() => process.exit(0), 500);
-    } else {
-      logger.error('❌ Demasiados intentos fallidos');
-      this.clearSession();
-      process.exit(1);
-    }
-  }
+  private scheduleReconnectInternal(statusCode?: number): void {
+    this.connectionEstablished = false;
+    this.isReconnecting = true;
 
-  private scheduleReconnectDefault(statusCode: number | undefined): void {
-    if (this.reconnectAttempts < MAX_RECONNECT_ATTEMPTS) {
-      this.reconnectAttempts++;
-      logger.warn(`🔄 Error ${statusCode} [${this.reconnectAttempts}/${MAX_RECONNECT_ATTEMPTS}]`);
-      setTimeout(() => process.exit(0), 1_000);
-    } else {
-      logger.error(`❌ Error persistente: ${statusCode}`);
-      this.clearSession();
-      process.exit(1);
+    if (this.reconnectAttempts >= MAX_RECONNECT_ATTEMPTS) {
+      logger.error('❌ Demasiados intentos fallidos, reiniciando contador');
+      this.reconnectAttempts = 0;
+      this.reconnectDelay = 1000;
     }
+
+    this.reconnectAttempts++;
+    const delay = Math.min(this.reconnectDelay, 30000);
+
+    logger.warn(
+      `🔄 Reconexión [${this.reconnectAttempts}/${MAX_RECONNECT_ATTEMPTS}] en ${delay}ms`,
+    );
+    this.reconnectDelay = Math.min(this.reconnectDelay * 2, 30000);
+
+    setTimeout(async () => {
+      try {
+        const newSocket = await this.recreateSocket();
+        if (!newSocket) {
+          logger.error('❌ Falló recrear socket, reintentando...');
+          this.scheduleReconnectInternal(statusCode);
+        }
+      } catch (error) {
+        logError('scheduleReconnectInternal', error);
+        this.scheduleReconnectInternal(statusCode);
+      }
+    }, delay);
   }
 
   private async requestPairingCode(sock: WASocket): Promise<void> {
     if (!config.auth.phoneNumber) {
       logger.error('❌ PHONE_NUMBER no configurado');
-      process.exit(1);
+      return;
     }
 
     try {
@@ -451,16 +531,15 @@ export class AuthManager {
         msg.includes('Timeout')
       ) {
         logger.warn('⚠️ Conexión cerrada — reintentando...');
-        setTimeout(() => process.exit(0), 500);
+        this.scheduleReconnectInternal();
       } else if (msg.includes('not registered')) {
-        logger.error('❌ Número sin WhatsApp');
-        process.exit(1);
+        logger.error('❌ Número sin WhatsApp - espera nueva autenticación');
       } else if (msg.includes('429') || msg.includes('rate')) {
-        logger.error('❌ Demasiadas solicitudes');
-        process.exit(1);
+        logger.error('❌ Demasiadas solicitudes - espera y reintenta');
+        setTimeout(() => this.scheduleReconnectInternal(), 60000);
       } else {
         logError('requestPairingCode', error);
-        process.exit(1);
+        this.scheduleReconnectInternal();
       }
     }
   }
@@ -477,15 +556,33 @@ export class AuthManager {
       for (const file of files) {
         try {
           unlinkSync(join(config.sessionPath, file));
-        } catch {
-          // Ignorar errores individuales
-        }
+        } catch {}
       }
 
       logger.info('✅ Sesión limpiada');
     } catch (error) {
       logError('clearSession', error);
     }
+  }
+
+  async shutdown(): Promise<void> {
+    this.stopPing();
+    this.connectionEstablished = false;
+    this.isReconnecting = false;
+
+    if (this.currentSocket) {
+      try {
+        await this.currentSocket.ws.close();
+      } catch {}
+      this.currentSocket = null;
+    }
+
+    if (this.connectionTimeout) {
+      clearTimeout(this.connectionTimeout);
+      this.connectionTimeout = null;
+    }
+
+    logger.info('AuthManager shutdown complete');
   }
 
   static showAuthMode(): void {

@@ -127,6 +127,8 @@ class UnifiedCache {
   }
 }
 
+const CRITICAL_COLLECTIONS = ['users', 'groups', 'settings', 'economy', 'levels'];
+
 export class JsonDatabase extends Database {
   private data!: JsonData;
   private filePath: string;
@@ -145,6 +147,10 @@ export class JsonDatabase extends Database {
       }
       await this.saveToFile();
     }, filePath);
+
+    for (const col of CRITICAL_COLLECTIONS) {
+      this.batchWriter.markCritical(col);
+    }
   }
 
   async connect(): Promise<void> {

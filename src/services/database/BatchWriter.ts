@@ -1,5 +1,6 @@
 import { existsSync, readFileSync, writeFileSync, mkdirSync, rmSync } from 'fs';
 import { dirname } from 'path';
+import path from 'path';
 import { logError, logger } from '@/utils/logger.js';
 
 interface PendingWrite<T = unknown> {
@@ -21,9 +22,10 @@ export class BatchWriter {
   private isWriting = false;
   private walPath: string;
   private currentWalId: string = '';
+  private criticalWrites = new Set<string>();
 
-  private readonly BATCH_INTERVAL = 3000;
-  private readonly MAX_BATCH_SIZE = 100;
+  private readonly BATCH_INTERVAL = 2000;
+  private readonly MAX_BATCH_SIZE = 50;
   private readonly WAL_DIR = './data/wal';
 
   constructor(
@@ -91,6 +93,7 @@ export class BatchWriter {
 
   schedule(collection: string, key: string, value: unknown): void {
     const writeKey = `${collection}:${key}`;
+    const isCritical = this.criticalWrites.has(collection);
 
     this.pendingWrites.set(writeKey, {
       collection,
@@ -101,16 +104,25 @@ export class BatchWriter {
 
     this.persistWAL();
 
-    if (this.pendingWrites.size >= this.MAX_BATCH_SIZE) {
+    if (isCritical || this.pendingWrites.size >= this.MAX_BATCH_SIZE) {
       void this.flushNow();
       return;
     }
 
     if (!this.writeTimer) {
+      const delay = isCritical ? 500 : this.BATCH_INTERVAL;
       this.writeTimer = setTimeout(() => {
         void this.flushNow();
-      }, this.BATCH_INTERVAL);
+      }, delay);
     }
+  }
+
+  markCritical(collection: string): void {
+    this.criticalWrites.add(collection);
+  }
+
+  unmarkCritical(collection: string): void {
+    this.criticalWrites.delete(collection);
   }
 
   async flushNow(): Promise<void> {
@@ -155,5 +167,3 @@ export class BatchWriter {
     this.clearWAL();
   }
 }
-
-import path from 'path';
