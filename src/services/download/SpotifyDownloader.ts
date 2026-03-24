@@ -55,7 +55,16 @@ export class SpotifyDownloader extends DownloadService {
       }
 
       const info = JSON.parse(searchOutput.trim());
-      const videoUrl = info.webpage_url || info.url;
+      const videoUrl = info.webpage_url || info.url || info.id;
+
+      if (!videoUrl) {
+        logError('Spotify searchAndDownload: videoUrl is undefined', searchOutput);
+        return {
+          success: false,
+          error:
+            'No se pudo obtener la URL del video. Respuesta: ' + searchOutput.substring(0, 200),
+        };
+      }
 
       const outputPath = this.generateOutputPath(query.replace(/[^a-zA-Z0-9]/g, '_'), 'mp3');
 
@@ -64,6 +73,8 @@ export class SpotifyDownloader extends DownloadService {
           name: 'yt-dlp download',
           cmd: 'yt-dlp',
           args: [
+            '--extractor-args',
+            'youtube:player_client=android',
             '-x',
             '--audio-format',
             'mp3',
