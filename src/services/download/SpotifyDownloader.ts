@@ -47,7 +47,7 @@ export class SpotifyDownloader extends DownloadService {
       }
 
       const info = JSON.parse(searchOutput.trim());
-      const videoUrl = info.url;
+      const videoUrl = info.webpage_url || info.url;
 
       const outputPath = this.generateOutputPath(query.replace(/[^a-zA-Z0-9]/g, '_'), 'mp3');
 
