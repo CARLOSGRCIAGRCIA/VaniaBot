@@ -8,7 +8,7 @@ export class YtMp4Command extends Command {
   name = 'ytmp4';
   description = 'Download YouTube video as MP4';
   category = CommandCategory.MEDIA;
-  aliases = ['ytv', 'ytvideo'];
+  aliases = ['ytv', 'ytvideo', 'video'];
   usage = '!ytmp4 <search or URL>';
   examples = ['!ytmp4 tutorial android', '!ytmp4 https://youtu.be/dQw4w9WgXcQ'];
   cooldown = 30000;

@@ -8,8 +8,11 @@ export class SpotifyCommand extends Command {
   description = 'Descarga música de Spotify';
   category = CommandCategory.MEDIA;
   aliases = ['sp', 'spot'];
-  usage = '!spotify <url>';
-  examples = ['!spotify https://open.spotify.com/track/...'];
+  usage = '!spotify <url o nombre>';
+  examples = [
+    '!spotify https://open.spotify.com/track/4uLU6hMCjMI75M1A2tKUQC',
+    '!spotify despacito',
+  ];
   cooldown = 60000;
   contexts = [CommandContext.BOTH];
   mediaGroup = true;
@@ -17,28 +20,34 @@ export class SpotifyCommand extends Command {
   private downloader = new SpotifyDownloader();
 
   async execute(ctx: MessageContext): Promise<void> {
-    const url = ctx.args[0];
+    const input = ctx.args.join(' ');
 
-    if (!url) {
+    if (!input) {
       await ctx.reply(
         `˚₊· ͟͟͞͞➳ *spotify downloader* ˚₊· ͟͟͞͞➳\n\n` +
-          `✿ *cómo usar:* !spotify <url>\n\n` +
-          `✩ *ejemplo:*\n` +
-          `  ﹒!spotify https://open.spotify.com/track/4uLU6hMCjMI75M1A2tKUQC`,
+          `✿ *cómo usar:* !spotify <url o nombre>\n\n` +
+          `✩ *ejemplos:*\n` +
+          `  ﹒!spotify https://open.spotify.com/track/4uLU6hMCjMI75M1A2tKUQC\n` +
+          `  ﹒!spotify despacito`,
       );
       return;
     }
 
-    if (!this.downloader.isValidUrl(url)) {
-      await ctx.reply('❌ URL inválida. Proporciona un enlace de Spotify.');
-      return;
+    let url = input;
+    let searchQuery = '';
+
+    if (!this.downloader.isValidUrl(input)) {
+      searchQuery = input;
+      url = '';
     }
 
     await ctx.react('⏬');
-    await ctx.reply('🔄 Descargando canción...');
+    await ctx.reply(searchQuery ? `🔍 Buscando: "${searchQuery}"...` : '🔄 Descargando canción...');
 
     try {
-      const result = await this.downloader.downloadTrack(url);
+      const result = searchQuery
+        ? await this.downloader.searchAndDownload(searchQuery)
+        : await this.downloader.downloadTrack(url);
 
       if (!result.success || !result.filePath) {
         await ctx.reply(`❌ Error: ${result.error ?? 'No se pudo descargar'}`);

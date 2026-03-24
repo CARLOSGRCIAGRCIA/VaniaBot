@@ -34,6 +34,49 @@ export class SpotifyDownloader extends DownloadService {
     }
   }
 
+  async searchAndDownload(query: string): Promise<DownloadResult> {
+    try {
+      const searchOutput = await this.runCommand(
+        'yt-dlp',
+        ['--default-search', 'ytsearch1', '--dump-json', '--no-download', `${query} audio`],
+        30000,
+      );
+
+      if (!searchOutput || searchOutput.trim() === '') {
+        return { success: false, error: 'No se encontró la canción' };
+      }
+
+      const info = JSON.parse(searchOutput.trim());
+      const videoUrl = info.url;
+
+      const outputPath = this.generateOutputPath(query.replace(/[^a-zA-Z0-9]/g, '_'), 'mp3');
+
+      const methods = [
+        {
+          name: 'yt-dlp download',
+          cmd: 'yt-dlp',
+          args: [
+            '-x',
+            '--audio-format',
+            'mp3',
+            '--audio-quality',
+            '0',
+            '--no-check-certificate',
+            '--extract-audio',
+            '-o',
+            outputPath,
+            videoUrl,
+          ],
+        },
+      ];
+
+      return await this.tryDownloadMethods(methods, outputPath, 'audio');
+    } catch (error) {
+      logError('Spotify searchAndDownload', error);
+      return { success: false, error: 'Error al buscar la canción' };
+    }
+  }
+
   async downloadTrack(url: string): Promise<DownloadResult> {
     const validation = this.validateUrl(url);
     if (!validation.valid) {
