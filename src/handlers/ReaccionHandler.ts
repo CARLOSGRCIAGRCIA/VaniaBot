@@ -71,24 +71,7 @@ export async function handleReaccion(
     });
 
     if (!result.success) {
-      let feedback = '';
-      switch (result.reason) {
-        case 'no_existe':
-          feedback = '❌ Esta lista ya no existe o expiró';
-          break;
-        case 'inactiva':
-          feedback = '❌ Esta lista ya está cerrada';
-          break;
-        case 'lista_llena':
-          feedback = '⚠️ La lista está llena, intenta como suplente';
-          break;
-        case 'no_en_lista':
-          feedback = '⚠️ No estás en la lista';
-          break;
-        default:
-          feedback = '⚠️ No se pudo procesar tu reacción';
-      }
-      await sock.sendMessage(chatJid, { text: feedback }).catch(() => {});
+      // Silencioso - no enviar feedback cuando falla
     }
   } catch (error) {
     logError('[REACCION ERROR]', error);
