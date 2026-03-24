@@ -156,36 +156,36 @@ export class ShipCommand extends Command {
   private getShipMessage(percentage: number, name1: string, name2: string): string {
     if (percentage >= 90) {
       return (
-        `*¡${name1} y ${name2} son almas gemelas!* 💕\n\n` +
-        `Compatibilidad: ${percentage}%\n\n` +
-        '¡El amor verdadero! Son perfectos el uno para el otro. 🔥'
+        `˚₊· ͟͟͞͞➳ *¡${name1} y ${name2} son almas gemelas!* ˚₊· ͟͟͞͞➳\n\n` +
+        `✩ compatibilidad: ${percentage}%\n\n` +
+        `🌸 ¡amor eterno! Son perfectitos juntos 🌸`
       );
     }
     if (percentage >= 70) {
       return (
-        `*¡${name1} y ${name2} hacen una pareja increíble!* 💖\n\n` +
-        `Compatibilidad: ${percentage}%\n\n` +
-        'Hay mucha química entre ustedes. ¡Dale una oportunidad! 🌟'
+        `˚₊· ͟͟͞͞➳ *¡${name1} y ${name2} hacen una pareja increíble!* ˚₊· ͟͟͞͞➳\n\n` +
+        `✩ compatibilidad: ${percentage}%\n\n` +
+        `🌸 tienen mucha química. ¡anímate! 🌸`
       );
     }
     if (percentage >= 50) {
       return (
-        `*${name1} y ${name2} tienen potencial.* 💝\n\n` +
-        `Compatibilidad: ${percentage}%\n\n` +
-        'El amor está en el aire. ¡Tudo pode acontecer! ✨'
+        `˚₊· ͟͟͞͞➳ *${name1} y ${name2} tienen potencial* ˚₊· ͟͟͞͞➳\n\n` +
+        `✩ compatibilidad: ${percentage}%\n\n` +
+        `🌸 el amor está en el aire. ¡quién sabe qué puede pasar! 🌸`
       );
     }
     if (percentage >= 30) {
       return (
-        `*Amor no correspondido...* 💔\n\n` +
-        `Compatibilidad: ${percentage}%\n\n` +
-        'Hay más amigos que algo más. ¡Pero el amor puede surgir! 🌱'
+        `˚₊· ͟͟͞͞➳ *amor no correspondido...* ˚₊· ͟͟͞͞➳\n\n` +
+        `✩ compatibilidad: ${percentage}%\n\n` +
+        `🌸 hay más amistad que romance... pero quién sabe, el amor puede nacer 🌸`
       );
     }
     return (
-      `*${name1} y ${name2}...* 💔\n\n` +
-      `Compatibilidad: ${percentage}%\n\n` +
-      'Mejor quedarse como amigos. ¡Hay muchos más peces en el mar! 🐟'
+      `˚₊· ͟͟͞͞➳ *${name1} y ${name2}...* ˚₊· ͟͟͞͞➳\n\n` +
+      `✩ compatibilidad: ${percentage}%\n\n` +
+      `🌸 tal vez es mejor quedarse como amigos. ¡el mar está lleno de peces! 🌸`
     );
   }
 }
