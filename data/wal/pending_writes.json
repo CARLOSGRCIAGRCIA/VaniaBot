@@ -1,0 +1,14 @@
+{
+  "id": "0707d4d7-58a4-44e3-bbee-6a4c101f2a96",
+  "writes": [
+    {
+      "collection": "users",
+      "key": "user1",
+      "value": {
+        "name": "Test"
+      },
+      "timestamp": 1774415562601
+    }
+  ],
+  "createdAt": 1774415562601
+}

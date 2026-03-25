@@ -20,6 +20,7 @@ const createMockUser = (overrides: Partial<User> = {}): User => ({
   level: 1,
   xp: 0,
   money: 1000,
+  bank: 0,
   lastDaily: undefined,
   lastWeekly: undefined,
   lastMonthly: undefined,
@@ -127,7 +128,7 @@ describe('DailyCommand', () => {
         leveledUp: false,
         oldLevel: 1,
         newLevel: 1,
-        xpGained: 50,
+        xpGained: 75,
         totalXP: 50,
         nextLevelXP: 200,
       });
@@ -139,8 +140,8 @@ describe('DailyCommand', () => {
 
       await command.execute(mockCtx);
 
-      expect(serviceManager.userService.addMoney).toHaveBeenCalledWith(mockCtx.sender.jid, 1100);
-      expect(serviceManager.levelService.addXP).toHaveBeenCalledWith(mockCtx.sender.jid, 50);
+      expect(serviceManager.userService.addMoney).toHaveBeenCalledWith(mockCtx.sender.jid, 1650);
+      expect(serviceManager.levelService.addXP).toHaveBeenCalledWith(mockCtx.sender.jid, 75);
       expect(mockCtx.reply).toHaveBeenCalled();
     });
 
@@ -157,20 +158,20 @@ describe('DailyCommand', () => {
         leveledUp: false,
         oldLevel: 1,
         newLevel: 1,
-        xpGained: 50,
-        totalXP: 50,
+        xpGained: 75,
+        totalXP: 75,
         nextLevelXP: 200,
       });
       vi.mocked(serviceManager.userService.getUser).mockResolvedValueOnce({
         ...mockUser,
-        money: 1200,
+        money: 1800,
         lastDaily: Date.now(),
       });
 
       await command.execute(mockCtx);
 
       const addMoneyCall = vi.mocked(serviceManager.userService.addMoney).mock.calls[0];
-      expect(addMoneyCall[1]).toBe(1200);
+      expect(addMoneyCall[1]).toBe(1800);
     });
 
     it('should reset streak if more than 2 days passed', async () => {
@@ -183,20 +184,20 @@ describe('DailyCommand', () => {
         leveledUp: false,
         oldLevel: 1,
         newLevel: 1,
-        xpGained: 50,
+        xpGained: 75,
         totalXP: 50,
         nextLevelXP: 200,
       });
       vi.mocked(serviceManager.userService.getUser).mockResolvedValueOnce({
         ...mockUser,
-        money: 1100,
+        money: 1650,
         lastDaily: Date.now(),
       });
 
       await command.execute(mockCtx);
 
       const addMoneyCall = vi.mocked(serviceManager.userService.addMoney).mock.calls[0];
-      expect(addMoneyCall[1]).toBe(1100);
+      expect(addMoneyCall[1]).toBe(1650);
     });
   });
 
@@ -209,7 +210,7 @@ describe('DailyCommand', () => {
       await command.execute(mockCtx);
 
       expect(serviceManager.userService.addMoney).not.toHaveBeenCalled();
-      expect(mockCtx.reply).toHaveBeenCalledWith(expect.stringContaining('already claimed'));
+      expect(mockCtx.reply).toHaveBeenCalledWith(expect.stringContaining('ya lo tienes'));
     });
 
     it('should show time remaining when on cooldown', async () => {
@@ -219,11 +220,9 @@ describe('DailyCommand', () => {
 
       await command.execute(mockCtx);
 
-      expect(mockCtx.reply).toHaveBeenCalledWith(expect.stringContaining('Available again in:'));
+      expect(mockCtx.reply).toHaveBeenCalledWith(expect.stringContaining('Vuelve en:'));
     });
-  });
 
-  describe('execute - streak calculation', () => {
     it('should reset streak if more than 2 days passed', async () => {
       const oldClaim = Date.now() - 3 * 24 * 60 * 60 * 1000;
       const mockUser = createMockUser({ lastDaily: oldClaim, weeklyStreak: 10 });
@@ -234,7 +233,7 @@ describe('DailyCommand', () => {
         leveledUp: false,
         oldLevel: 1,
         newLevel: 1,
-        xpGained: 50,
+        xpGained: 75,
         totalXP: 50,
         nextLevelXP: 200,
       });
@@ -263,19 +262,19 @@ describe('DailyCommand', () => {
         leveledUp: false,
         oldLevel: 1,
         newLevel: 1,
-        xpGained: 50,
-        totalXP: 50,
+        xpGained: 75,
+        totalXP: 75,
         nextLevelXP: 200,
       });
       vi.mocked(serviceManager.userService.getUser).mockResolvedValueOnce({
         ...mockUser,
-        money: 1200,
+        money: 1800,
         lastDaily: Date.now(),
       });
 
       await command.execute(mockCtx);
 
-      expect(serviceManager.userService.addMoney).toHaveBeenCalledWith(mockCtx.sender.jid, 1200);
+      expect(serviceManager.userService.addMoney).toHaveBeenCalledWith(mockCtx.sender.jid, 1800);
     });
   });
 
