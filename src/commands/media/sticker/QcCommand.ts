@@ -1,7 +1,7 @@
 import { Command } from '../../Command.js';
 import { CommandCategory, type MessageContext } from '@/types/index.js';
 import { StickerService } from '@/services/media/StickerService.js';
-import type { Sharp } from 'sharp';
+import { ImageProcessor } from '@/utils/imageProcessor.js';
 import axios from 'axios';
 
 export class QcCommand extends Command {
@@ -55,14 +55,13 @@ export class QcCommand extends Command {
     await ctx.react('⏳');
 
     try {
-      let sharpFn: (input: Buffer) => Sharp;
-      try {
-        sharpFn = (await import('sharp')).default as (input: Buffer) => Sharp;
-      } catch {
+      const isSharp = await ImageProcessor.isSharpAvailable();
+
+      if (!isSharp) {
         await ctx.reply(
-          `˚₊· ͟͟͞͞➳ *oops, esta función está dormidita* ˚₊· ͟͟͞͞➳\n\n` +
-            `✿ todavía no tengo todo lo que necesito\n` +
-            `✩ prometo que pronto estará lista, espérame ✩`,
+          `˚₊· ͟͟͞͞➳ *quote sticker* ˚₊· ͟͟͞͞➳\n\n` +
+            `✿ Esta función requiere sharp en PC\n` +
+            `✩ En Termux, los stickers básicos funcionan ✩`,
         );
         await ctx.react('❌');
         return;
@@ -114,13 +113,7 @@ export class QcCommand extends Command {
 
       const buffer = Buffer.from(res.data.result.image, 'base64');
 
-      const resizedBuffer = await sharpFn(buffer)
-        .resize(512, 512, {
-          fit: 'contain',
-          background: { r: 0, g: 0, b: 0, alpha: 0 },
-        })
-        .webp({ quality: 100 })
-        .toBuffer();
+      const resizedBuffer = await ImageProcessor.resizeImage(buffer, 512, 512);
 
       const stiker = await this.stickerService.createSticker(resizedBuffer, {
         pack: 'VaniaBot',
