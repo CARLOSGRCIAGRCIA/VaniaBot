@@ -155,18 +155,6 @@ export class SubBotManager extends EventEmitter {
             } catch (error) {
               logError(`SubBotManager.healthCheck: reactivate ${subConfig.id}`, error);
             }
-            continue;
-          }
-
-          if (!instance.isConnected() || subConfig.status !== 'connected') {
-            logger.warn(
-              `⚠️ SubBot[${subConfig.id}] desconectada (status: ${subConfig.status}), reconectando automáticamente...`,
-            );
-            try {
-              await this.reconnectSubBot(subConfig.ownerJid);
-            } catch (error) {
-              logError(`SubBotManager.healthCheck: reconnect ${subConfig.id}`, error);
-            }
           }
         }
       },
