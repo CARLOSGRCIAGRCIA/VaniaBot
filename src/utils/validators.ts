@@ -152,13 +152,15 @@ export interface TransferValidationResult {
 export interface ValidationConfig {
   minBet?: number;
   maxBet?: number;
+  vipMaxBet?: number;
   minTransfer?: number;
   maxTransfer?: number;
 }
 
 const DEFAULT_CONFIG: Required<ValidationConfig> = {
-  minBet: 10,
-  maxBet: 10000,
+  minBet: 50,
+  maxBet: 100000,
+  vipMaxBet: 500000,
   minTransfer: 1,
   maxTransfer: 1000000,
 };
@@ -167,13 +169,16 @@ export function validateBetAmount(
   amount: number,
   userBalance: number,
   config: ValidationConfig = DEFAULT_CONFIG,
+  isVip: boolean = false,
 ): BetValidationResult {
   if (isNaN(amount) || amount <= 0) {
     return { valid: false, error: '❌ Monto inválido' };
   }
 
   const minBet = config.minBet ?? DEFAULT_CONFIG.minBet;
-  const maxBet = config.maxBet ?? DEFAULT_CONFIG.maxBet;
+  const maxBet = isVip
+    ? (config.vipMaxBet ?? DEFAULT_CONFIG.vipMaxBet)
+    : (config.maxBet ?? DEFAULT_CONFIG.maxBet);
 
   if (amount < minBet) {
     return { valid: false, error: `❌ Apuesta mínima: $${minBet}` };

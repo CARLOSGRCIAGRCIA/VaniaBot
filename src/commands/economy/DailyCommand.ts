@@ -7,11 +7,16 @@ import { errorHandler } from '@/utils/ErrorHandler.js';
 
 export class DailyCommand extends Command {
   name = 'daily';
-  description = 'Claim your daily reward';
+  description = 'Recompensa diaria mejorada';
   category = CommandCategory.ECONOMY;
-  aliases = ['daily'];
+  aliases = ['daily', 'diario'];
   usage = '!daily';
   cooldown = 1000;
+
+  private readonly BASE_REWARD = 1500;
+  private readonly STREAK_BONUS = 150;
+  private readonly MAX_STREAK_BONUS = 3000;
+  private readonly XP_REWARD = 75;
 
   async execute(ctx: MessageContext): Promise<void> {
     try {
@@ -20,31 +25,35 @@ export class DailyCommand extends Command {
       if (!this.canClaim(user.lastDaily)) {
         const remaining = this.getTimeRemaining(user.lastDaily);
         await ctx.reply(
-          `You have already claimed your daily reward.\n\n` +
-            `Available again in: ${formatTime(remaining)}`,
+          `˚₊· ͟͟͞͞➳ *ya lo tienes* ˚₊· ͟͟͞͞➳\n\n` +
+            `✿ Vuelve en: *${formatTime(remaining)}*\n\n` +
+            `♡ Te espero ♡`,
         );
         return;
       }
 
       const streak = this.calculateStreak(user.lastDaily);
-      const baseReward = 1000;
-      const streakBonus = Math.min(streak * 100, 1000);
-      const totalReward = baseReward + streakBonus;
+      const streakBonus = Math.min(streak * this.STREAK_BONUS, this.MAX_STREAK_BONUS);
+      const totalReward = this.BASE_REWARD + streakBonus;
 
       await serviceManager.userService.addMoney(ctx.sender.jid, totalReward);
       await serviceManager.userService.updateUser(ctx.sender.jid, {
         lastDaily: Date.now(),
       });
 
-      await serviceManager.levelService.addXP(ctx.sender.jid, 50);
+      await serviceManager.levelService.addXP(ctx.sender.jid, this.XP_REWARD);
 
       const updatedUser = await serviceManager.userService.getUser(ctx.sender.jid);
+
+      let bonusText = '';
+      if (streak >= 7) bonusText = '\n🔥 *BONUS SEMANAL!* +$500';
+      if (streak >= 30) bonusText = '\n⭐ *BONUS MENSUAL!* +$2000';
 
       await ctx.reply(
         `˚₊· ͟͟͞͞➳ *para ti* ˚₊· ͟͟͞͞➳\n\n` +
           `✿ *+$${formatNumber(totalReward)}* moneditas\n` +
           `✩ racha: *${streak}* días\n` +
-          `✿ *+50 XP*\n\n` +
+          `✿ *+${this.XP_REWARD} XP*${bonusText}\n\n` +
           `♡ tu saldo: *$${formatNumber(updatedUser.money)}* ♡`,
       );
     } catch (error) {

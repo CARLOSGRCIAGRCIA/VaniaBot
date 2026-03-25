@@ -4,7 +4,7 @@ export interface ShopItem {
   description: string;
   price: number;
   emoji: string;
-  type: 'role' | 'feature' | 'cosmetic';
+  type: 'role' | 'feature' | 'cosmetic' | 'badge';
   duration?: number;
 }
 
@@ -22,7 +22,7 @@ export class ShopService {
     {
       id: 'vip_role',
       name: 'VIP Role',
-      description: 'VIP status for 7 days',
+      description: 'Estado VIP por 7 días',
       price: 5000,
       emoji: '👑',
       type: 'role',
@@ -31,7 +31,7 @@ export class ShopService {
     {
       id: 'legend_role',
       name: 'Legend Role',
-      description: 'Legend status for 7 days',
+      description: 'Estado Legend por 7 días',
       price: 10000,
       emoji: '💎',
       type: 'role',
@@ -40,7 +40,7 @@ export class ShopService {
     {
       id: 'name_color',
       name: 'Custom Name Color',
-      description: 'Customize your name color',
+      description: 'Color personalizado en tu nombre',
       price: 3000,
       emoji: '🎨',
       type: 'cosmetic',
@@ -48,7 +48,7 @@ export class ShopService {
     {
       id: 'cooldown_bypass',
       name: 'Cooldown Bypass',
-      description: 'Reduce cooldowns by 50% for 24h',
+      description: 'Reduce cooldowns 50% por 24h',
       price: 2000,
       emoji: '⚡',
       type: 'feature',
@@ -57,7 +57,7 @@ export class ShopService {
     {
       id: 'xp_boost',
       name: 'XP Boost',
-      description: 'Double XP for 24 hours',
+      description: 'XP doble por 24 horas',
       price: 1500,
       emoji: '✨',
       type: 'feature',
@@ -66,11 +66,60 @@ export class ShopService {
     {
       id: 'lucky_charm',
       name: 'Lucky Charm',
-      description: 'Increase game win chance by 10% for 1 day',
-      price: 2500,
+      description: '+25% chance de ganar juegos (7 días)',
+      price: 5000,
       emoji: '🍀',
       type: 'feature',
-      duration: 24 * 60 * 60 * 1000,
+      duration: 7 * 24 * 60 * 60 * 1000,
+    },
+    {
+      id: 'income_boost',
+      name: 'Income Boost',
+      description: '+50% dinero en trabajos (7 días)',
+      price: 8000,
+      emoji: '💰',
+      type: 'feature',
+      duration: 7 * 24 * 60 * 60 * 1000,
+    },
+    {
+      id: 'name_glow',
+      name: 'Name Glow',
+      description: 'Efecto glow en tu nombre',
+      price: 10000,
+      emoji: '🌟',
+      type: 'cosmetic',
+    },
+    {
+      id: 'badge_rich',
+      name: 'Badge: Rich',
+      description: 'Badge exclusivo de rico',
+      price: 25000,
+      emoji: '🤑',
+      type: 'badge',
+    },
+    {
+      id: 'badge_lucky',
+      name: 'Badge: Lucky',
+      description: 'Badge exclusivo de suerte',
+      price: 15000,
+      emoji: '🍀',
+      type: 'badge',
+    },
+    {
+      id: 'badge_pro',
+      name: 'Badge: Pro Player',
+      description: 'Badge de jugador profesional',
+      price: 30000,
+      emoji: '🏆',
+      type: 'badge',
+    },
+    {
+      id: 'custom_title',
+      name: 'Custom Title',
+      description: 'Título personalizado',
+      price: 7500,
+      emoji: '📛',
+      type: 'cosmetic',
     },
   ];
 

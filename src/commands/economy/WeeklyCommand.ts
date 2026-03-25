@@ -1,20 +1,21 @@
 import { Command } from '../Command.js';
 import { CommandCategory, type MessageContext } from '@/types/index.js';
 import { serviceManager } from '@/services/system/Servicemanager.js';
+import { formatNumber } from '@/utils/helpers.js';
 
 export class WeeklyCommand extends Command {
   name = 'weekly';
-  description = 'Claim your weekly reward';
+  description = 'Recompensa semanal mejorada';
   category = CommandCategory.ECONOMY;
-  aliases = ['semanal'];
+  aliases = ['semanal', 'weekly'];
   usage = '!weekly';
   examples = ['!weekly'];
   cooldown = 5000;
 
-  private readonly BASE_REWARD = 10000;
-  private readonly STREAK_BONUS = 500;
-  private readonly MAX_STREAK_BONUS = 5000;
-  private readonly XP_REWARD = 200;
+  private readonly BASE_REWARD = 15000;
+  private readonly STREAK_BONUS = 1000;
+  private readonly MAX_STREAK_BONUS = 15000;
+  private readonly XP_REWARD = 350;
 
   async execute(ctx: MessageContext): Promise<void> {
     const user = await serviceManager.userService.getUser(ctx.sender.jid);
@@ -50,25 +51,26 @@ export class WeeklyCommand extends Command {
 
     const updatedUser = await serviceManager.userService.getUser(ctx.sender.jid);
 
-    let message = `🎁 *Weekly Reward Claimed!*\n\n`;
-    message += `💰 Base Reward: $${this.BASE_REWARD.toLocaleString()}\n`;
+    let bonusText = '';
+    if (streak >= 4) bonusText = '\n🎰 *+1 TICKET DE LOTERÍA!*';
+
+    let message = `🎁 *RECOMPENSA SEMANAL* 🎁\n\n`;
+    message += `💰 Base: $${this.BASE_REWARD.toLocaleString()}\n`;
 
     if (streak > 1) {
-      message += `🔥 Streak Bonus: $${streakBonus.toLocaleString()} (${streak} weeks)\n`;
+      message += `🔥 Bonus racha: $${streakBonus.toLocaleString()} (${streak} semanas)\n`;
     }
 
     if (!user.isOwner) {
       message += `💵 Total: $${reward.toLocaleString()}\n`;
-      message += `✨ XP Gained: +${this.XP_REWARD}\n\n`;
-      message += `💰 New Balance: $${updatedUser.money.toLocaleString()}\n`;
-      message += `🔥 Current Streak: ${streak} week${streak > 1 ? 's' : ''}\n\n`;
+      message += `✨ XP: +${this.XP_REWARD}${bonusText}\n\n`;
+      message += `💰 Balance: $${formatNumber(updatedUser.money)}\n`;
+      message += `🔥 Racha: ${streak} semana${streak > 1 ? 's' : ''}\n\n`;
     } else {
-      message += `\n👑 *Owner:* Infinite claims available\n\n`;
+      message += `\n👑 *Dueño:* Recompensas infinitas\n\n`;
     }
 
-    message += `📅 Next claim: 7 days\n`;
-    message += `💡 Keep your streak going!\n\n`;
-
+    message += `📅 Próxima: 7 días\n\n`;
     message += `> _*VaniaBot💝*_`;
 
     await ctx.reply(message);

@@ -24,14 +24,20 @@ const envSchema = z.object({
   /** Minimum bet amount for economy commands */
   MIN_BET_AMOUNT: z
     .string()
-    .transform(val => parseInt(val) || 100)
-    .default('100'),
+    .transform(val => parseInt(val) || 50)
+    .default('50'),
 
   /** Maximum bet amount for economy commands */
   MAX_BET_AMOUNT: z
     .string()
-    .transform(val => parseInt(val) || 10000)
-    .default('10000'),
+    .transform(val => parseInt(val) || 100000)
+    .default('100000'),
+
+  /** VIP max bet amount */
+  VIP_MAX_BET_AMOUNT: z
+    .string()
+    .transform(val => parseInt(val) || 500000)
+    .default('500000'),
 
   /** Minimum transfer amount */
   MIN_TRANSFER_AMOUNT: z

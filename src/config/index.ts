@@ -92,6 +92,7 @@ export const config: BotConfig = {
   economy: {
     minBet: env.MIN_BET_AMOUNT,
     maxBet: env.MAX_BET_AMOUNT,
+    vipMaxBet: env.VIP_MAX_BET_AMOUNT,
     minTransfer: env.MIN_TRANSFER_AMOUNT,
     maxTransfer: env.MAX_TRANSFER_AMOUNT,
   },

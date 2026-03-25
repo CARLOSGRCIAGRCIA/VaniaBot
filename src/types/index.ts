@@ -121,6 +121,7 @@ export interface BotConfig {
   economy: {
     minBet: number;
     maxBet: number;
+    vipMaxBet: number;
     minTransfer: number;
     maxTransfer: number;
   };
