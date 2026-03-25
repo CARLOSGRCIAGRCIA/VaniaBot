@@ -198,6 +198,11 @@ export class SubBotInstance extends EventEmitter {
 
       this.sock.ev.on('creds.update', () => {
         saveCreds().catch(err => logError(`SubBotInstance[${this.config.id}].saveCreds`, err));
+        if (!this.connectionEstablished && this.sock?.authState?.creds?.registered) {
+          logger.info(`🔗 SubBot[${this.config.id}] device registered after code entry`);
+          this.connectionEstablished = true;
+          void this.onFullyConnected();
+        }
       });
 
       this.sock.ev.on('connection.update', update => {
@@ -229,11 +234,15 @@ export class SubBotInstance extends EventEmitter {
       logger.debug(`🌸 SubBot[${this.config.id}] socket created, waiting for connection...`);
 
       if (!state.creds.registered) {
-        logger.debug(`🔑 SubBot[${this.config.id}] new session, requesting code in 2s...`);
-        if (this.pairingCodeTimer) clearTimeout(this.pairingCodeTimer);
+        logger.debug(
+          `🔑 SubBot[${this.config.id}] new session, will request code after connection stabilizes`,
+        );
         this.pairingCodeTimer = setTimeout(() => {
-          void this.requestPairingCode();
-        }, 2000);
+          if (!this.destroyed && this.sock) {
+            logger.debug(`🔑 SubBot[${this.config.id}] requesting pairing code now...`);
+            void this.requestPairingCode();
+          }
+        }, 3000);
       }
     } catch (error) {
       logError(`SubBot[${this.config.id}].start`, error);
@@ -293,7 +302,15 @@ export class SubBotInstance extends EventEmitter {
       logger.warn(`⚠️ SubBot[${this.config.id}] connection closed, code: ${statusCode}`);
 
       if (!this.connectionEstablished) {
-        logger.debug(`⚠️ SubBot[${this.config.id}] conexión nunca establecida, ignorando...`);
+        logger.debug(
+          `⚠️ SubBot[${this.config.id}] conexión nunca establecida, reintentando en 5s...`,
+        );
+        subBotDatabase.update(this.config.id, { status: 'connecting' });
+        setTimeout(() => {
+          if (!this.destroyed) {
+            void this.start();
+          }
+        }, 5000);
         return;
       }
 

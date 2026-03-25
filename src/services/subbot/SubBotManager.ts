@@ -241,7 +241,13 @@ export class SubBotManager extends EventEmitter {
 
     const instance = new SubBotInstance(subConfig);
 
+    let pairingCodeTimeout: NodeJS.Timeout | undefined;
+
     instance.on('pairingCode', async (code: string) => {
+      if (pairingCodeTimeout) {
+        clearTimeout(pairingCodeTimeout);
+      }
+
       if (!this.mainSock) return;
       logger.info(`🔑 SubBot[${subConfig.id}] enviando código a ${subConfig.ownerJid}`);
       try {
@@ -274,12 +280,38 @@ export class SubBotManager extends EventEmitter {
             `   Estaré esperando 💗\n` +
             `╰━━━━━━━━━━━━━━━━━━━━╯`,
         });
+
+        pairingCodeTimeout = setTimeout(async () => {
+          if (subConfig.status !== 'connected' && this.mainSock) {
+            logger.warn(`⏰ SubBot[${subConfig.id}] código no utilizado, reenviando...`);
+            try {
+              await this.mainSock.sendMessage(subConfig.ownerJid, {
+                text:
+                  `╭━━━ 🌸 *VaniaBot* ━━━╮\n` +
+                  `   *Recordatorio SubBot*\n` +
+                  `\n` +
+                  `⏰ El código anterior\n` +
+                  `   quizás expiró.\n` +
+                  `\n` +
+                  `✨ Usa *.reconbot*\n` +
+                  `   para generar uno nuevo.\n` +
+                  `\n` +
+                  `   Estoy aquí 💗\n` +
+                  `╰━━━━━━━━━━━━━━━━━━━━╯`,
+              });
+            } catch {}
+          }
+        }, 180000);
       } catch (e) {
         logError(`SubBot[${subConfig.id}].sendPairingCode`, e);
       }
     });
 
     instance.on('ready', async () => {
+      if (pairingCodeTimeout) {
+        clearTimeout(pairingCodeTimeout);
+        pairingCodeTimeout = undefined;
+      }
       if (!this.mainSock) return;
       logger.info(`🎉 SubBot[${subConfig.id}] lista, notificando owner`);
 
