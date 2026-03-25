@@ -142,7 +142,15 @@ export class ShipCommand extends Command {
     for (let i = 0; i < combined.length; i++) {
       hash = ((hash << 5) - hash + combined.charCodeAt(i)) | 0;
     }
-    return Math.abs(hash % 101);
+    const basePercent = Math.abs(hash % 101);
+
+    const today = new Date();
+    const daySeed = today.getDate() + today.getMonth() * 31;
+    const randomVariation = (Math.sin(daySeed * 9999) * 100) % 30;
+
+    const finalPercent = Math.max(5, Math.min(99, basePercent + Math.floor(randomVariation)));
+
+    return finalPercent;
   }
 
   private getHearts(percentage: number): string {
