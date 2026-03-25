@@ -56,6 +56,7 @@ export class SubBotInstance extends EventEmitter {
   private pingInterval?: NodeJS.Timeout;
   private lastPingTime = 0;
   private healthCheckTimer?: NodeJS.Timeout;
+  private isReconnecting = false;
 
   /**
    * Creates a new subbot instance.
@@ -98,16 +99,16 @@ export class SubBotInstance extends EventEmitter {
       if (!this.sock || this.destroyed) return;
 
       try {
-        const isOnline = (await this.sock.user?.id) ? true : false;
-        if (!isOnline) {
-          logger.warn(`⚠️ SubBot[${this.config.id}] health check falló, reconectando...`);
-          this.scheduleReconnect();
-        } else {
-          logger.debug(`✅ SubBot[${this.config.id}] health check OK`);
+        if (!this.sock.user?.id) {
+          logger.warn(`⚠️ SubBot[${this.config.id}] sin usuario, verificando conexión...`);
+          if (!this.connectionEstablished) {
+            logger.debug(`⚠️ SubBot[${this.config.id}] sin conexión establecida`);
+            return;
+          }
         }
+        logger.debug(`✅ SubBot[${this.config.id}] health check OK`);
       } catch (error) {
-        logger.warn(`⚠️ SubBot[${this.config.id}] error en health check`);
-        this.scheduleReconnect();
+        logger.debug(`⚠️ SubBot[${this.config.id}] error en health check: ${error}`);
       }
     }, 60000);
   }
@@ -120,7 +121,8 @@ export class SubBotInstance extends EventEmitter {
   }
 
   private scheduleReconnect(): void {
-    if (this.destroyed) return;
+    if (this.destroyed || this.isReconnecting) return;
+
     if (this.reconnectAttempts >= this.maxReconnectAttempts) {
       logger.error(`❌ SubBot[${this.config.id}] demasiados reintentos, deteniendo`);
       subBotDatabase.update(this.config.id, { status: 'error', active: false });
@@ -128,15 +130,17 @@ export class SubBotInstance extends EventEmitter {
       return;
     }
 
+    this.isReconnecting = true;
     this.reconnectAttempts++;
     const delay = Math.min(5000 * this.reconnectAttempts, 30000);
 
     logger.info(
-      `🔄 SubBot[${this.config.id}] reconectando en ${delay / 1000}s (intento ${this.reconnectAttempts})`,
+      `🔄 SubBot[${this.config.id}] reconectando en ${delay / 1000}s (intento ${this.reconnectAttempts}/${this.maxReconnectAttempts})`,
     );
     subBotDatabase.update(this.config.id, { status: 'connecting' });
 
     setTimeout(() => {
+      this.isReconnecting = false;
       if (!this.destroyed) {
         this.connectionEstablished = false;
         void this.start();
@@ -298,23 +302,15 @@ export class SubBotInstance extends EventEmitter {
       }
 
       if (statusCode === 401 && !this.connectionEstablished) {
-        logger.warn(`⚠️ SubBot[${this.config.id}] code expired, clearing and retrying...`);
+        logger.warn(`⚠️ SubBot[${this.config.id}] sesión expirada, solicitando nuevo código...`);
         this.pairingCodeRequested = false;
-        this.clearSession();
+        this.connectionEstablished = false;
 
-        if (!this.destroyed && this.reconnectAttempts < this.maxReconnectAttempts) {
-          this.reconnectAttempts++;
-          logger.info(
-            `🔄 SubBot[${this.config.id}] retry ${this.reconnectAttempts}/${this.maxReconnectAttempts} in 5s`,
-          );
-          setTimeout(() => {
+        setTimeout(() => {
+          if (!this.destroyed) {
             void this.start();
-          }, 5000);
-        } else {
-          logger.error(`❌ SubBot[${this.config.id}] too many retries`);
-          subBotDatabase.update(this.config.id, { status: 'error', active: false });
-          this.emit('status', 'error');
-        }
+          }
+        }, 10000);
         return;
       }
 
