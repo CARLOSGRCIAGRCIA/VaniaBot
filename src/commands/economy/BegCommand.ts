@@ -15,12 +15,12 @@ export class BegCommand extends Command {
     { text: 'te da unas monedas', min: 10, max: 50, emoji: '💕' },
     { text: 'te mira mal y te da nada', min: 0, max: 0, emoji: '😒' },
     { text: 'te da una moneda', min: 1, max: 5, emoji: '🪙' },
-    { text: 'te дает все', min: 50, max: 100, emoji: '🥺' },
+    { text: 'te da все', min: 50, max: 100, emoji: '🥺' },
     { text: 'te ignora', min: 0, max: 0, emoji: '🚶' },
     { text: 'te da una按摩', min: 20, max: 80, emoji: '💆' },
-    { text: 'te дает un abrazo', min: 5, max: 25, emoji: '🤗' },
-    { text: 'te дает monedas de oro', min: 100, max: 200, emoji: '✨' },
-    { text: 'te дает poco', min: 1, max: 10, emoji: '😐' },
+    { text: 'te da un abrazo', min: 5, max: 25, emoji: '🤗' },
+    { text: 'te da monedas de oro', min: 100, max: 200, emoji: '✨' },
+    { text: 'te da poco', min: 1, max: 10, emoji: '😐' },
     { text: 'se compadece de ti', min: 25, max: 75, emoji: '🥹' },
   ];
 

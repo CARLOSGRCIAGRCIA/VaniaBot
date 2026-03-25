@@ -14,17 +14,19 @@ export class SpinCommand extends Command {
   cooldown = 4 * 60 * 60 * 1000;
 
   private readonly PRIZES = [
-    { prize: 100, emoji: '💵', weight: 0.25 },
-    { prize: 250, emoji: '💰', weight: 0.2 },
-    { prize: 500, emoji: '🪙', weight: 0.15 },
-    { prize: 750, emoji: '💳', weight: 0.12 },
-    { prize: 1000, emoji: '🎁', weight: 0.1 },
-    { prize: 1500, emoji: '✨', weight: 0.08 },
-    { prize: 2000, emoji: '🌟', weight: 0.05 },
-    { prize: 3000, emoji: '💎', weight: 0.03 },
-    { prize: 5000, emoji: '👑', weight: 0.015 },
-    { prize: 10000, emoji: '🏆', weight: 0.005 },
+    { prize: 50, emoji: '🪙', weight: 0.22 },
+    { prize: 100, emoji: '💵', weight: 0.2 },
+    { prize: 150, emoji: '💴', weight: 0.18 },
+    { prize: 250, emoji: '💰', weight: 0.15 },
+    { prize: 400, emoji: '💳', weight: 0.1 },
+    { prize: 600, emoji: '🎁', weight: 0.07 },
+    { prize: 800, emoji: '✨', weight: 0.04 },
+    { prize: 1200, emoji: '🌟', weight: 0.025 },
+    { prize: 2500, emoji: '💎', weight: 0.012 },
+    { prize: 5000, emoji: '👑', weight: 0.003 },
   ];
+
+  private lastPrize?: string;
 
   async execute(ctx: MessageContext): Promise<void> {
     const now = Date.now();

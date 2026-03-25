@@ -14,13 +14,15 @@ export class HuntCommand extends Command {
   cooldown = 180000;
 
   private readonly ANIMALS = [
-    { name: 'conejo', min: 20, max: 80, emoji: '🐰', rarity: 0.35 },
-    { name: 'zorro', min: 50, max: 150, emoji: '🦊', rarity: 0.25 },
-    { name: 'ciervo', min: 150, max: 400, emoji: '🦌', rarity: 0.15 },
-    { name: 'jabalí', min: 300, max: 800, emoji: '🐗', rarity: 0.1 },
-    { name: 'lobo', min: 500, max: 1200, emoji: '🐺', rarity: 0.08 },
-    { name: 'oso', min: 1000, max: 2500, emoji: '🐻', rarity: 0.05 },
-    { name: 'tigre', min: 3000, max: 8000, emoji: '🐯', rarity: 0.02 },
+    { name: 'conejo', min: 1, max: 15, emoji: '🐰', rarity: 0.3 },
+    { name: 'zorro', min: 10, max: 40, emoji: '🦊', rarity: 0.25 },
+    { name: 'pájaro', min: 5, max: 30, emoji: '🐦', rarity: 0.18 },
+    { name: 'ciervo', min: 25, max: 80, emoji: '🦌', rarity: 0.12 },
+    { name: 'jabalí', min: 50, max: 150, emoji: '🐗', rarity: 0.08 },
+    { name: 'lobo', min: 100, max: 300, emoji: '🐺', rarity: 0.04 },
+    { name: 'oso', min: 300, max: 800, emoji: '🐻', rarity: 0.02 },
+    { name: 'tigre', min: 1000, max: 3000, emoji: '🐯', rarity: 0.008 },
+    { name: 'unicornio', min: 5000, max: 15000, emoji: '🦄', rarity: 0.002 },
   ];
 
   async execute(ctx: MessageContext): Promise<void> {

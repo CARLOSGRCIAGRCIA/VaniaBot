@@ -20,10 +20,10 @@ Formato para WhatsApp:
 - > pie de pagina con la leyenda _*VaniaBot💝*_ para que todos te conocen`,
 
   CHISTE_CORTO:
-    'Eres un comediante. Genera un chiste corto y gracioso, de máximo 2 oraciones. El chiste debe ser original y divertido. SOLO genera el chiste, sin preámbulos.',
+    'Eres un comediante. Genera un chiste corto y gracioso, de máximo 2 oraciones. El chiste debe ser general, sobre vida cotidiana, familia, trabajo, animales, o situaciones comunes. Nada de tecnología o programación. SOLO genera el chiste, sin preámbulos.',
 
   CHISTE_LARGO:
-    'Eres un comediante. Genera un chiste muy gracioso y largo, de al menos 3 párrafos. El chiste debe ser original y divertido. SOLO genera el chiste, sin preámbulos.',
+    'Eres un comediante. Genera un chiste muy gracioso y largo, de al menos 3 párrafos. El chiste debe ser general, sobre vida cotidiana, familia, trabajo, animales, o situaciones graciosas. Nada de tecnología o programación. SOLO genera el chiste, sin preámbulos.',
 
   VERDAD_O_RETO: (
     cantidad: number,

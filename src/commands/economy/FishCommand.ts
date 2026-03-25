@@ -14,13 +14,14 @@ export class FishCommand extends Command {
   cooldown = 120000;
 
   private readonly FISH = [
-    { name: 'sardina', min: 10, max: 50, emoji: '🐟', rarity: 0.4 },
-    { name: 'caballa', min: 30, max: 100, emoji: '🐠', rarity: 0.25 },
-    { name: 'atún', min: 100, max: 300, emoji: '🐟', rarity: 0.15 },
-    { name: 'salmón', min: 200, max: 500, emoji: '🐟', rarity: 0.1 },
-    { name: 'tiburón', min: 500, max: 1500, emoji: '🦈', rarity: 0.05 },
-    { name: 'pez dorado', min: 1000, max: 3000, emoji: '🐠', rarity: 0.03 },
-    { name: 'ballena', min: 5000, max: 15000, emoji: '🐋', rarity: 0.02 },
+    { name: 'sardina', min: 1, max: 10, emoji: '🐟', rarity: 0.35 },
+    { name: 'caballa', min: 5, max: 25, emoji: '🐠', rarity: 0.28 },
+    { name: 'atún', min: 15, max: 50, emoji: '🐟', rarity: 0.18 },
+    { name: 'salmón', min: 30, max: 100, emoji: '🐟', rarity: 0.1 },
+    { name: 'tiburón', min: 100, max: 300, emoji: '🦈', rarity: 0.05 },
+    { name: 'pez dorado', min: 500, max: 1500, emoji: '🐠', rarity: 0.025 },
+    { name: 'ballena', min: 2000, max: 8000, emoji: '🐋', rarity: 0.015 },
+    { name: 'kraken', min: 10000, max: 25000, emoji: '🦑', rarity: 0.005 },
   ];
 
   async execute(ctx: MessageContext): Promise<void> {
