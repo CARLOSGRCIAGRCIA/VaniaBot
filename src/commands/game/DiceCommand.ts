@@ -40,17 +40,26 @@ export class DiceCommand extends Command {
     }
 
     const user = await serviceManager.userService.getUser(ctx.sender.jid);
+    const totalBalance = await serviceManager.userService.getTotalBalance(ctx.sender.jid);
 
     if (!user.isOwner) {
-      const validation = validateBetAmount(amount, user.money, {
+      const validation = validateBetAmount(amount, totalBalance, {
         minBet: config.economy.minBet,
         maxBet: config.economy.maxBet,
       });
 
       if (!validation.valid) {
-        await ctx.reply(validation.error || '❌ Apuesta inválida');
+        await ctx.reply(validation.error || '❌ No tienes suficiente dinero');
         return;
       }
+    }
+
+    let usedBank = false;
+    if (!user.isOwner && user.money < amount) {
+      const deficit = amount - user.money;
+      await serviceManager.userService.removeBank(ctx.sender.jid, deficit);
+      await serviceManager.userService.addMoney(ctx.sender.jid, user.money);
+      usedBank = true;
     }
 
     const diceEmojis = ['⚀', '⚁', '⚂', '⚃', '⚄', '⚅'];

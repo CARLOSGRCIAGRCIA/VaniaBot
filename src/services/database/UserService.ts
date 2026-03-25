@@ -9,6 +9,7 @@ export interface User {
   level: number;
   xp: number;
   money: number;
+  bank: number;
   lastDaily?: number;
   lastWeekly?: number;
   lastMonthly?: number;
@@ -98,6 +99,7 @@ export class UserService {
       level: isOwner ? this.OWNER_LEVEL : 1,
       xp: isOwner ? this.OWNER_XP : 0,
       money: isOwner ? this.OWNER_MONEY : 0,
+      bank: 0,
       totalCommands: 0,
       warnings: 0,
       inventory: [],
@@ -201,6 +203,50 @@ export class UserService {
     });
 
     return true;
+  }
+
+  async addBank(jid: string, amount: number): Promise<void> {
+    const user = await this.getUser(jid);
+
+    if (user.isOwner) {
+      await this.updateUser(jid, {
+        bank: this.OWNER_MONEY,
+      });
+      return;
+    }
+
+    await this.updateUser(jid, {
+      bank: (user.bank || 0) + amount,
+    });
+  }
+
+  async removeBank(jid: string, amount: number): Promise<boolean> {
+    const user = await this.getUser(jid);
+
+    if (user.isOwner) {
+      return true;
+    }
+
+    if ((user.bank || 0) < amount) {
+      return false;
+    }
+
+    await this.updateUser(jid, {
+      bank: user.bank - amount,
+    });
+
+    return true;
+  }
+
+  async getBankBalance(jid: string): Promise<number> {
+    const user = await this.getUser(jid);
+    return user.isOwner ? this.OWNER_MONEY : user.bank || 0;
+  }
+
+  async getTotalBalance(jid: string): Promise<number> {
+    const user = await this.getUser(jid);
+    if (user.isOwner) return this.OWNER_MONEY;
+    return user.money + (user.bank || 0);
   }
 
   async incrementCommands(jid: string): Promise<void> {

@@ -21,42 +21,54 @@ export class BalanceCommand extends Command {
     const isSelf = targetJid === ctx.sender.jid;
     const isOwner = targetUser.isOwner;
 
+    const bankBalance = targetUser.bank || 0;
+    const totalBalance = targetUser.money + bankBalance;
+
     let message = '';
 
     if (isSelf) {
-      message = `💰 *Your Balance*\n\n`;
+      message = `💰 *TU BALANCE*\n\n`;
     } else {
       message = `💰 *${targetUser.name}'s Balance*\n\n`;
     }
 
-    message += `💵 Money: $${targetUser.money.toLocaleString()}`;
-
     if (isOwner) {
-      message += ` ♾️\n`;
-      message += `\n👑 *Owner Status:* Unlimited funds`;
+      message += `💵 Cash: ∞ ♾️\n`;
+      message += `🏦 Banco: ∞ ♾️\n`;
+      message += `📊 Total: ∞ ♾️\n\n`;
+      message += `👑 *Dueño:* Fondos ilimitados`;
     } else {
-      message += `\n`;
+      message += `💵 Efectivo: $${targetUser.money.toLocaleString()}\n`;
+      message += `🏦 Banco: $${bankBalance.toLocaleString()}\n`;
+      message += `📊 Total: $${totalBalance.toLocaleString()}\n`;
     }
 
     const allUsers = await serviceManager.userService.getAllUsers();
-    const sortedByMoney = allUsers.filter(u => !u.isOwner).sort((a, b) => b.money - a.money);
+    const sortedByMoney = allUsers
+      .filter(u => !u.isOwner)
+      .map(u => ({ ...u, total: u.money + (u.bank || 0) }))
+      .sort((a, b) => b.total - a.total);
 
     const rank = sortedByMoney.findIndex(u => u.jid === targetJid) + 1;
 
     if (rank > 0) {
-      message += `📊 Rank: #${rank} of ${sortedByMoney.length}`;
+      message += `\n📊 Rank: #${rank} de ${sortedByMoney.length}`;
     }
 
     const canClaimDaily = serviceManager.userService.canClaimDaily(targetUser);
 
-    message += `\n\n💎 *Daily Reward:* ${canClaimDaily ? '✅ Available' : '⏳ Claimed'}`;
+    message += `\n\n💎 *Daily:* ${canClaimDaily ? '✅ Disponible' : '⏳ Ya reclamado'}`;
 
     if (!canClaimDaily && isSelf) {
       const remaining = serviceManager.userService.getDailyTimeRemaining(targetUser);
       const hours = Math.floor(remaining / (1000 * 60 * 60));
       const minutes = Math.floor((remaining % (1000 * 60 * 60)) / (1000 * 60));
 
-      message += `\n⏰ Next: ${hours}h ${minutes}m`;
+      message += `\n⏰ Próximo: ${hours}h ${minutes}m`;
+    }
+
+    if (!isOwner && bankBalance > 0) {
+      message += `\n\n🛡️ *Dinero protegido en banco*`;
     }
 
     message += `\n\n> _*VaniaBot💝*_`;

@@ -8,10 +8,11 @@ const CRIME_COOLDOWN = 3 * 60 * 1000;
 
 export class CrimeCommand extends Command {
   name = 'crime';
-  description = 'Roba dinero (con riesgo)';
+  description = 'Roba a un usuario mencionado';
   category = CommandCategory.ECONOMY;
   aliases = ['robar', 'steal'];
-  usage = '!crime';
+  usage = '!crime @user';
+  examples = ['!crime @usuario'];
   cooldown = 180000;
 
   private readonly CRIMES = [
@@ -29,48 +30,95 @@ export class CrimeCommand extends Command {
     if (lastCrime && now - lastCrime < CRIME_COOLDOWN) {
       const remaining = Math.ceil((CRIME_COOLDOWN - (now - lastCrime)) / 60000);
       await ctx.reply(
-        `🚨 *EN ENSAYO*\n\n` +
+        `🚨 *EN COOLDOWN*\n\n` +
           `Debes esperar *${remaining} minutos*\n` +
           `antes de volver a robar.`,
       );
       return;
     }
 
+    const mentionedJid = ctx.message.message?.extendedTextMessage?.contextInfo?.mentionedJid?.[0];
+
+    if (!mentionedJid) {
+      await ctx.reply(
+        `🚨 *ROBAR* 🚨\n\n` +
+          `✿ *Cómo usar:*\n` +
+          `!crime @usuario\n\n` +
+          `📊 *Información:*\n` +
+          `• Los owners no pueden ser robados\n` +
+          `• El dinero en el banco está seguro\n` +
+          `• Cooldown: 3 minutos\n\n` +
+          `📝 *Ejemplo:*\n` +
+          `!crime @usuario`,
+      );
+      return;
+    }
+
+    const attacker = await serviceManager.userService.getUser(ctx.sender.jid);
+    const victim = await serviceManager.userService.getUser(mentionedJid);
+
+    if (attacker.jid === mentionedJid) {
+      await ctx.reply(`❌ No puedes robarte a ti mismo`);
+      return;
+    }
+
+    if (victim.isOwner) {
+      await ctx.reply(
+        `🚨 *PROTEGIDO*\n\n` +
+          `❌ No puedes robar a un *OWNER*\n\n` +
+          `🛡️ Los owners están protegidos`,
+      );
+      return;
+    }
+
+    if (victim.isBanned) {
+      await ctx.reply(`❌ El usuario está baneado`);
+      return;
+    }
+
     const crime = this.CRIMES[Math.floor(Math.random() * this.CRIMES.length)];
     const success = Math.random() < crime.success;
 
-    if (success) {
-      const earned = Math.floor(Math.random() * (crime.max - crime.min + 1)) + crime.min;
+    const victimMoney = victim.money;
+    const victimBank = victim.bank || 0;
 
-      await serviceManager.userService.addMoney(ctx.sender.jid, earned);
+    if (success && victimMoney > 0) {
+      const maxSteal = Math.min(crime.max, victimMoney);
+      const earned = Math.floor(Math.random() * (maxSteal - crime.min + 1)) + crime.min;
+      const actualSteal = Math.min(earned, victimMoney);
+
+      await serviceManager.userService.removeMoney(mentionedJid, actualSteal);
+      await serviceManager.userService.addMoney(ctx.sender.jid, actualSteal);
 
       crimeCooldowns.set(ctx.sender.jid, now);
-
-      const user = await serviceManager.userService.getUser(ctx.sender.jid);
 
       await ctx.reply(
         `🚨 *ROBO EXITOSO* 🚨\n\n` +
           `${crime.emoji} *${crime.name.toUpperCase()}*\n\n` +
+          `🎯 *Robaste a:* ${victim.name}\n` +
           `✨ *GANASTE!*\n` +
-          `💰 +$${formatNumber(earned)}\n\n` +
+          `💰 +$${formatNumber(actualSteal)}\n\n` +
           `📊 Éxito: ${Math.round(crime.success * 100)}%\n\n` +
-          `💵 Balance: $${formatNumber(user.money)}`,
+          `💵 Tu balance: $${formatNumber((await serviceManager.userService.getUser(ctx.sender.jid)).money)}`,
       );
       await ctx.react('🎉');
     } else {
-      const user = await serviceManager.userService.getUser(ctx.sender.jid);
-
       crimeCooldowns.set(ctx.sender.jid, now);
 
-      await ctx.reply(
-        `🚨 *ROBO FALLIDO* 🚨\n\n` +
-          `${crime.emoji} *${crime.name.toUpperCase()}*\n\n` +
-          `💔 *Te atraparon!*\n` +
-          `No ganaste nada...\n\n` +
-          `📊 Éxito: ${Math.round(crime.success * 100)}%\n\n` +
-          `💵 Balance: $${formatNumber(user.money)}\n\n` +
-          `⏰ Intenta de nuevo en 3 minutos`,
-      );
+      let msg = `🚨 *ROBO FALLIDO* 🚨\n\n`;
+      msg += `${crime.emoji} *${crime.name.toUpperCase()}*\n\n`;
+
+      if (victimMoney <= 0 && victimBank <= 0) {
+        msg += `💔 *La víctima no tiene dinero*\n`;
+        msg += `(Todo está en el banco)\n\n`;
+      } else {
+        msg += `💔 *Te atraparon!*\n\n`;
+      }
+
+      msg += `📊 Éxito: ${Math.round(crime.success * 100)}%\n\n`;
+      msg += `💡 *Tip:* Guarda dinero en el banco con !deposit`;
+
+      await ctx.reply(msg);
       await ctx.react('🚨');
     }
   }
