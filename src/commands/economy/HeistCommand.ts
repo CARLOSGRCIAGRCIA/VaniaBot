@@ -53,15 +53,24 @@ export class HeistCommand extends Command {
     }
 
     const user = await serviceManager.userService.getUser(ctx.sender.jid);
-    const totalBalance = await serviceManager.userService.getTotalBalance(ctx.sender.jid);
 
-    if (totalBalance < amount) {
-      await ctx.reply(
-        `❌ *No tienes suficiente dinero*\n\n` +
-          `💰 Tienes: $${formatNumber(totalBalance)}\n` +
-          `💸 Necesitas: $${formatNumber(amount)}\n\n` +
-          `💡 Usa !deposit para agregar dinero`,
-      );
+    if (user.money < amount) {
+      const bankBalance = user.bank || 0;
+      if (bankBalance > 0) {
+        await ctx.reply(
+          `❌ *No tienes efectivo suficiente*\n\n` +
+            `💵 Efectivo: $${formatNumber(user.money)}\n` +
+            `🏦 Banco: $${formatNumber(bankBalance)}\n\n` +
+            `✿ *Retira dinero primero:*\n` +
+            `!withdraw ${amount - user.money}`,
+        );
+      } else {
+        await ctx.reply(
+          `❌ *No tienes suficiente dinero*\n\n` +
+            `💵 Efectivo: $${formatNumber(user.money)}\n` +
+            `💸 Necesitas: $${formatNumber(amount)}`,
+        );
+      }
       return;
     }
 
@@ -69,12 +78,6 @@ export class HeistCommand extends Command {
     if (amount > 100000) successChance = 0.15;
     else if (amount > 50000) successChance = 0.25;
     else if (amount > 10000) successChance = 0.35;
-
-    if (user.money < amount) {
-      const deficit = amount - user.money;
-      await serviceManager.userService.removeBank(ctx.sender.jid, deficit);
-      await serviceManager.userService.addMoney(ctx.sender.jid, deficit);
-    }
 
     await serviceManager.userService.removeMoney(ctx.sender.jid, amount);
 

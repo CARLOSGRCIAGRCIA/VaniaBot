@@ -39,26 +39,37 @@ export class CoinflipCommand extends Command {
     }
 
     const user = await serviceManager.userService.getUser(ctx.sender.jid);
-    const totalBalance = await serviceManager.userService.getTotalBalance(ctx.sender.jid);
 
     if (!user.isOwner) {
-      const validation = validateBetAmount(amount, totalBalance, {
+      if (user.money < amount) {
+        const bankBalance = user.bank || 0;
+        if (bankBalance > 0) {
+          await ctx.reply(
+            `❌ *No tienes efectivo suficiente*\n\n` +
+              `💵 Efectivo: $${user.money.toLocaleString()}\n` +
+              `🏦 Banco: $${bankBalance.toLocaleString()}\n\n` +
+              `✿ *Retira dinero primero:*\n` +
+              `!withdraw ${amount - user.money}`,
+          );
+        } else {
+          await ctx.reply(
+            `❌ *No tienes suficiente dinero*\n\n` +
+              `💵 Efectivo: $${user.money.toLocaleString()}\n` +
+              `💸 Necesitas: $${amount.toLocaleString()}`,
+          );
+        }
+        return;
+      }
+
+      const validation = validateBetAmount(amount, user.money, {
         minBet: config.economy.minBet,
         maxBet: config.economy.maxBet,
       });
 
       if (!validation.valid) {
-        await ctx.reply(validation.error || '❌ No tienes suficiente dinero');
+        await ctx.reply(validation.error || '❌ Apuesta inválida');
         return;
       }
-    }
-
-    let usedBank = false;
-    if (!user.isOwner && user.money < amount) {
-      const deficit = amount - user.money;
-      await serviceManager.userService.removeBank(ctx.sender.jid, deficit);
-      await serviceManager.userService.addMoney(ctx.sender.jid, user.money);
-      usedBank = true;
     }
 
     const result: 'heads' | 'tails' = Math.random() < 0.5 ? 'heads' : 'tails';
