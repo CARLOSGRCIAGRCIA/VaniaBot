@@ -22,60 +22,42 @@ export class PatCommand extends Command {
 
   async execute(ctx: MessageContext): Promise<void> {
     if (!ctx.args.length) {
-      await ctx.reply('⚠️ Write something after .pat\nExample: *!pat Hello 🤣*');
+      await ctx.reply('⚠️ Escribe algo después de .pat\nEjemplo: *!pat Hola 🤣*');
       return;
     }
 
-    const words = ctx.args.slice(0, 20);
-    const text = words.join(' ');
-
+    const text = ctx.args.slice(0, 20).join(' ');
     await ctx.react('⏳');
 
     try {
-      const isSharp = await ImageProcessor.isSharpAvailable();
-
-      if (!isSharp) {
-        await ctx.reply(
-          `˚₊· ͟͟͞͞➳ *pat sticker* ˚₊· ͟͟͞͞➳\n\n` +
-            `✿ Esta función requiere sharp en PC\n` +
-            `✩ En Termux, los stickers básicos funcionan ✩`,
-        );
-        await ctx.react('❌');
-        return;
-      }
-
       const randomNum = Math.floor(Math.random() * 4) + 1;
       const imagePath = path.join(process.cwd(), 'data', 'assets', `pat${randomNum}.jpg`);
-
       const { width, height } = await ImageProcessor.loadImage(imagePath);
 
       const fontSize = 95;
       const textColor = '#FFFFFF';
       const shadowColor = '#000000';
       const shadowOffset = 4;
-
       const x = width / 2;
       const y = height - 100;
-
       const maxCharsPerLine = 20;
       const lines = this.wrapText(text, maxCharsPerLine);
       const lineHeight = fontSize + 10;
-
       const startY = y - ((lines.length - 1) * lineHeight) / 2;
 
-      let svgContent = `<svg width="${width}" height="${height}">`;
-
+      let svgContent = `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}">`;
       lines.forEach((line, index) => {
         const currentY = startY + index * lineHeight;
+        const escaped = this.escapeXml(line);
+        // Sombra en 4 direcciones + texto principal (estilo meme clásico)
         svgContent += `
-          <text x="${x - shadowOffset}" y="${currentY}" font-family="Impact, Arial Black, sans-serif" font-size="${fontSize}" font-weight="bold" fill="${shadowColor}" text-anchor="middle">${this.escapeXml(line)}</text>
-          <text x="${x + shadowOffset}" y="${currentY}" font-family="Impact, Arial Black, sans-serif" font-size="${fontSize}" font-weight="bold" fill="${shadowColor}" text-anchor="middle">${this.escapeXml(line)}</text>
-          <text x="${x}" y="${currentY - shadowOffset}" font-family="Impact, Arial Black, sans-serif" font-size="${fontSize}" font-weight="bold" fill="${shadowColor}" text-anchor="middle">${this.escapeXml(line)}</text>
-          <text x="${x}" y="${currentY + shadowOffset}" font-family="Impact, Arial Black, sans-serif" font-size="${fontSize}" font-weight="bold" fill="${shadowColor}" text-anchor="middle">${this.escapeXml(line)}</text>
-          <text x="${x}" y="${currentY}" font-family="Impact, Arial Black, sans-serif" font-size="${fontSize}" font-weight="bold" fill="${textColor}" text-anchor="middle">${this.escapeXml(line)}</text>
+          <text x="${x - shadowOffset}" y="${currentY}" font-family="Impact, Arial Black, sans-serif" font-size="${fontSize}" font-weight="bold" fill="${shadowColor}" text-anchor="middle">${escaped}</text>
+          <text x="${x + shadowOffset}" y="${currentY}" font-family="Impact, Arial Black, sans-serif" font-size="${fontSize}" font-weight="bold" fill="${shadowColor}" text-anchor="middle">${escaped}</text>
+          <text x="${x}" y="${currentY - shadowOffset}" font-family="Impact, Arial Black, sans-serif" font-size="${fontSize}" font-weight="bold" fill="${shadowColor}" text-anchor="middle">${escaped}</text>
+          <text x="${x}" y="${currentY + shadowOffset}" font-family="Impact, Arial Black, sans-serif" font-size="${fontSize}" font-weight="bold" fill="${shadowColor}" text-anchor="middle">${escaped}</text>
+          <text x="${x}" y="${currentY}" font-family="Impact, Arial Black, sans-serif" font-size="${fontSize}" font-weight="bold" fill="${textColor}" text-anchor="middle">${escaped}</text>
         `;
       });
-
       svgContent += `</svg>`;
 
       const buffer = await ImageProcessor.compositeText(imagePath, svgContent, width, height);
@@ -90,6 +72,7 @@ export class PatCommand extends Command {
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : 'Unknown error';
       await ctx.reply(`❌ Error: ${message}`);
+      await ctx.react('❌');
     }
   }
 

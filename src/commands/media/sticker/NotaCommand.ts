@@ -22,47 +22,28 @@ export class NotaCommand extends Command {
 
   async execute(ctx: MessageContext): Promise<void> {
     if (!ctx.args.length) {
-      await ctx.reply('⚠️ Write something after .nota\nExample: *!nota Hello*');
+      await ctx.reply('⚠️ Escribe algo después de .nota\nEjemplo: *!nota Hola*');
       return;
     }
 
-    const words = ctx.args.slice(0, 20);
-    const text = words.join(' ');
-
+    const text = ctx.args.slice(0, 20).join(' ');
     await ctx.react('⏳');
 
     try {
-      const isSharp = await ImageProcessor.isSharpAvailable();
-
-      if (!isSharp) {
-        await ctx.reply(
-          `˚₊· ͟͟͞͞➳ *nota sticker* ˚₊· ͟͟͞͞➳\n\n` +
-            `✿ Esta función requiere sharp en PC\n` +
-            `✩ En Termux, los stickers básicos funcionan ✩`,
-        );
-        await ctx.react('❌');
-        return;
-      }
-
       const imagePath = path.join(process.cwd(), 'data', 'assets', 'nota.jpg');
-
       const { width, height } = await ImageProcessor.loadImage(imagePath);
 
       const fontSize = 99;
       const textColor = '#1a1a1a';
-
       const x = width / 2;
       const centerY = height / 2;
-
       const maxCharsPerLine = 15;
       const lines = this.wrapText(text, maxCharsPerLine);
       const lineHeight = fontSize + 15;
-
       const totalHeight = lines.length * lineHeight;
       const startY = centerY - totalHeight / 2 + fontSize / 2;
 
-      let svgContent = `<svg width="${width}" height="${height}">`;
-
+      let svgContent = `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}">`;
       lines.forEach((line, index) => {
         const currentY = startY + index * lineHeight;
         svgContent += `
@@ -77,7 +58,6 @@ export class NotaCommand extends Command {
           >${this.escapeXml(line)}</text>
         `;
       });
-
       svgContent += `</svg>`;
 
       const buffer = await ImageProcessor.compositeText(imagePath, svgContent, width, height);
@@ -92,6 +72,7 @@ export class NotaCommand extends Command {
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : 'Unknown error';
       await ctx.reply(`❌ Error: ${message}`);
+      await ctx.react('❌');
     }
   }
 

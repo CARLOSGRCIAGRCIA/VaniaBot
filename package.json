@@ -30,6 +30,7 @@
   "license": "MIT",
   "dependencies": {
     "@google/generative-ai": "^0.24.1",
+    "@napi-rs/canvas": "^0.1.97",
     "@types/cheerio": "^0.22.35",
     "@types/mathjs": "^9.4.1",
     "@types/redis": "^4.0.10",
