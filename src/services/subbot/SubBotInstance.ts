@@ -72,15 +72,14 @@ export class SubBotInstance extends EventEmitter {
     if (this.pingInterval) return;
 
     this.pingInterval = setInterval(async () => {
-      if (!this.sock || !this.isConnected()) return;
+      if (!this.sock || this.destroyed) return;
 
       try {
         await this.sock.sendPresenceUpdate('available', 'status@broadcast');
         this.lastPingTime = Date.now();
         logger.debug(`📶 SubBot[${this.config.id}] ping enviado`);
       } catch {
-        logger.warn(`⚠️ SubBot[${this.config.id}] error en ping, reconectando...`);
-        this.scheduleReconnect();
+        logger.debug(`⚠️ SubBot[${this.config.id}] error en ping (ignorado)`);
       }
     }, 25000);
   }
@@ -292,6 +291,11 @@ export class SubBotInstance extends EventEmitter {
       const statusCode = error?.output?.statusCode;
 
       logger.warn(`⚠️ SubBot[${this.config.id}] connection closed, code: ${statusCode}`);
+
+      if (!this.connectionEstablished) {
+        logger.debug(`⚠️ SubBot[${this.config.id}] conexión nunca establecida, ignorando...`);
+        return;
+      }
 
       if (statusCode === DisconnectReason.loggedOut || statusCode === DisconnectReason.badSession) {
         logger.error(`❌ SubBot[${this.config.id}] invalid session (${statusCode})`);
