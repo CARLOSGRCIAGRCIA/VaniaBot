@@ -322,7 +322,12 @@ export class SubBotManager extends EventEmitter {
 
       // Precargar grupos para reducir cold start
       try {
-        const groups = await instance.sock?.groupFetchAllParticipating();
+        const groups = await Promise.race([
+          instance.sock?.groupFetchAllParticipating(),
+          new Promise<never>((_, reject) =>
+            setTimeout(() => reject(new Error('Timed Out')), 10000),
+          ),
+        ]);
         if (groups) {
           const groupIds = Object.keys(groups);
           logger.debug(`🔥 SubBot[${subConfig.id}] precargando ${groupIds.length} grupos...`);
@@ -330,7 +335,9 @@ export class SubBotManager extends EventEmitter {
           logger.debug(`✅ SubBot[${subConfig.id}] grupos precargados`);
         }
       } catch (e) {
-        logError(`SubBot[${subConfig.id}].preloadGroups`, e);
+        logger.warn(
+          `⚠️ SubBot[${subConfig.id}] preloadGroups: ${e instanceof Error ? e.message : e}`,
+        );
       }
 
       try {

@@ -228,26 +228,31 @@ export class DelBotCommand extends Command {
     await ctx.react('⏳');
     try {
       await subBotManager.deleteSubBot(ctx.sender.jid);
-      await ctx.reply(
-        `╭━━━ 🌸 *VaniaBot* ━━━╮\n` +
-          `   *SubBot eliminada*\n` +
-          `\n` +
-          `Tu SubBot fue\n` +
-          `   eliminada con éxito.\n` +
-          `\n` +
-          `La sesión ha sido\n` +
-          `   borrada completamente.\n` +
-          `\n` +
-          `🦋 Si deseas crear\n` +
-          `   una nueva SubBot,\n` +
-          `   usa:\n` +
-          `\n` +
-          `   *.serbot <numero>*\n` +
-          `\n` +
-          `   Estoy aquí para ayudarte 💗\n` +
-          `╰━━━━━━━━━━━━━━━━━━━━╯`,
-      );
-      await ctx.react('✅');
+      try {
+        await ctx.reply(
+          `╭━━━ 🌸 *VaniaBot* ━━━╮\n` +
+            `   *SubBot eliminada*\n` +
+            `\n` +
+            `Tu SubBot fue\n` +
+            `   eliminada con éxito.\n` +
+            `\n` +
+            `La sesión ha sido\n` +
+            `   borrada completamente.\n` +
+            `\n` +
+            `🦋 Si deseas crear\n` +
+            `   una nueva SubBot,\n` +
+            `   usa:\n` +
+            `\n` +
+            `   *.serbot <numero>*\n` +
+            `\n` +
+            `   Estoy aquí para ayudarte 💗\n` +
+            `╰━━━━━━━━━━━━━━━━━━━━╯`,
+        );
+        await ctx.react('✅');
+      } catch (replyError) {
+        logger.warn(`SubBot deletion confirm send failed: ${replyError}`);
+        await ctx.react('✅');
+      }
     } catch (error) {
       const msg = error instanceof Error ? error.message : 'Unknown error';
       logger.error(`❌ SubBot: deletion error: ${msg}`);

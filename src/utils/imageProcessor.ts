@@ -80,10 +80,23 @@ export class ImageProcessor {
 
   private static async compositeTextSharp(imagePath: string, svgContent: string): Promise<Buffer> {
     const sharp = (await import('sharp')).default;
-    return await sharp(imagePath)
-      .composite([{ input: Buffer.from(svgContent), top: 0, left: 0 }])
-      .png()
-      .toBuffer();
+
+    try {
+      const svgBuffer = Buffer.from(svgContent);
+      const pngFromSvg = await sharp(svgBuffer).png().toBuffer();
+      logger.debug(`[ImageProcessor] SVG converted to PNG: ${pngFromSvg.length} bytes`);
+
+      const result = await sharp(imagePath)
+        .composite([{ input: pngFromSvg, top: 0, left: 0 }])
+        .png()
+        .toBuffer();
+
+      logger.debug(`[ImageProcessor] Composite result: ${result.length} bytes`);
+      return result;
+    } catch (err) {
+      logger.error('[ImageProcessor] Sharp composite error:', err);
+      throw err;
+    }
   }
 
   private static async compositeTextFallback(
@@ -153,14 +166,18 @@ export class ImageProcessor {
         '1',
         output,
       ];
+      logger.debug(`[ImageProcessor] FFmpeg args: ${args.join(' ')}`);
       const proc = spawn('ffmpeg', args);
       let stderr = '';
       proc.stderr.on('data', d => (stderr += d.toString()));
-      proc.on('close', code =>
+      proc.on('close', code => {
+        if (code !== 0) {
+          logger.warn(`[ImageProcessor] FFmpeg exit code ${code}: ${stderr.slice(-400)}`);
+        }
         code === 0
           ? resolve()
-          : reject(new Error(`FFmpeg overlay exit ${code}: ${stderr.slice(-400)}`)),
-      );
+          : reject(new Error(`FFmpeg overlay exit ${code}: ${stderr.slice(-400)}`));
+      });
       proc.on('error', reject);
     });
   }

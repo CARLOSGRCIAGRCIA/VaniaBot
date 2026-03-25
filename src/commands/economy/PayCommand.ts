@@ -35,7 +35,8 @@ export class PayCommand extends Command {
 
     const validation = validateTransferAmount(amount, sender.money, mentionedJid, ctx.sender.jid, {
       minTransfer: config.economy.minTransfer,
-      maxTransfer: config.economy.maxTransfer,
+      maxTransfer: sender.isOwner ? Infinity : config.economy.maxTransfer,
+      isOwner: sender.isOwner,
     });
 
     if (!validation.valid) {

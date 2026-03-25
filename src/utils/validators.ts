@@ -155,6 +155,7 @@ export interface ValidationConfig {
   vipMaxBet?: number;
   minTransfer?: number;
   maxTransfer?: number;
+  isOwner?: boolean;
 }
 
 const DEFAULT_CONFIG: Required<ValidationConfig> = {
@@ -163,6 +164,7 @@ const DEFAULT_CONFIG: Required<ValidationConfig> = {
   vipMaxBet: 500000,
   minTransfer: 1,
   maxTransfer: 1000000,
+  isOwner: false,
 };
 
 export function validateBetAmount(
@@ -209,14 +211,15 @@ export function validateTransferAmount(
     return { valid: false, error: '❌ Monto inválido' };
   }
 
+  const isOwner = config.isOwner ?? false;
   const minTransfer = config.minTransfer ?? DEFAULT_CONFIG.minTransfer;
   const maxTransfer = config.maxTransfer ?? DEFAULT_CONFIG.maxTransfer;
 
-  if (amount < minTransfer) {
+  if (!isOwner && amount < minTransfer) {
     return { valid: false, error: `❌ Transferencia mínima: $${minTransfer}` };
   }
 
-  if (amount > maxTransfer) {
+  if (!isOwner && amount > maxTransfer) {
     return { valid: false, error: `❌ Transferencia máxima: $${maxTransfer}` };
   }
 
@@ -224,7 +227,7 @@ export function validateTransferAmount(
     return { valid: false, error: '❌ No puedes transferirte a ti mismo' };
   }
 
-  if (amount > senderBalance) {
+  if (!isOwner && amount > senderBalance) {
     return {
       valid: false,
       error: `❌ Saldo insuficiente. Balance: $${senderBalance.toLocaleString()}`,
