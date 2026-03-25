@@ -128,7 +128,59 @@ export class SubBotManager extends EventEmitter {
     for (const subConfig of active) {
       await this.launchInstance(subConfig);
     }
+
+    this.startHealthCheck();
+
     logger.info('✅ SubBotManager inicializada correctamente');
+  }
+
+  private healthCheckInterval?: NodeJS.Timeout;
+
+  private startHealthCheck(): void {
+    if (this.healthCheckInterval) return;
+
+    this.healthCheckInterval = setInterval(
+      async () => {
+        logger.debug('🔍 SubBotManager: ejecutando health check...');
+
+        const activeSubBots = subBotDatabase.getActive();
+
+        for (const subConfig of activeSubBots) {
+          const instance = this.instances.get(subConfig.id);
+
+          if (!instance) {
+            logger.warn(`⚠️ SubBot[${subConfig.id}] sin instancia, reactivando...`);
+            try {
+              await this.launchInstance(subConfig);
+            } catch (error) {
+              logError(`SubBotManager.healthCheck: reactivate ${subConfig.id}`, error);
+            }
+            continue;
+          }
+
+          if (!instance.isConnected() || subConfig.status !== 'connected') {
+            logger.warn(
+              `⚠️ SubBot[${subConfig.id}] desconectada (status: ${subConfig.status}), reconectando automáticamente...`,
+            );
+            try {
+              await this.reconnectSubBot(subConfig.ownerJid);
+            } catch (error) {
+              logError(`SubBotManager.healthCheck: reconnect ${subConfig.id}`, error);
+            }
+          }
+        }
+      },
+      5 * 60 * 1000,
+    );
+
+    logger.info('✅ Health check de subbots iniciado (cada 5 minutos)');
+  }
+
+  private stopHealthCheck(): void {
+    if (this.healthCheckInterval) {
+      clearInterval(this.healthCheckInterval);
+      this.healthCheckInterval = undefined;
+    }
   }
 
   async registerSubBot(
@@ -562,20 +614,22 @@ export class SubBotManager extends EventEmitter {
   async reconnectSubBot(ownerJid: string): Promise<void> {
     const subConfig = subBotDatabase.getByOwner(ownerJid);
     if (!subConfig) throw new Error('No tienes una subbot registrada.');
-    logger.info(`🔄 SubBot[${subConfig.id}] reconectando...`);
+    logger.info(`🔄 SubBot[${subConfig.id}] reconectando automáticamente...`);
+
     const instance = this.instances.get(subConfig.id);
     if (instance) {
       await instance.stop();
-      instance.clearSession();
       this.instances.delete(subConfig.id);
       this.middlewaresPerInstance.delete(subConfig.id);
       this.antiSpamPerInstance.delete(subConfig.id);
     }
+
     subBotDatabase.update(subConfig.id, {
       active: true,
-      status: 'pending',
+      status: 'connecting',
       pairingCode: undefined,
     });
+
     const fresh = subBotDatabase.get(subConfig.id);
     if (!fresh) {
       throw new Error('Subbot not found after update');
@@ -666,6 +720,7 @@ export class SubBotManager extends EventEmitter {
 
   async shutdown(): Promise<void> {
     logger.info(`🛑 SubBotManager cerrando ${this.instances.size} subbots...`);
+    this.stopHealthCheck();
     const stops = Array.from(this.instances.values()).map(i => i.stop());
     await Promise.allSettled(stops);
     this.instances.clear();

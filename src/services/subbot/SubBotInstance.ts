@@ -48,11 +48,14 @@ export class SubBotInstance extends EventEmitter {
   /** Configuration for this subbot */
   public config: SubBotConfig;
   private reconnectAttempts = 0;
-  private maxReconnectAttempts = 10;
+  private maxReconnectAttempts = 15;
   private pairingCodeRequested = false;
   private connectionEstablished = false;
   private destroyed = false;
   private pairingCodeTimer?: NodeJS.Timeout;
+  private pingInterval?: NodeJS.Timeout;
+  private lastPingTime = 0;
+  private healthCheckTimer?: NodeJS.Timeout;
 
   /**
    * Creates a new subbot instance.
@@ -62,6 +65,83 @@ export class SubBotInstance extends EventEmitter {
   constructor(config: SubBotConfig) {
     super();
     this.config = config;
+  }
+
+  private startPing(): void {
+    if (this.pingInterval) return;
+
+    this.pingInterval = setInterval(async () => {
+      if (!this.sock || !this.isConnected()) return;
+
+      try {
+        await this.sock.sendPresenceUpdate('available', 'status@broadcast');
+        this.lastPingTime = Date.now();
+        logger.debug(`📶 SubBot[${this.config.id}] ping enviado`);
+      } catch (error) {
+        logger.warn(`⚠️ SubBot[${this.config.id}] error en ping, reconectando...`);
+        this.scheduleReconnect();
+      }
+    }, 25000);
+  }
+
+  private stopPing(): void {
+    if (this.pingInterval) {
+      clearInterval(this.pingInterval);
+      this.pingInterval = undefined;
+    }
+  }
+
+  private startHealthCheck(): void {
+    if (this.healthCheckTimer) return;
+
+    this.healthCheckTimer = setInterval(async () => {
+      if (!this.sock || this.destroyed) return;
+
+      try {
+        const isOnline = (await this.sock.user?.id) ? true : false;
+        if (!isOnline) {
+          logger.warn(`⚠️ SubBot[${this.config.id}] health check falló, reconectando...`);
+          this.scheduleReconnect();
+        } else {
+          logger.debug(`✅ SubBot[${this.config.id}] health check OK`);
+        }
+      } catch (error) {
+        logger.warn(`⚠️ SubBot[${this.config.id}] error en health check`);
+        this.scheduleReconnect();
+      }
+    }, 60000);
+  }
+
+  private stopHealthCheck(): void {
+    if (this.healthCheckTimer) {
+      clearInterval(this.healthCheckTimer);
+      this.healthCheckTimer = undefined;
+    }
+  }
+
+  private scheduleReconnect(): void {
+    if (this.destroyed) return;
+    if (this.reconnectAttempts >= this.maxReconnectAttempts) {
+      logger.error(`❌ SubBot[${this.config.id}] demasiados reintentos, deteniendo`);
+      subBotDatabase.update(this.config.id, { status: 'error', active: false });
+      this.emit('sessionInvalid');
+      return;
+    }
+
+    this.reconnectAttempts++;
+    const delay = Math.min(5000 * this.reconnectAttempts, 30000);
+
+    logger.info(
+      `🔄 SubBot[${this.config.id}] reconectando en ${delay / 1000}s (intento ${this.reconnectAttempts})`,
+    );
+    subBotDatabase.update(this.config.id, { status: 'connecting' });
+
+    setTimeout(() => {
+      if (!this.destroyed) {
+        this.connectionEstablished = false;
+        void this.start();
+      }
+    }, delay);
   }
 
   /**
@@ -268,6 +348,9 @@ export class SubBotInstance extends EventEmitter {
     this.connectionEstablished = true;
     this.pairingCodeRequested = false;
 
+    this.startPing();
+    this.startHealthCheck();
+
     subBotDatabase.update(this.config.id, {
       status: 'connected',
       connectedAt: Date.now(),
@@ -353,6 +436,10 @@ export class SubBotInstance extends EventEmitter {
   async stop(): Promise<void> {
     logger.info(`🛑 SubBot[${this.config.id}] stopping...`);
     this.destroyed = true;
+
+    this.stopPing();
+    this.stopHealthCheck();
+
     if (this.pairingCodeTimer) {
       clearTimeout(this.pairingCodeTimer);
       this.pairingCodeTimer = undefined;
@@ -404,6 +491,11 @@ export class SubBotInstance extends EventEmitter {
    * @returns true if connected, false otherwise
    */
   isConnected(): boolean {
-    return this.config.status === 'connected' && !!this.sock;
+    return (
+      this.config.status === 'connected' &&
+      !!this.sock &&
+      this.connectionEstablished &&
+      !this.destroyed
+    );
   }
 }
