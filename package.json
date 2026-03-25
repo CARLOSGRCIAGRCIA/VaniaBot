@@ -7,7 +7,7 @@
     "start": "tsx vania.ts",
     "qr": "tsx vania.ts qr",
     "code": "tsx vania.ts code",
-    "dev": "tsx watch vania.ts",
+    "dev": "NODE_ENV=development tsx watch --clear-screen=false --exclude='node_modules' --exclude='dist' --exclude='.git' --exclude='*.log' src/index.ts",
     "build": "tsc",
     "lint": "eslint . --max-warnings 0",
     "lint:fix": "eslint . --fix",

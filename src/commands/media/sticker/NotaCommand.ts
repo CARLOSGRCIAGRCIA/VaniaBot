@@ -1,7 +1,7 @@
 import { Command } from '../../Command.js';
 import { CommandCategory, type MessageContext } from '@/types/index.js';
 import { StickerService } from '@/services/media/StickerService.js';
-import type { Sharp } from 'sharp';
+import { ImageProcessor } from '@/utils/imageProcessor.js';
 import path from 'path';
 
 export class NotaCommand extends Command {
@@ -32,14 +32,13 @@ export class NotaCommand extends Command {
     await ctx.react('⏳');
 
     try {
-      let sharpFn: (input: string) => Sharp;
-      try {
-        sharpFn = (await import('sharp')).default as (input: string) => Sharp;
-      } catch {
+      const isSharp = await ImageProcessor.isSharpAvailable();
+
+      if (!isSharp) {
         await ctx.reply(
-          `˚₊· ͟͟͞͞➳ *oops, esta función no está lista* ˚₊· ͟͟͞͞➳\n\n` +
-            `✿ me falta una herramientita para hacer esto\n` +
-            `✩ espérame un poquito, pronto estará listo ✩`,
+          `˚₊· ͟͟͞͞➳ *nota sticker* ˚₊· ͟͟͞͞➳\n\n` +
+            `✿ Esta función requiere sharp en PC\n` +
+            `✩ En Termux, los stickers básicos funcionan ✩`,
         );
         await ctx.react('❌');
         return;
@@ -47,11 +46,7 @@ export class NotaCommand extends Command {
 
       const imagePath = path.join(process.cwd(), 'data', 'assets', 'nota.jpg');
 
-      const image = sharpFn(imagePath);
-      const metadata = await image.metadata();
-
-      const width = metadata.width || 512;
-      const height = metadata.height || 512;
+      const { width, height } = await ImageProcessor.loadImage(imagePath);
 
       const fontSize = 99;
       const textColor = '#1a1a1a';
@@ -85,10 +80,7 @@ export class NotaCommand extends Command {
 
       svgContent += `</svg>`;
 
-      const buffer = await image
-        .composite([{ input: Buffer.from(svgContent), top: 0, left: 0 }])
-        .png()
-        .toBuffer();
+      const buffer = await ImageProcessor.compositeText(imagePath, svgContent, width, height);
 
       const stiker = await this.stickerService.createSticker(buffer, {
         pack: 'VaniaBot',

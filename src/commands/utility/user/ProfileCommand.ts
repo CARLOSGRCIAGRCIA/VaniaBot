@@ -31,7 +31,7 @@ export class ProfileCommand extends Command {
   category = CommandCategory.UTILITY;
   aliases = ['perfil', 'me', 'stats'];
   usage = '!profile [@user]';
-  examples = ['!profile', '!profile @5215551234567', '!me'];
+  examples = ['!profile', '!profile @user', '!me'];
 
   private static logoBuffer: Buffer | null = null;
   private static logoLoaded = false;
@@ -56,7 +56,6 @@ export class ProfileCommand extends Command {
       ]);
 
       const displayData = this.prepareDisplayData(userData);
-
       const message = this.buildProfileCard(userData, displayData, progress, isSelf);
 
       await this.sendProfileWithImage(ctx, targetJid, message);
@@ -68,10 +67,8 @@ export class ProfileCommand extends Command {
 
   private isBotJid(targetJid: string, botJid?: string): boolean {
     if (!botJid) return false;
-
     const targetNumber = targetJid.split('@')[0].split(':')[0];
     const botNumber = botJid.split('@')[0].split(':')[0];
-
     return targetNumber === botNumber;
   }
 
@@ -85,33 +82,33 @@ export class ProfileCommand extends Command {
     };
 
     const message = `
-˚₊· ͟͟͞͞➳━━━━━━━━━━━━━━━━━━ ˚₊· ͟͟͞͞➳
-   🌸 *VANIA BOT* 🌸
-˚₊· ͟͟͞͞➳━━━━━━━━━━━━━━━━━━ ˚₊· ͟͟͞͞➳
+┌───────────────────┐
+│   ✦ VANIA BOT ✦    │
+└───────────────────┘
 
-✿ *quién soy*
-   ﹒nombre: ${ctx.sock.user?.name || 'VaniaBot'}
-   ﹒estado: 🟢 online
-   ﹒desde: ${uptime}
+◈ INFO
+   • name: ${ctx.sock.user?.name || 'VaniaBot'}
+   • status: online
+   • uptime: ${uptime}
 
-✩ *lo que he hecho*
-   ﹒mensajes: ${formatNumber(stats.messagesReceived)}
-   ﹒comandos: ${formatNumber(stats.commandsExecuted)}
-   ﹒procesados: ${formatNumber(stats.messagesProcessed)}
+◈ STATISTICS
+   • messages: ${formatNumber(stats.messagesReceived)}
+   • commands: ${formatNumber(stats.commandsExecuted)}
+   • processed: ${formatNumber(stats.messagesProcessed)}
 
-⚡ *cómo voy*
-   ﹒tiempo promedio: ${stats.avgProcessingTime?.toFixed(0) || 0}ms
-   ﹒en espera: ${stats.queue?.queued || 0}
+◈ PERFORMANCE
+   • avg time: ${stats.avgProcessingTime?.toFixed(0) || 0}ms
+   • queue: ${stats.queue?.queued || 0}
 
-♡ *mis habilidades*
-   ﹒economía 💰
-   ﹒juegos 🎮
-   ﹒moderación 🛡️
-   ﹒niveles ⭐
+◈ FEATURES
+   • economy
+   • games
+   • moderation
+   • levels
 
-˚₊· ͟͟͞͞➳━━━━━━━━━━━━━━━━━━ ˚₊· ͟͟͞͞➳
-   💕 *!help* para más cositas
-˚₊· ͟͟͞͞➳━━━━━━━━━━━━━━━━━━ ˚₊· ͟͟͞͞➳
+┌─────────────────────┐
+│   !help for commands │
+└─────────────────────┘
 `.trim();
 
     const logoBuffer = this.getDefaultLogo();
@@ -130,7 +127,7 @@ export class ProfileCommand extends Command {
     const hours = Math.floor((ms % (24 * 60 * 60 * 1000)) / (60 * 60 * 1000));
     const minutes = Math.floor((ms % (60 * 60 * 1000)) / (60 * 1000));
 
-    if (days > 0) return `${days}d ${hours}h ${minutes}m`;
+    if (days > 0) return `${days}d ${hours}h`;
     if (hours > 0) return `${hours}h ${minutes}m`;
     return `${minutes}m`;
   }
@@ -162,7 +159,6 @@ export class ProfileCommand extends Command {
   private async getProfileImage(ctx: MessageContext, targetJid: string): Promise<Buffer | null> {
     try {
       let normalizedJid = targetJid;
-
       if (targetJid.includes('@lid')) {
         const phoneNumber = targetJid.split('@')[0];
         normalizedJid = `${phoneNumber}@s.whatsapp.net`;
@@ -170,24 +166,19 @@ export class ProfileCommand extends Command {
 
       const url = await ctx.sock.profilePictureUrl(normalizedJid, 'image');
       if (url) {
-        const response = await fetch(url, {
-          signal: AbortSignal.timeout(1500),
-        });
+        const response = await fetch(url, { signal: AbortSignal.timeout(1500) });
         if (response.ok) {
           return Buffer.from(await response.arrayBuffer());
         }
       }
     } catch {
-      // Ignorar errores
+      // ignore
     }
-
     return this.getDefaultLogo();
   }
 
   private getDefaultLogo(): Buffer | null {
-    if (ProfileCommand.logoLoaded) {
-      return ProfileCommand.logoBuffer;
-    }
+    if (ProfileCommand.logoLoaded) return ProfileCommand.logoBuffer;
 
     try {
       const logoPath = path.join(process.cwd(), 'data', 'assets', 'logo.png');
@@ -197,7 +188,7 @@ export class ProfileCommand extends Command {
         return ProfileCommand.logoBuffer;
       }
     } catch {
-      // Ignorar errores
+      // ignore
     }
 
     ProfileCommand.logoLoaded = true;
@@ -224,11 +215,10 @@ export class ProfileCommand extends Command {
     isSelf: boolean,
   ): string {
     const progressBar = userData.isOwner
-      ? '★'.repeat(10)
+      ? '▰'.repeat(10)
       : this.createProgressBar(progress.currentXP, progress.requiredXP, 10);
 
     const registeredTime = this.getTimeSince(userData.createdAt);
-
     const canDaily = serviceManager.userService.canClaimDaily(userData);
     const canWeekly = serviceManager.userService.canClaimWeekly(userData);
     const canMonthly = serviceManager.userService.canClaimMonthly(userData);
@@ -236,137 +226,116 @@ export class ProfileCommand extends Command {
     let dailyInfo = '';
     if (!canDaily && !userData.isOwner) {
       const remaining = serviceManager.userService.getDailyTimeRemaining(userData);
-      if (remaining > 0) dailyInfo = `\n     ⏰ ${formatTime(remaining)}`;
+      if (remaining > 0) dailyInfo = ` (${formatTime(remaining)})`;
     }
 
     const xpDisplay = userData.isOwner
-      ? '∞ INFINITE'
+      ? '∞'
       : `${formatNumber(progress.currentXP)} / ${formatNumber(progress.requiredXP)}`;
 
     const percentageDisplay = userData.isOwner ? '100%' : `${progress.percentage}%`;
 
-    let card = `✦━━━━━━━━━━━━✦
-> _*♡ VaniaBot Profile ♡*_
-✦━━━━━━━━━━━━✦
+    let card = `┌───────────┐
+│      ✦ PROFILE ✦              │
+└───────────┘
 
-✿ *${userData.name}*
-`;
+◈ ${userData.name}`;
 
     if (userData.isBanned) {
-      card += `   ⚠️ Status: BANNED\n\n`;
+      card += `\n   status: banned\n`;
     } else {
-      const roleIcon = this.getRoleIcon(displayData);
-      card += `   ${roleIcon} ${this.getUserRole(displayData)}
-   ⏱️ Member for ${registeredTime}
-
-`;
+      card += `
+   role: ${this.getUserRole(displayData)}
+   member: ${registeredTime}`;
     }
 
     const rpgStats = userData.stats || { hp: 100, maxHp: 100, atk: 10, def: 5 };
 
-    card += `✦━━━━━━━━━━━━━━✦
- ✦ *LEVEL ${displayData.level}*
-    ${progressBar} ${percentageDisplay}
-    XP: ${xpDisplay}
+    card += `
 
- ✦━━━━━━━━━━━━━━✦
- ⚔️ *RPG Stats*
-    ❤️ HP: ${rpgStats.hp}/${rpgStats.maxHp}
-    🗡️ ATK: ${rpgStats.atk} | 🛡️ DEF: ${rpgStats.def}
+◈ LEVEL ${displayData.level}
+   ${progressBar} ${percentageDisplay}
+   XP: ${xpDisplay}
 
- ✦━━━━━━━━━━━━━━✦
- 💰 *Economy*
-    💵 $${formatNumber(displayData.money)}
-    🎒 ${displayData.inventory?.length || 0} items
-    🏆 ${displayData.achievements?.length || 0} achievements
-    ⚔️ Clase: ${userData.currentClass || 'Sin clase'}
+◈ RPG
+   HP: ${rpgStats.hp}/${rpgStats.maxHp}
+   ATK: ${rpgStats.atk} | DEF: ${rpgStats.def}
 
-✦━━━━━━━━━━━━━━✦
-📊 *Statistics*
-   ⚡ ${formatNumber(displayData.totalCommands)} commands
-   ⚠️ ${displayData.warnings}/3 warns
-   🕐 Active ${this.getTimeSince(userData.updatedAt)}
+◈ ECONOMY
+   money: $${formatNumber(displayData.money)}
+   items: ${displayData.inventory?.length || 0}
+   achievements: ${displayData.achievements?.length || 0}
+   class: ${userData.currentClass || 'none'}
 
-✦━━━━━━━━━━━━━━✦
-🎁 *Rewards*
-`;
+◈ STATS
+   commands: ${formatNumber(displayData.totalCommands)}
+   warns: ${displayData.warnings}/3
+   active: ${this.getTimeSince(userData.updatedAt)}`;
 
     if (userData.isOwner) {
-      card += `   ✨ Daily: ∞ Unlimited
-   ✨ Weekly: ∞ Unlimited
-   ✨ Monthly: ∞ Unlimited
+      card += `
 
-✦━━━━━━━━━━━━━━✦
-   ♛ *Owner Privileges* ♛
-> _*VaniaBot*_`;
+◈ REWARDS
+   daily: unlimited
+   weekly: unlimited
+   monthly: unlimited
+
+┌────────┐
+│   ✦ OWNER ✦       │
+└────────┘`;
     } else {
-      card += `   ${canDaily ? '✅' : '❌'} Daily${dailyInfo}
-   ${canWeekly ? '✅' : '❌'} Weekly
-   ${canMonthly ? '✅' : '❌'} Monthly
-`;
+      card += `
+
+◈ REWARDS
+   daily: ${canDaily ? '✓' : '✗'}${dailyInfo}
+   weekly: ${canWeekly ? '✓' : '✗'}
+   monthly: ${canMonthly ? '✓' : '✗'}`;
 
       if (isSelf) {
         card += `
-✦━━━━━━━━━━━━━━✦
-   💝 Use !daily, !weekly
-      or !monthly to claim`;
+
+┌─────────────────────┐
+│   !daily / !weekly  │
+│   !monthly to claim │
+└─────────────────────┘`;
       }
     }
-
-    card += `\n✦━━━━━━━━━━━━━━✦`;
 
     return card.trim();
   }
 
   private createProgressBar(current: number, total: number, length: number = 10): string {
-    if (total <= 0 || current < 0) {
-      return '★'.repeat(length);
-    }
+    if (total <= 0 || current < 0) return '▰'.repeat(length);
 
     const percentage = Math.min(Math.max(current / total, 0), 1);
     const filled = Math.floor(percentage * length);
     const empty = Math.max(0, length - filled);
 
-    return '★'.repeat(filled) + '☆'.repeat(empty);
-  }
-
-  private getRoleIcon(user: User): string {
-    if (user.isOwner) return '♛';
-    if (user.isBanned) return '⛔';
-    if (user.level >= 100) return '👑';
-    if (user.level >= 50) return '💎';
-    if (user.level >= 25) return '🌟';
-    if (user.level >= 10) return '⭐';
-    return '✨';
+    return '▰'.repeat(filled) + '▱'.repeat(empty);
   }
 
   private getUserRole(user: User): string {
-    if (user.isOwner) return 'Supreme Owner';
-    if (user.isBanned) return 'Banned';
-    if (user.level >= 100) return 'Legend';
-    if (user.level >= 50) return 'Veteran';
-    if (user.level >= 25) return 'Expert';
-    if (user.level >= 10) return 'Intermediate';
-    return 'Novice';
+    if (user.isOwner) return 'owner';
+    if (user.isBanned) return 'banned';
+    if (user.level >= 100) return 'legend';
+    if (user.level >= 50) return 'veteran';
+    if (user.level >= 25) return 'expert';
+    if (user.level >= 10) return 'intermediate';
+    return 'novice';
   }
 
   private getTimeSince(timestamp: number): string {
     const now = Date.now();
     const diff = now - timestamp;
-
     const days = Math.floor(diff / (24 * 60 * 60 * 1000));
     const hours = Math.floor((diff % (24 * 60 * 60 * 1000)) / (60 * 60 * 1000));
 
     if (days > 30) {
       const months = Math.floor(days / 30);
-      return `${months} ${months === 1 ? 'month' : 'months'} ago`;
+      return `${months}m`;
     }
-    if (days > 0) {
-      return `${days} ${days === 1 ? 'day' : 'days'} ago`;
-    }
-    if (hours > 0) {
-      return `${hours} ${hours === 1 ? 'hour' : 'hours'} ago`;
-    }
-    return 'minutes ago';
+    if (days > 0) return `${days}d`;
+    if (hours > 0) return `${hours}h`;
+    return 'now';
   }
 }
