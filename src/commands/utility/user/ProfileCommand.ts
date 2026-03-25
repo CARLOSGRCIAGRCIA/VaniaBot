@@ -262,16 +262,24 @@ export class ProfileCommand extends Command {
 `;
     }
 
-    card += `✦━━━━━━━━━━━━━━✦
-✦ *LEVEL ${displayData.level}*
-   ${progressBar} ${percentageDisplay}
-   XP: ${xpDisplay}
+    const rpgStats = userData.stats || { hp: 100, maxHp: 100, atk: 10, def: 5 };
 
-✦━━━━━━━━━━━━━━✦
-💰 *Economy*
-   💵 $${formatNumber(displayData.money)}
-   🎒 ${displayData.inventory?.length || 0} items
-   🏆 ${displayData.achievements?.length || 0} achievements
+    card += `✦━━━━━━━━━━━━━━✦
+ ✦ *LEVEL ${displayData.level}*
+    ${progressBar} ${percentageDisplay}
+    XP: ${xpDisplay}
+
+ ✦━━━━━━━━━━━━━━✦
+ ⚔️ *RPG Stats*
+    ❤️ HP: ${rpgStats.hp}/${rpgStats.maxHp}
+    🗡️ ATK: ${rpgStats.atk} | 🛡️ DEF: ${rpgStats.def}
+
+ ✦━━━━━━━━━━━━━━✦
+ 💰 *Economy*
+    💵 $${formatNumber(displayData.money)}
+    🎒 ${displayData.inventory?.length || 0} items
+    🏆 ${displayData.achievements?.length || 0} achievements
+    ⚔️ Clase: ${userData.currentClass || 'Sin clase'}
 
 ✦━━━━━━━━━━━━━━✦
 📊 *Statistics*

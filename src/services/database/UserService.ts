@@ -1,6 +1,60 @@
 import type { IDatabase } from './Database.js';
 import { config } from '@/config/index.js';
 
+export interface RPGStats {
+  hp: number;
+  maxHp: number;
+  energy: number;
+  maxEnergy: number;
+  stamina: number;
+  maxStamina: number;
+  atk: number;
+  def: number;
+  str: number;
+  int: number;
+  agi: number;
+  vit: number;
+  luck: number;
+  critChance: number;
+  dodgeChance: number;
+}
+
+export interface InventoryItem {
+  itemId: string;
+  name: string;
+  type: string;
+  rarity: string;
+  quantity: number;
+  stats: Record<string, number>;
+  useEffect?: {
+    type: 'heal' | 'buff' | 'restoreEnergy' | 'restoreStamina' | 'xpBoost';
+    value: number;
+    duration?: number;
+  };
+  equipped?: boolean;
+  purchasedAt: number;
+  expiresAt?: number;
+}
+
+export interface Pet {
+  id: string;
+  name: string;
+  level: number;
+  xp: number;
+  happiness: number;
+  hunger: number;
+  stats: Record<string, number>;
+  equipped: boolean;
+}
+
+export interface QuestProgress {
+  questId: string;
+  objective: string;
+  current: number;
+  target: number;
+  completed: boolean;
+}
+
 export interface User {
   jid: string;
   name: string;
@@ -16,16 +70,21 @@ export interface User {
   weeklyStreak?: number;
   totalCommands: number;
   warnings: number;
-  inventory: Array<{
-    itemId: string;
-    name: string;
-    type: string;
-    purchasedAt: number;
-    expiresAt?: number;
-  }>;
+  inventory: InventoryItem[];
   achievements: string[];
   createdAt: number;
   updatedAt: number;
+  currentClass?: string;
+  stats: RPGStats;
+  pets: Pet[];
+  activeQuests: QuestProgress[];
+  completedQuests: string[];
+  activeBuffs: Array<{
+    buffId: string;
+    stat: string;
+    value: number;
+    expiresAt: number;
+  }>;
 }
 
 export class UserService {
@@ -80,8 +139,13 @@ export class UserService {
       const updatedUser = {
         ...existing,
         isOwner,
-        inventory: existing.inventory || [],
+        inventory: this.normalizeInventory(existing.inventory || []),
         achievements: existing.achievements || [],
+        stats: existing.stats || this.getDefaultStats(),
+        pets: existing.pets || [],
+        activeQuests: existing.activeQuests || [],
+        completedQuests: existing.completedQuests || [],
+        activeBuffs: existing.activeBuffs || [],
       };
 
       if (existing.isOwner !== isOwner) {
@@ -106,6 +170,28 @@ export class UserService {
       achievements: [],
       createdAt: Date.now(),
       updatedAt: Date.now(),
+      currentClass: undefined,
+      stats: {
+        hp: 100,
+        maxHp: 100,
+        energy: 100,
+        maxEnergy: 100,
+        stamina: 100,
+        maxStamina: 100,
+        atk: 10,
+        def: 5,
+        str: 10,
+        int: 10,
+        agi: 10,
+        vit: 10,
+        luck: 5,
+        critChance: 5,
+        dodgeChance: 5,
+      },
+      pets: [],
+      activeQuests: [],
+      completedQuests: [],
+      activeBuffs: [],
     };
 
     await this.db.set(this.COLLECTION, jid, newUser);
@@ -301,10 +387,14 @@ export class UserService {
     const exists = user.inventory.some(i => i.itemId === itemId);
 
     if (!exists) {
-      const newItem = {
+      const newItem: InventoryItem = {
         itemId,
         name: itemId,
-        type: 'legacy',
+        type: 'material',
+        rarity: 'common',
+        quantity: 1,
+        stats: {},
+        equipped: false,
         purchasedAt: Date.now(),
       };
 
@@ -547,11 +637,55 @@ export class UserService {
   ): Promise<void> {
     const user = await this.getUser(jid);
 
-    const newInventory = [...user.inventory, item];
+    const newItem: InventoryItem = {
+      ...item,
+      rarity: 'common',
+      quantity: 1,
+      stats: {},
+      equipped: false,
+    };
+
+    const newInventory = [...user.inventory, newItem];
 
     await this.db.update<User>(this.COLLECTION, jid, {
       inventory: newInventory,
     });
+  }
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  normalizeInventory(inventory: any[]): InventoryItem[] {
+    return inventory.map(item => ({
+      itemId: item.itemId,
+      name: item.name,
+      type: item.type || 'material',
+      rarity: item.rarity || 'common',
+      quantity: item.quantity || 1,
+      stats: item.stats || {},
+      useEffect: item.useEffect,
+      equipped: item.equipped || false,
+      purchasedAt: item.purchasedAt || Date.now(),
+      expiresAt: item.expiresAt,
+    }));
+  }
+
+  getDefaultStats(): RPGStats {
+    return {
+      hp: 100,
+      maxHp: 100,
+      energy: 100,
+      maxEnergy: 100,
+      stamina: 100,
+      maxStamina: 100,
+      atk: 10,
+      def: 5,
+      str: 10,
+      int: 10,
+      agi: 10,
+      vit: 10,
+      luck: 5,
+      critChance: 5,
+      dodgeChance: 5,
+    };
   }
 
   getWeeklyTimeRemaining(user: User): number {
