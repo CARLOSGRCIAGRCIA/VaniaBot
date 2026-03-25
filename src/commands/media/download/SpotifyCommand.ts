@@ -70,7 +70,7 @@ export class SpotifyCommand extends Command {
 
       await ctx.react('✅');
 
-      this.downloader['cleanup'](result.filePath);
+      await this.downloader['cleanup'](result.filePath);
     } catch (error) {
       logger.error('Spotify command error:', error);
       await ctx.react('❌');

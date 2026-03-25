@@ -1,7 +1,6 @@
 import { Command } from '../Command.js';
 import { CommandCategory, type MessageContext } from '@/types/index.js';
 import { serviceManager } from '@/services/system/Servicemanager.js';
-import { formatNumber } from '@/utils/helpers.js';
 import { validateBetAmount } from '@/utils/validators.js';
 import { config } from '@/config/index.js';
 
@@ -129,7 +128,7 @@ export class BlackjackCommand extends Command {
     }
 
     if (action === 'stand' && existingGame) {
-      let dealerCards = [...existingGame.dealerCards];
+      const dealerCards = [...existingGame.dealerCards];
 
       while (this.calculateScore(dealerCards).score < 17) {
         dealerCards.push(Math.floor(Math.random() * 52));

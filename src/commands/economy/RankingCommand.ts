@@ -45,7 +45,6 @@ export class RankingCommand extends Command {
     const top10 = sorted.slice(0, 10);
     top10.forEach((user, index) => {
       const medal = index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : `${index + 1}.`;
-      const isMe = user.jid === ctx.sender.jid ? ' 👈' : '';
 
       switch (type) {
         case 'xp':

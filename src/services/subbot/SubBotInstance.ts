@@ -78,7 +78,7 @@ export class SubBotInstance extends EventEmitter {
         await this.sock.sendPresenceUpdate('available', 'status@broadcast');
         this.lastPingTime = Date.now();
         logger.debug(`📶 SubBot[${this.config.id}] ping enviado`);
-      } catch (error) {
+      } catch {
         logger.warn(`⚠️ SubBot[${this.config.id}] error en ping, reconectando...`);
         this.scheduleReconnect();
       }
