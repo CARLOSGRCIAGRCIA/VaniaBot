@@ -111,7 +111,6 @@ export class ShipCommand extends Command {
 
   async execute(ctx: MessageContext): Promise<void> {
     const mentioned = ctx.message.message?.extendedTextMessage?.contextInfo?.mentionedJid;
-
     if (!mentioned || mentioned.length < 2) {
       await ctx.reply(
         `˚₊· ͟͟͞͞➳ *shippeo* ˚₊· ͟͟͞͞➳\n\n` +
@@ -127,30 +126,50 @@ export class ShipCommand extends Command {
 
     await ctx.react('💕');
 
-    const compatibility = this.calculateShip(nombre1, nombre2);
-
-    const hearts = this.getHearts(compatibility);
-    const message = this.getShipMessage(compatibility, nombre1, nombre2);
+    const { final, breakdown } = this.calculateShip(nombre1, nombre2);
+    const hearts = this.getHearts(final);
+    const message = this.getShipMessage(final, nombre1, nombre2, breakdown);
 
     await ctx.reply(hearts + '\n\n' + message);
     await ctx.react('💝');
   }
 
-  private calculateShip(name1: string, name2: string): number {
-    const combined = (name1 + name2).toLowerCase();
-    let hash = 0;
-    for (let i = 0; i < combined.length; i++) {
-      hash = ((hash << 5) - hash + combined.charCodeAt(i)) | 0;
-    }
-    const basePercent = Math.abs(hash % 101);
+  private calculateShip(
+    name1: string,
+    name2: string,
+  ): { final: number; breakdown: Record<string, number> } {
+    const lenDiff = Math.abs(name1.length - name2.length);
+    const lengthScore = Math.round(Math.max(0, 100 - lenDiff * 10));
 
-    const today = new Date();
-    const daySeed = today.getDate() + today.getMonth() * 31;
-    const randomVariation = (Math.sin(daySeed * 9999) * 100) % 30;
+    const set1 = new Set(name1.toLowerCase());
+    const set2 = new Set(name2.toLowerCase());
+    const shared = [...set1].filter(c => set2.has(c)).length;
+    const letterScore = Math.round((shared / Math.max(set1.size, set2.size)) * 100);
 
-    const finalPercent = Math.max(5, Math.min(99, basePercent + Math.floor(randomVariation)));
+    const initialScore =
+      name1[0]?.toLowerCase() === name2[0]?.toLowerCase()
+        ? 100
+        : Math.abs(name1.charCodeAt(0) - name2.charCodeAt(0)) < 5
+          ? 70
+          : 40;
 
-    return finalPercent;
+    const charSum = (s: string) => s.split('').reduce((a, c) => a + c.charCodeAt(0), 0);
+    const energyScore = (charSum(name1) * charSum(name2)) % 101;
+
+    const final = Math.max(
+      5,
+      Math.min(
+        99,
+        Math.round(
+          lengthScore * 0.2 + letterScore * 0.3 + initialScore * 0.15 + energyScore * 0.35,
+        ),
+      ),
+    );
+
+    return {
+      final,
+      breakdown: { lengthScore, letterScore, initialScore, energyScore },
+    };
   }
 
   private getHearts(percentage: number): string {
@@ -161,39 +180,55 @@ export class ShipCommand extends Command {
     return '💘';
   }
 
-  private getShipMessage(percentage: number, name1: string, name2: string): string {
+  private getShipMessage(
+    percentage: number,
+    name1: string,
+    name2: string,
+    breakdown: Record<string, number>,
+  ): string {
+    const breakdown_text =
+      `\n\n✦ afinidad de nombres: ${breakdown.lengthScore}%\n` +
+      `✦ letras en común: ${breakdown.letterScore}%\n` +
+      `✦ vibra inicial: ${breakdown.initialScore}%\n` +
+      `✦ energía combinada: ${breakdown.energyScore}%`;
+
     if (percentage >= 90) {
       return (
         `˚₊· ͟͟͞͞➳ *¡${name1} y ${name2} son almas gemelas!* ˚₊· ͟͟͞͞➳\n\n` +
         `✩ compatibilidad: ${percentage}%\n\n` +
-        `🌸 ¡amor eterno! Son perfectitos juntos 🌸`
+        `🌸 ¡amor eterno! Son perfectitos juntos 🌸` +
+        breakdown_text
       );
     }
     if (percentage >= 70) {
       return (
         `˚₊· ͟͟͞͞➳ *¡${name1} y ${name2} hacen una pareja increíble!* ˚₊· ͟͟͞͞➳\n\n` +
         `✩ compatibilidad: ${percentage}%\n\n` +
-        `🌸 tienen mucha química. ¡anímate! 🌸`
+        `🌸 tienen mucha química. ¡anímate! 🌸` +
+        breakdown_text
       );
     }
     if (percentage >= 50) {
       return (
         `˚₊· ͟͟͞͞➳ *${name1} y ${name2} tienen potencial* ˚₊· ͟͟͞͞➳\n\n` +
         `✩ compatibilidad: ${percentage}%\n\n` +
-        `🌸 el amor está en el aire. ¡quién sabe qué puede pasar! 🌸`
+        `🌸 el amor está en el aire. ¡quién sabe qué puede pasar! 🌸` +
+        breakdown_text
       );
     }
     if (percentage >= 30) {
       return (
         `˚₊· ͟͟͞͞➳ *amor no correspondido...* ˚₊· ͟͟͞͞➳\n\n` +
         `✩ compatibilidad: ${percentage}%\n\n` +
-        `🌸 hay más amistad que romance... pero quién sabe, el amor puede nacer 🌸`
+        `🌸 hay más amistad que romance... pero quién sabe, el amor puede nacer 🌸` +
+        breakdown_text
       );
     }
     return (
       `˚₊· ͟͟͞͞➳ *${name1} y ${name2}...* ˚₊· ͟͟͞͞➳\n\n` +
       `✩ compatibilidad: ${percentage}%\n\n` +
-      `🌸 tal vez es mejor quedarse como amigos. ¡el mar está lleno de peces! 🌸`
+      `🌸 tal vez es mejor quedarse como amigos. ¡el mar está lleno de peces! 🌸` +
+      breakdown_text
     );
   }
 }
