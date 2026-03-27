@@ -31,11 +31,12 @@ import { cacheManager } from '@/core/CacheManager.js';
 
 const SILENT_LOGGER = pino({ level: 'silent' });
 
-const FIRST_RECONNECT_DELAY = 10000;
+const FIRST_RECONNECT_DELAY = 20000;
 const MAX_RECONNECT_DELAY = 60000;
-const MAX_RECONNECT_ATTEMPTS = 15;
-const HEALTH_CHECK_INTERVAL = 300000;
-const PING_INTERVAL = 25000;
+const MAX_RECONNECT_ATTEMPTS = 25;
+const HEALTH_CHECK_INTERVAL = 600000;
+const PING_INTERVAL = 30000;
+const CONNECTION_VERIFY_DELAY = 5000;
 
 /**
  * Individual subbot instance.
@@ -110,22 +111,23 @@ export class SubBotInstance extends EventEmitter {
       if (!this.sock || this.destroyed) return;
 
       try {
-        if (!this.sock.user?.id) {
-          logger.warn(`⚠️ SubBot[${this.config.id}] sin usuario, verificando conexión...`);
-          if (!this.connectionEstablished) {
-            logger.debug(`⚠️ SubBot[${this.config.id}] sin conexión establecida`);
-            return;
-          }
-        }
-
         const isAlive = this.isSocketReallyConnected();
-        if (!isAlive && !this.isReconnecting) {
-          logger.warn(`⚠️ SubBot[${this.config.id}] socket detectado como muerto, reconectando...`);
-          this.scheduleReconnect();
+
+        if (!isAlive && this.connectionEstablished && !this.isReconnecting) {
+          logger.warn(`⚠️ SubBot[${this.config.id}] posible desconexión detectada, verificando...`);
+          setTimeout(() => {
+            if (this.isSocketReallyConnected()) {
+              logger.info(`✅ SubBot[${this.config.id}] conexión verificada, sigue activa`);
+            } else {
+              logger.warn(`⚠️ SubBot[${this.config.id}] conexión perdida confirmada`);
+            }
+          }, CONNECTION_VERIFY_DELAY);
           return;
         }
 
-        logger.debug(`✅ SubBot[${this.config.id}] health check OK`);
+        if (isAlive) {
+          logger.debug(`✅ SubBot[${this.config.id}] health check OK`);
+        }
       } catch (error) {
         logger.debug(`⚠️ SubBot[${this.config.id}] error en health check: ${error}`);
       }
@@ -139,7 +141,8 @@ export class SubBotInstance extends EventEmitter {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const socket = this.sock as any;
       if (!socket.ws) return false;
-      if (socket.ws.readyState === 0 || socket.ws.readyState === 3) return false;
+      if (socket.ws.readyState === 0) return false;
+      if (socket.ws.readyState === 3) return false;
       if (!this.sock.user?.id) return false;
       if (!this.connectionEstablished) return false;
       return true;
@@ -344,7 +347,7 @@ export class SubBotInstance extends EventEmitter {
       if (statusCode === DisconnectReason.loggedOut || statusCode === DisconnectReason.badSession) {
         this.sessionInvalidCount++;
         logger.warn(
-          `⚠️ SubBot[${this.config.id}] sesión inválida detectada (intento ${this.sessionInvalidCount}/${this.maxSessionInvalidAttempts})`,
+          `⚠️ SubBot[${this.config.id}] sesión inválida (intento ${this.sessionInvalidCount}/${this.maxSessionInvalidAttempts})`,
         );
 
         if (this.sessionInvalidCount >= this.maxSessionInvalidAttempts) {
@@ -357,14 +360,27 @@ export class SubBotInstance extends EventEmitter {
           return;
         }
 
-        logger.info(`🔄 SubBot[${this.config.id}] intentando reconectar con sesión limpia...`);
+        const delay = 15000;
+        logger.info(
+          `🔄 SubBot[${this.config.id}] esperando ${delay / 1000}s antes de reintentar...`,
+        );
         setTimeout(() => {
           if (!this.destroyed) {
             this.clearSession();
             this.connectionEstablished = false;
             void this.start();
           }
-        }, 5000);
+        }, delay);
+        return;
+      }
+
+      if (
+        statusCode === DisconnectReason.timedOut ||
+        statusCode === DisconnectReason.connectionLost
+      ) {
+        logger.info(
+          `⚠️ SubBot[${this.config.id}] timeout/lost temporal, esperando reconexión automática de Baileys...`,
+        );
         return;
       }
     }
@@ -399,14 +415,19 @@ export class SubBotInstance extends EventEmitter {
       logger.warn(`⚠️ SubBot[${this.config.id}] connection closed, code: ${statusCode}`);
 
       if (!this.connectionEstablished) {
+        if (this.isReconnecting) {
+          logger.debug(`⚠️ SubBot[${this.config.id}] ya está reconectando, ignorando...`);
+          return;
+        }
+
         logger.debug(
-          `⚠️ SubBot[${this.config.id}] conexión nunca establecida, reintentando automáticamente...`,
+          `⚠️ SubBot[${this.config.id}] conexión nunca establecida, esperando antes de reintentar...`,
         );
         subBotDatabase.update(this.config.id, { status: 'connecting' });
 
-        const delay = Math.min(5000 * (this.sessionInvalidCount + 1), 15000);
+        const delay = 10000;
         setTimeout(() => {
-          if (!this.destroyed) {
+          if (!this.destroyed && !this.isReconnecting) {
             void this.start();
           }
         }, delay);
