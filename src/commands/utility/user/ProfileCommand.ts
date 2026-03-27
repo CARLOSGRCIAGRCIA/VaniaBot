@@ -235,11 +235,13 @@ export class ProfileCommand extends Command {
 
     const percentageDisplay = userData.isOwner ? '100%' : `${progress.percentage}%`;
 
+    const userBadges = this.getUserBadges(userData);
+
     let card = `┌───────────┐
 │      ✦ PROFILE ✦              │
 └───────────┘
 
-◈ ${userData.name}`;
+◈ ${userData.name}${userBadges}`;
 
     if (userData.isBanned) {
       card += `\n   status: banned\n`;
@@ -266,6 +268,8 @@ export class ProfileCommand extends Command {
    items: ${displayData.inventory?.length || 0}
    achievements: ${displayData.achievements?.length || 0}
    class: ${userData.currentClass || 'none'}
+
+◈ ACTIVE BUFFS${this.formatActiveBuffs(userData)}
 
 ◈ STATS
    commands: ${formatNumber(displayData.totalCommands)}
@@ -337,5 +341,86 @@ export class ProfileCommand extends Command {
     if (days > 0) return `${days}d`;
     if (hours > 0) return `${hours}h`;
     return 'now';
+  }
+
+  private getUserBadges(user: User): string {
+    const badges: string[] = [];
+
+    if (user.isOwner) badges.push('👑 Owner');
+
+    const activeBuffs = user.activeBuffs?.filter(b => b.expiresAt > Date.now()) || [];
+
+    if (activeBuffs.some(b => b.buffId === 'vip_role')) badges.push('👑 VIP');
+    if (activeBuffs.some(b => b.buffId === 'legend_role')) badges.push('💎 Legend');
+    if (activeBuffs.some(b => b.buffId === 'premium_pass')) badges.push('💎 VIP Pass');
+    if (activeBuffs.some(b => b.buffId === 'badge_rich')) badges.push('🤑 Rich');
+    if (activeBuffs.some(b => b.buffId === 'badge_lucky')) badges.push('🍀 Lucky');
+    if (activeBuffs.some(b => b.buffId === 'badge_pro')) badges.push('🏆 Pro');
+
+    if (user.level >= 100) badges.push('⭐ Leyenda');
+    else if (user.level >= 50) badges.push('🔥 Veterano');
+
+    if (badges.length === 0) return '';
+    return '\n   ' + badges.join(' • ');
+  }
+
+  private formatActiveBuffs(user: User): string {
+    const buffs = user.activeBuffs?.filter(b => b.expiresAt > Date.now()) || [];
+
+    if (buffs.length === 0) {
+      return '\n   none';
+    }
+
+    const buffEmojis: Record<string, string> = {
+      vip_role: '👑',
+      legend_role: '💎',
+      daily_bonus: '📈',
+      xp_boost: '✨',
+      lucky_charm: '🍀',
+      income_boost: '💰',
+      cooldown_bypass: '⚡',
+      premium_pass: '💎',
+      bank_interest: '🏦',
+      badge_rich: '🤑',
+      badge_lucky: '🍀',
+      badge_pro: '🏆',
+    };
+
+    const buffNames: Record<string, string> = {
+      vip_role: 'VIP',
+      legend_role: 'Legend',
+      daily_bonus: 'Daily+',
+      xp_boost: 'XP x2',
+      lucky_charm: 'Luck+',
+      income_boost: 'Income+',
+      cooldown_bypass: 'CD-50%',
+      premium_pass: 'VIP Pass',
+      bank_interest: 'Bank+',
+      badge_rich: 'Rich',
+      badge_lucky: 'Lucky',
+      badge_pro: 'Pro',
+    };
+
+    let buffText = '';
+    for (const buff of buffs) {
+      const emoji = buffEmojis[buff.buffId] || '🎁';
+      const name = buffNames[buff.buffId] || buff.buffId;
+
+      let duration = '';
+      if (buff.expiresAt > 0) {
+        const remaining = buff.expiresAt - Date.now();
+        if (remaining > 24 * 60 * 60 * 1000) {
+          duration = ` (${Math.floor(remaining / (24 * 60 * 60 * 1000))}d)`;
+        } else if (remaining > 60 * 60 * 1000) {
+          duration = ` (${Math.floor(remaining / (60 * 60 * 1000))}h)`;
+        } else if (remaining > 0) {
+          duration = ` (${Math.floor(remaining / (60 * 1000))}m)`;
+        }
+      }
+
+      buffText += `\n   ${emoji} ${name}${duration}`;
+    }
+
+    return buffText;
   }
 }
