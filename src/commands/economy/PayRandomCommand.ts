@@ -6,74 +6,68 @@ import { formatNumber } from '@/utils/helpers.js';
 
 export class PayRandomCommand extends Command {
   name = 'payrandom';
-  description = 'Envía una cantidad aleatoria de dinero a un usuario random del grupo (Owner only)';
+  description = 'Envía una cantidad aleatoria a un usuario aleatorio (Solo Owner)';
   category = CommandCategory.ECONOMY;
-  aliases = ['payrandom', 'regalo', 'donacion'];
+  aliases = ['payr', 'regalo', 'giveaway'];
   usage = '!payrandom <cantidad>';
-  examples = ['!payrandom 1000000', '!regalo 500000'];
-  cooldown = 60000;
+  examples = ['!payrandom 1000000'];
+  ownerOnly = true;
 
   async execute(ctx: MessageContext): Promise<void> {
-    const sender = await serviceManager.userService.getUser(ctx.sender.jid);
-
-    if (!sender.isOwner) {
-      await ctx.reply('❌ *Solo el Owner puede usar este comando*');
-      await ctx.react('❌');
-      return;
-    }
-
     const amountStr = ctx.args[0];
     const amount = parseInt(amountStr);
 
     if (!amountStr || isNaN(amount) || amount <= 0) {
       await ctx.reply(
-        '🎁 *PAGO ALEATORIO*\n\n' +
-          'Envía dinero aleatorio a un miembro del grupo.\n\n' +
-          '💰 *Uso:* !payrandom <cantidad>\n' +
-          '💰 *Ejemplo:* !payrandom 1000000\n\n' +
-          '⚠️ *Nota:* El dinero se envía a un usuario aleatorio del grupo.',
+        `🎁 *PAGO ALEATORIO* 🎁\n\n` +
+          `✿ *Cómo funciona:*\n` +
+          `El bot elige un usuario al azar\n` +
+          `de todos los usuarios registrados\n` +
+          `y le envía la cantidad especificada.\n\n` +
+          `💰 *Cantidad:* La que tú definas\n\n` +
+          `📝 *Ejemplo:*\n` +
+          `!payrandom 1000000`,
       );
       return;
     }
 
-    const chatJid = ctx.message.key.remoteJid || '';
+    const allUsers = await serviceManager.userService.getAllUsers();
+    const eligibleUsers = allUsers.filter(u => !u.isOwner && !u.isBanned);
 
-    const participants: string[] = [];
-
-    try {
-      const groupMetadata = await ctx.sock.groupMetadata(chatJid);
-      if (groupMetadata.participants) {
-        for (const p of groupMetadata.participants) {
-          if (p.id && !p.id.includes('@g.us') && !p.id.includes('@lid')) {
-            participants.push(p.id);
-          }
-        }
-      }
-    } catch {
-      await ctx.reply('❌ No se pudo obtener la lista de participantes del grupo');
+    if (eligibleUsers.length === 0) {
+      await ctx.reply(`❌ No hay usuarios elegibles para recibir el regalo`);
       return;
     }
 
-    if (participants.length === 0) {
-      await ctx.reply('❌ No hay participantes en el grupo');
-      return;
-    }
+    const randomUser = eligibleUsers[Math.floor(Math.random() * eligibleUsers.length)];
 
-    const randomParticipant = participants[Math.floor(Math.random() * participants.length)];
+    await serviceManager.userService.addMoney(randomUser.jid, amount);
 
-    await serviceManager.userService.addMoney(randomParticipant, amount);
-
-    const receiver = await serviceManager.userService.getUser(randomParticipant);
-    const displayNumber = randomParticipant.split('@')[0];
+    const sender = await serviceManager.userService.getUser(ctx.sender.jid);
 
     await ctx.reply(
-      `🎁 *PAGO ALEATORIO REALIZADO* 🎁\n\n` +
-        `✨ *$${formatNumber(amount)}* fueron enviados\n\n` +
-        `📱 *Destinatario:* @${displayNumber}\n` +
-        `👤 *Nombre:* ${receiver.name}\n\n` +
-        `💝 *Sorteo completado*`,
+      `🎁 *PAGO ALEATORIO ENVIADO* 🎁\n\n` +
+        `✨ *¡Felicidades!*\n\n` +
+        `💰 *Cantidad:* $${formatNumber(amount)}\n\n` +
+        `🎯 *Ganador:* ${randomUser.name}\n` +
+        `📱 *JID:* @${randomUser.jid.split('@')[0]}\n\n` +
+        `💝 *Enviado por:* ${sender.name}\n\n` +
+        `━━━━━━━━━━━━━━━━━━━━━\n` +
+        `📊 *Total usuarios:* ${eligibleUsers.length}\n` +
+        `🎲 *Probabilidad:* ${((1 / eligibleUsers.length) * 100).toFixed(2)}%`,
     );
 
-    await ctx.react('🎁');
+    try {
+      await ctx.sock.sendMessage(randomUser.jid, {
+        text:
+          `🎁 *¡RECIBISTE UN REGALO!* 🎁\n\n` +
+          `💰 *Cantidad:* $${formatNumber(amount)}\n\n` +
+          `✨ *Te lo envía:* ${sender.name}\n\n` +
+          `🎉 *¡Felicidades!*\n\n` +
+          `> _*VaniaBot💝*_`,
+      });
+    } catch {
+      // User might not be reachable
+    }
   }
 }

@@ -1,38 +1,216 @@
 import { Command } from '../Command.js';
-import { CommandCategory } from '@/types/index.js';
-import type { MessageContext } from '@/types/index.js';
-import { lotteryService } from '@/services/economy/LotteryService.js';
+import { CommandCategory, type MessageContext } from '@/types/index.js';
+import { serviceManager } from '@/services/system/Servicemanager.js';
+import { formatNumber } from '@/utils/helpers.js';
+
+interface LotteryTicket {
+  number: string;
+  buyerJid: string;
+  buyerName: string;
+  purchasedAt: number;
+}
+
+interface LotteryState {
+  tickets: LotteryTicket[];
+  prizePool: number;
+  lastDraw: number;
+  ticketPrice: number;
+}
+
+const LOTTERY_CONFIG = {
+  ticketPrice: 1000,
+  prizeMultiplier: 0.8,
+  maxTickets: 100,
+  drawInterval: 7 * 24 * 60 * 60 * 1000,
+};
+
+const lotteryState: LotteryState = {
+  tickets: [],
+  prizePool: 0,
+  lastDraw: 0,
+  ticketPrice: LOTTERY_CONFIG.ticketPrice,
+};
+
+function generateTicketNumber(): string {
+  return Math.random().toString().substring(2, 7).toUpperCase();
+}
 
 export class LotteryCommand extends Command {
   name = 'loteria';
-  description = 'Compra un ticket de lotería y participa en el sorteo';
+  description = 'Compra tickets de lotería';
   category = CommandCategory.ECONOMY;
-  aliases = ['loteria', 'lottery', 'loto'];
-  usage = '!loteria [numero]';
-  examples = ['!loteria', '!loteria 42'];
-  cooldown = 10000;
+  aliases = ['lottery', 'ticket', 'sorteo'];
+  usage = '!loteria [comprar|estado|resultado]';
+  examples = ['!loteria comprar 5', '!loteria estado'];
+  cooldown = 5000;
 
   async execute(ctx: MessageContext): Promise<void> {
-    const args = ctx.args;
-    let number: number | undefined;
+    const action = ctx.args[0]?.toLowerCase() || 'estado';
+    const amount = parseInt(ctx.args[1]) || 1;
 
-    if (args.length > 0) {
-      number = parseInt(args[0]);
-      if (isNaN(number) || number < 1 || number > 99) {
-        await ctx.reply('❌ El número debe estar entre 1 y 99');
-        return;
-      }
+    switch (action) {
+      case 'comprar':
+      case 'buy':
+      case 'comprar':
+        await this.buyTickets(ctx, amount);
+        break;
+      case 'estado':
+      case 'status':
+      case 'info':
+        await this.showStatus(ctx);
+        break;
+      case 'resultado':
+      case 'draw':
+        if (ctx.sender.isOwner) {
+          await this.drawLottery(ctx);
+        }
+        break;
+      default:
+        await ctx.reply(
+          `🎫 *LOTERÍA VANIA* 🎫\n\n` +
+            `✿ *Cómo funciona:*\n` +
+            `Compra tickets y participa\n` +
+            `en el sorteo semanal.\n\n` +
+            `💰 *Premio:* 80% del pozo total\n\n` +
+            `🎮 *Comandos:*\n\n` +
+            `• !loteria comprar [cantidad]\n` +
+            `• !loteria estado\n\n` +
+            `💵 *Precio por ticket:* $${LOTTERY_CONFIG.ticketPrice.toLocaleString()}`,
+        );
     }
+  }
 
-    const result = await lotteryService.buyTicket(ctx.sender.jid, number);
-
-    if (!result.success) {
-      await ctx.reply(result.message);
-      await ctx.react('❌');
+  private async buyTickets(ctx: MessageContext, amount: number): Promise<void> {
+    if (amount < 1 || amount > 10) {
+      await ctx.reply(`❌ *Cantidad inválida*\n\nMáximo 10 tickets por compra`);
       return;
     }
 
-    await ctx.reply(result.message);
+    const user = await serviceManager.userService.getUser(ctx.sender.jid);
+    const totalCost = amount * LOTTERY_CONFIG.ticketPrice;
+
+    if (user.money < totalCost) {
+      await ctx.reply(
+        `❌ *No tienes suficiente dinero*\n\n` +
+          `💵 Tienes: $${formatNumber(user.money)}\n` +
+          `💸 Costo: $${formatNumber(totalCost)} (${amount} tickets)`,
+      );
+      return;
+    }
+
+    if (lotteryState.tickets.length >= LOTTERY_CONFIG.maxTickets) {
+      await ctx.reply(`❌ *Ya no hay tickets disponibles*\n\nEl sorteo está completo`);
+      return;
+    }
+
+    const availableSlots = LOTTERY_CONFIG.maxTickets - lotteryState.tickets.length;
+    const ticketsToBuy = Math.min(amount, availableSlots);
+
+    if (ticketsToBuy < amount) {
+      await ctx.reply(
+        `⚠️ *Solo hay ${availableSlots} tickets disponibles*\n\n` +
+          `Se comprarán ${ticketsToBuy} tickets`,
+      );
+    }
+
+    await serviceManager.userService.removeMoney(ctx.sender.jid, totalCost);
+
+    const purchasedTickets: string[] = [];
+    for (let i = 0; i < ticketsToBuy; i++) {
+      let ticketNumber = generateTicketNumber();
+      while (lotteryState.tickets.some(t => t.number === ticketNumber)) {
+        ticketNumber = generateTicketNumber();
+      }
+
+      lotteryState.tickets.push({
+        number: ticketNumber,
+        buyerJid: ctx.sender.jid,
+        buyerName: user.name,
+        purchasedAt: Date.now(),
+      });
+      purchasedTickets.push(ticketNumber);
+    }
+
+    lotteryState.prizePool += totalCost * LOTTERY_CONFIG.prizeMultiplier;
+
+    const timeUntilDraw = this.getTimeUntilDraw();
+    await ctx.reply(
+      `🎫 *TICKETS COMPRADOS* 🎫\n\n` +
+        `✨ *Tickets:* ${purchasedTickets.map(t => `\`${t}\``).join(', ')}\n\n` +
+        `💰 *Costo:* $${formatNumber(totalCost)}\n` +
+        `💎 *Pozo:* $${formatNumber(lotteryState.prizePool)}\n\n` +
+        `⏰ *Sorteo en:* ${timeUntilDraw}\n\n` +
+        `📊 *Tiquetes vendidos:* ${lotteryState.tickets.length}/${LOTTERY_CONFIG.maxTickets}`,
+    );
     await ctx.react('🎫');
+  }
+
+  private async showStatus(ctx: MessageContext): Promise<void> {
+    await serviceManager.userService.getUser(ctx.sender.jid);
+    const userTickets = lotteryState.tickets.filter(t => t.buyerJid === ctx.sender.jid);
+    const timeUntilDraw = this.getTimeUntilDraw();
+
+    await ctx.reply(
+      `🎫 *ESTADO DE LOTERÍA* 🎫\n\n` +
+        `💎 *Pozo acumulado:* $${formatNumber(lotteryState.prizePool)}\n` +
+        `📊 *Tickets vendidos:* ${lotteryState.tickets.length}/${LOTTERY_CONFIG.maxTickets}\n` +
+        `⏰ *Sorteo en:* ${timeUntilDraw}\n\n` +
+        (userTickets.length > 0
+          ? `🎫 *Tus tickets:*\n${userTickets.map(t => `\`${t.number}\``).join(', ')}\n\n`
+          : `✿ *No tienes tickets*\n`) +
+        `💵 *Precio:* $${LOTTERY_CONFIG.ticketPrice.toLocaleString()}\n\n` +
+        `📝 *Compra:* !loteria comprar [cantidad]`,
+    );
+  }
+
+  private async drawLottery(ctx: MessageContext): Promise<void> {
+    if (lotteryState.tickets.length === 0) {
+      await ctx.reply(`❌ *No hay tickets comprados*\n\nNo se puede realizar el sorteo`);
+      return;
+    }
+
+    const winningIndex = Math.floor(Math.random() * lotteryState.tickets.length);
+    const winner = lotteryState.tickets[winningIndex];
+    const prize = Math.floor(lotteryState.prizePool);
+
+    await serviceManager.userService.addMoney(winner.buyerJid, prize);
+
+    const winnerUser = await serviceManager.userService.getUser(winner.buyerJid);
+
+    await ctx.reply(
+      `🎉 *¡SORTEO REALIZADO!* 🎉\n\n` +
+        `🥇 *GANADOR:* ${winner.buyerName}\n` +
+        `🎫 *Ticket:* \`${winner.number}\`\n\n` +
+        `💎 *PREMIO:* $${formatNumber(prize)}\n\n` +
+        `💵 *Nuevo balance:* $${formatNumber(winnerUser.money)}\n\n` +
+        `━━━━━━━━━━━━━━━━━━━━━\n` +
+        `📊 *Participantes:* ${lotteryState.tickets.length}`,
+    );
+
+    lotteryState.tickets = [];
+    lotteryState.prizePool = 0;
+    lotteryState.lastDraw = Date.now();
+  }
+
+  private getTimeUntilDraw(): string {
+    const now = Date.now();
+    if (lotteryState.lastDraw === 0) {
+      return '¡Pronto!';
+    }
+
+    const nextDraw = lotteryState.lastDraw + LOTTERY_CONFIG.drawInterval;
+    const diff = nextDraw - now;
+
+    if (diff <= 0) {
+      return '¡Disponible ahora!';
+    }
+
+    const days = Math.floor(diff / (24 * 60 * 60 * 1000));
+    const hours = Math.floor((diff % (24 * 60 * 60 * 1000)) / (60 * 60 * 1000));
+
+    if (days > 0) {
+      return `${days}d ${hours}h`;
+    }
+    return `${hours}h`;
   }
 }
