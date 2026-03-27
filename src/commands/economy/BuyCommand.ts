@@ -53,34 +53,40 @@ export class BuyCommand extends Command {
     try {
       await serviceManager.userService.removeMoney(ctx.sender.jid, item.price);
 
+      const user = await serviceManager.userService.getUser(ctx.sender.jid);
       const expiresAt = item.duration ? Date.now() + item.duration : undefined;
 
-      await serviceManager.userService.addItemToInventory(ctx.sender.jid, {
-        itemId: item.id,
-        name: item.name,
-        type: item.type,
-        purchasedAt: Date.now(),
-        expiresAt,
+      const existingBuffIndex = user.activeBuffs.findIndex(b => b.buffId === item.id);
+      if (existingBuffIndex >= 0) {
+        user.activeBuffs[existingBuffIndex].expiresAt = expiresAt ?? 0;
+      } else {
+        const buffValue = this.getBuffValue(item.id);
+        user.activeBuffs.push({
+          buffId: item.id,
+          stat: this.getBuffStat(item.id),
+          value: buffValue,
+          expiresAt: expiresAt ?? 0,
+        });
+      }
+      await serviceManager.userService.updateUser(ctx.sender.jid, {
+        activeBuffs: user.activeBuffs,
       });
 
-      const updatedUser = await serviceManager.userService.getUser(ctx.sender.jid);
-
-      let message = `✅ *Purchase Successful!*\n\n`;
+      let message = `✅ *¡Compra Exitosa!*\n\n`;
       message += `${item.emoji} *${item.name}*\n`;
       message += `${item.description}\n\n`;
-      message += `💵 Paid: $${item.price.toLocaleString()}\n`;
-      message += `💰 New Balance: $${updatedUser.money.toLocaleString()}\n\n`;
+      message += `💵 Pagado: $${item.price.toLocaleString()}\n`;
+      message += `💰 Nuevo saldo: $${user.money.toLocaleString()}\n\n`;
 
       if (item.duration) {
         const days = Math.floor(item.duration / (24 * 60 * 60 * 1000));
         const hours = Math.floor((item.duration % (24 * 60 * 60 * 1000)) / (60 * 60 * 1000));
 
-        message += `⏰ Duration: ${days > 0 ? `${days}d ` : ''}${hours}h\n`;
-        message += `📅 Expires: ${new Date(Date.now() + item.duration).toLocaleString()}\n\n`;
+        message += `⏰ Duración: ${days > 0 ? `${days}d ` : ''}${hours}h\n`;
+        message += `📅 Expira: ${new Date(Date.now() + item.duration).toLocaleString()}\n\n`;
       }
 
-      message += `📦 Item added to your inventory\n`;
-      message += `Use !inventory to see your items\n\n`;
+      message += this.getItemEffectMessage(item.id);
       message += `> _*VaniaBot💝*_`;
 
       await ctx.reply(message);
@@ -91,5 +97,59 @@ export class BuyCommand extends Command {
       await ctx.reply(`❌ Error processing purchase: ${errorMessage}`);
       await ctx.react('❌');
     }
+  }
+
+  private getBuffStat(itemId: string): string {
+    const buffStats: Record<string, string> = {
+      vip_role: 'vip',
+      legend_role: 'legend',
+      name_color: 'nameColor',
+      name_glow: 'nameGlow',
+      cooldown_bypass: 'cooldown',
+      xp_boost: 'xp',
+      lucky_charm: 'luck',
+      income_boost: 'income',
+      badge_rich: 'badgeRich',
+      badge_lucky: 'badgeLucky',
+      badge_pro: 'badgePro',
+      custom_title: 'customTitle',
+    };
+    return buffStats[itemId] || 'unknown';
+  }
+
+  private getBuffValue(itemId: string): number {
+    const buffValues: Record<string, number> = {
+      vip_role: 1,
+      legend_role: 1,
+      name_color: 1,
+      name_glow: 1,
+      cooldown_bypass: 0.5,
+      xp_boost: 2,
+      lucky_charm: 25,
+      income_boost: 50,
+      badge_rich: 1,
+      badge_lucky: 1,
+      badge_pro: 1,
+      custom_title: 1,
+    };
+    return buffValues[itemId] || 1;
+  }
+
+  private getItemEffectMessage(itemId: string): string {
+    const messages: Record<string, string> = {
+      vip_role: `✨ ¡Tienes estado VIP activo!\n`,
+      legend_role: `✨ ¡Tienes estado Legend activo!\n`,
+      name_color: `🎨 ¡Color de nombre activado!\nUsa !perfil para ver los cambios\n`,
+      name_glow: `🌟 ¡Efecto glow activado!\nUsa !perfil para ver los cambios\n`,
+      cooldown_bypass: `⚡ ¡Cooldowns reducidos 50%!\n`,
+      xp_boost: `✨ ¡XP duplicado!\n`,
+      lucky_charm: `🍀 ¡Suerte +25% en juegos!\n`,
+      income_boost: `💰 ¡Ingresos +50% en trabajos!\n`,
+      badge_rich: `🤑 ¡Badge de Rico obtenido!\n`,
+      badge_lucky: `🍀 ¡Badge de Suerte obtenido!\n`,
+      badge_pro: `🏆 ¡Badge de Pro Player obtenido!\n`,
+      custom_title: `📛 ¡Título personalizado activado!\n`,
+    };
+    return messages[itemId] || ``;
   }
 }
