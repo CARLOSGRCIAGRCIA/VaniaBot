@@ -2,6 +2,7 @@ import { Command } from '../Command.js';
 import { CommandCategory, type MessageContext } from '@/types/index.js';
 import { serviceManager } from '@/services/system/Servicemanager.js';
 import { formatNumber } from '@/utils/helpers.js';
+import { achievementService } from '@/services/rpg/AchievementService.js';
 
 const casinoCooldowns = new Map<string, number>();
 const CASINO_COOLDOWN = 30 * 1000;
@@ -222,6 +223,9 @@ export class CasinoCommand extends Command {
       await serviceManager.userService.addMoney(ctx.sender.jid, reward);
       const profit = reward - bet;
 
+      await achievementService.trackCasino(ctx.sender.jid, true);
+      await achievementService.checkMoneyAchievements(ctx.sender.jid);
+
       await ctx.reply(
         `🎰 *${game.emoji} ${game.name.toUpperCase()}* 🎰\n\n` +
           `${result.message}\n\n` +
@@ -231,6 +235,8 @@ export class CasinoCommand extends Command {
       );
       await ctx.react('🎉');
     } else {
+      await achievementService.trackCasino(ctx.sender.jid, false);
+
       await ctx.reply(
         `🎰 *${game.emoji} ${game.name.toUpperCase()}* 🎰\n\n` +
           `${result.message}\n\n` +

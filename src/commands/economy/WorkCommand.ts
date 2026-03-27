@@ -3,6 +3,7 @@ import { CommandCategory } from '@/types/index.js';
 import type { MessageContext } from '@/types/index.js';
 import { serviceManager } from '@/services/system/Servicemanager.js';
 import { formatNumber } from '@/utils/helpers.js';
+import { achievementService } from '@/services/rpg/AchievementService.js';
 
 export class WorkCommand extends Command {
   name = 'work';
@@ -25,6 +26,9 @@ export class WorkCommand extends Command {
     const earned = Math.floor(Math.random() * (job.max - job.min + 1)) + job.min;
 
     await serviceManager.userService.addMoney(ctx.sender.jid, earned);
+
+    await achievementService.trackWork(ctx.sender.jid);
+    await achievementService.checkLevelAchievements(ctx.sender.jid);
 
     const xpGained = Math.floor(earned / 10);
     await serviceManager.levelService.addXP(ctx.sender.jid, xpGained);

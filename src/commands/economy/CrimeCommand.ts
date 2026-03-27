@@ -2,6 +2,7 @@ import { Command } from '../Command.js';
 import { CommandCategory, type MessageContext } from '@/types/index.js';
 import { serviceManager } from '@/services/system/Servicemanager.js';
 import { formatNumber } from '@/utils/helpers.js';
+import { achievementService } from '@/services/rpg/AchievementService.js';
 
 const crimeCooldowns = new Map<string, number>();
 const CRIME_COOLDOWN = 3 * 60 * 1000;
@@ -273,6 +274,12 @@ export class CrimeCommand extends Command {
 
       crimeCooldowns.set(attacker.jid, now);
 
+      const newAchievements = await achievementService.trackCrime(attacker.jid, true, actualSteal);
+      if (newAchievements.length > 0) {
+        await achievementService.checkLevelAchievements(attacker.jid);
+        await achievementService.checkMoneyAchievements(attacker.jid);
+      }
+
       await ctx.reply(
         `🚨 *ROBO EXITOSO* 🚨\n\n` +
           `${crime.emoji} *${crime.name.toUpperCase()}*\n\n` +
@@ -298,6 +305,8 @@ export class CrimeCommand extends Command {
 
       msg += `📊 Éxito: ${Math.round(crime.success * 100)}%\n\n`;
       msg += `💡 *Tip:* Guarda dinero en el banco con !deposit`;
+
+      await achievementService.trackCrime(attacker.jid, false);
 
       await ctx.reply(msg);
       await ctx.react('🚨');

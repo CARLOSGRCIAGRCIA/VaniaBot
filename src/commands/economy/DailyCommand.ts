@@ -4,6 +4,7 @@ import type { MessageContext } from '@/types/index.js';
 import { serviceManager } from '@/services/system/Servicemanager.js';
 import { formatNumber, formatTime } from '@/utils/helpers.js';
 import { errorHandler } from '@/utils/ErrorHandler.js';
+import { achievementService } from '@/services/rpg/AchievementService.js';
 
 export class DailyCommand extends Command {
   name = 'daily';
@@ -40,6 +41,10 @@ export class DailyCommand extends Command {
       await serviceManager.userService.updateUser(ctx.sender.jid, {
         lastDaily: Date.now(),
       });
+
+      await achievementService.trackDaily(ctx.sender.jid);
+      await achievementService.checkLevelAchievements(ctx.sender.jid);
+      await achievementService.checkMoneyAchievements(ctx.sender.jid);
 
       await serviceManager.levelService.addXP(ctx.sender.jid, this.XP_REWARD);
 
