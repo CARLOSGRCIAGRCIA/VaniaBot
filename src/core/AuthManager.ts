@@ -31,11 +31,14 @@ const WA_BROWSER_QR: [string, string, string] = ['VaniaBot', 'Chrome', '120.0.0'
 const SILENT_LOGGER = pino({ level: 'silent' });
 
 const MAX_QR_RETRIES = 10;
-const MAX_RECONNECT_ATTEMPTS = 15;
+const MAX_RECONNECT_ATTEMPTS = 20;
 const CONNECTION_TIMEOUT = 120_000;
-const RECONNECT_BASE_DELAY = 500;
-const MAX_RECONNECT_DELAY = 5_000;
+const RECONNECT_BASE_DELAY = 1000;
+const MAX_RECONNECT_DELAY = 60_000;
 const PAIRING_CODE_TIMEOUT = 180_000;
+const PING_INTERVAL_MS = 15000;
+const HEALTH_CHECK_INTERVAL_MS = 60000;
+const SOCKET_VERIFY_GRACE_MS = 3000;
 
 const ERROR_515_MAX_RETRIES = 3;
 const ERROR_515_WAIT_TIME = 3_000;
@@ -132,7 +135,9 @@ export class AuthManager {
   private currentSocket: WASocket | null = null;
   private onSocketRecreate: SocketRecreateCallback | null = null;
   private pingInterval: NodeJS.Timeout | null = null;
+  private healthCheckInterval: NodeJS.Timeout | null = null;
   private lastPingTime = 0;
+  private lastHealthCheckTime = 0;
 
   constructor() {
     patchStdout();
@@ -168,13 +173,51 @@ export class AuthManager {
       } catch {
         logger.warn('⚠️ Error en ping, podría haber conexión lenta');
       }
-    }, 25000);
+    }, PING_INTERVAL_MS);
+  }
+
+  private startHealthCheck(): void {
+    if (this.healthCheckInterval) return;
+
+    this.healthCheckInterval = setInterval(async () => {
+      if (!this.currentSocket || !this.connectionEstablished || this.isReconnecting) return;
+
+      const isReallyConnected = this.isSocketReallyConnected();
+      this.lastHealthCheckTime = Date.now();
+
+      if (!isReallyConnected) {
+        logger.warn('⚠️ Health check: socket detectado como muerto, forzando reconexión...');
+        this.connectionEstablished = false;
+        this.scheduleReconnectInternal();
+        return;
+      }
+
+      logger.debug('✅ Health check OK');
+    }, HEALTH_CHECK_INTERVAL_MS);
+  }
+
+  private isSocketReallyConnected(): boolean {
+    if (!this.currentSocket || !this.connectionEstablished) return false;
+
+    try {
+      const socket = this.currentSocket as any;
+      if (!socket.ws) return false;
+      if (socket.ws.readyState === 0 || socket.ws.readyState === 3) return false;
+      if (!this.currentSocket.user?.id) return false;
+      return true;
+    } catch {
+      return false;
+    }
   }
 
   private stopPing(): void {
     if (this.pingInterval) {
       clearInterval(this.pingInterval);
       this.pingInterval = null;
+    }
+    if (this.healthCheckInterval) {
+      clearInterval(this.healthCheckInterval);
+      this.healthCheckInterval = null;
     }
   }
 
@@ -371,6 +414,7 @@ export class AuthManager {
     }
 
     this.startPing();
+    this.startHealthCheck();
   }
 
   private onConnectionClose(lastDisconnect: Partial<ConnectionState>['lastDisconnect']): void {
@@ -464,20 +508,21 @@ export class AuthManager {
   private scheduleReconnectInternal(statusCode?: number): void {
     this.connectionEstablished = false;
     this.isReconnecting = true;
+    this.stopPing();
 
     if (this.reconnectAttempts >= MAX_RECONNECT_ATTEMPTS) {
-      logger.error('❌ Demasiados intentos fallidos, reiniciando contador');
+      logger.error('❌ Demasiados intentos fallidos, reintentando con delay mayor...');
       this.reconnectAttempts = 0;
-      this.reconnectDelay = 1000;
+      this.reconnectDelay = 5000;
     }
 
     this.reconnectAttempts++;
-    const delay = Math.min(this.reconnectDelay, 30000);
+    const delay = Math.min(this.reconnectDelay, MAX_RECONNECT_DELAY);
 
     logger.warn(
-      `🔄 Reconexión [${this.reconnectAttempts}/${MAX_RECONNECT_ATTEMPTS}] en ${delay}ms`,
+      `🔄 Reconexión [${this.reconnectAttempts}/${MAX_RECONNECT_ATTEMPTS}] en ${Math.round(delay / 1000)}s`,
     );
-    this.reconnectDelay = Math.min(this.reconnectDelay * 2, 30000);
+    this.reconnectDelay = Math.min(this.reconnectDelay * 1.5, MAX_RECONNECT_DELAY);
 
     setTimeout(async () => {
       try {
