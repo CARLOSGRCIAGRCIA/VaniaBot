@@ -6,7 +6,7 @@ export class BuyItemCommand extends Command {
   name = 'buyitem';
   description = 'Compra un item del mercado';
   category = CommandCategory.RPG;
-  aliases = ['comprar', 'buy'];
+  aliases = ['compraritem', 'buyitem'];
   usage = '!buyitem [id]';
   examples = ['!buyitem abc12345'];
 
