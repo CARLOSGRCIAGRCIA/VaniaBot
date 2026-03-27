@@ -11,7 +11,7 @@
  * @created 2026-03-16
  */
 
-import { existsSync, readFileSync, writeFileSync, mkdirSync, renameSync, unlinkSync } from 'fs';
+import { existsSync, readFileSync, writeFileSync, mkdirSync, renameSync } from 'fs';
 import type { SubBotConfig } from '@/types/subbot.js';
 
 const DB_PATH = './data/subbots.json';

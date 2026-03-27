@@ -38,7 +38,6 @@ const MAX_RECONNECT_DELAY = 60_000;
 const PAIRING_CODE_TIMEOUT = 180_000;
 const PING_INTERVAL_MS = 15000;
 const HEALTH_CHECK_INTERVAL_MS = 60000;
-const SOCKET_VERIFY_GRACE_MS = 3000;
 
 const ERROR_515_MAX_RETRIES = 3;
 const ERROR_515_WAIT_TIME = 3_000;
@@ -200,6 +199,7 @@ export class AuthManager {
     if (!this.currentSocket || !this.connectionEstablished) return false;
 
     try {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const socket = this.currentSocket as any;
       if (!socket.ws) return false;
       if (socket.ws.readyState === 0 || socket.ws.readyState === 3) return false;

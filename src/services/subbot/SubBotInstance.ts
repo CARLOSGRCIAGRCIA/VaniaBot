@@ -36,7 +36,6 @@ const MAX_RECONNECT_DELAY = 60000;
 const MAX_RECONNECT_ATTEMPTS = 15;
 const HEALTH_CHECK_INTERVAL = 300000;
 const PING_INTERVAL = 25000;
-const SOCKET_VERIFY_GRACE_PERIOD = 5000;
 
 /**
  * Individual subbot instance.
@@ -137,6 +136,7 @@ export class SubBotInstance extends EventEmitter {
     if (!this.sock || this.destroyed) return false;
 
     try {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const socket = this.sock as any;
       if (!socket.ws) return false;
       if (socket.ws.readyState === 0 || socket.ws.readyState === 3) return false;

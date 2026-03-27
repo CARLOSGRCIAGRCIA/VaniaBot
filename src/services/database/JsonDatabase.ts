@@ -168,7 +168,6 @@ export class JsonDatabase extends Database {
 
   private cleanTmpOrphans(): void {
     try {
-      const dir = dirname(this.filePath);
       const files = [
         this.filePath + '.tmp',
         this.filePath + '.tmp_write',
