@@ -31,6 +31,12 @@ import { cacheManager } from '@/core/CacheManager.js';
 
 const SILENT_LOGGER = pino({ level: 'silent' });
 
+const FIRST_RECONNECT_DELAY = 10000;
+const MAX_RECONNECT_DELAY = 60000;
+const MAX_RECONNECT_ATTEMPTS = 15;
+const HEALTH_CHECK_INTERVAL = 120000;
+const PING_INTERVAL = 25000;
+
 /**
  * Individual subbot instance.
  * Each subbot has its own WhatsApp connection.
@@ -48,7 +54,7 @@ export class SubBotInstance extends EventEmitter {
   /** Configuration for this subbot */
   public config: SubBotConfig;
   private reconnectAttempts = 0;
-  private maxReconnectAttempts = 15;
+  private maxReconnectAttempts = MAX_RECONNECT_ATTEMPTS;
   private pairingCodeRequested = false;
   private connectionEstablished = false;
   private destroyed = false;
@@ -57,6 +63,9 @@ export class SubBotInstance extends EventEmitter {
   private lastPingTime = 0;
   private healthCheckTimer?: NodeJS.Timeout;
   private isReconnecting = false;
+  private sessionInvalidCount = 0;
+  private maxSessionInvalidAttempts = 3;
+  private needsNewCode = false;
 
   /**
    * Creates a new subbot instance.
@@ -81,7 +90,7 @@ export class SubBotInstance extends EventEmitter {
       } catch {
         logger.debug(`⚠️ SubBot[${this.config.id}] error en ping (ignorado)`);
       }
-    }, 25000);
+    }, PING_INTERVAL);
   }
 
   private stopPing(): void {
@@ -105,11 +114,32 @@ export class SubBotInstance extends EventEmitter {
             return;
           }
         }
+
+        const isAlive = this.isSocketReallyConnected();
+        if (!isAlive && !this.isReconnecting) {
+          logger.warn(`⚠️ SubBot[${this.config.id}] socket detectado como muerto, reconectando...`);
+          this.scheduleReconnect();
+          return;
+        }
+
         logger.debug(`✅ SubBot[${this.config.id}] health check OK`);
       } catch (error) {
         logger.debug(`⚠️ SubBot[${this.config.id}] error en health check: ${error}`);
       }
-    }, 60000);
+    }, HEALTH_CHECK_INTERVAL);
+  }
+
+  private isSocketReallyConnected(): boolean {
+    if (!this.sock || this.destroyed) return false;
+
+    try {
+      const socket = this.sock as any;
+      if (!socket.ws || socket.ws.readyState !== 1) return false;
+      if (!this.sock.user?.id) return false;
+      return this.connectionEstablished;
+    } catch {
+      return false;
+    }
   }
 
   private stopHealthCheck(): void {
@@ -123,18 +153,39 @@ export class SubBotInstance extends EventEmitter {
     if (this.destroyed || this.isReconnecting) return;
 
     if (this.reconnectAttempts >= this.maxReconnectAttempts) {
-      logger.error(`❌ SubBot[${this.config.id}] demasiados reintentos, deteniendo`);
-      subBotDatabase.update(this.config.id, { status: 'error', active: false });
-      this.emit('sessionInvalid');
+      logger.error(`❌ SubBot[${this.config.id}] demasiados reintentos de reconexión`);
+      if (this.sessionInvalidCount >= this.maxSessionInvalidAttempts) {
+        logger.error(
+          `❌ SubBot[${this.config.id}] sesión aparentemente inservible, solicitando nuevo código`,
+        );
+        this.needsNewCode = true;
+        this.emit('sessionInvalid');
+        return;
+      }
+
+      logger.info(`🔄 SubBot[${this.config.id}] resetando intentos, reintentando en 2min...`);
+      this.reconnectAttempts = 0;
+      subBotDatabase.update(this.config.id, { status: 'connecting' });
+
+      setTimeout(() => {
+        if (!this.destroyed) {
+          this.connectionEstablished = false;
+          void this.start();
+        }
+      }, 120000);
       return;
     }
 
     this.isReconnecting = true;
     this.reconnectAttempts++;
-    const delay = Math.min(5000 * this.reconnectAttempts, 30000);
+
+    const delay = Math.min(
+      FIRST_RECONNECT_DELAY * Math.pow(1.5, this.reconnectAttempts - 1),
+      MAX_RECONNECT_DELAY,
+    );
 
     logger.info(
-      `🔄 SubBot[${this.config.id}] reconectando en ${delay / 1000}s (intento ${this.reconnectAttempts}/${this.maxReconnectAttempts})`,
+      `🔄 SubBot[${this.config.id}] reconectando en ${Math.round(delay / 1000)}s (intento ${this.reconnectAttempts}/${this.maxReconnectAttempts})`,
     );
     subBotDatabase.update(this.config.id, { status: 'connecting' });
 
@@ -170,9 +221,17 @@ export class SubBotInstance extends EventEmitter {
       logger.debug(`🌸 SubBot[${this.config.id}] WA version ${version.join('.')}`);
 
       const { state, saveCreds } = await useMultiFileAuthState(this.config.sessionPath);
+      const hasExistingCreds = !!state.creds.registered;
+
       logger.debug(
-        `🌸 SubBot[${this.config.id}] session: ${state.creds.registered ? 'existing ✅' : 'new 🆕'}`,
+        `🌸 SubBot[${this.config.id}] session: ${hasExistingCreds ? 'existing ✅' : 'new 🆕'}`,
       );
+
+      if (!hasExistingCreds && !this.needsNewCode) {
+        logger.info(
+          `🔑 SubBot[${this.config.id}] sin credenciales, esperando código de vinculación...`,
+        );
+      }
 
       this.sock = makeWASocket({
         version,
@@ -254,6 +313,7 @@ export class SubBotInstance extends EventEmitter {
   /**
    * Handles connection state updates from Baileys.
    * Manages reconnection logic and status changes.
+   * AUTO-RECONNECTS without user intervention!
    *
    * @param update - The connection state update
    * @returns Promise<void>
@@ -263,16 +323,44 @@ export class SubBotInstance extends EventEmitter {
 
     logger.debug(
       `🔍 SubBot[${this.config.id}] update: connection=${connection ?? 'none'} | ` +
-        `registered=${this.sock?.authState.creds.registered} | ` +
+        `registered=${this.sock?.authState?.creds?.registered} | ` +
         `pairingRequested=${this.pairingCodeRequested} | ` +
         `established=${this.connectionEstablished}`,
     );
 
     if (lastDisconnect?.error) {
       const err = lastDisconnect.error as { output?: { statusCode?: number }; message?: string };
+      const statusCode = err?.output?.statusCode;
       logger.warn(
-        `🔍 SubBot[${this.config.id}] lastDisconnect: status=${err?.output?.statusCode} msg=${err?.message}`,
+        `🔍 SubBot[${this.config.id}] lastDisconnect: status=${statusCode} msg=${err?.message}`,
       );
+
+      if (statusCode === DisconnectReason.loggedOut || statusCode === DisconnectReason.badSession) {
+        this.sessionInvalidCount++;
+        logger.warn(
+          `⚠️ SubBot[${this.config.id}] sesión inválida detectada (intento ${this.sessionInvalidCount}/${this.maxSessionInvalidAttempts})`,
+        );
+
+        if (this.sessionInvalidCount >= this.maxSessionInvalidAttempts) {
+          logger.error(
+            `❌ SubBot[${this.config.id}] sesión definitivamente inválida, limpiando y reintentando...`,
+          );
+          this.clearSession();
+          this.needsNewCode = true;
+          this.emit('sessionInvalid');
+          return;
+        }
+
+        logger.info(`🔄 SubBot[${this.config.id}] intentando reconectar con sesión limpia...`);
+        setTimeout(() => {
+          if (!this.destroyed) {
+            this.clearSession();
+            this.connectionEstablished = false;
+            void this.start();
+          }
+        }, 5000);
+        return;
+      }
     }
 
     if (connection === 'connecting') {
@@ -282,6 +370,9 @@ export class SubBotInstance extends EventEmitter {
 
     if (connection === 'open') {
       logger.info(`✅ SubBot[${this.config.id}] connection open`);
+      this.sessionInvalidCount = 0;
+      this.needsNewCode = false;
+
       if (this.pairingCodeTimer) {
         clearTimeout(this.pairingCodeTimer);
         this.pairingCodeTimer = undefined;
@@ -303,53 +394,21 @@ export class SubBotInstance extends EventEmitter {
 
       if (!this.connectionEstablished) {
         logger.debug(
-          `⚠️ SubBot[${this.config.id}] conexión nunca establecida, reintentando en 5s...`,
+          `⚠️ SubBot[${this.config.id}] conexión nunca establecida, reintentando automáticamente...`,
         );
         subBotDatabase.update(this.config.id, { status: 'connecting' });
+
+        const delay = Math.min(5000 * (this.sessionInvalidCount + 1), 15000);
         setTimeout(() => {
           if (!this.destroyed) {
             void this.start();
           }
-        }, 5000);
-        return;
-      }
-
-      if (statusCode === DisconnectReason.loggedOut || statusCode === DisconnectReason.badSession) {
-        logger.error(`❌ SubBot[${this.config.id}] invalid session (${statusCode})`);
-        subBotDatabase.update(this.config.id, { status: 'disconnected', active: false });
-        this.emit('status', 'disconnected');
-        this.emit('sessionInvalid');
-        return;
-      }
-
-      if (statusCode === 401 && !this.connectionEstablished) {
-        logger.warn(`⚠️ SubBot[${this.config.id}] sesión expirada, solicitando nuevo código...`);
-        this.pairingCodeRequested = false;
-        this.connectionEstablished = false;
-
-        setTimeout(() => {
-          if (!this.destroyed) {
-            void this.start();
-          }
-        }, 10000);
-        return;
-      }
-
-      if (!this.destroyed && this.reconnectAttempts < this.maxReconnectAttempts) {
-        this.reconnectAttempts++;
-        const delay = Math.min(5000 * this.reconnectAttempts, 30000);
-        logger.warn(
-          `🔄 SubBot[${this.config.id}] reconnecting [${this.reconnectAttempts}/${this.maxReconnectAttempts}] in ${delay / 1000}s`,
-        );
-        subBotDatabase.update(this.config.id, { status: 'connecting' });
-        this.emit('status', 'connecting');
-        setTimeout(() => {
-          void this.start();
         }, delay);
-      } else if (!this.destroyed) {
-        logger.error(`❌ SubBot[${this.config.id}] too many failed attempts`);
-        subBotDatabase.update(this.config.id, { status: 'error', active: false });
-        this.emit('status', 'error');
+        return;
+      }
+
+      if (!this.destroyed) {
+        this.scheduleReconnect();
       }
     }
   }
@@ -362,8 +421,10 @@ export class SubBotInstance extends EventEmitter {
    */
   private async onFullyConnected(): Promise<void> {
     this.reconnectAttempts = 0;
+    this.sessionInvalidCount = 0;
     this.connectionEstablished = true;
     this.pairingCodeRequested = false;
+    this.needsNewCode = false;
 
     this.startPing();
     this.startHealthCheck();
@@ -371,6 +432,7 @@ export class SubBotInstance extends EventEmitter {
     subBotDatabase.update(this.config.id, {
       status: 'connected',
       connectedAt: Date.now(),
+      active: true,
     });
 
     logger.info(`✅ SubBot[${this.config.id}] (${this.config.name}) operational and ready 🌸`);
@@ -508,11 +570,9 @@ export class SubBotInstance extends EventEmitter {
    * @returns true if connected, false otherwise
    */
   isConnected(): boolean {
-    return (
-      this.config.status === 'connected' &&
-      !!this.sock &&
-      this.connectionEstablished &&
-      !this.destroyed
-    );
+    if (this.config.status !== 'connected' || !this.sock || this.destroyed) {
+      return false;
+    }
+    return this.isSocketReallyConnected();
   }
 }

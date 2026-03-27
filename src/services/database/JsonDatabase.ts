@@ -1,5 +1,15 @@
-import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'fs';
-import { dirname } from 'path';
+import {
+  readFileSync,
+  writeFileSync,
+  existsSync,
+  mkdirSync,
+  renameSync,
+  unlinkSync,
+  statSync,
+  cpSync,
+  readdirSync,
+} from 'fs';
+import { dirname, join } from 'path';
 import { Database } from './Database.js';
 import type { PaginatedResult } from './Database.js';
 import { logger, logError } from '@/utils/logger.js';
@@ -134,6 +144,9 @@ export class JsonDatabase extends Database {
   private filePath: string;
   private batchWriter: BatchWriter;
   private cache = new UnifiedCache();
+  private readonly backupDir = './data/backups';
+  private readonly maxBackups = 5;
+  private lastSaveHash = '';
 
   constructor(filePath: string = './data/database.json') {
     super();
@@ -153,17 +166,121 @@ export class JsonDatabase extends Database {
     }
   }
 
+  private cleanTmpOrphans(): void {
+    try {
+      const dir = dirname(this.filePath);
+      const files = [
+        this.filePath + '.tmp',
+        this.filePath + '.tmp_write',
+        this.filePath + '.bak',
+        this.filePath + '.bak_prev',
+      ];
+      for (const tmpFile of files) {
+        if (existsSync(tmpFile)) {
+          unlinkSync(tmpFile);
+          logger.warn(`[DB] Cleaned orphan file: ${tmpFile}`);
+        }
+      }
+    } catch (error) {
+      logError('[DB] Failed to clean tmp orphans', error);
+    }
+  }
+
+  private async createIncrementalBackup(): Promise<void> {
+    try {
+      if (!existsSync(this.backupDir)) {
+        mkdirSync(this.backupDir, { recursive: true });
+      }
+
+      const timestamp = Date.now();
+      const backupPath = join(this.backupDir, `db_backup_${timestamp}.json`);
+
+      if (existsSync(this.filePath)) {
+        cpSync(this.filePath, backupPath);
+      }
+
+      const backups = statSync(this.backupDir).isDirectory()
+        ? readdirSync(this.backupDir)
+            .filter(f => f.startsWith('db_backup_') && f.endsWith('.json'))
+            .sort()
+        : [];
+
+      while (backups.length > this.maxBackups) {
+        const oldest = backups.shift();
+        if (oldest) {
+          unlinkSync(join(this.backupDir, oldest));
+        }
+      }
+    } catch (error) {
+      logError('[DB] Failed to create incremental backup', error);
+    }
+  }
+
+  private hashData(data: JsonData): string {
+    const str = JSON.stringify(data);
+    let hash = 0;
+    for (let i = 0; i < str.length; i++) {
+      const char = str.charCodeAt(i);
+      hash = (hash << 5) - hash + char;
+      hash = hash & hash;
+    }
+    return hash.toString(36);
+  }
+
+  private recoverFromBackup(): JsonData | null {
+    try {
+      if (!existsSync(this.backupDir)) return null;
+
+      const backups = readdirSync(this.backupDir)
+        .filter(f => f.startsWith('db_backup_') && f.endsWith('.json'))
+        .sort()
+        .reverse();
+
+      for (const backupFile of backups) {
+        try {
+          const backupPath = join(this.backupDir, backupFile);
+          const rawData = readFileSync(backupPath, 'utf-8');
+          const parsed = JSON.parse(rawData) as RawJsonData;
+          logger.info(`[DB] Recovered from backup: ${backupFile}`);
+          return this.ensureDataStructure(parsed);
+        } catch {
+          continue;
+        }
+      }
+    } catch (error) {
+      logError('[DB] Failed to recover from backup', error);
+    }
+    return null;
+  }
+
   async connect(): Promise<void> {
     try {
       const dir = dirname(this.filePath);
       if (!existsSync(dir)) {
         mkdirSync(dir, { recursive: true });
       }
+
+      this.cleanTmpOrphans();
+
       if (existsSync(this.filePath)) {
-        const rawData = readFileSync(this.filePath, 'utf-8');
-        const parsed = JSON.parse(rawData) as RawJsonData;
-        this.data = this.ensureDataStructure(parsed);
+        let rawData: string;
+        try {
+          rawData = readFileSync(this.filePath, 'utf-8');
+          const parsed = JSON.parse(rawData) as RawJsonData;
+          this.data = this.ensureDataStructure(parsed);
+        } catch {
+          logger.warn('[DB] JSON corrupto detectado, intentando recover...');
+          const recovered = this.recoverFromBackup();
+          if (recovered) {
+            this.data = recovered;
+            await this.saveToFile();
+          } else {
+            this.data = { _meta: { version: 0 } };
+            logger.warn('[DB] No hay backup disponible, iniciando DB vacía');
+          }
+        }
         await this.runMigrations();
+        this.lastSaveHash = this.hashData(this.data);
         if (process.env.NODE_ENV !== 'production') {
           logger.info(`DB cargada: ${this.filePath}`);
         }
@@ -202,7 +319,16 @@ export class JsonDatabase extends Database {
 
   private async saveToFile(): Promise<void> {
     try {
-      writeFileSync(this.filePath, JSON.stringify(this.data, null, 2), 'utf-8');
+      const currentHash = this.hashData(this.data);
+      if (currentHash !== this.lastSaveHash) {
+        await this.createIncrementalBackup();
+        this.lastSaveHash = currentHash;
+      }
+
+      const tmpPath = this.filePath + '.tmp';
+      const jsonStr = JSON.stringify(this.data, null, 2);
+      writeFileSync(tmpPath, jsonStr, 'utf-8');
+      renameSync(tmpPath, this.filePath);
     } catch (error) {
       logError('JsonDatabase.saveToFile', error);
       throw error;

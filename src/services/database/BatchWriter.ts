@@ -1,4 +1,12 @@
-import { existsSync, readFileSync, writeFileSync, mkdirSync, rmSync } from 'fs';
+import {
+  existsSync,
+  readFileSync,
+  writeFileSync,
+  mkdirSync,
+  rmSync,
+  renameSync,
+  unlinkSync,
+} from 'fs';
 import { dirname } from 'path';
 import path from 'path';
 import { logError, logger } from '@/utils/logger.js';
@@ -44,6 +52,14 @@ export class BatchWriter {
         mkdirSync(walDir, { recursive: true });
       }
 
+      const tmpFiles = [this.walPath + '.tmp', this.walPath + '.tmp_write'];
+      for (const tmpFile of tmpFiles) {
+        if (existsSync(tmpFile)) {
+          unlinkSync(tmpFile);
+          logger.warn(`[WAL] Cleaned orphan: ${tmpFile}`);
+        }
+      }
+
       if (existsSync(this.walPath)) {
         try {
           const data = readFileSync(this.walPath, 'utf-8');
@@ -73,7 +89,9 @@ export class BatchWriter {
         createdAt: Date.now(),
       };
 
-      writeFileSync(this.walPath, JSON.stringify(wal, null, 2), 'utf-8');
+      const tmpPath = this.walPath + '.tmp';
+      writeFileSync(tmpPath, JSON.stringify(wal, null, 2), 'utf-8');
+      renameSync(tmpPath, this.walPath);
       this.currentWalId = wal.id;
     } catch (error) {
       logError('[WAL] Failed to persist', error);

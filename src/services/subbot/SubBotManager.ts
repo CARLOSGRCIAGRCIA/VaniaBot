@@ -135,33 +135,46 @@ export class SubBotManager extends EventEmitter {
   }
 
   private healthCheckInterval?: NodeJS.Timeout;
+  private readonly HEALTH_CHECK_INTERVAL = 2 * 60 * 1000;
 
   private startHealthCheck(): void {
     if (this.healthCheckInterval) return;
 
-    this.healthCheckInterval = setInterval(
-      async () => {
-        logger.debug('🔍 SubBotManager: ejecutando health check...');
+    this.healthCheckInterval = setInterval(async () => {
+      logger.debug('🔍 SubBotManager: ejecutando health check...');
 
-        const activeSubBots = subBotDatabase.getActive();
+      const activeSubBots = subBotDatabase.getActive();
 
-        for (const subConfig of activeSubBots) {
-          const instance = this.instances.get(subConfig.id);
+      for (const subConfig of activeSubBots) {
+        const instance = this.instances.get(subConfig.id);
 
-          if (!instance) {
-            logger.warn(`⚠️ SubBot[${subConfig.id}] sin instancia, reactivando...`);
-            try {
-              await this.launchInstance(subConfig);
-            } catch (error) {
-              logError(`SubBotManager.healthCheck: reactivate ${subConfig.id}`, error);
-            }
+        if (!instance) {
+          logger.warn(`⚠️ SubBot[${subConfig.id}] sin instancia, reactivando...`);
+          try {
+            await this.launchInstance(subConfig);
+          } catch (error) {
+            logError(`SubBotManager.healthCheck: reactivate ${subConfig.id}`, error);
+          }
+          continue;
+        }
+
+        const isReallyConnected = instance.isConnected();
+        if (!isReallyConnected) {
+          logger.warn(`⚠️ SubBot[${subConfig.id}] detectada sin conexión real, reconectando...`);
+          try {
+            await instance.stop();
+            this.instances.delete(subConfig.id);
+            await this.launchInstance(subConfig);
+          } catch (error) {
+            logError(`SubBotManager.healthCheck: reconnect ${subConfig.id}`, error);
           }
         }
-      },
-      5 * 60 * 1000,
-    );
+      }
+    }, this.HEALTH_CHECK_INTERVAL);
 
-    logger.info('✅ Health check de subbots iniciado (cada 5 minutos)');
+    logger.info(
+      `✅ Health check de subbots iniciado (cada ${this.HEALTH_CHECK_INTERVAL / 60000} minutos)`,
+    );
   }
 
   private stopHealthCheck(): void {

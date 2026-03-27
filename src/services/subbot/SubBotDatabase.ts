@@ -11,7 +11,7 @@
  * @created 2026-03-16
  */
 
-import { existsSync, readFileSync, writeFileSync, mkdirSync } from 'fs';
+import { existsSync, readFileSync, writeFileSync, mkdirSync, renameSync, unlinkSync } from 'fs';
 import type { SubBotConfig } from '@/types/subbot.js';
 
 const DB_PATH = './data/subbots.json';
@@ -76,6 +76,7 @@ export class SubBotDatabase {
   /**
    * Saves all data to JSON file.
    * Called after every mutation operation.
+   * Uses atomic write (tmp + rename) to prevent corruption.
    *
    * @returns void
    */
@@ -84,7 +85,20 @@ export class SubBotDatabase {
     for (const [id, cfg] of this.data.entries()) {
       obj[id] = cfg;
     }
-    writeFileSync(DB_PATH, JSON.stringify(obj, null, 2), 'utf8');
+
+    try {
+      const tmpPath = DB_PATH + '.tmp';
+      writeFileSync(tmpPath, JSON.stringify(obj, null, 2), 'utf8');
+      renameSync(tmpPath, DB_PATH);
+    } catch (error) {
+      console.error('[SubBotDatabase] Failed to save:', error);
+      try {
+        const fallbackPath = DB_PATH + '.fallback';
+        writeFileSync(fallbackPath, JSON.stringify(obj, null, 2), 'utf8');
+      } catch (fallbackError) {
+        console.error('[SubBotDatabase] Fallback save also failed:', fallbackError);
+      }
+    }
   }
 
   /**
