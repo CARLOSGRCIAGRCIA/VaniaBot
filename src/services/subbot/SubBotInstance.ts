@@ -34,8 +34,9 @@ const SILENT_LOGGER = pino({ level: 'silent' });
 const FIRST_RECONNECT_DELAY = 10000;
 const MAX_RECONNECT_DELAY = 60000;
 const MAX_RECONNECT_ATTEMPTS = 15;
-const HEALTH_CHECK_INTERVAL = 120000;
+const HEALTH_CHECK_INTERVAL = 300000;
 const PING_INTERVAL = 25000;
+const SOCKET_VERIFY_GRACE_PERIOD = 5000;
 
 /**
  * Individual subbot instance.
@@ -66,6 +67,9 @@ export class SubBotInstance extends EventEmitter {
   private sessionInvalidCount = 0;
   private maxSessionInvalidAttempts = 3;
   private needsNewCode = false;
+  private hasNotifiedFirstConnection = false;
+  private lastNotificationTime = 0;
+  private readonly NOTIFICATION_COOLDOWN = 5 * 60 * 1000;
 
   /**
    * Creates a new subbot instance.
@@ -134,9 +138,11 @@ export class SubBotInstance extends EventEmitter {
 
     try {
       const socket = this.sock as any;
-      if (!socket.ws || socket.ws.readyState !== 1) return false;
+      if (!socket.ws) return false;
+      if (socket.ws.readyState === 0 || socket.ws.readyState === 3) return false;
       if (!this.sock.user?.id) return false;
-      return this.connectionEstablished;
+      if (!this.connectionEstablished) return false;
+      return true;
     } catch {
       return false;
     }
@@ -437,7 +443,17 @@ export class SubBotInstance extends EventEmitter {
 
     logger.info(`✅ SubBot[${this.config.id}] (${this.config.name}) operational and ready 🌸`);
     this.emit('status', 'connected');
-    this.emit('ready');
+
+    const now = Date.now();
+    const shouldNotify =
+      !this.hasNotifiedFirstConnection ||
+      now - this.lastNotificationTime > this.NOTIFICATION_COOLDOWN;
+
+    if (shouldNotify) {
+      this.hasNotifiedFirstConnection = true;
+      this.lastNotificationTime = now;
+      this.emit('ready');
+    }
   }
 
   /**

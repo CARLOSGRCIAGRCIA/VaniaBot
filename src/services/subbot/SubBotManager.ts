@@ -135,7 +135,7 @@ export class SubBotManager extends EventEmitter {
   }
 
   private healthCheckInterval?: NodeJS.Timeout;
-  private readonly HEALTH_CHECK_INTERVAL = 2 * 60 * 1000;
+  private readonly HEALTH_CHECK_INTERVAL = 5 * 60 * 1000;
 
   private startHealthCheck(): void {
     if (this.healthCheckInterval) return;
