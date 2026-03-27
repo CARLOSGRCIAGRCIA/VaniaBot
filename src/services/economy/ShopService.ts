@@ -38,12 +38,12 @@ export class ShopService {
       duration: 7 * 24 * 60 * 60 * 1000,
     },
     {
-      id: 'name_color',
-      name: 'Custom Name Color',
-      description: 'Color personalizado en tu nombre',
+      id: 'daily_bonus',
+      name: 'Daily Bonus',
+      description: '+10% recompensa diaria (permanente)',
       price: 3000,
-      emoji: '🎨',
-      type: 'cosmetic',
+      emoji: '📈',
+      type: 'feature',
     },
     {
       id: 'cooldown_bypass',
@@ -82,12 +82,12 @@ export class ShopService {
       duration: 7 * 24 * 60 * 60 * 1000,
     },
     {
-      id: 'name_glow',
-      name: 'Name Glow',
-      description: 'Efecto glow en tu nombre',
+      id: 'premium_pass',
+      name: 'Premium Pass',
+      description: 'Acceso a juegos VIP del casino',
       price: 10000,
-      emoji: '🌟',
-      type: 'cosmetic',
+      emoji: '💎',
+      type: 'feature',
     },
     {
       id: 'badge_rich',
@@ -114,12 +114,12 @@ export class ShopService {
       type: 'badge',
     },
     {
-      id: 'custom_title',
-      name: 'Custom Title',
-      description: 'Título personalizado',
+      id: 'bank_interest',
+      name: 'Bank Interest',
+      description: '+5% interés en banco (permanente)',
       price: 7500,
-      emoji: '📛',
-      type: 'cosmetic',
+      emoji: '🏦',
+      type: 'feature',
     },
   ];
 

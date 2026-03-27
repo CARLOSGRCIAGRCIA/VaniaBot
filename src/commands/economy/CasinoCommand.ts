@@ -215,8 +215,27 @@ export class CasinoCommand extends Command {
 
     await serviceManager.userService.removeMoney(ctx.sender.jid, bet);
 
-    const result = game.play(bet, user.money);
+    const luckBuff = user.activeBuffs?.find(
+      b => b.buffId === 'lucky_charm' && b.expiresAt > Date.now(),
+    );
+    const luckBonus = luckBuff ? luckBuff.value : 0;
+
+    let result = game.play(bet, user.money);
+
+    if (!result.won && luckBonus > 0 && Math.random() * 100 < luckBonus) {
+      result = {
+        won: true,
+        multiplier: result.multiplier > 0 ? result.multiplier : 2,
+        message: result.message + '\n🍀 ¡Suerte extra! Revirtieron el resultado',
+      };
+    }
+
     casinoCooldowns.set(ctx.sender.jid, now);
+
+    let bonusText = '';
+    if (luckBuff) {
+      bonusText = `\n🍀 *BONUS:* +${luckBuff.value}% suerte`;
+    }
 
     if (result.won) {
       const reward = Math.floor(bet * result.multiplier);
@@ -230,7 +249,7 @@ export class CasinoCommand extends Command {
         `🎰 *${game.emoji} ${game.name.toUpperCase()}* 🎰\n\n` +
           `${result.message}\n\n` +
           `💰 *APUESTA:* $${formatNumber(bet)}\n` +
-          `✨ *GANANCIA:* $${formatNumber(profit)}\n` +
+          `✨ *GANANCIA:* $${formatNumber(profit)}${bonusText}\n` +
           `💵 *NUEVO BALANCE:* $${formatNumber((await serviceManager.userService.getUser(ctx.sender.jid)).money)}`,
       );
       await ctx.react('🎉');
@@ -241,7 +260,7 @@ export class CasinoCommand extends Command {
         `🎰 *${game.emoji} ${game.name.toUpperCase()}* 🎰\n\n` +
           `${result.message}\n\n` +
           `💸 *PERDIDA:* $${formatNumber(bet)}\n` +
-          `💵 *BALANCE:* $${formatNumber((await serviceManager.userService.getUser(ctx.sender.jid)).money)}`,
+          `💵 *BALANCE:* $${formatNumber((await serviceManager.userService.getUser(ctx.sender.jid)).money)}${bonusText}`,
       );
       await ctx.react('💔');
     }

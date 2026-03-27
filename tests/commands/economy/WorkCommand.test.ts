@@ -73,10 +73,20 @@ vi.mock('@/services/system/Servicemanager', () => ({
     userService: {
       getUser: vi.fn(),
       addMoney: vi.fn(),
+      updateUser: vi.fn(),
     },
     levelService: {
       addXP: vi.fn(),
     },
+  },
+}));
+
+vi.mock('@/services/rpg/AchievementService', () => ({
+  achievementService: {
+    trackWork: vi.fn().mockResolvedValue([]),
+    checkWorkAchievements: vi.fn().mockResolvedValue([]),
+    checkLevelAchievements: vi.fn().mockResolvedValue([]),
+    checkMoneyAchievements: vi.fn().mockResolvedValue([]),
   },
 }));
 

@@ -85,6 +85,14 @@ vi.mock('@/services/system/Servicemanager', () => ({
   },
 }));
 
+vi.mock('@/services/rpg/AchievementService', () => ({
+  achievementService: {
+    trackDaily: vi.fn().mockResolvedValue([]),
+    checkLevelAchievements: vi.fn().mockResolvedValue([]),
+    checkMoneyAchievements: vi.fn().mockResolvedValue([]),
+  },
+}));
+
 import { serviceManager } from '@/services/system/Servicemanager';
 
 describe('DailyCommand', () => {

@@ -37,28 +37,39 @@ export class DailyCommand extends Command {
       const streakBonus = Math.min(streak * this.STREAK_BONUS, this.MAX_STREAK_BONUS);
       const totalReward = this.BASE_REWARD + streakBonus;
 
+      const xpBuff = user.activeBuffs?.find(
+        b => b.buffId === 'xp_boost' && b.expiresAt > Date.now(),
+      );
+      const xpMultiplier = xpBuff ? xpBuff.value : 1;
+
       await serviceManager.userService.addMoney(ctx.sender.jid, totalReward);
       await serviceManager.userService.updateUser(ctx.sender.jid, {
         lastDaily: Date.now(),
       });
 
-      await achievementService.trackDaily(ctx.sender.jid);
-      await achievementService.checkLevelAchievements(ctx.sender.jid);
-      await achievementService.checkMoneyAchievements(ctx.sender.jid);
+      try {
+        await achievementService.trackDaily(ctx.sender.jid);
+        await achievementService.checkLevelAchievements(ctx.sender.jid);
+        await achievementService.checkMoneyAchievements(ctx.sender.jid);
+      } catch {
+        // Achievement tracking is non-critical
+      }
 
-      await serviceManager.levelService.addXP(ctx.sender.jid, this.XP_REWARD);
+      const xpGained = Math.floor(this.XP_REWARD * xpMultiplier);
+      await serviceManager.levelService.addXP(ctx.sender.jid, xpGained);
 
       const updatedUser = await serviceManager.userService.getUser(ctx.sender.jid);
 
       let bonusText = '';
       if (streak >= 7) bonusText = '\n🔥 *BONUS SEMANAL!* +$500';
       if (streak >= 30) bonusText = '\n⭐ *BONUS MENSUAL!* +$2000';
+      if (xpBuff) bonusText += `\n✨ *BONUS XP:* +${xpBuff.value}%`;
 
       await ctx.reply(
         `˚₊· ͟͟͞͞➳ *para ti* ˚₊· ͟͟͞͞➳\n\n` +
           `✿ *+$${formatNumber(totalReward)}* moneditas\n` +
           `✩ racha: *${streak}* días\n` +
-          `✿ *+${this.XP_REWARD} XP*${bonusText}\n\n` +
+          `✿ *+${xpGained} XP*${bonusText}\n\n` +
           `♡ tu saldo: *$${formatNumber(updatedUser.money)}* ♡`,
       );
     } catch (error) {

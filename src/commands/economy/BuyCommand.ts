@@ -103,16 +103,16 @@ export class BuyCommand extends Command {
     const buffStats: Record<string, string> = {
       vip_role: 'vip',
       legend_role: 'legend',
-      name_color: 'nameColor',
-      name_glow: 'nameGlow',
+      daily_bonus: 'dailyBonus',
       cooldown_bypass: 'cooldown',
       xp_boost: 'xp',
       lucky_charm: 'luck',
       income_boost: 'income',
+      premium_pass: 'premium',
+      bank_interest: 'bankInterest',
       badge_rich: 'badgeRich',
       badge_lucky: 'badgeLucky',
       badge_pro: 'badgePro',
-      custom_title: 'customTitle',
     };
     return buffStats[itemId] || 'unknown';
   }
@@ -121,16 +121,16 @@ export class BuyCommand extends Command {
     const buffValues: Record<string, number> = {
       vip_role: 1,
       legend_role: 1,
-      name_color: 1,
-      name_glow: 1,
-      cooldown_bypass: 0.5,
-      xp_boost: 2,
+      daily_bonus: 10,
+      cooldown_bypass: 50,
+      xp_boost: 100,
       lucky_charm: 25,
       income_boost: 50,
+      premium_pass: 1,
+      bank_interest: 5,
       badge_rich: 1,
       badge_lucky: 1,
       badge_pro: 1,
-      custom_title: 1,
     };
     return buffValues[itemId] || 1;
   }
@@ -139,16 +139,16 @@ export class BuyCommand extends Command {
     const messages: Record<string, string> = {
       vip_role: `✨ ¡Tienes estado VIP activo!\n`,
       legend_role: `✨ ¡Tienes estado Legend activo!\n`,
-      name_color: `🎨 ¡Color de nombre activado!\nUsa !perfil para ver los cambios\n`,
-      name_glow: `🌟 ¡Efecto glow activado!\nUsa !perfil para ver los cambios\n`,
+      daily_bonus: `📈 ¡Bonus diario +10% activo!\n`,
       cooldown_bypass: `⚡ ¡Cooldowns reducidos 50%!\n`,
       xp_boost: `✨ ¡XP duplicado!\n`,
       lucky_charm: `🍀 ¡Suerte +25% en juegos!\n`,
       income_boost: `💰 ¡Ingresos +50% en trabajos!\n`,
+      premium_pass: `💎 ¡Pasaporte VIP del casino!\n`,
+      bank_interest: `🏦 ¡Interés bancario +5%!\n`,
       badge_rich: `🤑 ¡Badge de Rico obtenido!\n`,
       badge_lucky: `🍀 ¡Badge de Suerte obtenido!\n`,
       badge_pro: `🏆 ¡Badge de Pro Player obtenido!\n`,
-      custom_title: `📛 ¡Título personalizado activado!\n`,
     };
     return messages[itemId] || ``;
   }

@@ -22,25 +22,42 @@ export class WorkCommand extends Command {
   ];
 
   async execute(ctx: MessageContext): Promise<void> {
+    const user = await serviceManager.userService.getUser(ctx.sender.jid);
+
+    const incomeBuff = user.activeBuffs?.find(
+      b => b.buffId === 'income_boost' && b.expiresAt > Date.now(),
+    );
+    const incomeMultiplier = incomeBuff ? 1 + incomeBuff.value / 100 : 1;
+
     const job = this.JOBS[Math.floor(Math.random() * this.JOBS.length)];
-    const earned = Math.floor(Math.random() * (job.max - job.min + 1)) + job.min;
+    let earned = Math.floor(Math.random() * (job.max - job.min + 1)) + job.min;
+    earned = Math.floor(earned * incomeMultiplier);
 
     await serviceManager.userService.addMoney(ctx.sender.jid, earned);
 
-    await achievementService.trackWork(ctx.sender.jid);
-    await achievementService.checkLevelAchievements(ctx.sender.jid);
+    try {
+      await achievementService.trackWork(ctx.sender.jid);
+      await achievementService.checkLevelAchievements(ctx.sender.jid);
+    } catch {
+      // Achievement tracking is non-critical
+    }
 
     const xpGained = Math.floor(earned / 10);
     await serviceManager.levelService.addXP(ctx.sender.jid, xpGained);
 
-    const user = await serviceManager.userService.getUser(ctx.sender.jid);
+    const updatedUser = await serviceManager.userService.getUser(ctx.sender.jid);
+
+    let bonusText = '';
+    if (incomeBuff) {
+      bonusText = `\n💰 *BONUS:* +${incomeBuff.value}%`;
+    }
 
     await ctx.reply(
       `˚₊· ͟͟͞͞➳ *bien ahí!* ˚₊· ͟͟͞͞➳\n\n` +
         `${job.emoji} *${job.name}* 💼\n` +
-        `✿ ganaste: *$${formatNumber(earned)}* moneditas\n` +
+        `✿ ganaste: *$${formatNumber(earned)}* moneditas${bonusText}\n` +
         `✿ +${xpGained} XP\n\n` +
-        `♡ tu bolsita: *$${formatNumber(user.money)}* ♡`,
+        `♡ tu bolsita: *$${formatNumber(updatedUser.money)}* ♡`,
     );
   }
 }
