@@ -348,7 +348,8 @@ export class ProfileCommand extends Command {
 
     if (user.isOwner) badges.push('👑 Owner');
 
-    const activeBuffs = user.activeBuffs?.filter(b => b.expiresAt > Date.now()) || [];
+    const allBuffs = user.activeBuffs || [];
+    const activeBuffs = allBuffs.filter(b => b.expiresAt === 0 || b.expiresAt > Date.now());
 
     if (activeBuffs.some(b => b.buffId === 'vip_role')) badges.push('👑 VIP');
     if (activeBuffs.some(b => b.buffId === 'legend_role')) badges.push('💎 Legend');
@@ -407,7 +408,9 @@ export class ProfileCommand extends Command {
       const name = buffNames[buff.buffId] || buff.buffId;
 
       let duration = '';
-      if (buff.expiresAt > 0) {
+      if (buff.expiresAt === 0) {
+        duration = ' ∞';
+      } else if (buff.expiresAt > Date.now()) {
         const remaining = buff.expiresAt - Date.now();
         if (remaining > 24 * 60 * 60 * 1000) {
           duration = ` (${Math.floor(remaining / (24 * 60 * 60 * 1000))}d)`;
