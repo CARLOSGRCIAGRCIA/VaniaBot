@@ -206,6 +206,10 @@ export class PoesiaService {
     const label = TIPO_LABEL[entry.tipo];
     const defaultFooter = footer || '> _VaniaBot💝 — Poesía & Amor_';
 
+    let cleanContent = entry.contenido;
+    cleanContent = cleanContent.replace(/>\s*VaniaBot[💝]*\s*[-–—]?\s*Poes[ií]a.*$/gim, '').trim();
+    cleanContent = cleanContent.replace(/>\s*VaniaBot[💝]*\s*$/gim, '').trim();
+
     let msg = '';
 
     if (showMeta) {
@@ -217,7 +221,7 @@ export class PoesiaService {
       msg += `━━━━━━━━━━━━━\n\n`;
     }
 
-    msg += entry.contenido;
+    msg += cleanContent;
 
     if (showMeta) {
       msg += `\n\n━━━━━━━━━━━━━\n`;
