@@ -2,6 +2,7 @@ import { circuitBreakerManager } from './CircuitBreakerService.js';
 import { serviceManager } from './Servicemanager.js';
 import { existsSync, statSync } from 'fs';
 import { join } from 'path';
+import { totalmem } from 'os';
 import { logger } from '@/utils/logger.js';
 
 export interface HealthCheckResult {
@@ -39,6 +40,12 @@ export interface SystemMetrics {
     used: number;
     total: number;
     percentage: number;
+    /** rss del proceso en bytes */
+    rss: number;
+    /** RAM total del sistema en bytes */
+    systemTotal: number;
+    /** % de RAM del sistema consumida por este proceso */
+    systemPercentage: number;
   };
   cpu: {
     usage: number;
@@ -61,6 +68,20 @@ export interface SystemMetrics {
 
 const START_TIME = Date.now();
 
+// ─── Umbrales de memoria ────────────────────────────────────────────────────
+//
+// IMPORTANTE: Node/V8 mantiene su heap casi lleno por diseño — heapUsed/heapTotal
+// siempre ronda 85-95% aunque la RAM del dispositivo esté libre. Ese número
+// NO indica presión real de memoria.
+//
+// La métrica correcta es: rss (RAM real del proceso) / os.totalmem()
+// Umbrales recomendados para Termux con 3-4 GB de RAM:
+//   warn:     rss > 40% de la RAM del sistema
+//   critical: rss > 60% de la RAM del sistema
+//
+const MEM_WARN_PCT = 40; // % de RAM del sistema
+const MEM_CRITICAL_PCT = 60; // % de RAM del sistema
+
 export class HealthCheckService {
   private static instance: HealthCheckService;
 
@@ -74,14 +95,14 @@ export class HealthCheckService {
   }
 
   async performHealthCheck(): Promise<HealthCheckResult> {
-    const checkPromises: Promise<HealthCheck>[] = [];
-
-    checkPromises.push(this.checkDatabase());
-    checkPromises.push(Promise.resolve(this.checkSession()));
-    checkPromises.push(Promise.resolve(this.checkTempStorage()));
-    checkPromises.push(Promise.resolve(this.checkCircuitBreakers()));
-    checkPromises.push(Promise.resolve(this.checkMemory()));
-    checkPromises.push(this.checkAIService());
+    const checkPromises: Promise<HealthCheck>[] = [
+      this.checkDatabase(),
+      Promise.resolve(this.checkSession()),
+      Promise.resolve(this.checkTempStorage()),
+      Promise.resolve(this.checkCircuitBreakers()),
+      Promise.resolve(this.checkMemory()),
+      this.checkAIService(),
+    ];
 
     const checks = await Promise.all(checkPromises);
 
@@ -141,11 +162,12 @@ export class HealthCheckService {
       });
     }
 
-    if (metrics.memory.percentage > 85) {
+    // Alerta basada en RAM real del sistema, no en heap de V8
+    if (metrics.memory.systemPercentage > MEM_CRITICAL_PCT) {
       alerts.push({
         severity: 'critical',
         source: 'memory',
-        message: `Memory usage at ${metrics.memory.percentage.toFixed(1)}%`,
+        message: `RAM del sistema al ${metrics.memory.systemPercentage.toFixed(1)}% (rss: ${(metrics.memory.rss / 1024 / 1024).toFixed(0)}MB)`,
         timestamp,
       });
     }
@@ -232,7 +254,6 @@ export class HealthCheckService {
     const start = Date.now();
     try {
       const tempPath = join(process.cwd(), 'data', 'temp');
-
       if (!existsSync(tempPath)) {
         return {
           name: 'temp_storage',
@@ -241,7 +262,6 @@ export class HealthCheckService {
           latency: Date.now() - start,
         };
       }
-
       return {
         name: 'temp_storage',
         status: 'pass',
@@ -274,7 +294,6 @@ export class HealthCheckService {
       }
 
       const openCircuits = circuitNames.filter(name => circuits[name].state === 'OPEN');
-
       if (openCircuits.length > 0) {
         return {
           name: 'circuit_breakers',
@@ -301,65 +320,67 @@ export class HealthCheckService {
     }
   }
 
+  /**
+   * Mide la RAM real del proceso (rss) contra la RAM total del sistema.
+   *
+   * NO usa heapUsed/heapTotal porque V8 mantiene su heap casi lleno por diseño
+   * (85-95% es completamente normal) y genera falsos positivos constantemente.
+   */
   private checkMemory(): HealthCheck {
     const start = Date.now();
-    try {
-      const memUsage = process.memoryUsage();
-      const totalMem = memUsage.heapTotal;
-      const usedMem = memUsage.heapUsed;
-      const percentage = (usedMem / totalMem) * 100;
+    const memUsage = process.memoryUsage();
+    const rss = memUsage.rss;
+    const systemTot = totalmem();
+    const sysPct = (rss / systemTot) * 100;
 
-      if (percentage > 90) {
-        return {
-          name: 'memory',
-          status: 'fail',
-          message: `Memory critical: ${percentage.toFixed(1)}% used`,
-          latency: Date.now() - start,
-          details: {
-            heapUsed: `${(usedMem / 1024 / 1024).toFixed(2)}MB`,
-            heapTotal: `${(totalMem / 1024 / 1024).toFixed(2)}MB`,
-          },
-        };
-      }
+    // Mantener también las métricas de heap para información, sin usarlas como umbral
+    const heapUsedMB = (memUsage.heapUsed / 1024 / 1024).toFixed(1);
+    const heapTotalMB = (memUsage.heapTotal / 1024 / 1024).toFixed(1);
+    const rssMB = (rss / 1024 / 1024).toFixed(1);
+    const sysTotMB = (systemTot / 1024 / 1024).toFixed(0);
 
-      if (percentage > 75) {
-        return {
-          name: 'memory',
-          status: 'warn',
-          message: `Memory high: ${percentage.toFixed(1)}% used`,
-          latency: Date.now() - start,
-          details: {
-            heapUsed: `${(usedMem / 1024 / 1024).toFixed(2)}MB`,
-            heapTotal: `${(totalMem / 1024 / 1024).toFixed(2)}MB`,
-          },
-        };
-      }
+    const details = {
+      rss: `${rssMB}MB`,
+      systemTotal: `${sysTotMB}MB`,
+      systemUsage: `${sysPct.toFixed(1)}%`,
+      heapUsed: `${heapUsedMB}MB`,
+      heapTotal: `${heapTotalMB}MB`,
+      heapPct: `${((memUsage.heapUsed / memUsage.heapTotal) * 100).toFixed(1)}% (V8 interno, no crítico)`,
+    };
 
+    if (sysPct > MEM_CRITICAL_PCT) {
       return {
         name: 'memory',
-        status: 'pass',
-        message: `Memory OK: ${percentage.toFixed(1)}% used`,
+        status: 'fail',
+        message: `RAM crítica: proceso usando ${sysPct.toFixed(1)}% del sistema (${rssMB}MB / ${sysTotMB}MB)`,
         latency: Date.now() - start,
-        details: {
-          heapUsed: `${(usedMem / 1024 / 1024).toFixed(2)}MB`,
-          heapTotal: `${(totalMem / 1024 / 1024).toFixed(2)}MB`,
-        },
+        details,
       };
-    } catch (error) {
+    }
+
+    if (sysPct > MEM_WARN_PCT) {
       return {
         name: 'memory',
         status: 'warn',
-        message: error instanceof Error ? error.message : 'Unknown error',
+        message: `RAM elevada: proceso usando ${sysPct.toFixed(1)}% del sistema (${rssMB}MB / ${sysTotMB}MB)`,
         latency: Date.now() - start,
+        details,
       };
     }
+
+    return {
+      name: 'memory',
+      status: 'pass',
+      message: `RAM OK: ${sysPct.toFixed(1)}% del sistema (${rssMB}MB / ${sysTotMB}MB)`,
+      latency: Date.now() - start,
+      details,
+    };
   }
 
   private async checkAIService(): Promise<HealthCheck> {
     const start = Date.now();
     try {
       const { env } = await import('@/config/env.js');
-
       if (!env.GROQ_API_KEY) {
         return {
           name: 'ai_service',
@@ -368,7 +389,6 @@ export class HealthCheckService {
           latency: Date.now() - start,
         };
       }
-
       return {
         name: 'ai_service',
         status: 'pass',
@@ -387,17 +407,20 @@ export class HealthCheckService {
 
   getSystemMetrics(): SystemMetrics {
     const memUsage = process.memoryUsage();
-    const totalMem = memUsage.heapTotal;
-    const usedMem = memUsage.heapUsed;
+    const systemTot = totalmem();
+    const rss = memUsage.rss;
 
     const metrics: SystemMetrics = {
       memory: {
-        used: usedMem,
-        total: totalMem,
-        percentage: (usedMem / totalMem) * 100,
+        used: memUsage.heapUsed,
+        total: memUsage.heapTotal,
+        percentage: (memUsage.heapUsed / memUsage.heapTotal) * 100, // solo informativo
+        rss,
+        systemTotal: systemTot,
+        systemPercentage: (rss / systemTot) * 100, // el umbral real
       },
       cpu: {
-        usage: process.cpuUsage().user / 1000000,
+        usage: process.cpuUsage().user / 1_000_000,
       },
       process: {
         uptime: process.uptime(),
@@ -435,18 +458,20 @@ export class HealthCheckService {
     const health = await this.performHealthCheck();
     const metrics = this.getSystemMetrics();
     const circuits = circuitBreakerManager.getAllCircuits();
-
     return { health, metrics, circuits };
   }
 }
 
 export const healthCheckService = HealthCheckService.getInstance();
 
+// ─── AutoRestartService ──────────────────────────────────────────────────────
+
 export interface AutoRestartConfig {
   enabled: boolean;
   checkIntervalMs: number;
   restartThreshold: {
     consecutiveFailures: number;
+    /** % de RAM del SISTEMA (rss/totalmem), no del heap de V8 */
     memoryPercentage: number;
     errorRate: number;
   };
@@ -454,10 +479,12 @@ export interface AutoRestartConfig {
 
 const DEFAULT_RESTART_CONFIG: AutoRestartConfig = {
   enabled: true,
-  checkIntervalMs: 60000,
+  checkIntervalMs: 60_000,
   restartThreshold: {
     consecutiveFailures: 5,
-    memoryPercentage: 95,
+    // 70% de la RAM del sistema es un umbral real y significativo
+    // (antes era 95% del heap de V8, que siempre se disparaba)
+    memoryPercentage: 70,
     errorRate: 20,
   },
 };
@@ -491,11 +518,8 @@ export class AutoRestartService {
       logger.info('Auto-restart service disabled');
       return;
     }
-
     logger.info('🚀 Auto-restart service started');
-    this.restartTimer = setInterval(() => {
-      void this.checkAndRestart();
-    }, this.config.checkIntervalMs);
+    this.restartTimer = setInterval(() => void this.checkAndRestart(), this.config.checkIntervalMs);
   }
 
   stop(): void {
@@ -525,22 +549,23 @@ export class AutoRestartService {
     let shouldRestart = false;
     let reason = '';
 
-    if (metrics.memory.percentage > this.config.restartThreshold.memoryPercentage) {
+    if (metrics.memory.systemPercentage > this.config.restartThreshold.memoryPercentage) {
       shouldRestart = true;
-      reason = `Memory critical: ${metrics.memory.percentage.toFixed(1)}%`;
+      reason =
+        `RAM del sistema crítica: ${metrics.memory.systemPercentage.toFixed(1)}% ` +
+        `(${(metrics.memory.rss / 1024 / 1024).toFixed(0)}MB rss)`;
     }
 
     if (this.consecutiveFailures >= this.config.restartThreshold.consecutiveFailures) {
       shouldRestart = true;
-      reason = `${this.consecutiveFailures} consecutive failures detected`;
+      reason = `${this.consecutiveFailures} fallos consecutivos detectados`;
     }
 
     if (this.checkCount > 10) {
-      const recentErrors = this.errorCount;
-      const errorRate = (recentErrors / this.checkCount) * 100;
+      const errorRate = (this.errorCount / this.checkCount) * 100;
       if (errorRate > this.config.restartThreshold.errorRate) {
         shouldRestart = true;
-        reason = `High error rate: ${errorRate.toFixed(1)}%`;
+        reason = `Tasa de errores alta: ${errorRate.toFixed(1)}%`;
       }
       this.errorCount = 0;
       this.checkCount = 0;
@@ -552,7 +577,7 @@ export class AutoRestartService {
       if (this.onRestartCallback) {
         this.onRestartCallback();
       } else {
-        logger.error('No restart callback configured');
+        logger.warn('⚠️ Auto-restart triggered but disabled - bot continues running');
       }
     }
   }
