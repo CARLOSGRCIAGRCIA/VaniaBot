@@ -5,18 +5,15 @@
  * Handles WhatsApp connection via Baileys,
  * including authentication, reconnection, and event management.
  *
- * FIXES:
- * - Never requests a new pairing code if a session already exists
- * - sessionInvalidCount only increments on true loggedOut (401), not network errors
- * - Aggressive keep-alive to prevent silent disconnections
- * - scheduleReconnect never clears session automatically
- * - Only emits sessionInvalid after confirmed loggedOut (401) N times
+ * KEY BEHAVIORS:
+ * - 440 (conflict): cierra el socket viejo, espera 15s y reconecta UNA sola vez
+ * - Nunca pide código de pareamiento si ya existe sesión
+ * - 401 (loggedOut): limpia sesión solo tras N confirmaciones reales
+ * - 'ready' solo se emite una vez por sesión (no en cada reconexión)
+ * - No hay spam de notificaciones al owner durante reconexiones
  *
  * @author **Carlos G** ⭐
  * @github CARLOSGRCIAGRCIA
- * @tiktok carlos.grcia0
- * @instagram carlos.gxv
- * @created 2026-03-16
  */
 import makeWASocket, {
   useMultiFileAuthState,
@@ -37,38 +34,33 @@ import { cacheManager } from '@/core/CacheManager.js';
 
 const SILENT_LOGGER = pino({ level: 'silent' });
 
-// ─── Reconnection timing ───────────────────────────────────────────────────
-const FIRST_RECONNECT_DELAY = 5_000; // 5s first retry (was 20s — too slow)
-const MAX_RECONNECT_DELAY = 60_000; // 60s cap
-const MAX_RECONNECT_ATTEMPTS = 50; // more attempts before giving up (was 25)
+// ─── Timing constants ────────────────────────────────────────────────────────
+const FIRST_RECONNECT_DELAY = 15_000;
+const MAX_RECONNECT_DELAY = 120_000;
+const MAX_RECONNECT_ATTEMPTS = 50;
 
-// ─── Keep-alive / health ──────────────────────────────────────────────────
-const HEALTH_CHECK_INTERVAL = 120_000; // 2 min (was 10 min — too infrequent)
-const PING_INTERVAL = 20_000; // 20s ping
-const CONNECTION_VERIFY_DELAY = 5_000;
+// 440 conflict: tiempo que WA necesita para cerrar la sesión conflictiva
+const CONFLICT_RECONNECT_DELAY = 20_000;
 
-// ─── Session protection ───────────────────────────────────────────────────
-/**
- * Number of consecutive TRUE loggedOut (401) events before we consider the
- * session permanently dead and request owner intervention.
- * Network blips produce badSession (500) not loggedOut, so this stays low.
- */
-const MAX_TRUE_LOGOUT_BEFORE_INVALID = 2;
+const HEALTH_CHECK_INTERVAL = 3 * 60_000;
+const PING_INTERVAL = 25_000;
 
-/**
- * Status codes that are ALWAYS network-related and should NEVER trigger
- * session cleanup or pairing-code requests.
- */
-const NETWORK_ERROR_CODES = new Set([
+const MAX_TRUE_LOGOUTS = 2;
+
+// Códigos de error de red puros — nunca indican sesión inválida
+const NETWORK_CODES = new Set<number>([
   DisconnectReason.timedOut,
   DisconnectReason.connectionLost,
   DisconnectReason.connectionClosed,
   DisconnectReason.connectionReplaced,
   DisconnectReason.restartRequired,
-  408, // Request Timeout
-  503, // Service Unavailable
-  502, // Bad Gateway
+  408,
+  502,
+  503,
 ]);
+
+// 440 = "Stream Errored (conflict)" — WA detecta dos conexiones del mismo número
+const CONFLICT_CODE = 440;
 
 export class SubBotInstance extends EventEmitter {
   public sock?: WASocket;
@@ -80,24 +72,22 @@ export class SubBotInstance extends EventEmitter {
   private destroyed = false;
   private pairingCodeTimer?: NodeJS.Timeout;
   private pingInterval?: NodeJS.Timeout;
-  private lastPingTime = 0;
   private healthCheckTimer?: NodeJS.Timeout;
   private isReconnecting = false;
-
-  /**
-   * True loggedOut (401) counter — incremented ONLY on statusCode 401.
-   * NOT incremented on network errors, badSession or any other code.
-   */
   private trueLogoutCount = 0;
 
-  private hasNotifiedFirstConnection = false;
-  private lastNotificationTime = 0;
-  private readonly NOTIFICATION_COOLDOWN = 5 * 60 * 1000;
+  /**
+   * true = el owner ya recibió "SubBot activada".
+   * Solo se resetea en clearSession() para re-vincular.
+   */
+  private hasNotifiedReady = false;
 
   constructor(config: SubBotConfig) {
     super();
     this.config = config;
   }
+
+  // ─── Keep-alive ──────────────────────────────────────────────────────────────
 
   private startPing(): void {
     if (this.pingInterval) return;
@@ -105,10 +95,8 @@ export class SubBotInstance extends EventEmitter {
       if (!this.sock || this.destroyed) return;
       try {
         await this.sock.sendPresenceUpdate('available', 'status@broadcast');
-        this.lastPingTime = Date.now();
-        logger.debug(`📶 SubBot[${this.config.id}] ping OK`);
       } catch {
-        logger.debug(`⚠️ SubBot[${this.config.id}] ping failed (ignored)`);
+        /* non-critical */
       }
     }, PING_INTERVAL);
   }
@@ -122,43 +110,14 @@ export class SubBotInstance extends EventEmitter {
 
   private startHealthCheck(): void {
     if (this.healthCheckTimer) return;
-    this.healthCheckTimer = setInterval(async () => {
-      if (!this.sock || this.destroyed) return;
-      try {
-        const isAlive = this.isSocketReallyConnected();
-        if (!isAlive && this.connectionEstablished && !this.isReconnecting) {
-          logger.warn(`⚠️ SubBot[${this.config.id}] health check: posible desconexión silenciosa`);
-          setTimeout(() => {
-            if (!this.isSocketReallyConnected() && !this.isReconnecting && !this.destroyed) {
-              logger.warn(
-                `⚠️ SubBot[${this.config.id}] desconexión silenciosa confirmada, reconectando...`,
-              );
-              this.connectionEstablished = false;
-              this.scheduleReconnect();
-            }
-          }, CONNECTION_VERIFY_DELAY);
-        } else if (isAlive) {
-          logger.debug(`✅ SubBot[${this.config.id}] health check OK`);
-        }
-      } catch (error) {
-        logger.debug(`⚠️ SubBot[${this.config.id}] error en health check: ${error}`);
+    this.healthCheckTimer = setInterval(() => {
+      if (!this.sock || this.destroyed || this.isReconnecting) return;
+      if (!this.isSocketReallyConnected() && this.connectionEstablished) {
+        logger.warn(`⚠️ SubBot[${this.config.id}] health-check: desconexión silenciosa`);
+        this.connectionEstablished = false;
+        this.scheduleReconnect();
       }
     }, HEALTH_CHECK_INTERVAL);
-  }
-
-  private isSocketReallyConnected(): boolean {
-    if (!this.sock || this.destroyed) return false;
-    try {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const socket = this.sock as any;
-      if (!socket.ws) return false;
-      if (socket.ws.readyState !== 1 /* OPEN */) return false;
-      if (!this.sock.user?.id) return false;
-      if (!this.connectionEstablished) return false;
-      return true;
-    } catch {
-      return false;
-    }
   }
 
   private stopHealthCheck(): void {
@@ -168,51 +127,81 @@ export class SubBotInstance extends EventEmitter {
     }
   }
 
-  private scheduleReconnect(): void {
+  private isSocketReallyConnected(): boolean {
+    if (!this.sock || this.destroyed) return false;
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const ws = (this.sock as any).ws;
+      return ws?.readyState === 1 && !!this.sock.user?.id && this.connectionEstablished;
+    } catch {
+      return false;
+    }
+  }
+
+  // ─── Cerrar socket actual limpiamente ────────────────────────────────────────
+
+  private async closeCurrentSocket(): Promise<void> {
+    if (!this.sock) return;
+    const old = this.sock;
+    this.sock = undefined;
+    try {
+      old.ev.removeAllListeners('creds.update');
+      old.ev.removeAllListeners('connection.update');
+      old.ev.removeAllListeners('messages.upsert');
+      old.ev.removeAllListeners('group-participants.update');
+      old.ev.removeAllListeners('groups.update');
+    } catch {
+      /* ignore */
+    }
+    try {
+      await old.ws?.close();
+    } catch {
+      /* ignore */
+    }
+  }
+
+  // ─── Reconexión con back-off ─────────────────────────────────────────────────
+
+  private scheduleReconnect(fixedDelay?: number): void {
     if (this.destroyed || this.isReconnecting) return;
 
     if (this.reconnectAttempts >= MAX_RECONNECT_ATTEMPTS) {
-      logger.warn(
-        `⚠️ SubBot[${this.config.id}] alcanzó ${MAX_RECONNECT_ATTEMPTS} reintentos, ` +
-          `esperando 5 min y reseteando contador...`,
-      );
-      // NEVER clear session here — just back off and keep trying
+      logger.warn(`⚠️ SubBot[${this.config.id}] ${MAX_RECONNECT_ATTEMPTS} reintentos, pausa 5 min`);
       this.reconnectAttempts = 0;
       subBotDatabase.update(this.config.id, { status: 'connecting' });
-      setTimeout(
-        () => {
-          if (!this.destroyed) {
-            this.connectionEstablished = false;
-            void this.start();
-          }
-        },
-        5 * 60 * 1000,
-      );
+      setTimeout(() => {
+        if (!this.destroyed) void this.start();
+      }, 5 * 60_000);
       return;
     }
 
     this.isReconnecting = true;
     this.reconnectAttempts++;
 
-    const delay = Math.min(
-      FIRST_RECONNECT_DELAY * Math.pow(1.5, this.reconnectAttempts - 1),
-      MAX_RECONNECT_DELAY,
-    );
+    const delay =
+      fixedDelay ??
+      Math.min(
+        FIRST_RECONNECT_DELAY * Math.pow(1.5, this.reconnectAttempts - 1),
+        MAX_RECONNECT_DELAY,
+      );
 
     logger.info(
-      `🔄 SubBot[${this.config.id}] reconectando en ${Math.round(delay / 1000)}s ` +
-        `(intento ${this.reconnectAttempts}/${MAX_RECONNECT_ATTEMPTS})`,
+      `🔄 SubBot[${this.config.id}] reconectando en ${Math.round(delay / 1000)}s` +
+        ` (intento ${this.reconnectAttempts}/${MAX_RECONNECT_ATTEMPTS})`,
     );
     subBotDatabase.update(this.config.id, { status: 'connecting' });
 
-    setTimeout(() => {
+    setTimeout(async () => {
       this.isReconnecting = false;
       if (!this.destroyed) {
         this.connectionEstablished = false;
+        await this.closeCurrentSocket(); // garantiza que no haya socket viejo antes de reconectar
         void this.start();
       }
     }, delay);
   }
+
+  // ─── Start ───────────────────────────────────────────────────────────────────
 
   async start(): Promise<void> {
     if (this.destroyed) return;
@@ -226,8 +215,8 @@ export class SubBotInstance extends EventEmitter {
       mkdirSync(this.config.sessionPath, { recursive: true });
       const { version } = await fetchLatestBaileysVersion();
       const { state, saveCreds } = await useMultiFileAuthState(this.config.sessionPath);
-
       const hasExistingCreds = !!state.creds.registered;
+
       logger.debug(
         `🌸 SubBot[${this.config.id}] session: ${hasExistingCreds ? 'existing ✅' : 'new 🆕'}`,
       );
@@ -243,7 +232,7 @@ export class SubBotInstance extends EventEmitter {
         browser: ['Ubuntu', 'Chrome', '120.0.0'],
         defaultQueryTimeoutMs: 60_000,
         connectTimeoutMs: 120_000,
-        keepAliveIntervalMs: 15_000, // más frecuente que antes
+        keepAliveIntervalMs: 15_000,
         getMessage: async () => undefined,
         syncFullHistory: false,
         markOnlineOnConnect: true,
@@ -257,7 +246,6 @@ export class SubBotInstance extends EventEmitter {
       this.sock.ev.on('creds.update', () => {
         saveCreds().catch(err => logError(`SubBotInstance[${this.config.id}].saveCreds`, err));
         if (!this.connectionEstablished && this.sock?.authState?.creds?.registered) {
-          logger.info(`🔗 SubBot[${this.config.id}] device registered after code entry`);
           this.connectionEstablished = true;
           void this.onFullyConnected();
         }
@@ -277,124 +265,121 @@ export class SubBotInstance extends EventEmitter {
         }
       });
 
-      this.sock.ev.on('group-participants.update', update => {
-        this.emit('groupUpdate', update);
-      });
+      this.sock.ev.on('group-participants.update', update => this.emit('groupUpdate', update));
 
       this.sock.ev.on('groups.update', updates => {
-        for (const update of updates) {
-          if (update.id) cacheManager.invalidateGroupMetadata(update.id);
+        for (const u of updates) {
+          if (u.id) cacheManager.invalidateGroupMetadata(u.id);
         }
       });
 
       subBotDatabase.update(this.config.id, { status: 'connecting' });
       this.emit('status', 'connecting');
 
+      // Solo pedir código si NO hay sesión existente
       if (!hasExistingCreds) {
-        logger.info(
-          `🔑 SubBot[${this.config.id}] sin credenciales, solicitando código de pareamiento...`,
-        );
-        // Wait a bit longer (8s) for the socket to stabilize before requesting
+        logger.info(`🔑 SubBot[${this.config.id}] nueva sesión, solicitando código en 8s...`);
         this.pairingCodeTimer = setTimeout(() => {
           if (!this.destroyed && this.sock && !this.sock.authState.creds.registered) {
             void this.requestPairingCode();
           }
         }, 8_000);
       } else {
-        // Existing session — just wait for 'open', never ask for a code
-        logger.info(
-          `✅ SubBot[${this.config.id}] sesión existente, esperando reconexión automática...`,
-        );
+        logger.info(`✅ SubBot[${this.config.id}] sesión existente, esperando reconexión...`);
       }
     } catch (error) {
       logError(`SubBot[${this.config.id}].start`, error);
       subBotDatabase.update(this.config.id, { status: 'error' });
       this.emit('status', 'error');
-      // Retry even on unexpected start errors
       this.scheduleReconnect();
     }
   }
 
+  // ─── Manejador de conexión ───────────────────────────────────────────────────
+
   private async handleConnection(update: Partial<ConnectionState>): Promise<void> {
     const { connection, lastDisconnect } = update;
 
-    logger.debug(
-      `🔍 SubBot[${this.config.id}] update: connection=${connection ?? 'none'} | ` +
-        `registered=${this.sock?.authState?.creds?.registered} | ` +
-        `established=${this.connectionEstablished}`,
-    );
+    const err = lastDisconnect?.error as
+      | { output?: { statusCode?: number }; message?: string }
+      | undefined;
+    const statusCode = err?.output?.statusCode as number | undefined;
 
-    if (lastDisconnect?.error) {
-      const err = lastDisconnect.error as { output?: { statusCode?: number }; message?: string };
-      const statusCode = err?.output?.statusCode;
-
+    if (statusCode !== undefined) {
       logger.warn(
         `🔍 SubBot[${this.config.id}] lastDisconnect: status=${statusCode} msg=${err?.message}`,
       );
-
-      // ── True loggedOut (401) — the only code that indicates a dead session ──
-      if (statusCode === DisconnectReason.loggedOut) {
-        this.trueLogoutCount++;
-        logger.warn(
-          `⚠️ SubBot[${this.config.id}] loggedOut 401 ` +
-            `(${this.trueLogoutCount}/${MAX_TRUE_LOGOUT_BEFORE_INVALID})`,
-        );
-
-        if (this.trueLogoutCount >= MAX_TRUE_LOGOUT_BEFORE_INVALID) {
-          logger.error(
-            `❌ SubBot[${this.config.id}] sesión definitivamente revocada por WhatsApp, ` +
-              `limpiando y notificando owner...`,
-          );
-          this.clearSession();
-          this.emit('sessionInvalid');
-          return;
-        }
-
-        // First logout — could be a transient WA server issue; retry once
-        const delay = 20_000;
-        logger.info(`🔄 SubBot[${this.config.id}] reintentando en ${delay / 1000}s...`);
-        setTimeout(() => {
-          if (!this.destroyed) {
-            this.connectionEstablished = false;
-            void this.start();
-          }
-        }, delay);
-        return;
-      }
-
-      // ── badSession (500) — DO NOT clear session, just reconnect ──
-      if (statusCode === DisconnectReason.badSession) {
-        logger.warn(
-          `⚠️ SubBot[${this.config.id}] badSession — error temporal, reconectando sin limpiar sesión`,
-        );
-        this.scheduleReconnect();
-        return;
-      }
-
-      // ── All network errors — transparent reconnect ──
-      if (NETWORK_ERROR_CODES.has(statusCode as number)) {
-        logger.info(`🌐 SubBot[${this.config.id}] error de red (${statusCode}), reconectando...`);
-        // Let Baileys handle timedOut/connectionLost natively; only force if closed
-        if (connection === 'close') this.scheduleReconnect();
-        return;
-      }
     }
 
-    if (connection === 'connecting') {
-      logger.debug(`🔄 SubBot[${this.config.id}] connecting...`);
+    // ── 440 Conflict ──────────────────────────────────────────────────────────
+    // WA detectó dos conexiones del mismo número.
+    // FIX: cerrar socket AHORA y esperar antes de reconectar.
+    // Esto corta el loop: sin closeCurrentSocket() el socket viejo seguía
+    // vivo y cada reconexión nueva generaba otro 440.
+    if (statusCode === CONFLICT_CODE) {
+      if (this.destroyed || this.isReconnecting) return;
+      logger.warn(
+        `⚡ SubBot[${this.config.id}] conflicto de sesión (440) — ` +
+          `cerrando socket y esperando ${CONFLICT_RECONNECT_DELAY / 1000}s`,
+      );
+      this.stopPing();
+      this.stopHealthCheck();
+      this.connectionEstablished = false;
+      await this.closeCurrentSocket();
+      this.scheduleReconnect(CONFLICT_RECONNECT_DELAY);
       return;
     }
+
+    // ── 401 loggedOut ─────────────────────────────────────────────────────────
+    if (statusCode === DisconnectReason.loggedOut) {
+      this.trueLogoutCount++;
+      logger.warn(
+        `⚠️ SubBot[${this.config.id}] loggedOut 401 (${this.trueLogoutCount}/${MAX_TRUE_LOGOUTS})`,
+      );
+
+      if (this.trueLogoutCount >= MAX_TRUE_LOGOUTS) {
+        logger.error(`❌ SubBot[${this.config.id}] sesión revocada definitivamente`);
+        this.clearSession();
+        this.emit('sessionInvalid');
+        return;
+      }
+
+      // Primer logout: puede ser transitorio
+      setTimeout(() => {
+        if (!this.destroyed) {
+          this.connectionEstablished = false;
+          void this.start();
+        }
+      }, 20_000);
+      return;
+    }
+
+    // ── badSession (500) ──────────────────────────────────────────────────────
+    if (statusCode === DisconnectReason.badSession) {
+      logger.warn(`⚠️ SubBot[${this.config.id}] badSession — reconectando sin limpiar sesión`);
+      if (connection === 'close') this.scheduleReconnect();
+      return;
+    }
+
+    // ── Errores de red puros ──────────────────────────────────────────────────
+    if (statusCode !== undefined && NETWORK_CODES.has(statusCode)) {
+      logger.info(`🌐 SubBot[${this.config.id}] error de red (${statusCode})`);
+      if (connection === 'close') this.scheduleReconnect();
+      return;
+    }
+
+    // ── Estado de conexión ────────────────────────────────────────────────────
+
+    if (connection === 'connecting') return;
 
     if (connection === 'open') {
       logger.info(`✅ SubBot[${this.config.id}] connection open`);
       this.trueLogoutCount = 0;
       this.reconnectAttempts = 0;
-
       if (this.pairingCodeTimer) {
         clearTimeout(this.pairingCodeTimer);
         this.pairingCodeTimer = undefined;
       }
-
       await this.onFullyConnected();
       return;
     }
@@ -404,19 +389,12 @@ export class SubBotInstance extends EventEmitter {
         clearTimeout(this.pairingCodeTimer);
         this.pairingCodeTimer = undefined;
       }
+      logger.warn(
+        `⚠️ SubBot[${this.config.id}] connection closed (code: ${statusCode ?? 'unknown'})`,
+      );
+      if (this.destroyed || this.isReconnecting) return;
 
-      const statusCode = (lastDisconnect?.error as { output?: { statusCode?: number } })?.output
-        ?.statusCode;
-      logger.warn(`⚠️ SubBot[${this.config.id}] connection closed, code: ${statusCode}`);
-
-      if (this.destroyed) return;
-
-      // If we never got 'open', back off but keep trying
       if (!this.connectionEstablished) {
-        if (this.isReconnecting) return;
-        logger.debug(
-          `⚠️ SubBot[${this.config.id}] conexión nunca establecida, reintentando en 10s...`,
-        );
         subBotDatabase.update(this.config.id, { status: 'connecting' });
         setTimeout(() => {
           if (!this.destroyed && !this.isReconnecting) void this.start();
@@ -428,7 +406,7 @@ export class SubBotInstance extends EventEmitter {
     }
   }
 
-  // ─── onFullyConnected ────────────────────────────────────────────────────
+  // ─── onFullyConnected ────────────────────────────────────────────────────────
 
   private async onFullyConnected(): Promise<void> {
     this.reconnectAttempts = 0;
@@ -448,33 +426,26 @@ export class SubBotInstance extends EventEmitter {
     logger.info(`✅ SubBot[${this.config.id}] (${this.config.name}) operational 🌸`);
     this.emit('status', 'connected');
 
-    const now = Date.now();
-    const shouldNotify =
-      !this.hasNotifiedFirstConnection ||
-      now - this.lastNotificationTime > this.NOTIFICATION_COOLDOWN;
-
-    if (shouldNotify) {
-      this.hasNotifiedFirstConnection = true;
-      this.lastNotificationTime = now;
+    // 'ready' solo una vez por sesión vinculada.
+    // Reconexiones automáticas (440, red caída, etc.) NO disparan este evento
+    // y por tanto NO mandan mensajes al owner.
+    if (!this.hasNotifiedReady) {
+      this.hasNotifiedReady = true;
       this.emit('ready');
     }
   }
 
-  // ─── Pairing code (only for brand-new sessions) ───────────────────────────
+  // ─── Pairing code (solo sesiones nuevas) ─────────────────────────────────────
 
   private async requestPairingCode(): Promise<void> {
     if (!this.sock || this.destroyed) return;
     if (this.pairingCodeRequested) return;
-    if (this.sock.authState.creds.registered) {
-      logger.debug(`ℹ️ SubBot[${this.config.id}] already registered, skipping pairing code`);
-      return;
-    }
+    if (this.sock.authState.creds.registered) return;
 
     this.pairingCodeRequested = true;
 
     try {
       const phone = this.config.phoneNumber.replace(/\D/g, '');
-      logger.debug(`📞 SubBot[${this.config.id}] requesting pairing code for +${phone}...`);
       const code = await this.sock.requestPairingCode(phone);
       if (!code) throw new Error('WhatsApp did not return code');
 
@@ -484,18 +455,14 @@ export class SubBotInstance extends EventEmitter {
         pairingCodeRequestedAt: Date.now(),
       });
 
-      logger.info(`🔑 SubBot[${this.config.id}] code: ${formatted}`);
+      logger.info(`🔑 SubBot[${this.config.id}] pairing code: ${formatted}`);
       this.emit('pairingCode', formatted);
     } catch (error) {
       const msg = error instanceof Error ? error.message : String(error);
       logger.error(`❌ SubBot[${this.config.id}] error requesting code: ${msg}`);
+      this.pairingCodeRequested = false;
 
-      if (
-        msg.includes('Connection Closed') ||
-        msg.includes('timed out') ||
-        msg.includes('Timeout')
-      ) {
-        this.pairingCodeRequested = false;
+      if (msg.includes('Connection Closed') || msg.includes('imed out')) {
         if (!this.destroyed) {
           this.pairingCodeTimer = setTimeout(() => {
             if (!this.sock?.authState.creds.registered) void this.requestPairingCode();
@@ -503,39 +470,23 @@ export class SubBotInstance extends EventEmitter {
         }
       } else {
         logError(`SubBot[${this.config.id}].requestPairingCode`, error);
-        this.pairingCodeRequested = false;
         this.emit('pairingCodeError', error);
       }
     }
   }
 
-  // ─── Stop / cleanup ───────────────────────────────────────────────────────
+  // ─── Stop ────────────────────────────────────────────────────────────────────
 
   async stop(): Promise<void> {
     logger.info(`🛑 SubBot[${this.config.id}] stopping...`);
     this.destroyed = true;
     this.stopPing();
     this.stopHealthCheck();
-
     if (this.pairingCodeTimer) {
       clearTimeout(this.pairingCodeTimer);
       this.pairingCodeTimer = undefined;
     }
-
-    if (this.sock?.ev) {
-      this.sock.ev.removeAllListeners('creds.update');
-      this.sock.ev.removeAllListeners('connection.update');
-      this.sock.ev.removeAllListeners('messages.upsert');
-      this.sock.ev.removeAllListeners('group-participants.update');
-      this.sock.ev.removeAllListeners('groups.update');
-    }
-
-    try {
-      await this.sock?.ws?.close();
-    } catch (err) {
-      logError(`SubBotInstance[${this.config.id}].stop`, err);
-    }
-
+    await this.closeCurrentSocket();
     subBotDatabase.update(this.config.id, { status: 'disconnected' });
     this.emit('status', 'disconnected');
     logger.info(`✅ SubBot[${this.config.id}] stopped`);
@@ -543,6 +494,7 @@ export class SubBotInstance extends EventEmitter {
 
   clearSession(): void {
     logger.info(`🧹 SubBot[${this.config.id}] clearing session...`);
+    this.hasNotifiedReady = false; // al re-vincular debe notificar de nuevo
     try {
       if (!existsSync(this.config.sessionPath)) return;
       const files = readdirSync(this.config.sessionPath);
