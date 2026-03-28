@@ -1,6 +1,7 @@
 import { Command } from '../Command.js';
 import { CommandCategory, type MessageContext } from '@/types/index.js';
 import { serviceManager } from '@/services/system/Servicemanager.js';
+import { primeService } from '@/services/system/PrimeService.js';
 
 export class RankingCommand extends Command {
   name = 'ranking';
@@ -120,7 +121,8 @@ export class RankingCommand extends Command {
       }
     }
 
-    message += `\n> _*VaniaBot💝*_`;
+    const footer = await primeService.formatFooter(ctx.sock, ctx.chat.jid, ctx.chat.isGroup);
+    message += `\n${footer}`;
 
     await ctx.reply(message);
   }

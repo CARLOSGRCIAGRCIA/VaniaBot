@@ -1,6 +1,7 @@
 import { Command } from '../Command.js';
 import { CommandCategory, type MessageContext } from '@/types/index.js';
 import { serviceManager } from '@/services/system/Servicemanager.js';
+import { primeService } from '@/services/system/PrimeService.js';
 import { formatNumber } from '@/utils/helpers.js';
 
 export class MonthlyCommand extends Command {
@@ -73,7 +74,8 @@ export class MonthlyCommand extends Command {
     }
 
     message += `📅 *Disponible cada 30 días*\n\n`;
-    message += `> _*VaniaBot💝*_`;
+    const footer = await primeService.formatFooter(ctx.sock, ctx.chat.jid, ctx.chat.isGroup);
+    message += footer;
 
     await ctx.reply(message);
     await ctx.react('✅');

@@ -1,6 +1,7 @@
 import { Command } from '../Command.js';
 import { CommandCategory, CommandContext, type MessageContext } from '@/types/index.js';
 import { commandRegistry } from '@/core/CommandRegistry.js';
+import { primeService } from '@/services/system/PrimeService.js';
 import { cacheManager } from '@/core/CacheManager.js';
 
 export class MetricsCommand extends Command {
@@ -33,7 +34,8 @@ export class MetricsCommand extends Command {
     message += `  ⏰ Uptime: ${this.formatUptime(process.uptime())}\n`;
     message += `  📝 Comandos registrados: ${commandRegistry.size}\n`;
 
-    message += `\n> _*VaniaBot💝*_`;
+    const footer = await primeService.formatFooter(ctx.sock, ctx.chat.jid, ctx.chat.isGroup);
+    message += `\n${footer}`;
 
     await ctx.reply(message);
   }

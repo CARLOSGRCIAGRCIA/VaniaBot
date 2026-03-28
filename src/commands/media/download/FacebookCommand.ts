@@ -1,6 +1,7 @@
 import { Command } from '../../Command.js';
 import { CommandCategory, type MessageContext } from '@/types/index.js';
 import { logError } from '@/utils/logger.js';
+import { primeService } from '@/services/system/PrimeService.js';
 import { FacebookDownloader } from '@/services/download/FacebookDownloader.js';
 import fs from 'fs';
 
@@ -76,6 +77,7 @@ export class FacebookCommand extends Command {
         return;
       }
 
+      const footer = await primeService.formatFooter(ctx.sock, ctx.chat.jid, ctx.chat.isGroup);
       await ctx.sock.sendMessage(ctx.chat.jid, {
         video: fs.readFileSync(filePath),
         mimetype: 'video/mp4',
@@ -83,7 +85,7 @@ export class FacebookCommand extends Command {
           (info ? `˚₊· ͟͟͞͞➳ ${info.author}\n` : '') +
           `✩ ${result.size}MB\n` +
           `✿ ${result.source}\n\n` +
-          `> VaniaBot 💝`,
+          footer,
       });
 
       await ctx.react('✅');

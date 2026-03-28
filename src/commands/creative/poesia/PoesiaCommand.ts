@@ -13,6 +13,7 @@ import {
   PermissionLevel,
   type MessageContext,
 } from '@/types/index.js';
+import { primeService } from '@/services/system/PrimeService.js';
 
 async function ejecutarPoesia(
   ctx: MessageContext,
@@ -391,7 +392,8 @@ export class PoesiaStatsCommand extends Command {
         `🆔 ID: ${stats.topEntry.id}\n\n`;
     }
 
-    msg += `> _VaniaBot💝 — Poesía & Amor_`;
+    const footer = await primeService.formatFooter(ctx.sock, ctx.chat.jid, ctx.chat.isGroup);
+    msg += footer.replace('>', '> _') + '_';
     await ctx.reply(msg);
   }
 }

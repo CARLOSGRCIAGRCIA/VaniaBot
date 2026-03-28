@@ -1,6 +1,7 @@
 import { Command } from '../../Command.js';
 import { CommandCategory, type MessageContext } from '@/types/index.js';
 import { logError } from '@/utils/logger.js';
+import { primeService } from '@/services/system/PrimeService.js';
 import { InstagramDownloader } from '@/services/download/InstagramDownloader.js';
 import fs from 'fs';
 
@@ -77,12 +78,13 @@ export class InstagramCommand extends Command {
         return;
       }
 
+      const footer = await primeService.formatFooter(ctx.sock, ctx.chat.jid, ctx.chat.isGroup);
       const fileBuffer = fs.readFileSync(filePath);
       const caption =
         (info ? `${isImage ? '🖼️' : '🎬'} @${info.author}\n` : '') +
         `📊 ${result.size}MB\n` +
         `⚡ ${result.source}\n\n` +
-        `> By VaniaBot`;
+        footer;
 
       if (isImage) {
         await ctx.sock.sendMessage(ctx.chat.jid, {

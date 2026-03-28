@@ -1,5 +1,6 @@
 import { Command } from '../../Command.js';
 import { CommandCategory, CommandContext, type MessageContext } from '@/types/index.js';
+import { primeService } from '@/services/system/PrimeService.js';
 
 interface TranslationResponse {
   responseStatus: number;
@@ -152,7 +153,7 @@ export class TranslateCommand extends Command {
         `📝 *Original:*\n${textToTranslate}\n\n` +
         `✨ *Traducido:*\n${translated}\n` +
         `━━━━━━━━━━━━━━━━\n` +
-        `📡 _*VaniaBot💝*_`;
+        `📡 ${await primeService.formatFooter(ctx.sock, ctx.chat.jid, ctx.chat.isGroup)}`;
 
       await ctx.react('✅');
       await ctx.reply(msg);

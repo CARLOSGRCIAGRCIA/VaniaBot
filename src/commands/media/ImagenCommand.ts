@@ -1,5 +1,6 @@
 import { Command } from '../Command.js';
 import { CommandCategory, CommandContext, type MessageContext } from '@/types/index.js';
+import { primeService } from '@/services/system/PrimeService.js';
 import { imageService } from '@/services/external/ImageService.js';
 import { logger } from '@/utils/logger.js';
 
@@ -41,12 +42,13 @@ export class ImagenCommand extends Command {
 
       const selected = images[Math.floor(Math.random() * images.length)];
       const imageUrl = selected.url;
+      const footer = await primeService.formatFooter(ctx.sock, ctx.chat.jid, ctx.chat.isGroup);
 
       await ctx.sock.sendMessage(
         ctx.chat.jid,
         {
           image: { url: imageUrl },
-          caption: `🖼️ *${query}*\n\n📷 Foto por: ${selected.photographer}\n\n> _*VaniaBot💝*_`,
+          caption: `🖼️ *${query}*\n\n📷 Foto por: ${selected.photographer}\n\n${footer}`,
         },
         { quoted: ctx.message },
       );

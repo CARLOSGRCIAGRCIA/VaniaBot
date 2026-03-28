@@ -1,6 +1,7 @@
 import { Command } from '../Command.js';
 import { CommandCategory, CommandContext, type MessageContext } from '@/types/index.js';
 import { serviceManager } from '@/services/system/Servicemanager.js';
+import { primeService } from '@/services/system/PrimeService.js';
 
 export class RespaldarDataCommand extends Command {
   name = 'respaldar';
@@ -49,7 +50,8 @@ export class RespaldarDataCommand extends Command {
       }
 
       message += `\n📅 *Fecha:* ${new Date().toLocaleString()}\n`;
-      message += `> _*VaniaBot💝*_`;
+      const footer = await primeService.formatFooter(ctx.sock, ctx.chat.jid, ctx.chat.isGroup);
+      message += footer;
 
       await ctx.reply(message);
       await ctx.react('✅');

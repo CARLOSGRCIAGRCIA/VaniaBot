@@ -2,6 +2,7 @@ import { Command } from '../Command.js';
 import { CommandCategory, type MessageContext } from '@/types/index.js';
 import { logError } from '@/utils/logger.js';
 import { serviceManager } from '@/services/system/Servicemanager.js';
+import { primeService } from '@/services/system/PrimeService.js';
 import { shopService } from '@/services/economy/ShopService.js';
 
 export class BuyCommand extends Command {
@@ -88,7 +89,8 @@ export class BuyCommand extends Command {
       }
 
       message += this.getItemEffectMessage(item.id);
-      message += `> _*VaniaBot💝*_`;
+      const footer = await primeService.formatFooter(ctx.sock, ctx.chat.jid, ctx.chat.isGroup);
+      message += footer;
 
       await ctx.reply(message);
       await ctx.react('✅');

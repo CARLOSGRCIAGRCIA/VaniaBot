@@ -1,5 +1,6 @@
 import { Command } from '../../Command.js';
 import { CommandCategory, CommandContext, type MessageContext } from '@/types/index.js';
+import { primeService } from '@/services/system/PrimeService.js';
 import { newsService } from '@/services/external/NewsService.js';
 
 const CATEGORIES = [
@@ -60,7 +61,8 @@ export class NoticiasCommand extends Command {
       msg += `   📍 ${article.source} • ${article.publishedAt}\n\n`;
     }
 
-    msg += `> _*VaniaBot💝*_`;
+    const footer = await primeService.formatFooter(ctx.sock, ctx.chat.jid, ctx.chat.isGroup);
+    msg += footer;
 
     await ctx.reply(msg);
     await ctx.react('✅');
