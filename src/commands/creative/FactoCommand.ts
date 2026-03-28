@@ -20,28 +20,7 @@ const FACTOS_PREDEFINED = [
   'Los que siempre dicen "yo soy diferente" son los más predecibles del grupo.',
 ];
 
-export class FactoCommand extends Command {
-  name = 'facto';
-  description = 'Envía una verdad incómoda y elegante';
-  category = CommandCategory.FUN;
-  aliases = ['facts', 'facto', 'verdad', 'coldtruth'];
-  cooldown = 15000;
-  contexts = [CommandContext.BOTH];
-  usage = '!facto [tema]';
-  examples = ['!facto', '!facto amigos', '!facto trabajo'];
-  permissions = { user: [PermissionLevel.USER], bot: [] };
-
-  async execute(ctx: MessageContext): Promise<void> {
-    const args = ctx.args ?? [];
-    const topic = args.join(' ');
-
-    await ctx.react('💭');
-
-    try {
-      let facto: string;
-
-      if (topic) {
-        const prompt = `Eres Vania, una bot fascinante. Genera UN SOLO "facto" - una verdad incómoda, fría, precisa y elegante sobre el tema: "${topic}".
+const PROMPT_BASE = `Eres Vania, una bot fascinante. Genera UN SOLO "facto" - una verdad incómoda, fría, precisa y elegante.
 
 Un facto es:
 - Una verdad incómoda pero precisa
@@ -57,38 +36,52 @@ Ejemplos de estilo:
 
 Genera solo el facto, sin introducción ni explicación. Sé creativo y diferente cada vez.`;
 
-        const result = await aiService.chat(ctx.chat.jid, ctx.sender.jid, prompt, true);
+export class FactoCommand extends Command {
+  name = 'facto';
+  description = 'Envía una verdad incómoda y elegante';
+  category = CommandCategory.FUN;
+  aliases = ['facts', 'facto', 'coldtruth'];
+  cooldown = 15000;
+  contexts = [CommandContext.BOTH];
+  usage = '!facto [tema]';
+  examples = ['!facto', '!facto amigos', '!facto trabajo'];
+  permissions = { user: [PermissionLevel.USER], bot: [] };
 
-        if (result.success && result.text) {
-          facto = result.text.trim();
-        } else {
-          facto = this.getRandomFacto();
-        }
-      } else {
-        facto = this.getRandomFacto();
-      }
+  async execute(ctx: MessageContext): Promise<void> {
+    const args = ctx.args ?? [];
+    const topic = args.join(' ');
 
-      const message = this.formatFactoMessage(facto);
-      await ctx.reply(message);
+    await ctx.react('💭');
+
+    try {
+      const facto = await this.generateFacto(ctx, topic);
+      await ctx.reply(this.formatFactoMessage(facto));
       await ctx.react('🎀');
     } catch {
-      const facto = this.getRandomFacto();
-      await ctx.reply(this.formatFactoMessage(facto));
+      await ctx.reply(this.formatFactoMessage(this.getRandomFacto()));
     }
   }
 
+  private async generateFacto(ctx: MessageContext, topic: string): Promise<string> {
+    const prompt = topic
+      ? `${PROMPT_BASE}\n\nEl facto debe ser sobre el tema: "${topic}".`
+      : PROMPT_BASE;
+
+    const result = await aiService.chat(ctx.chat.jid, ctx.sender.jid, prompt, true);
+
+    if (result.success && result.text) {
+      return result.text.trim();
+    }
+
+    return this.getRandomFacto();
+  }
+
   private formatFactoMessage(facto: string): string {
-    const lines = this.wrapText(facto, 40);
+    const cleanFacto = facto.replace(/>\s*VaniaBot[💝]*\s*$/i, '').trim();
+    return `┌─ ୨ৎ ──────┐
+      ✿  *F A C T O*  ✿   
 
-    return `┌─ ୨ৎ ─────────────┐
-│   ✿  F A C T O  ✿   │
-└─────────────────────┘
-
-${lines.map(line => `   ${line}`).join('\n')}
-
-┌─────────────────────┐
-│   ⋆｡°✩  verdad  ✩°｡⋆   │
-└─────────────────────┘`;
+   ${cleanFacto}\n\n> VaniaBot💝`;
   }
 
   private wrapText(text: string, maxLength: number): string[] {
@@ -105,7 +98,6 @@ ${lines.map(line => `   ${line}`).join('\n')}
       }
     }
     if (currentLine) lines.push(currentLine);
-
     return lines;
   }
 
