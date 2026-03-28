@@ -58,6 +58,7 @@ export interface QuizSession {
   timer: NodeJS.Timeout | null;
   hintTimer: NodeJS.Timeout | null;
   questionLog: QuestionLogEntry[];
+  footer?: string;
 }
 
 export interface QuestionLogEntry {

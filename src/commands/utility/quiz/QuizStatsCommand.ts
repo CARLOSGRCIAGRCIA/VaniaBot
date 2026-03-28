@@ -9,6 +9,7 @@ import {
   type MessageContext,
 } from '@/types/index.js';
 import { serviceManager } from '@/services/system/Servicemanager.js';
+import { primeService } from '@/services/system/PrimeService.js';
 
 interface UserWithQuizStats {
   quizStats?: UserQuizStats;
@@ -51,7 +52,9 @@ export class QuizStatsCommand extends Command {
         return;
       }
 
-      await ctx.reply(quizService.formatStatsMessage(stats, targetName));
+      const footer = await primeService.formatFooter(ctx.sock, ctx.chat.jid, ctx.chat.isGroup);
+      const quizFooter = footer.replace('>', '> _') + ' — Modo Estudio_';
+      await ctx.reply(quizService.formatStatsMessage(stats, targetName, quizFooter));
     } catch (err) {
       logError('[QuizStatsCommand] Error', err);
       await ctx.reply('❌ No pude obtener tus estadísticas. Intenta de nuevo.');

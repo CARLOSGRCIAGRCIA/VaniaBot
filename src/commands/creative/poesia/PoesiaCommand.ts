@@ -45,7 +45,9 @@ async function ejecutarPoesia(
   }
 
   await ctx.react('💝');
-  await ctx.reply(poesiaService.formatEntry(result.entry));
+  const footer = await primeService.formatFooter(ctx.sock, ctx.chat.jid, ctx.chat.isGroup);
+  const formattedFooter = footer.replace('>', '> _') + ' — Poesía & Amor_';
+  await ctx.reply(poesiaService.formatEntry(result.entry, true, formattedFooter));
 }
 
 export class PoemaCommand extends Command {
@@ -345,7 +347,9 @@ export class PoesiaTopCommand extends Command {
     const tipo = rawTipo ? this.TIPO_MAP[rawTipo] : undefined;
 
     const top = poesiaService.getTop(ctx.chat.jid, 5, tipo);
-    await ctx.reply(poesiaService.formatTop(top, tipo));
+    const footer = await primeService.formatFooter(ctx.sock, ctx.chat.jid, ctx.chat.isGroup);
+    const formattedFooter = footer.replace('>', '> _') + ' — Poesía & Amor_';
+    await ctx.reply(poesiaService.formatTop(top, tipo, formattedFooter));
   }
 }
 

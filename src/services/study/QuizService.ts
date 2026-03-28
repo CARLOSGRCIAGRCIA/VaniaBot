@@ -24,6 +24,7 @@ export interface StartQuizOptions {
   updateStats: (jid: string, patch: Partial<UserQuizStats>) => Promise<void>;
   awardCoins: (jid: string, amount: number) => Promise<void>;
   awardXP: (jid: string, amount: number) => Promise<void>;
+  footer?: string;
 }
 
 const MAX_QUESTIONS = 15;
@@ -69,6 +70,7 @@ export class QuizService {
       questionLog: [],
     };
 
+    session.footer = opts.footer || '> _VaniaBot💝 — Modo Estudio_';
     this.sessions.set(opts.groupId, session);
 
     const starterStats = await opts.getUserStats(opts.startedBy);
@@ -336,10 +338,10 @@ export class QuizService {
 
     await opts.sendFn(
       session.groupId,
-      `━━━━━━━━━━━━━━━━━━━━━\n` +
+      `━━━━━━━━━━━\n` +
         `📚 *Pregunta ${progress}* ${diffEmoji} ${diffLabel}\n` +
         `📂 ${session.category}\n` +
-        `━━━━━━━━━━━━━━━━━━━━━\n\n` +
+        `━━━━━━━━━━━\n\n` +
         `*${question.question}*\n\n` +
         `_Tienes ${QUESTION_TIMEOUT_SECS} segundos..._`,
     );
@@ -386,7 +388,8 @@ export class QuizService {
       });
     }
 
-    summary += `\n> _VaniaBot💝 — Modo Estudio_`;
+    const footer = session.footer || '> _VaniaBot💝 — Modo Estudio_';
+    summary += `\n${footer}`;
 
     await sendFn(session.groupId, summary);
     this.sessions.delete(session.groupId);
@@ -416,7 +419,7 @@ export class QuizService {
     return top;
   }
 
-  formatStatsMessage(stats: UserQuizStats, pushName: string): string {
+  formatStatsMessage(stats: UserQuizStats, pushName: string, footer?: string): string {
     const accuracy =
       stats.totalAnswered > 0 ? Math.round((stats.totalCorrect / stats.totalAnswered) * 100) : 0;
 
@@ -429,6 +432,7 @@ export class QuizService {
       })
       .join('\n');
 
+    const defaultFooter = footer || '> _VaniaBot💝 — Modo Estudio_';
     return (
       `*Stats de Quiz — ${pushName}*\n` +
       `━━━━━━━━━━━\n` +
@@ -438,7 +442,7 @@ export class QuizService {
       `Mejor racha: ${stats.bestStreak}\n` +
       `Sesiones:  ${stats.sessionsPlayed}\n` +
       (categories ? `\n *Por categoría:*\n${categories}\n` : '') +
-      `\n> _VaniaBot💝 — Modo Estudio_`
+      `\n${defaultFooter}`
     );
   }
 }

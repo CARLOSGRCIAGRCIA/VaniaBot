@@ -201,9 +201,10 @@ export class PoesiaService {
     return { total: entries.length, totalVotes, byTipo, topEntry };
   }
 
-  formatEntry(entry: ContenidoEntry, showMeta = true): string {
+  formatEntry(entry: ContenidoEntry, showMeta = true, footer?: string): string {
     const emoji = TIPO_EMOJI[entry.tipo];
     const label = TIPO_LABEL[entry.tipo];
+    const defaultFooter = footer || '> _VaniaBot💝 — Poesía & Amor_';
 
     let msg = '';
 
@@ -222,13 +223,13 @@ export class PoesiaService {
       msg += `\n\n━━━━━━━━━━━━━\n`;
       msg += `🆔 ID: \`${entry.id}\` | 👤 Por: ${entry.autorName}\n`;
       msg += `❤️ Vota con *!votar* o *!votar ${entry.id}*\n`;
-      msg += `\n> _VaniaBot💝 — Poesía & Amor_`;
+      msg += `\n${defaultFooter}`;
     }
 
     return msg;
   }
 
-  formatTop(entries: TopEntry[], tipo?: ContenidoTipo): string {
+  formatTop(entries: TopEntry[], tipo?: ContenidoTipo, footer?: string): string {
     if (entries.length === 0) {
       return tipo
         ? `No hay ${TIPO_LABEL[tipo]?.toLowerCase() ?? 'contenido'} votado aún en este grupo.`
@@ -237,6 +238,7 @@ export class PoesiaService {
 
     const medals = ['🥇', '🥈', '🥉', '4️⃣', '5️⃣'];
     const titulo = tipo ? `${TIPO_EMOJI[tipo]} Top ${TIPO_LABEL[tipo]}` : '🏆 Top Poesía del Grupo';
+    const defaultFooter = footer || '> _VaniaBot💝 — Poesía & Amor_';
 
     let msg = `${titulo}\n━━━━━━━━━━━━\n\n`;
 
@@ -248,7 +250,7 @@ export class PoesiaService {
       msg += `   🆔 ${entry.id} | ${TIPO_EMOJI[entry.tipo]} ${TIPO_LABEL[entry.tipo]}\n\n`;
     }
 
-    msg += `> _VaniaBot💝 — Poesía & Amor_`;
+    msg += defaultFooter;
     return msg;
   }
 

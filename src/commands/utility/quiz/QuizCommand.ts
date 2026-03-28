@@ -10,6 +10,7 @@ import {
   type MessageContext,
 } from '@/types/index.js';
 import { serviceManager } from '@/services/system/Servicemanager.js';
+import { primeService } from '@/services/system/PrimeService.js';
 
 const CATEGORY_ALIASES: Record<string, string> = {
   js: QuizCategory.JAVASCRIPT,
@@ -77,6 +78,8 @@ export class QuizCommand extends Command {
   async execute(ctx: MessageContext): Promise<void> {
     const args = ctx.args ?? [];
     const first = args[0]?.toLowerCase();
+    const footer = await primeService.formatFooter(ctx.sock, ctx.chat.jid, ctx.chat.isGroup);
+    const quizFooter = footer.replace('>', '> _') + ' — Modo Estudio_';
 
     if (first === 'stop' || first === 'parar' || first === 'detener') {
       const canStop =
@@ -191,6 +194,7 @@ export class QuizCommand extends Command {
       updateStats,
       awardCoins,
       awardXP,
+      footer: quizFooter,
     });
 
     if (!result.success) {
