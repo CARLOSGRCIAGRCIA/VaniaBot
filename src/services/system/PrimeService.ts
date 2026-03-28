@@ -1,7 +1,6 @@
 import type { WASocket } from '@whiskeysockets/baileys';
-import { GroupService } from '../database/GroupService.js';
+import type { GroupService } from '../database/GroupService.js';
 import { cacheManager } from '@/core/CacheManager.js';
-import { logError } from '@/utils/logger.js';
 
 export class PrimeService {
   private static instance: PrimeService;

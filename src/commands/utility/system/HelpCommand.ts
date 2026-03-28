@@ -193,7 +193,6 @@ export class HelpCommand extends Command {
 
     try {
       let imageBuffer: Buffer | null = null;
-      let imageSource = 'default';
 
       if (ctx.chat.isGroup && isPrime) {
         const groupPicUrl = await primeService.getGroupPicUrl(ctx.sock, ctx.chat.jid);
@@ -201,7 +200,6 @@ export class HelpCommand extends Command {
           try {
             const response = await axios.get(groupPicUrl, { responseType: 'arraybuffer' });
             imageBuffer = Buffer.from(response.data);
-            imageSource = 'group';
           } catch {
             imageBuffer = null;
           }

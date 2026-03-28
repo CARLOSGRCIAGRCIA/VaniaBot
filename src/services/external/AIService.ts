@@ -13,6 +13,7 @@
  */
 
 import Groq from 'groq-sdk';
+import type { WASocket } from '@whiskeysockets/baileys';
 import { env } from '@/config/env.js';
 import { serviceManager } from '@/services/system/Servicemanager.js';
 import { primeService } from '@/services/system/PrimeService.js';
@@ -551,7 +552,7 @@ export class AIService {
     session.lastActivity = Date.now();
 
     const isGroup = chatJid.includes('@g.us');
-    const footer = await primeService.formatFooter({} as any, chatJid, isGroup);
+    const footer = await primeService.formatFooter({} as WASocket, chatJid, isGroup);
     const systemPrompt = getSystemPrompt(footer);
 
     const messages: AIMessage[] = [
