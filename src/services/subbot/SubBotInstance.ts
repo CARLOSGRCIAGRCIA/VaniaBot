@@ -42,8 +42,11 @@ const MAX_RECONNECT_ATTEMPTS = 50;
 // 440 conflict: tiempo que WA necesita para cerrar la sesión conflictiva
 const CONFLICT_RECONNECT_DELAY = 20_000;
 
-const HEALTH_CHECK_INTERVAL = 3 * 60_000;
-const PING_INTERVAL = 25_000;
+// Health-check: intervalo entre revisiones y tiempo de confirmación antes
+// de reconectar (evita falsos positivos por prekey bundle / GC pause / RAM)
+const HEALTH_CHECK_INTERVAL = 5 * 60_000; // revisar cada 5 min
+const HEALTH_CHECK_CONFIRM_WAIT = 30_000; // esperar 30s antes de reconectar
+const PING_INTERVAL = 30_000;
 
 const MAX_TRUE_LOGOUTS = 2;
 
@@ -93,7 +96,12 @@ export class SubBotInstance extends EventEmitter {
     if (this.pingInterval) return;
     this.pingInterval = setInterval(async () => {
       if (!this.sock || this.destroyed) return;
+      // Solo intentar ping si el socket parece abierto — evitar errores en logs
+      // durante transiciones de estado (prekey bundle, renegociación, etc.)
       try {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const ws = (this.sock as any).ws;
+        if (ws?.readyState !== 1) return; // no intentar si no está OPEN
         await this.sock.sendPresenceUpdate('available', 'status@broadcast');
       } catch {
         /* non-critical */
@@ -112,10 +120,29 @@ export class SubBotInstance extends EventEmitter {
     if (this.healthCheckTimer) return;
     this.healthCheckTimer = setInterval(() => {
       if (!this.sock || this.destroyed || this.isReconnecting) return;
+
+      // Primera lectura: socket parece caído
       if (!this.isSocketReallyConnected() && this.connectionEstablished) {
-        logger.warn(`⚠️ SubBot[${this.config.id}] health-check: desconexión silenciosa`);
-        this.connectionEstablished = false;
-        this.scheduleReconnect();
+        logger.warn(
+          `⚠️ SubBot[${this.config.id}] health-check: socket inestable, ` +
+            `verificando en ${HEALTH_CHECK_CONFIRM_WAIT / 1000}s...`,
+        );
+
+        // Segunda lectura tras HEALTH_CHECK_CONFIRM_WAIT:
+        // Si Baileys estaba en renegociación (prekey bundle, GC pause, RAM alta)
+        // ya se habrá recuperado solo y NO reconectamos innecesariamente.
+        setTimeout(() => {
+          if (this.destroyed || this.isReconnecting) return;
+          if (!this.isSocketReallyConnected() && this.connectionEstablished) {
+            logger.warn(
+              `⚠️ SubBot[${this.config.id}] health-check: desconexión confirmada, reconectando`,
+            );
+            this.connectionEstablished = false;
+            this.scheduleReconnect();
+          } else {
+            logger.debug(`✅ SubBot[${this.config.id}] health-check: socket se recuperó solo`);
+          }
+        }, HEALTH_CHECK_CONFIRM_WAIT);
       }
     }, HEALTH_CHECK_INTERVAL);
   }
