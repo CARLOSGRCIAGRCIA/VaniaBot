@@ -9,6 +9,7 @@ export class HealCommand extends Command {
   name = 'heal';
   description = 'Recupera tu vida';
   category = CommandCategory.RPG;
+  requiresRegistration = true;
   aliases = ['sanar', 'curar'];
   usage = '!heal';
 

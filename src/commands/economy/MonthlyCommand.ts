@@ -7,6 +7,7 @@ export class MonthlyCommand extends Command {
   name = 'monthly';
   description = 'Recompensa mensual exclusiva';
   category = CommandCategory.ECONOMY;
+  requiresRegistration = true;
   aliases = ['mensual'];
   usage = '!monthly';
   cooldown = 5000;

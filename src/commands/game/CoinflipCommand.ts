@@ -10,6 +10,7 @@ export class CoinflipCommand extends Command {
   name = 'coinflip';
   description = 'Bet on a coin flip (heads or tails)';
   category = CommandCategory.GAME;
+  requiresRegistration = true;
   aliases = ['cf'];
   usage = '!coinflip <heads|tails> <amount>';
   examples = ['!cf heads 500', '!coinflip tails 1000'];

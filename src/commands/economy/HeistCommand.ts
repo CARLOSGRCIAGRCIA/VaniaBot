@@ -11,6 +11,7 @@ export class HeistCommand extends Command {
   name = 'heist';
   description = 'Asalto al banco (alto riesgo, alta recompensa)';
   category = CommandCategory.ECONOMY;
+  requiresRegistration = true;
   aliases = ['asalto', 'robo'];
   usage = '!heist <cantidad>';
   examples = ['!heist 10000'];

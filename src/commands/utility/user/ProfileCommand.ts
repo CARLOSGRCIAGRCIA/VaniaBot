@@ -29,6 +29,7 @@ export class ProfileCommand extends Command {
   name = 'profile';
   description = 'Show user profile';
   category = CommandCategory.UTILITY;
+  requiresRegistration = true;
   aliases = ['perfil', 'me', 'stats'];
   usage = '!profile [@user]';
   examples = ['!profile', '!profile @user', '!me'];

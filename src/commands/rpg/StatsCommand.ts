@@ -7,6 +7,7 @@ export class StatsCommand extends Command {
   name = 'stats';
   description = 'Muestra tus estadísticas RPG';
   category = CommandCategory.RPG;
+  requiresRegistration = true;
   aliases = ['rpgstats', 'character', 'char'];
   usage = '!stats [@usuario]';
   examples = ['!stats', '!stats @usuario'];

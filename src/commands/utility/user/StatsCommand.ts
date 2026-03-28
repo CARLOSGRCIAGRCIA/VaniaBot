@@ -32,6 +32,7 @@ export class StatsCommand extends Command {
   name = 'stats';
   description = 'Displays real-time bot statistics';
   category = CommandCategory.UTILITY;
+  requiresRegistration = true;
   aliases = ['status'];
   usage = '!stats';
   permissions = {

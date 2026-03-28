@@ -7,6 +7,7 @@ export class CraftCommand extends Command {
   name = 'craft';
   description = 'Craftea items usando materiales';
   category = CommandCategory.RPG;
+  requiresRegistration = true;
   aliases = ['craftear', 'make', 'receta'];
   usage = '!craft [item] | !craft list | !craft [item]';
   examples = ['!craft iron_sword', '!craft list', '!craft health_potion'];

@@ -9,6 +9,7 @@ export class TopCommand extends Command {
   name = 'top';
   description = 'Displays the bot leaderboards';
   category = CommandCategory.UTILITY;
+  requiresRegistration = true;
   aliases = ['leaderboard', 'lb'];
   usage = '!top [money|level|xp]';
   examples = ['!top', '!top money', '!top level'];

@@ -6,6 +6,7 @@ export class RankingCommand extends Command {
   name = 'ranking';
   description = 'Ver ranking de usuarios';
   category = CommandCategory.ECONOMY;
+  requiresRegistration = true;
   aliases = ['top', 'rank', 'leaderboard'];
   usage = '!ranking [money|xp|level|networth]';
   examples = ['!ranking', '!top xp', '!top networth'];

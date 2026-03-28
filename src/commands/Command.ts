@@ -22,6 +22,8 @@ export abstract class Command implements ICommand {
 
   contexts?: CommandContext[] = [CommandContext.BOTH];
 
+  requiresRegistration?: boolean = false;
+
   abstract execute(ctx: MessageContext): Promise<void>;
 
   protected hasPermission(ctx: MessageContext): boolean {

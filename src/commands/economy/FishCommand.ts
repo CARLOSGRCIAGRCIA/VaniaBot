@@ -9,6 +9,7 @@ export class FishCommand extends Command {
   name = 'fish';
   description = 'Pescar para ganar dinero';
   category = CommandCategory.ECONOMY;
+  requiresRegistration = true;
   aliases = ['pescar', 'fishing'];
   usage = '!fish';
   cooldown = 120000;

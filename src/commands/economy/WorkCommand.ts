@@ -9,6 +9,7 @@ export class WorkCommand extends Command {
   name = 'work';
   description = 'Work to earn money';
   category = CommandCategory.ECONOMY;
+  requiresRegistration = true;
   aliases = ['work'];
   usage = '!work';
   cooldown = 60 * 60 * 1000;

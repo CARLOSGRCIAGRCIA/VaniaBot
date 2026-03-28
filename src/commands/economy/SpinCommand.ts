@@ -9,6 +9,7 @@ export class SpinCommand extends Command {
   name = 'spin';
   description = 'Ruleta diaria gratis';
   category = CommandCategory.ECONOMY;
+  requiresRegistration = true;
   aliases = ['girar', 'ruleta diaria'];
   usage = '!spin';
   cooldown = 4 * 60 * 60 * 1000;

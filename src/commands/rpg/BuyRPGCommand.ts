@@ -8,6 +8,7 @@ export class BuyRPGCommand extends Command {
   name = 'buyrpg';
   description = 'Compra items de la tienda RPG';
   category = CommandCategory.RPG;
+  requiresRegistration = true;
   aliases = ['comprarrpg', 'buyitemrpg'];
   usage = '!buyrpg [item] [cantidad]';
   examples = ['!buyrpg iron_sword', '!buyrpg health_potion 5'];

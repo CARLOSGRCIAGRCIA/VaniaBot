@@ -9,6 +9,7 @@ export class AchievementsCommand extends Command {
   name = 'achievements';
   description = 'Muestra tus logros desbloqueados';
   category = CommandCategory.UTILITY;
+  requiresRegistration = true;
   aliases = ['logros', 'trofeos', 'trophies'];
   usage = '!achievements [@usuario]';
   examples = ['!achievements', '!logros', '!achievements @5215551234567'];

@@ -8,6 +8,7 @@ export class PetCommand extends Command {
   name = 'pet';
   description = 'Gestiona tus mascotas';
   category = CommandCategory.RPG;
+  requiresRegistration = true;
   aliases = ['mascota', 'mascotas', 'pets'];
   usage = '!pet [list/adopt/release/feed] [nombre]';
   examples = ['!pet list', '!pet adopt cat', '!pet feed wolf', '!pet release dog'];

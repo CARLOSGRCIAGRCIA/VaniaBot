@@ -7,6 +7,7 @@ export class ShopCommand extends Command {
   name = 'shop';
   description = 'Browse the shop and buy items';
   category = CommandCategory.ECONOMY;
+  requiresRegistration = true;
   aliases = ['store', 'tienda'];
   usage = '!shop';
   examples = ['!shop'];

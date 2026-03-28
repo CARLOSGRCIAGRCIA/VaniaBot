@@ -14,6 +14,7 @@ export interface ICommand {
     bot?: BotPermission[];
   };
   contexts?: CommandContext[];
+  requiresRegistration?: boolean;
   execute(ctx: MessageContext): Promise<void>;
 }
 

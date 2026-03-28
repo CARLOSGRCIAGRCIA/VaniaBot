@@ -8,6 +8,7 @@ export class RPGCommand extends Command {
   name = 'rpg';
   description = 'Panel principal del sistema RPG';
   category = CommandCategory.RPG;
+  requiresRegistration = true;
   aliases = ['rpgpanel', 'panelrpg'];
   usage = '!rpg';
 

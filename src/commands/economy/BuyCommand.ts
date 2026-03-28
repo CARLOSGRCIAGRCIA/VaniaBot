@@ -8,6 +8,7 @@ export class BuyCommand extends Command {
   name = 'buy';
   description = 'Buy an item from the shop';
   category = CommandCategory.ECONOMY;
+  requiresRegistration = true;
   aliases = ['comprar', 'purchase'];
   usage = '!buy <item_number>';
   examples = ['!buy 1', '!buy 5'];

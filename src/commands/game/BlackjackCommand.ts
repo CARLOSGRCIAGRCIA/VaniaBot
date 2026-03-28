@@ -17,6 +17,7 @@ export class BlackjackCommand extends Command {
   name = 'blackjack';
   description = 'Juega blackjack contra el bot';
   category = CommandCategory.GAME;
+  requiresRegistration = true;
   aliases = ['bj', 'blackjack'];
   usage = '!blackjack <cantidad> [hit|stand]';
   examples = ['!blackjack 500', '!blackjack 500 hit', '!blackjack 500 stand'];

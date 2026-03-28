@@ -9,6 +9,7 @@ export class HuntCommand extends Command {
   name = 'hunt';
   description = 'Cazar animales para ganar dinero';
   category = CommandCategory.ECONOMY;
+  requiresRegistration = true;
   aliases = ['cazar', 'hunting'];
   usage = '!hunt';
   cooldown = 180000;

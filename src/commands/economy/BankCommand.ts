@@ -7,6 +7,7 @@ export class BankCommand extends Command {
   name = 'bank';
   description = 'Ver saldo del banco';
   category = CommandCategory.ECONOMY;
+  requiresRegistration = true;
   aliases = ['banco'];
   usage = '!bank';
   cooldown = 3000;

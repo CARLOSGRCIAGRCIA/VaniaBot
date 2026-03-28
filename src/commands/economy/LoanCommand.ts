@@ -8,6 +8,7 @@ export class LoanCommand extends Command {
   name = 'prestamo';
   description = 'Sistema de préstamos entre usuarios';
   category = CommandCategory.ECONOMY;
+  requiresRegistration = true;
   aliases = ['loan', 'deuda'];
   usage = '!prestamo [dar|pagar|estado]';
   examples = ['!prestamo dar @user 10000', '!prestamo pagar id'];

@@ -6,6 +6,7 @@ export class SellCommand extends Command {
   name = 'sell';
   description = 'Vende items en el mercado';
   category = CommandCategory.RPG;
+  requiresRegistration = true;
   aliases = ['vender', 'sale'];
   usage = '!sell [item] [precio] [cantidad] | !sell [item]';
   examples = ['!sell iron_sword 500', '!sell health_potion 100 5'];

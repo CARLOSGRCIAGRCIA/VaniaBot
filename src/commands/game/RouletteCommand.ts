@@ -8,6 +8,7 @@ export class RouletteCommand extends Command {
   name = 'roulette';
   description = 'Juega a la ruleta';
   category = CommandCategory.GAME;
+  requiresRegistration = true;
   aliases = ['ruleta'];
   usage = '!roulette <rojo|negro|verde|par|impar> <cantidad>';
   examples = ['!roulette rojo 500', '!ruleta verde 100'];

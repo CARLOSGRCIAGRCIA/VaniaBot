@@ -7,6 +7,7 @@ export class BegCommand extends Command {
   name = 'beg';
   description = 'Pide limosna (sin cooldown)';
   category = CommandCategory.ECONOMY;
+  requiresRegistration = true;
   aliases = ['limosna', 'pide'];
   usage = '!beg';
   cooldown = 0;

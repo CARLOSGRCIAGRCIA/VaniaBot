@@ -11,6 +11,7 @@ export class FightCommand extends Command {
   name = 'fight';
   description = 'Lucha contra un mobs';
   category = CommandCategory.RPG;
+  requiresRegistration = true;
   aliases = ['batallar', 'combat', 'atacar'];
   usage = '!fight [mob] | !fight flee';
   examples = ['!fight slime', '!fight wolf', '!fight flee'];

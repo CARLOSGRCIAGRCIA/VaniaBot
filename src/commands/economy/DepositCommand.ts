@@ -7,6 +7,7 @@ export class DepositCommand extends Command {
   name = 'deposit';
   description = 'Depositar dinero al banco';
   category = CommandCategory.ECONOMY;
+  requiresRegistration = true;
   aliases = ['depositar', 'guardar'];
   usage = '!deposit <cantidad>';
   examples = ['!deposit 5000', '!deposit all'];

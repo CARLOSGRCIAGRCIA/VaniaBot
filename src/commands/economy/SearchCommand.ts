@@ -9,6 +9,7 @@ export class SearchCommand extends Command {
   name = 'search';
   description = 'Buscar dinero en la calle';
   category = CommandCategory.ECONOMY;
+  requiresRegistration = true;
   aliases = ['buscar', 'buscar dinero'];
   usage = '!search';
   cooldown = 60000;

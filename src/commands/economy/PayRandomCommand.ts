@@ -8,6 +8,7 @@ export class PayRandomCommand extends Command {
   name = 'payrandom';
   description = 'Envía una cantidad aleatoria a un usuario aleatorio (Solo Owner)';
   category = CommandCategory.ECONOMY;
+  requiresRegistration = true;
   aliases = ['payr', 'regalo', 'giveaway'];
   usage = '!payrandom <cantidad>';
   examples = ['!payrandom 1000000'];

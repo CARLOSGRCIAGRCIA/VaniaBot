@@ -7,6 +7,7 @@ export class ClassCommand extends Command {
   name = 'class';
   description = 'Selecciona o ve las clases disponibles';
   category = CommandCategory.RPG;
+  requiresRegistration = true;
   aliases = ['clase', 'clases'];
   usage = '!class [nombre] | !class list';
   examples = ['!class warrior', '!class list', '!clases'];

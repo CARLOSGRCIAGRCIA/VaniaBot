@@ -9,6 +9,7 @@ export class MineCommand extends Command {
   name = 'mine';
   description = 'Minar criptomonedas';
   category = CommandCategory.ECONOMY;
+  requiresRegistration = true;
   aliases = ['minar', 'mining'];
   usage = '!mine';
   cooldown = 300000;

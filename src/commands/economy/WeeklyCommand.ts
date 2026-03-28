@@ -7,6 +7,7 @@ export class WeeklyCommand extends Command {
   name = 'weekly';
   description = 'Recompensa semanal mejorada';
   category = CommandCategory.ECONOMY;
+  requiresRegistration = true;
   aliases = ['semanal', 'weekly'];
   usage = '!weekly';
   examples = ['!weekly'];

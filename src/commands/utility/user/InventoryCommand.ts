@@ -9,6 +9,7 @@ export class InventoryCommand extends Command {
   name = 'inventory';
   description = 'Muestra tu inventario de items';
   category = CommandCategory.UTILITY;
+  requiresRegistration = true;
   aliases = ['inv', 'inventario', 'mochila', 'bag'];
   usage = '!inventory [@usuario]';
   examples = ['!inventory', '!inv', '!inventory @5215551234567'];

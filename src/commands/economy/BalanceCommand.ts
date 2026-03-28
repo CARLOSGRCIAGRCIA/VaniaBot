@@ -6,6 +6,7 @@ export class BalanceCommand extends Command {
   name = 'balance';
   description = "Check your or someone else's balance";
   category = CommandCategory.ECONOMY;
+  requiresRegistration = true;
   aliases = ['bal', 'money', 'cash', 'dinero'];
   usage = '!balance [@user]';
   examples = ['!balance', '!balance @user', '!bal'];

@@ -118,6 +118,7 @@ export class CasinoCommand extends Command {
   name = 'casino';
   description = 'Juega en el casino';
   category = CommandCategory.ECONOMY;
+  requiresRegistration = true;
   aliases = ['jugar', 'gamble'];
   usage = '!casino [juego] [apuesta]';
   examples = ['!casino', '!casino dados 1000'];

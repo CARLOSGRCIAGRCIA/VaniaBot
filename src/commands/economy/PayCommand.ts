@@ -10,6 +10,7 @@ export class PayCommand extends Command {
   name = 'pay';
   description = 'Transfer money to another user';
   category = CommandCategory.ECONOMY;
+  requiresRegistration = true;
   aliases = ['pay', 'transfer'];
   usage = '!pay @user <quantity>';
   examples = ['!pay @5215551234567 500'];

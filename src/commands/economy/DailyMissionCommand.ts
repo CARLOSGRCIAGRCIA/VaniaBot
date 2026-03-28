@@ -7,6 +7,7 @@ export class DailyMissionCommand extends Command {
   name = 'misiones';
   description = 'Misiones diarias con recompensas';
   category = CommandCategory.ECONOMY;
+  requiresRegistration = true;
   aliases = ['mission', 'mision', 'quests', 'daily'];
   usage = '!misiones [reclamar id]';
   examples = ['!misiones', '!misiones reclamar trabajador'];

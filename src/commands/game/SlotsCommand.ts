@@ -8,6 +8,7 @@ export class SlotsCommand extends Command {
   name = 'slots';
   description = 'Play slot machine and win money';
   category = CommandCategory.GAME;
+  requiresRegistration = true;
   aliases = ['slot', 'tragamonas'];
   usage = '!slots <bet>';
   examples = ['!slots 100', '!slots 500'];

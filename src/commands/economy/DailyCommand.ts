@@ -10,6 +10,7 @@ export class DailyCommand extends Command {
   name = 'daily';
   description = 'Recompensa diaria mejorada';
   category = CommandCategory.ECONOMY;
+  requiresRegistration = true;
   aliases = ['daily', 'diario'];
   usage = '!daily';
   cooldown = 1000;

@@ -8,6 +8,7 @@ export class DiceCommand extends Command {
   name = 'dice';
   description = 'Juega a los dados';
   category = CommandCategory.GAME;
+  requiresRegistration = true;
   aliases = ['dados', 'dado'];
   usage = '!dice <1-6> <cantidad>';
   examples = ['!dice 6 500', '!dados 3 100'];

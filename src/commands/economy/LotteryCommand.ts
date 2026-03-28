@@ -39,6 +39,7 @@ export class LotteryCommand extends Command {
   name = 'loteria';
   description = 'Compra tickets de lotería';
   category = CommandCategory.ECONOMY;
+  requiresRegistration = true;
   aliases = ['lottery', 'ticket', 'sorteo'];
   usage = '!loteria [comprar|estado|resultado]';
   examples = ['!loteria comprar 5', '!loteria estado'];

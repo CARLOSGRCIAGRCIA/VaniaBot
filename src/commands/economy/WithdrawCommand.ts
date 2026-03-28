@@ -7,6 +7,7 @@ export class WithdrawCommand extends Command {
   name = 'withdraw';
   description = 'Retirar dinero del banco';
   category = CommandCategory.ECONOMY;
+  requiresRegistration = true;
   aliases = ['retirar', 'sacar'];
   usage = '!withdraw <cantidad>';
   examples = ['!withdraw 5000', '!withdraw all'];

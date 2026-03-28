@@ -6,6 +6,7 @@ export class UseCommand extends Command {
   name = 'use';
   description = 'Usa un item consumible de tu inventario';
   category = CommandCategory.RPG;
+  requiresRegistration = true;
   aliases = ['usar', 'beber', 'comer'];
   usage = '!use [item]';
   examples = ['!use health_potion', '!use apple', '!usar pocion'];

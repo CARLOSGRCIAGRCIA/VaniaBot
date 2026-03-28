@@ -18,7 +18,7 @@ import { MessageContext } from './MessageContext.js';
 import { AuthManager } from './AuthManager.js';
 import { config } from '@/config/index.js';
 import { CooldownMiddleware } from '@/middlewares/CooldownMiddleware.js';
-import { AutoRegisterMiddleware } from '@/middlewares/AutoRegisterMiddleware.js';
+import { RegistrationMiddleware } from '@/middlewares/RegistrationMiddleware.js';
 import { ValidationMiddleware } from '@/middlewares/ValidationMiddleware.js';
 import { PermissionMiddleware } from '@/middlewares/PermissionMiddleware.js';
 import { LoggerMiddleware } from '@/middlewares/LoggerMiddleware.js';
@@ -277,7 +277,7 @@ export class WhatsAppClient {
     AuthManager.showAuthMode();
 
     this.middlewares.push(
-      { middleware: new AutoRegisterMiddleware(), priority: 1, canRunParallel: false },
+      { middleware: new RegistrationMiddleware(), priority: 1, canRunParallel: false },
       { middleware: new VaniaToggleMiddleware(), priority: 2, canRunParallel: false },
       { middleware: new MuteMiddleware(), priority: 3, canRunParallel: false },
       { middleware: new LoggerMiddleware(), priority: 3, canRunParallel: true },

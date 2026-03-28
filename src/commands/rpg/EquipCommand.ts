@@ -6,6 +6,7 @@ export class EquipCommand extends Command {
   name = 'equip';
   description = 'Equipa un item de tu inventario';
   category = CommandCategory.RPG;
+  requiresRegistration = true;
   aliases = ['equipar', 'wear'];
   usage = '!equip [item] | !equip list';
   examples = ['!equip iron_sword', '!equip leather_armor', '!equip list'];

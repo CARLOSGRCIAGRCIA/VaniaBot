@@ -107,6 +107,7 @@ export class CrimeCommand extends Command {
   name = 'crime';
   description = 'Comete delitos para ganar dinero';
   category = CommandCategory.ECONOMY;
+  requiresRegistration = true;
   aliases = ['robar', 'steal', 'delito'];
   usage = '!crime [tipo] [@user]';
   examples = ['!crime', '!crime carding', '!crime hack'];

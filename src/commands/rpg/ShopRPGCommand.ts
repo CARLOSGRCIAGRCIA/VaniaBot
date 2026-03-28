@@ -7,6 +7,7 @@ export class ShopRPGCommand extends Command {
   name = 'shoprpg';
   description = 'Tienda de items RPG';
   category = CommandCategory.RPG;
+  requiresRegistration = true;
   aliases = ['tiendarpg', 'rpgshop'];
   usage = '!shoprpg [tipo]';
   examples = ['!shoprpg', '!shoprpg weapons', '!shoprpg consumables'];
