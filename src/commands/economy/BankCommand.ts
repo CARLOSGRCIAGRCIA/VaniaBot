@@ -1,6 +1,7 @@
 import { Command } from '../Command.js';
 import { CommandCategory, type MessageContext } from '@/types/index.js';
 import { serviceManager } from '@/services/system/Servicemanager.js';
+import { primeService } from '@/services/system/PrimeService.js';
 import { formatNumber } from '@/utils/helpers.js';
 
 export class BankCommand extends Command {
@@ -39,7 +40,8 @@ export class BankCommand extends Command {
       message += `💡 *Tip:* Guarda dinero en el banco para que no te lo roben.${protection}`;
     }
 
-    message += `\n\n> _*VaniaBot💝*_`;
+    const footer = await primeService.formatFooter(ctx.sock, ctx.chat.jid, ctx.chat.isGroup);
+    message += `\n\n${footer}`;
 
     await ctx.reply(message);
   }

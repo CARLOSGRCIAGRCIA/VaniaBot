@@ -3,9 +3,11 @@ import { CommandCategory, PermissionLevel } from '@/types/index.js';
 import type { MessageContext } from '@/types/index.js';
 import { commandRegistry } from '@/core/CommandRegistry.js';
 import { serviceManager } from '@/services/system/Servicemanager.js';
+import { primeService } from '@/services/system/PrimeService.js';
 import { logError } from '@/utils/logger.js';
 import fs from 'fs';
 import path from 'path';
+import axios from 'axios';
 
 const charset: Record<string, string> = {
   a: 'ᴀ',
@@ -89,6 +91,12 @@ export class HelpCommand extends Command {
 
   private async showFullMenu(ctx: MessageContext): Promise<void> {
     const allCommands = commandRegistry.getAll();
+    const isPrime = ctx.chat.isGroup ? await primeService.isPrimeEnabled(ctx.chat.jid) : false;
+    const botName =
+      ctx.chat.isGroup && isPrime
+        ? await primeService.getGroupName(ctx.sock, ctx.chat.jid)
+        : 'VANIA';
+
     let userData, progress;
     try {
       userData = await serviceManager.userService.getUser(ctx.sender.jid);
@@ -103,7 +111,6 @@ export class HelpCommand extends Command {
       if (!commandsByCategory.has(cmd.category)) {
         commandsByCategory.set(cmd.category, []);
       }
-      // Safe: we just set it above if it didn't exist
       const list = commandsByCategory.get(cmd.category);
       if (list) list.push(cmd);
     });
@@ -111,15 +118,15 @@ export class HelpCommand extends Command {
     const uptime = this.getUptime();
     const readmore = String.fromCharCode(8206).repeat(4001);
 
-    let menu = `⧼⋆꙳• *REGISTRO VANIA* ⋆꙳•⧽\n\n`;
+    let menu = `⧼⋆꙳• *REGISTRO ${botName}* ⋆꙳•⧽\n\n`;
     menu += `> 💝 ɴᴏᴍʙʀᴇ   » ${userData.name}\n`;
     menu += `> ⚙️ ɴɪᴠᴇʟ     » ${userData.level}\n`;
     menu += `> ⚡ ᴇxᴘ        » ${progress.currentXP} / ${progress.requiredXP}\n`;
-    menu += `> 🌐 ᴍᴏᴅᴏ      » Público\n`;
+    menu += `> 🌐 ᴍᴏᴅᴏ      » ${isPrime ? 'Prime' : 'Público'}\n`;
     menu += `> ⏳ ᴀᴄᴛɪᴠᴏ   » ${uptime}\n`;
     menu += `> 👥 ᴜꜱᴜᴀʀɪᴏꜱ » 1\n\n`;
-    menu += `🤖 » 𝐌𝐄𝐍𝐔 𝐕𝐀𝐍𝐈𝐀 𝐁𝐎𝐓 «\n`;
-    menu += `👑 » 𝗢𝗽𝗲𝗿𝗮𝗱𝗼𝗿𝗮: 𝐕𝐚𝐧𝐢𝐚 «\n${readmore}\n`;
+    menu += `🤖 » 𝐌𝐄𝐍𝐔 ${botName} 𝐁𝐎𝐓 «\n`;
+    menu += `👑 » 𝗢𝗽𝗲𝗿𝗮𝗱𝗼𝗿𝐚: ${isPrime ? botName : '𝐕𝐚𝐧𝐢𝐚'} «\n${readmore}\n`;
 
     const categoryOrder = [
       CommandCategory.UTILITY,
@@ -176,17 +183,36 @@ export class HelpCommand extends Command {
       menu += `╰⋆꙳•❅‧*₊⋆꙳︎‧*❆₊⋆╯\n`;
     });
 
-    menu += `\n⌬ 𝗩𝗔𝗡𝗜𝗔 𝗕𝗢𝗧 💝 - Sistema ejecutado con éxito.`;
+    menu += `\n⌬ ${botName} 𝗕𝗢𝗧 💝 - Sistema ejecutado con éxito.`;
 
-    await this.sendSimpleMenu(ctx, menu);
+    await this.sendSimpleMenu(ctx, menu, isPrime);
   }
 
-  private async sendSimpleMenu(ctx: MessageContext, text: string): Promise<void> {
+  private async sendSimpleMenu(ctx: MessageContext, text: string, isPrime: boolean): Promise<void> {
     const logoPath = path.join(process.cwd(), 'data', 'assets', 'logo.png');
 
     try {
-      if (fs.existsSync(logoPath)) {
-        const imageBuffer = fs.readFileSync(logoPath);
+      let imageBuffer: Buffer | null = null;
+      let imageSource = 'default';
+
+      if (ctx.chat.isGroup && isPrime) {
+        const groupPicUrl = await primeService.getGroupPicUrl(ctx.sock, ctx.chat.jid);
+        if (groupPicUrl) {
+          try {
+            const response = await axios.get(groupPicUrl, { responseType: 'arraybuffer' });
+            imageBuffer = Buffer.from(response.data);
+            imageSource = 'group';
+          } catch {
+            imageBuffer = null;
+          }
+        }
+      }
+
+      if (!imageBuffer && fs.existsSync(logoPath)) {
+        imageBuffer = fs.readFileSync(logoPath);
+      }
+
+      if (imageBuffer) {
         await ctx.sock.sendMessage(
           ctx.chat.jid,
           { image: imageBuffer, caption: text },

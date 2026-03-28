@@ -1,6 +1,7 @@
 import { Command } from '../Command.js';
 import { CommandCategory, type MessageContext } from '@/types/index.js';
 import { serviceManager } from '@/services/system/Servicemanager.js';
+import { primeService } from '@/services/system/PrimeService.js';
 
 export class BalanceCommand extends Command {
   name = 'balance';
@@ -72,7 +73,8 @@ export class BalanceCommand extends Command {
       message += `\n\n🛡️ *Dinero protegido en banco*`;
     }
 
-    message += `\n\n> _*VaniaBot💝*_`;
+    const footer = await primeService.formatFooter(ctx.sock, ctx.chat.jid, ctx.chat.isGroup);
+    message += `\n\n${footer}`;
 
     await ctx.reply(message);
   }

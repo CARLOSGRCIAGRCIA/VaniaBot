@@ -4,6 +4,7 @@ import type { MessageContext } from '@/types/index.js';
 import type { proto, WAMessage } from '@whiskeysockets/baileys';
 import { downloadMediaMessage } from '@whiskeysockets/baileys';
 import { cacheManager } from '@/core/CacheManager.js';
+import { primeService } from '@/services/system/PrimeService.js';
 
 const DOWNLOAD_TIMEOUT = 10000;
 
@@ -102,7 +103,8 @@ export class NotifyCommand extends Command {
 
   async execute(ctx: MessageContext): Promise<void> {
     const extraText = ctx.args.join(' ').trim();
-    const footer = '\n\n> _*By VaniaBot*_ 💝';
+    const footer =
+      '\n\n' + (await primeService.formatFooter(ctx.sock, ctx.chat.jid, ctx.chat.isGroup));
 
     try {
       const participants = await this.getParticipants(ctx);

@@ -64,6 +64,10 @@ export interface GroupSettings {
     enabled: boolean;
   };
 
+  prime: {
+    enabled: boolean;
+  };
+
   autoMod: {
     enabled: boolean;
     deleteLinks: boolean;
@@ -144,6 +148,9 @@ export class GroupService {
       },
       economy: {
         enabled: true,
+      },
+      prime: {
+        enabled: false,
       },
       autoMod: {
         enabled: false,

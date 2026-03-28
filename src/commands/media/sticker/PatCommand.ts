@@ -2,6 +2,7 @@ import { Command } from '../../Command.js';
 import { CommandCategory, type MessageContext } from '@/types/index.js';
 import { StickerService } from '@/services/media/StickerService.js';
 import { ImageProcessor } from '@/utils/imageProcessor.js';
+import { primeService } from '@/services/system/PrimeService.js';
 import path from 'path';
 
 export class PatCommand extends Command {
@@ -61,10 +62,15 @@ export class PatCommand extends Command {
       svgContent += `</svg>`;
 
       const buffer = await ImageProcessor.compositeText(imagePath, svgContent, width, height);
+      const stickerInfo = await primeService.formatStickerInfo(
+        ctx.sock,
+        ctx.chat.jid,
+        ctx.chat.isGroup,
+      );
 
       const stiker = await this.stickerService.createSticker(buffer, {
-        pack: 'VaniaBot',
-        author: 'VaniaBot',
+        pack: stickerInfo.pack,
+        author: stickerInfo.author,
       });
 
       await ctx.sock.sendMessage(ctx.chat.jid, { sticker: stiker });

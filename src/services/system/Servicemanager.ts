@@ -6,6 +6,7 @@ import { GroupService } from '../database/GroupService.js';
 import { LevelService } from '../database/LevelService.js';
 import { ModerationService } from '../moderation/ModerationService.js';
 import { VaniaToggleService } from './VaniaToggleService.js';
+import { PrimeService } from './PrimeService.js';
 import { config } from '@/config/index.js';
 import { logger, logError } from '@/utils/logger.js';
 import { cleanupService } from './CleanupService.js';
@@ -22,6 +23,7 @@ export class ServiceManager {
   public levelService!: LevelService;
   public moderationService!: ModerationService;
   public vaniaToggleService!: VaniaToggleService;
+  public primeService!: PrimeService;
   public healthCheckService = healthCheckService;
   public autoRestartService = AutoRestartService.getInstance();
   public sessionBackupService = sessionBackupService;
@@ -50,6 +52,8 @@ export class ServiceManager {
       this.levelService = new LevelService(this.db, this.userService);
       this.moderationService = new ModerationService(this.db);
       this.vaniaToggleService = new VaniaToggleService(this.db);
+      this.primeService = PrimeService.getInstance();
+      this.primeService.setGroupService(this.groupService);
 
       cleanupService.start();
 

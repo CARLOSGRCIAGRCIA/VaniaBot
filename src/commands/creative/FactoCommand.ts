@@ -6,6 +6,7 @@ import {
   PermissionLevel,
   type MessageContext,
 } from '@/types/index.js';
+import { primeService } from '@/services/system/PrimeService.js';
 
 const FACTOS_PREDEFINED = [
   'La persona que dice "no me gusta el drama" usualmente es la que lo genera.',
@@ -50,15 +51,16 @@ export class FactoCommand extends Command {
   async execute(ctx: MessageContext): Promise<void> {
     const args = ctx.args ?? [];
     const topic = args.join(' ');
+    const footer = await primeService.formatFooter(ctx.sock, ctx.chat.jid, ctx.chat.isGroup);
 
     await ctx.react('💭');
 
     try {
       const facto = await this.generateFacto(ctx, topic);
-      await ctx.reply(this.formatFactoMessage(facto));
+      await ctx.reply(this.formatFactoMessage(facto, footer));
       await ctx.react('🎀');
     } catch {
-      await ctx.reply(this.formatFactoMessage(this.getRandomFacto()));
+      await ctx.reply(this.formatFactoMessage(this.getRandomFacto(), footer));
     }
   }
 
@@ -76,12 +78,12 @@ export class FactoCommand extends Command {
     return this.getRandomFacto();
   }
 
-  private formatFactoMessage(facto: string): string {
+  private formatFactoMessage(facto: string, footer: string): string {
     const cleanFacto = facto.replace(/>\s*VaniaBot[💝]*\s*$/i, '').trim();
     return `┌─ ୨ৎ ──────┐
       ✿  *F A C T O*  ✿   
 
-   ${cleanFacto}\n\n> VaniaBot💝`;
+   ${cleanFacto}\n\n${footer}`;
   }
 
   private wrapText(text: string, maxLength: number): string[] {

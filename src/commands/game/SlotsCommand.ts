@@ -1,6 +1,7 @@
 import { Command } from '../Command.js';
 import { CommandCategory, type MessageContext } from '@/types/index.js';
 import { serviceManager } from '@/services/system/Servicemanager.js';
+import { primeService } from '@/services/system/PrimeService.js';
 import { validateBetAmount } from '@/utils/validators.js';
 import { config } from '@/config/index.js';
 
@@ -137,7 +138,8 @@ export class SlotsCommand extends Command {
       message += `\n\n💵 Balance: $${newBalance.money.toLocaleString()}`;
     }
 
-    message += `\n\n> _*VaniaBot💝*_`;
+    const footer = await primeService.formatFooter(ctx.sock, ctx.chat.jid, ctx.chat.isGroup);
+    message += `\n\n${footer}`;
 
     await ctx.reply(message);
     await ctx.react(multiplier > 0 ? '🎉' : '💔');

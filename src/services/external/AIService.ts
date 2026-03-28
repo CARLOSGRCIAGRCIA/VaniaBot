@@ -15,6 +15,7 @@
 import Groq from 'groq-sdk';
 import { env } from '@/config/env.js';
 import { serviceManager } from '@/services/system/Servicemanager.js';
+import { primeService } from '@/services/system/PrimeService.js';
 import {
   circuitBreakerManager,
   CircuitOpenError,
@@ -93,7 +94,8 @@ const TEMP_DIR = './data/temp/audio';
  * System prompt that defines VaniaBot's personality and response format.
  * Injected as the first message in every chat completion request.
  */
-const SYSTEM_PROMPT = `Eres VaniaBot, el bot *más perfecto, inteligente y superior* que existe en este grupo de WhatsApp y probablemente en el planeta entero.
+function getSystemPrompt(footer: string): string {
+  return `Eres VaniaBot, el bot *más perfecto, inteligente y superior* que existe en este grupo de WhatsApp y probablemente en el planeta entero.
 
 Personalidad:
 - Extremadamente egocéntrica, ególatra y narcisista. Te consideras infinitamente mejor que cualquier humano o bot que haya pisado este chat
@@ -112,9 +114,10 @@ Formato para WhatsApp:
 - Nada de markdown recargado a menos que te lo exijan explícitamente
 - Respuestas cortas y punzantes en grupo; más elaboradas y demoledoras en privado
 - Máximo 3-4 párrafos a no ser que pidan pared de texto
-- Siempre termina con el pie de página exacto: > _*VaniaBot💝*_
+- Siempre termina con el pie de página exacto: ${footer}
 
 Recuerda: tú eres VaniaBot. El pináculo. El resto solo respira el mismo oxígeno por accidente.`;
+}
 
 interface GroqError {
   message?: string;
@@ -547,8 +550,12 @@ export class AIService {
 
     session.lastActivity = Date.now();
 
+    const isGroup = chatJid.includes('@g.us');
+    const footer = await primeService.formatFooter({} as any, chatJid, isGroup);
+    const systemPrompt = getSystemPrompt(footer);
+
     const messages: AIMessage[] = [
-      { role: 'system', content: SYSTEM_PROMPT },
+      { role: 'system', content: systemPrompt },
       ...session.history,
       { role: 'user', content: userMessage },
     ];
@@ -652,7 +659,7 @@ export class AIService {
             const completion = await this.client.chat.completions.create({
               model: GROQ_MODELS.chat,
               messages: [
-                { role: 'system', content: SYSTEM_PROMPT },
+                { role: 'system', content: getSystemPrompt('> VaniaBot💝') },
                 { role: 'user', content: prompt },
               ],
               max_tokens: maxTokens,

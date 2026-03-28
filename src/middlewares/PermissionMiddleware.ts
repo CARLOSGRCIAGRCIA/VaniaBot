@@ -71,7 +71,7 @@ export class PermissionMiddleware extends Middleware {
       }
     }
 
-    if (!this.checkUserPermissions(command, ctx)) {
+    if (!(await this.checkUserPermissions(command, ctx))) {
       await ctx.reply('❌ No tienes permiso para usar este comando');
       return;
     }
@@ -92,12 +92,16 @@ export class PermissionMiddleware extends Middleware {
    * @param ctx - The message context
    * @returns true if user has permission, false otherwise
    */
-  private checkUserPermissions(command: ICommand, ctx: MessageContext): boolean {
+  private async checkUserPermissions(command: ICommand, ctx: MessageContext): Promise<boolean> {
     const requiredPerms = command.permissions?.user || [PermissionLevel.USER];
 
     if (ctx.sender.isOwner) return true;
 
-    if (requiredPerms.includes(PermissionLevel.OWNER)) return ctx.sender.isOwner;
+    if (requiredPerms.includes(PermissionLevel.OWNER)) {
+      if (ctx.sender.isOwner) return true;
+      const userFromDb = await serviceManager.userService.getUser(ctx.sender.jid);
+      return userFromDb.isOwner;
+    }
 
     if (requiredPerms.includes(PermissionLevel.ADMIN)) {
       return ctx.sender.isAdmin || ctx.sender.isOwner;
