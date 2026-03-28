@@ -8,15 +8,15 @@ import {
 } from '@/types/index.js';
 
 const FACTOS_PREDEFINED = [
-  'La persona que dice "no me gusta drama" usually es la que lo crea.',
-  'Si alguien te dice "soy honesto" sin que lo pidan, probablemente miente sobre otras cosas también.',
+  'La persona que dice "no me gusta el drama" usualmente es la que lo genera.',
+  'Si alguien te dice "soy muy honesto" sin que nadie lo pida, probablemente miente sobre otras cosas.',
   'La mayoría de las personas que critican a los demás lo hacen porque no tienen nada mejor que ofrecer.',
-  'Decir "no soy celoso" cuando no tienes a nadie es como decir "no me gasto el dinero" cuando estás bankrupt.',
-  'Los que siempre dicen "tengo los卵 grandes" usualmente tienen las rodillas débiles.',
+  'Decir "no soy celoso" cuando no tienes a nadie es como decir "no gasto dinero" cuando estás en quiebra.',
+  'Los que siempre presumen de ser valientes usualmente son los primeros en desaparecer cuando hay problemas.',
   'La persona que pregunta "¿por qué no me hablas?" fue la que te bloqueó primero.',
-  'Si alguien dice que no le importa el dinero, es porque nunca ha tenido que preocuparse por него.',
-  'La gente que presume de no dormir tiene 2 cosas: insomnio o nada que hacer.',
-  'Decir "no tengo favoritos" cuando tienes 3 hijos es literalmente imposible.',
+  'Si alguien dice que no le importa el dinero, es porque nunca ha tenido que preocuparse por conseguirlo.',
+  'La gente que presume de no dormir tiene dos cosas: insomnio o nada importante que hacer.',
+  'Decir "no tengo favoritos" cuando tienes tres hijos es literalmente imposible.',
   'Los que siempre dicen "yo soy diferente" son los más predecibles del grupo.',
 ];
 
@@ -35,7 +35,7 @@ export class FactoCommand extends Command {
     const args = ctx.args ?? [];
     const topic = args.join(' ');
 
-    await ctx.react('🤔');
+    await ctx.react('💭');
 
     try {
       let facto: string;
@@ -48,16 +48,14 @@ Un facto es:
 - Con un toque de veneno elegante
 - Difícil de refutar
 - Sofisticado, no grosero
-- Debe hacer que la persona piense
+- Debe hacer que la persona reflexione
 
 Ejemplos de estilo:
-- "inventar peleas es una táctica primitiva y carente de imaginación. Si alguien quiere dejar un clan, debería tener el *coraje* de hacerlo de manera directa y honesta, en lugar de recurrir a tácticas infantiles. Pero, supongo, eso requiere un nivel de *madurez* y *autoconocimiento* que no todos poseen."
-
-- "La persona que dice 'no me gusta drama' usually es la que lo crea."
-
+- "Inventar peleas es una táctica primitiva y carente de imaginación. Si alguien quiere irse, debería tener el coraje de hacerlo de forma directa y honesta, en lugar de recurrir a métodos infantiles. Pero eso requiere un nivel de madurez que no todos poseen."
+- "La persona que dice 'no me gusta el drama' usualmente es la que lo genera."
 - "Presumir de no necesitar a nadie cuando estás solo es como presumir de no fumar cuando simplemente no has encontrado un cigarrillo."
 
-Genera solo el facto, sin introducción, sin explicación. Sé creativo y diferente cada vez.`;
+Genera solo el facto, sin introducción ni explicación. Sé creativo y diferente cada vez.`;
 
         const result = await aiService.chat(ctx.chat.jid, ctx.sender.jid, prompt, true);
 
@@ -70,14 +68,45 @@ Genera solo el facto, sin introducción, sin explicación. Sé creativo y difere
         facto = this.getRandomFacto();
       }
 
-      const message = `📢 *FACTO*\n\n${facto}`;
-
+      const message = this.formatFactoMessage(facto);
       await ctx.reply(message);
-      await ctx.react('💉');
+      await ctx.react('🎀');
     } catch {
       const facto = this.getRandomFacto();
-      await ctx.reply(`📢 *FACTO*\n\n${facto}`);
+      await ctx.reply(this.formatFactoMessage(facto));
     }
+  }
+
+  private formatFactoMessage(facto: string): string {
+    const lines = this.wrapText(facto, 40);
+
+    return `┌─ ୨ৎ ─────────────┐
+│   ✿  F A C T O  ✿   │
+└─────────────────────┘
+
+${lines.map(line => `   ${line}`).join('\n')}
+
+┌─────────────────────┐
+│   ⋆｡°✩  verdad  ✩°｡⋆   │
+└─────────────────────┘`;
+  }
+
+  private wrapText(text: string, maxLength: number): string[] {
+    const words = text.split(' ');
+    const lines: string[] = [];
+    let currentLine = '';
+
+    for (const word of words) {
+      if ((currentLine + ' ' + word).length <= maxLength) {
+        currentLine += (currentLine ? ' ' : '') + word;
+      } else {
+        if (currentLine) lines.push(currentLine);
+        currentLine = word;
+      }
+    }
+    if (currentLine) lines.push(currentLine);
+
+    return lines;
   }
 
   private getRandomFacto(): string {
