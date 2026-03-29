@@ -20,7 +20,11 @@ export class SpotifyDownloader extends DownloadService {
 
   async getTrackInfo(url: string): Promise<SpotifyTrack | null> {
     try {
-      const output = await this.runCommand('yt-dlp', ['--dump-json', '--no-download', url], 30000);
+      const output = await this.runCommand(
+        'yt-dlp',
+        ['--dump-json', '--no-download', '--quiet', url],
+        30000,
+      );
       const info = JSON.parse(output.trim().split('\n')[0]);
       return {
         title: info.title ?? 'Spotify track',
@@ -45,6 +49,7 @@ export class SpotifyDownloader extends DownloadService {
           'youtube:player_client=android',
           '--dump-json',
           '--no-download',
+          '--quiet',
           `${query} audio`,
         ],
         30000,
@@ -83,7 +88,7 @@ export class SpotifyDownloader extends DownloadService {
     try {
       const infoOutput = await this.runCommand(
         'yt-dlp',
-        ['--dump-json', '--no-download', url],
+        ['--dump-json', '--no-download', '--quiet', url],
         30000,
       );
 
@@ -109,7 +114,7 @@ export class SpotifyDownloader extends DownloadService {
 
     const methods = [
       {
-        name: 'yt-dlp download',
+        name: 'yt-dlp spotify',
         cmd: 'yt-dlp',
         args: [
           '--extractor-args',
@@ -118,9 +123,31 @@ export class SpotifyDownloader extends DownloadService {
           '--audio-format',
           'mp3',
           '--audio-quality',
-          '0',
+          '5',
+          '--concurrent-fragments',
+          '8',
+          '--buffer-size',
+          '16M',
           '--no-check-certificate',
-          '--extract-audio',
+          '--quiet',
+          '--no-warnings',
+          '-o',
+          outputPath,
+          videoUrl,
+        ],
+      },
+      {
+        name: 'yt-dlp spotify fast',
+        cmd: 'yt-dlp',
+        args: [
+          '--extractor-args',
+          'youtube:player_client=android',
+          '-x',
+          '--audio-format',
+          'mp3',
+          '--audio-quality',
+          '8',
+          '--no-check-certificate',
           '-o',
           outputPath,
           videoUrl,

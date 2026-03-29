@@ -46,24 +46,38 @@ export class TikTokDownloader extends DownloadService {
 
     const methods = [
       {
-        name: 'yt-dlp (optimized)',
+        name: 'yt-dlp tiktok',
         cmd: 'yt-dlp',
         args: [
           '-f',
           'best',
-          '--no-check-certificate',
+          '--concurrent-fragments',
+          '8',
+          '--buffer-size',
+          '32M',
           '--no-playlist',
+          '--no-check-certificate',
           '--quiet',
-          '--newline',
+          '--no-warnings',
           '-o',
           outputPath,
           url,
         ],
       },
       {
-        name: 'yt-dlp (fallback)',
+        name: 'yt-dlp tiktok fast',
         cmd: 'yt-dlp',
-        args: ['--no-check-certificate', '--no-playlist', '-o', outputPath, url],
+        args: [
+          '-f',
+          'bestvideo+bestaudio/best',
+          '--merge-output-format',
+          'mp4',
+          '--no-playlist',
+          '--no-check-certificate',
+          '-o',
+          outputPath,
+          url,
+        ],
       },
     ];
 
@@ -80,7 +94,7 @@ export class TikTokDownloader extends DownloadService {
 
     const methods = [
       {
-        name: 'yt-dlp audio (optimized)',
+        name: 'yt-dlp tiktok audio',
         cmd: 'yt-dlp',
         args: [
           '-x',
@@ -88,25 +102,30 @@ export class TikTokDownloader extends DownloadService {
           'mp3',
           '--audio-quality',
           '5',
-          '--no-check-certificate',
+          '--concurrent-fragments',
+          '8',
+          '--buffer-size',
+          '16M',
           '--no-playlist',
+          '--no-check-certificate',
           '--quiet',
+          '--no-warnings',
           '-o',
           outputPath,
           url,
         ],
       },
       {
-        name: 'yt-dlp audio (standard)',
+        name: 'yt-dlp tiktok audio fast',
         cmd: 'yt-dlp',
         args: [
           '-x',
           '--audio-format',
           'mp3',
           '--audio-quality',
-          '0',
-          '--no-check-certificate',
+          '8',
           '--no-playlist',
+          '--no-check-certificate',
           '-o',
           outputPath,
           url,

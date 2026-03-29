@@ -51,37 +51,33 @@ export class FacebookDownloader extends DownloadService {
 
     const methods = [
       {
-        name: 'yt-dlp (optimized)',
+        name: 'yt-dlp facebook',
         cmd: 'yt-dlp',
         args: [
           '-f',
           'best[height<=720]/best',
-          '--no-check-certificate',
+          '--concurrent-fragments',
+          '8',
+          '--buffer-size',
+          '32M',
           '--no-playlist',
+          '--no-check-certificate',
           '--quiet',
-          '--newline',
+          '--no-warnings',
           '-o',
           outputPath,
           url,
         ],
       },
       {
-        name: 'yt-dlp (fast)',
+        name: 'yt-dlp facebook fast',
         cmd: 'yt-dlp',
-        args: [
-          '-f',
-          'best[height<=480]/worst',
-          '--no-check-certificate',
-          '--no-playlist',
-          '-o',
-          outputPath,
-          url,
-        ],
+        args: ['-f', 'best', '--no-playlist', '--no-check-certificate', '-o', outputPath, url],
       },
       {
-        name: 'yt-dlp (fallback)',
+        name: 'yt-dlp facebook fallback',
         cmd: 'yt-dlp',
-        args: ['--no-check-certificate', '--no-playlist', '-o', outputPath, url],
+        args: ['--no-playlist', '--no-check-certificate', '-o', outputPath, url],
       },
     ];
 

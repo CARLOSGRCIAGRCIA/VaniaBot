@@ -74,24 +74,38 @@ export class InstagramDownloader extends DownloadService {
 
     const methods = [
       {
-        name: 'yt-dlp (optimized)',
+        name: 'yt-dlp instagram',
         cmd: 'yt-dlp',
         args: [
           '-f',
           'best',
-          '--no-check-certificate',
+          '--concurrent-fragments',
+          '8',
+          '--buffer-size',
+          '32M',
           '--no-playlist',
+          '--no-check-certificate',
           '--quiet',
-          '--newline',
+          '--no-warnings',
           '-o',
           outputPath,
           url,
         ],
       },
       {
-        name: 'yt-dlp (standard)',
+        name: 'yt-dlp instagram fast',
         cmd: 'yt-dlp',
-        args: ['-f', 'best', '--no-check-certificate', '--no-playlist', '-o', outputPath, url],
+        args: [
+          '-f',
+          'bestvideo+bestaudio/best',
+          '--merge-output-format',
+          'mp4',
+          '--no-playlist',
+          '--no-check-certificate',
+          '-o',
+          outputPath,
+          url,
+        ],
       },
     ];
 
@@ -108,14 +122,22 @@ export class InstagramDownloader extends DownloadService {
 
     const methods = [
       {
-        name: 'yt-dlp image (optimized)',
+        name: 'yt-dlp instagram image',
         cmd: 'yt-dlp',
-        args: ['--no-check-certificate', '--no-playlist', '--quiet', '-o', outputPath, url],
+        args: [
+          '--no-playlist',
+          '--no-check-certificate',
+          '--quiet',
+          '--no-warnings',
+          '-o',
+          outputPath,
+          url,
+        ],
       },
       {
-        name: 'yt-dlp image',
+        name: 'yt-dlp instagram image fast',
         cmd: 'yt-dlp',
-        args: ['--no-check-certificate', '--no-playlist', '-o', outputPath, url],
+        args: ['--no-playlist', '--no-check-certificate', '-o', outputPath, url],
       },
     ];
 
