@@ -3,6 +3,7 @@ import type { MessageContext } from '@/types/index.js';
 import { serviceManager } from '@/services/system/Servicemanager.js';
 import { logError, logger } from '@/utils/logger.js';
 import { PermissionService } from '@/services/PermissionService.js';
+import { middlewareCache } from './MiddlewareCache.js';
 
 export class MuteMiddleware extends Middleware {
   name = 'mute';
@@ -13,10 +14,20 @@ export class MuteMiddleware extends Middleware {
       return;
     }
 
-    try {
-      const isMuted = await serviceManager.moderationService.isMuted(ctx.chat.jid, ctx.sender.jid);
+    const cacheKey = `${ctx.chat.jid}:${ctx.sender.jid}`;
+    let cached = middlewareCache.userMuted.get<{ value: boolean }>(cacheKey);
 
-      if (isMuted) {
+    try {
+      if (cached === undefined) {
+        const isMuted = await serviceManager.moderationService.isMuted(
+          ctx.chat.jid,
+          ctx.sender.jid,
+        );
+        cached = { value: isMuted };
+        middlewareCache.userMuted.set(cacheKey, cached);
+      }
+
+      if (cached.value) {
         await ctx.loadBotPermissions();
 
         if (ctx.chat.isBotAdmin) {

@@ -17,6 +17,7 @@ import type { CommandRegistry } from '@/core/CommandRegistry.js';
 import { PermissionLevel, BotPermission } from '@/types/index.js';
 import { serviceManager } from '@/services/system/Servicemanager.js';
 import { PermissionService } from '@/services/PermissionService.js';
+import { middlewareCache } from './MiddlewareCache.js';
 
 /**
  * Middleware that validates user and bot permissions before command execution.
@@ -58,7 +59,7 @@ export class PermissionMiddleware extends Middleware {
         }
       }
 
-      const onlyAdmin = await serviceManager.groupService.getOnlyAdmin(ctx.chat.jid);
+      const onlyAdmin = await this.getOnlyAdmin(ctx.chat.jid);
 
       if (onlyAdmin) {
         await ctx.loadSenderPermissions();
@@ -82,6 +83,19 @@ export class PermissionMiddleware extends Middleware {
     }
 
     await next();
+  }
+
+  private async getOnlyAdmin(groupJid: string): Promise<boolean> {
+    const cacheKey = groupJid;
+    let cached = middlewareCache.onlyAdminMode.get<{ value: boolean }>(cacheKey);
+
+    if (cached === undefined) {
+      const onlyAdmin = await serviceManager.groupService.getOnlyAdmin(groupJid);
+      cached = { value: onlyAdmin };
+      middlewareCache.onlyAdminMode.set(cacheKey, cached);
+    }
+
+    return cached.value;
   }
 
   /**

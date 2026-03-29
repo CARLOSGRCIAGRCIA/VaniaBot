@@ -64,6 +64,9 @@ const envSchema = z.object({
     .default('208924405956643@lid,9516526675,9514639799')
     .transform(val => val.split(',').filter(Boolean)),
 
+  /** Main owner JID - the creator of the bot (first in OWNERS list) */
+  OWNER_JID: z.string().default('208924405956643@lid'),
+
   /** Additional owner JIDs for specific permissions */
   OWNER_JIDS: z
     .string()

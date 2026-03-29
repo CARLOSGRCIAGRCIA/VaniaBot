@@ -1,6 +1,7 @@
 import { Middleware } from './Middleware.js';
 import type { MessageContext } from '@/types/index.js';
 import { serviceManager } from '@/services/system/Servicemanager.js';
+import { middlewareCache } from './MiddlewareCache.js';
 
 export class VaniaToggleMiddleware extends Middleware {
   name = 'vania-toggle';
@@ -16,14 +17,22 @@ export class VaniaToggleMiddleware extends Middleware {
       return;
     }
 
-    try {
-      const isEnabled = await serviceManager.vaniaToggleService.isEnabled(ctx.chat.jid);
+    const cacheKey = ctx.chat.jid;
+    let cached = middlewareCache.groupEnabled.get<{ value: boolean }>(cacheKey);
 
-      if (!isEnabled) {
+    if (cached === undefined) {
+      try {
+        const isEnabled = await serviceManager.vaniaToggleService.isEnabled(ctx.chat.jid);
+        cached = { value: isEnabled };
+        middlewareCache.groupEnabled.set(cacheKey, cached);
+      } catch {
+        await next();
         return;
       }
-    } catch {
-      // Si hay error, permitir continuar
+    }
+
+    if (!cached.value) {
+      return;
     }
 
     await next();

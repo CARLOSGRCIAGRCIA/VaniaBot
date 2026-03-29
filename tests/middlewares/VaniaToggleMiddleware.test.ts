@@ -7,8 +7,9 @@
  * @author **Carlos G** ⭐
  */
 
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
 import { VaniaToggleMiddleware } from '../../src/middlewares/VaniaToggleMiddleware.js';
+import { middlewareCache } from '../../src/middlewares/MiddlewareCache.js';
 import type { MessageContext } from '../../src/types/index.js';
 
 const mockIsEnabled = vi.fn();
@@ -56,6 +57,10 @@ describe('VaniaToggleMiddleware', () => {
     middleware = new VaniaToggleMiddleware();
     mockNext = vi.fn().mockResolvedValue(undefined);
     mockIsEnabled.mockResolvedValue(true);
+  });
+
+  afterEach(() => {
+    middlewareCache.clear();
   });
 
   describe('private chat', () => {
@@ -107,6 +112,7 @@ describe('VaniaToggleMiddleware', () => {
     });
 
     it('should block non-toggle commands when bot is disabled', async () => {
+      middlewareCache.groupEnabled.clear();
       mockIsEnabled.mockResolvedValue(false);
       mockCtx = createGroupCtx('help');
       await middleware.execute(mockCtx, mockNext);
@@ -114,6 +120,7 @@ describe('VaniaToggleMiddleware', () => {
     });
 
     it('should allow non-toggle commands when bot is enabled', async () => {
+      middlewareCache.groupEnabled.clear();
       mockIsEnabled.mockResolvedValue(true);
       mockCtx = createGroupCtx('ping');
       await middleware.execute(mockCtx, mockNext);
@@ -121,6 +128,7 @@ describe('VaniaToggleMiddleware', () => {
     });
 
     it('should allow continuation if isEnabled throws', async () => {
+      middlewareCache.groupEnabled.clear();
       mockIsEnabled.mockRejectedValue(new Error('DB error'));
       mockCtx = createGroupCtx('help');
       await middleware.execute(mockCtx, mockNext);

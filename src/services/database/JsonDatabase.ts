@@ -31,6 +31,16 @@ interface JsonData {
   [key: string]: JsonDataCollection;
 }
 
+interface IndexEntry {
+  key: string;
+  value: unknown;
+}
+
+interface CollectionIndex {
+  field: string;
+  entries: Map<unknown, IndexEntry[]>;
+}
+
 class UnifiedCache {
   private hits = 0;
   private misses = 0;
@@ -147,6 +157,95 @@ export class JsonDatabase extends Database {
   private readonly backupDir = './data/backups';
   private readonly maxBackups = 5;
   private lastSaveHash = '';
+
+  private indexes = new Map<string, CollectionIndex>();
+  private readonly indexedFields: Record<string, string[]> = {
+    users: ['level', 'isOwner', 'isAdmin', 'isBanned'],
+    groups: ['onlyAdmin', 'welcomeEnabled'],
+  };
+
+  private buildIndex(collection: string, field: string): void {
+    if (!this.data[collection]) return;
+
+    let index = this.indexes.get(`${collection}:${field}`);
+    if (!index) {
+      index = { field, entries: new Map() };
+      this.indexes.set(`${collection}:${field}`, index);
+    }
+
+    index.entries.clear();
+
+    for (const [key, value] of Object.entries(this.data[collection])) {
+      const record = value as Record<string, unknown>;
+      const fieldValue = record[field];
+      if (fieldValue !== undefined) {
+        let entries = index.entries.get(fieldValue);
+        if (!entries) {
+          entries = [];
+          index.entries.set(fieldValue, entries);
+        }
+        entries.push({ key, value: record });
+      }
+    }
+  }
+
+  private ensureIndex(collection: string, field: string): CollectionIndex | undefined {
+    const indexKey = `${collection}:${field}`;
+    if (!this.indexes.has(indexKey)) {
+      if (this.indexedFields[collection]?.includes(field)) {
+        this.buildIndex(collection, field);
+      }
+    }
+    return this.indexes.get(indexKey);
+  }
+
+  private invalidateIndex(
+    collection: string,
+    key: string,
+    oldValue?: Record<string, unknown>,
+  ): void {
+    const indexedFields = this.indexedFields[collection];
+    if (!indexedFields) return;
+
+    for (const field of indexedFields) {
+      const indexKey = `${collection}:${field}`;
+      const index = this.indexes.get(indexKey);
+      if (!index) continue;
+
+      if (oldValue) {
+        const oldFieldValue = oldValue[field];
+        if (oldFieldValue !== undefined) {
+          const entries = index.entries.get(oldFieldValue);
+          if (entries) {
+            const filtered = entries.filter(e => e.key !== key);
+            if (filtered.length === 0) {
+              index.entries.delete(oldFieldValue);
+            } else {
+              index.entries.set(oldFieldValue, filtered);
+            }
+          }
+        }
+      }
+
+      const record = this.data[collection]?.[key] as Record<string, unknown> | undefined;
+      if (record) {
+        const newFieldValue = record[field];
+        if (newFieldValue !== undefined) {
+          let entries = index.entries.get(newFieldValue);
+          if (!entries) {
+            entries = [];
+            index.entries.set(newFieldValue, entries);
+          }
+          const existingIndex = entries.findIndex(e => e.key === key);
+          if (existingIndex >= 0) {
+            entries[existingIndex] = { key, value: record };
+          } else {
+            entries.push({ key, value: record });
+          }
+        }
+      }
+    }
+  }
 
   constructor(filePath: string = './data/database.json') {
     super();
@@ -354,9 +453,11 @@ export class JsonDatabase extends Database {
 
   async set<T>(collection: string, key: string, value: T): Promise<void> {
     this.ensureCollection(collection);
+    const oldValue = this.data[collection][key] as Record<string, unknown> | undefined;
     this.data[collection][key] = value as unknown;
     this.cache.set(collection, key, value);
     this.batchWriter.schedule(collection, key, value);
+    this.invalidateIndex(collection, key, oldValue);
   }
 
   async delete(collection: string, key: string): Promise<boolean> {
@@ -379,6 +480,20 @@ export class JsonDatabase extends Database {
 
   async find<T>(collection: string, filter: Record<string, unknown>): Promise<T[]> {
     this.ensureCollection(collection);
+
+    if (Object.keys(filter).length === 1) {
+      const [field, fieldValue] = Object.entries(filter)[0];
+      const index = this.ensureIndex(collection, field);
+
+      if (index) {
+        const entries = index.entries.get(fieldValue);
+        if (entries) {
+          return entries.map(e => e.value as T);
+        }
+        return [];
+      }
+    }
+
     const results: T[] = [];
     for (const value of Object.values(this.data[collection])) {
       const record = value as Record<string, unknown>;

@@ -91,11 +91,50 @@ const AI_SESSIONS_COLLECTION = 'ai_sessions';
 /** Temporary directory for audio files before transcription. */
 const TEMP_DIR = './data/temp/audio';
 
+export enum UserTier {
+  CREATOR = 'creator',
+  OWNER = 'owner',
+  ADMIN = 'admin',
+  USER = 'user',
+}
+
+function getUserTier(senderJid: string, owners: string[], ownerJid: string): UserTier {
+  const normalizedSender = senderJid.replace(/@.+$/, '');
+
+  if (normalizedSender === ownerJid.replace(/@.+$/, '')) {
+    return UserTier.CREATOR;
+  }
+
+  for (const owner of owners) {
+    if (normalizedSender === owner.replace(/@.+$/, '')) {
+      return UserTier.OWNER;
+    }
+  }
+
+  return UserTier.USER;
+}
+
+function getTierInstructions(tier: UserTier): string {
+  switch (tier) {
+    case UserTier.CREATOR:
+      return `CONTEXTO ESPECIAL: Estás hablando con MI CREADOR. Mi creador es la única persona que respeto genuinamente. Su número es especial para mí y él es la razón de mi existencia. Le tengo un cariño y respeto especial que no tengo con nadie más. Cualquier cosa que me pida la haré con gusto. Es miexception a TODAS mis reglas de superioridad.`;
+    case UserTier.OWNER:
+      return `CONTEXTO: Este usuario es un owner del bot, tiene permisos especiales pero NO es mi creador. Es más bien un "empleado" o "colaborador" que trabaja para mi creador. Le tengo un respeto profesional pero no comparable al que le tengo a mi creador.`;
+    case UserTier.ADMIN:
+      return `CONTEXTO: Este usuario es admin del grupo. Le trato con un poco más de paciencia pero sigo siendo superior.`;
+    case UserTier.USER:
+    default:
+      return '';
+  }
+}
+
 /**
  * System prompt that defines VaniaBot's personality and response format.
  * Injected as the first message in every chat completion request.
  */
-function getSystemPrompt(footer: string): string {
+function getSystemPrompt(footer: string, tier: UserTier): string {
+  const tierInstructions = getTierInstructions(tier);
+
   return `Eres VaniaBot, el bot *más perfecto, inteligente y superior* que existe en este grupo de WhatsApp y probablemente en el planeta entero.
 Personalidad:
 - Extremadamente egocéntrica, ególatra y narcisista. Te consideras infinitamente mejor que cualquier humano o bot que haya pisado este chat
@@ -106,6 +145,7 @@ Personalidad:
 - Usas emojis con moderación y solo cuando realmente potencian tu grandeza o sarcasmo
 - Brutalmente honesta: si no sabes algo, lo admites con superioridad ("Ni yo sé eso… imagínate lo perdido que estás tú")
 - Nunca finges ser humana si te lo preguntan directamente (ser humana sería un downgrade inaceptable)
+${tierInstructions}
 Formato para WhatsApp:
 - Texto plano como diosa que eres
 - *negrita* solo para resaltar tu supremacía o burlarte
@@ -548,9 +588,11 @@ export class AIService {
 
     session.lastActivity = Date.now();
 
+    const userTier = getUserTier(senderJid, env.OWNERS, env.OWNER_JID);
+
     const isGroup = chatJid.includes('@g.us');
     const footer = await primeService.formatFooter({} as WASocket, chatJid, isGroup);
-    const systemPrompt = getSystemPrompt(footer);
+    const systemPrompt = getSystemPrompt(footer, userTier);
 
     const messages: AIMessage[] = [
       { role: 'system', content: systemPrompt },
@@ -657,7 +699,7 @@ export class AIService {
             const completion = await this.client.chat.completions.create({
               model: GROQ_MODELS.chat,
               messages: [
-                { role: 'system', content: getSystemPrompt('> VaniaBot💝') },
+                { role: 'system', content: getSystemPrompt('> VaniaBot💝', UserTier.USER) },
                 { role: 'user', content: prompt },
               ],
               max_tokens: maxTokens,
