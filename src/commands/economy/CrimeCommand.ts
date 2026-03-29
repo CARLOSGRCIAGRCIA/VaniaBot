@@ -117,20 +117,6 @@ export class CrimeCommand extends Command {
     const typeArg = ctx.args[0]?.toLowerCase();
     const user = await serviceManager.userService.getUser(ctx.sender.jid);
 
-    if (user.isOwner) {
-      await ctx.reply(
-        `🚨 *ZONA DE DELITOS* 🚨\n\n` +
-          `👑 *Dueño del mundo*\n\n` +
-          `✿ Como owner, eres inmune a las leyes.\n\n` +
-          `📋 *Tipos de delitos disponibles:*\n\n` +
-          `1. 👜 *Carterista* - Robar personas al azar\n` +
-          `2. 💳 *Carding* - Usar tarjetas robadas\n` +
-          `3. 🏦 *Hack Banco* - Robar del banco\n\n` +
-          `✿ *Usa:* !crime [tipo]`,
-      );
-      return;
-    }
-
     if (!typeArg || typeArg === 'lista' || typeArg === 'info') {
       await this.showCrimeList(ctx, user);
       return;
