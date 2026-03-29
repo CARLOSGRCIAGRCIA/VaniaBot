@@ -19,7 +19,11 @@ export class TwitterDownloader extends DownloadService {
 
   async getVideoInfo(url: string): Promise<TwitterVideo | null> {
     try {
-      const output = await this.runCommand('yt-dlp', ['--dump-json', '--no-download', url], 30000);
+      const output = await this.runCommand(
+        'yt-dlp',
+        ['--dump-json', '--no-download', '--no-playlist', '--quiet', url],
+        30000,
+      );
       const info = JSON.parse(output.trim().split('\n')[0]);
       return {
         title: info.title ?? 'Twitter video',
@@ -42,21 +46,32 @@ export class TwitterDownloader extends DownloadService {
 
     const methods = [
       {
-        name: 'yt-dlp HD',
+        name: 'yt-dlp (optimized)',
         cmd: 'yt-dlp',
         args: [
           '-f',
-          'bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best',
+          'best[ext=mp4]/best',
           '--no-check-certificate',
+          '--no-playlist',
+          '--quiet',
+          '--newline',
           '-o',
           outputPath,
           url,
         ],
       },
       {
-        name: 'yt-dlp fallback',
+        name: 'yt-dlp (fast)',
         cmd: 'yt-dlp',
-        args: ['-o', outputPath, url],
+        args: [
+          '-f',
+          'best[ext=mp4]/best',
+          '--no-check-certificate',
+          '--no-playlist',
+          '-o',
+          outputPath,
+          url,
+        ],
       },
     ];
 
@@ -73,7 +88,24 @@ export class TwitterDownloader extends DownloadService {
 
     const methods = [
       {
-        name: 'yt-dlp audio',
+        name: 'yt-dlp audio (optimized)',
+        cmd: 'yt-dlp',
+        args: [
+          '-x',
+          '--audio-format',
+          'mp3',
+          '--audio-quality',
+          '5',
+          '--no-check-certificate',
+          '--no-playlist',
+          '--quiet',
+          '-o',
+          outputPath,
+          url,
+        ],
+      },
+      {
+        name: 'yt-dlp audio (standard)',
         cmd: 'yt-dlp',
         args: [
           '-x',
@@ -82,6 +114,7 @@ export class TwitterDownloader extends DownloadService {
           '--audio-quality',
           '0',
           '--no-check-certificate',
+          '--no-playlist',
           '-o',
           outputPath,
           url,

@@ -1,4 +1,5 @@
 import pLimit, { type Limit } from 'p-limit';
+import { LRUCache } from 'lru-cache';
 import { logger } from '@/utils/logger.js';
 
 export interface DownloadTask<T = unknown> {
@@ -14,6 +15,7 @@ export interface DownloadQueueStats {
   processing: number;
   completed: number;
   failed: number;
+  cacheSize: number;
 }
 
 interface QueuedTask {
@@ -24,6 +26,14 @@ interface QueuedTask {
   reject: (reason?: unknown) => void;
 }
 
+interface CachedResult<T> {
+  result: T;
+  timestamp: number;
+}
+
+const CACHE_TTL_MS = 5 * 60 * 1000;
+const CACHE_MAX_SIZE = 50;
+
 export class DownloadQueueService {
   private static instance: DownloadQueueService;
   private queue: QueuedTask[] = [];
@@ -32,10 +42,17 @@ export class DownloadQueueService {
   private failed = 0;
   private limit: Limit;
   private maxConcurrent: number;
+  private resultCache: LRUCache<string, CachedResult<unknown>>;
+  private activeTasks = new Map<string, Promise<unknown>>();
 
-  private constructor(maxConcurrent = 3) {
+  private constructor(maxConcurrent = 4) {
     this.maxConcurrent = maxConcurrent;
     this.limit = pLimit(maxConcurrent);
+    this.resultCache = new LRUCache<string, CachedResult<unknown>>({
+      max: CACHE_MAX_SIZE,
+      ttl: CACHE_TTL_MS,
+      updateAgeOnGet: true,
+    });
   }
 
   static getInstance(maxConcurrent?: number): DownloadQueueService {
@@ -46,33 +63,37 @@ export class DownloadQueueService {
   }
 
   async add<T>(task: DownloadTask<T>): Promise<T> {
-    return new Promise((resolve, reject) => {
+    const cached = this.resultCache.get(task.id) as CachedResult<T> | undefined;
+    if (cached && Date.now() - cached.timestamp < CACHE_TTL_MS) {
+      logger.debug(`[Queue] Cache hit for task ${task.id}`);
+      return cached.result;
+    }
+
+    const activeTask = this.activeTasks.get(task.id);
+    if (activeTask) {
+      logger.debug(`[Queue] Task ${task.id} already in progress`);
+      return activeTask as Promise<T>;
+    }
+
+    const taskPromise = new Promise<T>((resolve, reject) => {
       const queuedTask: QueuedTask = {
         id: task.id,
         priority: task.priority,
         execute: async () => {
-          const result = await task.execute();
-          task.onSuccess?.(result);
-          this.completed++;
-          return result;
+          try {
+            const result = await task.execute();
+            task.onSuccess?.(result);
+            this.completed++;
+            this.resultCache.set(task.id, { result, timestamp: Date.now() });
+            return result;
+          } catch (error) {
+            this.failed++;
+            task.onError?.(error as Error);
+            throw error;
+          }
         },
         resolve: resolve as (value: unknown) => void,
         reject,
-      };
-
-      queuedTask.execute = async () => {
-        try {
-          const result = await task.execute();
-          task.onSuccess?.(result);
-          this.completed++;
-          queuedTask.resolve(result);
-          return result;
-        } catch (error) {
-          this.failed++;
-          task.onError?.(error as Error);
-          queuedTask.reject(error);
-          throw error;
-        }
       };
 
       this.queue.push(queuedTask);
@@ -80,6 +101,16 @@ export class DownloadQueueService {
 
       void this.processNext();
     });
+
+    this.activeTasks.set(task.id, taskPromise as unknown as Promise<unknown>);
+
+    taskPromise
+      .finally(() => {
+        this.activeTasks.delete(task.id);
+      })
+      .catch(() => {});
+
+    return taskPromise;
   }
 
   private async processNext(): Promise<void> {
@@ -113,11 +144,18 @@ export class DownloadQueueService {
       processing: this.processing,
       completed: this.completed,
       failed: this.failed,
+      cacheSize: this.resultCache.size,
     };
   }
 
   clear(): void {
     this.queue = [];
+    this.resultCache.clear();
+  }
+
+  clearCache(): void {
+    this.resultCache.clear();
+    logger.info('[Queue] Result cache cleared');
   }
 
   setConcurrency(concurrency: number): void {
@@ -129,7 +167,7 @@ export class DownloadQueueService {
 export class ParallelDownloader {
   private queue: DownloadQueueService;
 
-  constructor(maxConcurrent = 3) {
+  constructor(maxConcurrent = 4) {
     this.queue = DownloadQueueService.getInstance(maxConcurrent);
   }
 
@@ -170,4 +208,4 @@ export class ParallelDownloader {
   }
 }
 
-export const downloadQueue = DownloadQueueService.getInstance(3);
+export const downloadQueue = DownloadQueueService.getInstance(4);

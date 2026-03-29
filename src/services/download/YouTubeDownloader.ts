@@ -31,7 +31,25 @@ export class YouTubeDownloader extends DownloadService {
 
     const methods = [
       {
-        name: 'yt-dlp',
+        name: 'yt-dlp (optimized)',
+        cmd: 'yt-dlp',
+        args: [
+          '-x',
+          '--audio-format',
+          'mp3',
+          '--audio-quality',
+          '5',
+          '--prefer-ffmpeg',
+          '--no-check-certificate',
+          '--no-playlist',
+          '--quiet',
+          '-o',
+          outputPath,
+          `https://youtu.be/${videoId}`,
+        ],
+      },
+      {
+        name: 'yt-dlp (standard)',
         cmd: 'yt-dlp',
         args: [
           '-x',
@@ -44,11 +62,6 @@ export class YouTubeDownloader extends DownloadService {
           `https://youtu.be/${videoId}`,
         ],
       },
-      {
-        name: 'youtube-dl',
-        cmd: 'youtube-dl',
-        args: ['-x', '--audio-format', 'mp3', '-o', outputPath, `https://youtu.be/${videoId}`],
-      },
     ];
 
     return await this.tryDownloadMethods(methods, outputPath, 'audio');
@@ -59,14 +72,32 @@ export class YouTubeDownloader extends DownloadService {
 
     const methods = [
       {
-        name: 'yt-dlp',
+        name: 'yt-dlp (optimized)',
         cmd: 'yt-dlp',
-        args: ['-f', 'best[height<=720]', '-o', outputPath, `https://youtu.be/${videoId}`],
+        args: [
+          '-f',
+          'best[height<=720]/best',
+          '--prefer-ffmpeg',
+          '--no-check-certificate',
+          '--no-playlist',
+          '--quiet',
+          '-o',
+          outputPath,
+          `https://youtu.be/${videoId}`,
+        ],
       },
       {
-        name: 'youtube-dl',
-        cmd: 'youtube-dl',
-        args: ['-f', 'best[height<=480]', '-o', outputPath, `https://youtu.be/${videoId}`],
+        name: 'yt-dlp (fast)',
+        cmd: 'yt-dlp',
+        args: [
+          '-f',
+          '18/best',
+          '--no-check-certificate',
+          '--no-playlist',
+          '-o',
+          outputPath,
+          `https://youtu.be/${videoId}`,
+        ],
       },
     ];
 

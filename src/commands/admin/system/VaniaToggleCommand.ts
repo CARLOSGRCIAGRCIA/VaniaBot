@@ -17,7 +17,7 @@ export class VaniaOffCommand extends Command {
   contexts = [CommandContext.GROUP];
   usage = '!vaniaoff';
   examples = ['!vaniaoff'];
-  permissions = { user: [PermissionLevel.ADMIN], bot: [] };
+  permissions = { user: [PermissionLevel.OWNER], bot: [] };
 
   async execute(ctx: MessageContext): Promise<void> {
     try {
@@ -52,7 +52,7 @@ export class VaniaOnCommand extends Command {
   contexts = [CommandContext.GROUP];
   usage = '!vaniaon';
   examples = ['!vaniaon'];
-  permissions = { user: [PermissionLevel.ADMIN], bot: [] };
+  permissions = { user: [PermissionLevel.OWNER], bot: [] };
 
   async execute(ctx: MessageContext): Promise<void> {
     try {

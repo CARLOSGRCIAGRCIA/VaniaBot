@@ -38,7 +38,11 @@ export class InstagramDownloader extends DownloadService {
 
   async getMediaInfo(url: string): Promise<InstagramMedia | null> {
     try {
-      const output = await this.runCommand('yt-dlp', ['--dump-json', '--no-download', url], 30000);
+      const output = await this.runCommand(
+        'yt-dlp',
+        ['--dump-json', '--no-download', '--no-playlist', '--quiet', url],
+        30000,
+      );
       const info = JSON.parse(output.trim().split('\n')[0]);
 
       const ext: string = info.ext ?? '';
@@ -70,14 +74,24 @@ export class InstagramDownloader extends DownloadService {
 
     const methods = [
       {
-        name: 'yt-dlp',
+        name: 'yt-dlp (optimized)',
         cmd: 'yt-dlp',
-        args: ['-f', 'best', '--no-check-certificate', '-o', outputPath, url],
+        args: [
+          '-f',
+          'best',
+          '--no-check-certificate',
+          '--no-playlist',
+          '--quiet',
+          '--newline',
+          '-o',
+          outputPath,
+          url,
+        ],
       },
       {
-        name: 'yt-dlp (fallback)',
+        name: 'yt-dlp (standard)',
         cmd: 'yt-dlp',
-        args: ['-o', outputPath, url],
+        args: ['-f', 'best', '--no-check-certificate', '--no-playlist', '-o', outputPath, url],
       },
     ];
 
@@ -94,9 +108,14 @@ export class InstagramDownloader extends DownloadService {
 
     const methods = [
       {
+        name: 'yt-dlp image (optimized)',
+        cmd: 'yt-dlp',
+        args: ['--no-check-certificate', '--no-playlist', '--quiet', '-o', outputPath, url],
+      },
+      {
         name: 'yt-dlp image',
         cmd: 'yt-dlp',
-        args: ['--no-check-certificate', '-o', outputPath, url],
+        args: ['--no-check-certificate', '--no-playlist', '-o', outputPath, url],
       },
     ];
 

@@ -19,7 +19,11 @@ export class TikTokDownloader extends DownloadService {
 
   async getVideoInfo(url: string): Promise<TikTokVideo | null> {
     try {
-      const output = await this.runCommand('yt-dlp', ['--dump-json', '--no-download', url], 30000);
+      const output = await this.runCommand(
+        'yt-dlp',
+        ['--dump-json', '--no-download', '--no-playlist', '--quiet', url],
+        30000,
+      );
       const info = JSON.parse(output.trim().split('\n')[0]);
       return {
         title: info.title ?? 'TikTok video',
@@ -42,14 +46,24 @@ export class TikTokDownloader extends DownloadService {
 
     const methods = [
       {
-        name: 'yt-dlp (no watermark)',
+        name: 'yt-dlp (optimized)',
         cmd: 'yt-dlp',
-        args: ['-f', 'best', '--no-check-certificate', '-o', outputPath, url],
+        args: [
+          '-f',
+          'best',
+          '--no-check-certificate',
+          '--no-playlist',
+          '--quiet',
+          '--newline',
+          '-o',
+          outputPath,
+          url,
+        ],
       },
       {
         name: 'yt-dlp (fallback)',
         cmd: 'yt-dlp',
-        args: ['-o', outputPath, url],
+        args: ['--no-check-certificate', '--no-playlist', '-o', outputPath, url],
       },
     ];
 
@@ -66,7 +80,24 @@ export class TikTokDownloader extends DownloadService {
 
     const methods = [
       {
-        name: 'yt-dlp audio',
+        name: 'yt-dlp audio (optimized)',
+        cmd: 'yt-dlp',
+        args: [
+          '-x',
+          '--audio-format',
+          'mp3',
+          '--audio-quality',
+          '5',
+          '--no-check-certificate',
+          '--no-playlist',
+          '--quiet',
+          '-o',
+          outputPath,
+          url,
+        ],
+      },
+      {
+        name: 'yt-dlp audio (standard)',
         cmd: 'yt-dlp',
         args: [
           '-x',
@@ -75,6 +106,7 @@ export class TikTokDownloader extends DownloadService {
           '--audio-quality',
           '0',
           '--no-check-certificate',
+          '--no-playlist',
           '-o',
           outputPath,
           url,

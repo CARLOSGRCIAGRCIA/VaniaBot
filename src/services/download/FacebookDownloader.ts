@@ -24,7 +24,11 @@ export class FacebookDownloader extends DownloadService {
 
   async getVideoInfo(url: string): Promise<FacebookVideo | null> {
     try {
-      const output = await this.runCommand('yt-dlp', ['--dump-json', '--no-download', url], 30000);
+      const output = await this.runCommand(
+        'yt-dlp',
+        ['--dump-json', '--no-download', '--no-playlist', '--quiet', url],
+        30000,
+      );
       const info = JSON.parse(output.trim().split('\n')[0]);
       return {
         title: info.title ?? 'Facebook video',
@@ -47,19 +51,37 @@ export class FacebookDownloader extends DownloadService {
 
     const methods = [
       {
-        name: 'yt-dlp HD',
+        name: 'yt-dlp (optimized)',
         cmd: 'yt-dlp',
-        args: ['-f', 'best[height<=720]', '--no-check-certificate', '-o', outputPath, url],
+        args: [
+          '-f',
+          'best[height<=720]/best',
+          '--no-check-certificate',
+          '--no-playlist',
+          '--quiet',
+          '--newline',
+          '-o',
+          outputPath,
+          url,
+        ],
       },
       {
-        name: 'yt-dlp SD',
+        name: 'yt-dlp (fast)',
         cmd: 'yt-dlp',
-        args: ['-f', 'worst', '--no-check-certificate', '-o', outputPath, url],
+        args: [
+          '-f',
+          'best[height<=480]/worst',
+          '--no-check-certificate',
+          '--no-playlist',
+          '-o',
+          outputPath,
+          url,
+        ],
       },
       {
         name: 'yt-dlp (fallback)',
         cmd: 'yt-dlp',
-        args: ['--no-check-certificate', '-o', outputPath, url],
+        args: ['--no-check-certificate', '--no-playlist', '-o', outputPath, url],
       },
     ];
 
