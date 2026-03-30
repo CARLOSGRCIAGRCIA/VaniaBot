@@ -43,7 +43,7 @@ async function searchWithYtDlp(query: string): Promise<YouTubeVideo | null> {
 
 async function getVideoInfoWithYtDlp(urlOrId: string): Promise<YouTubeVideo | null> {
   try {
-    let videoId = extractVideoId(urlOrId);
+    const videoId = extractVideoId(urlOrId);
     const searchQuery = videoId ? `https://youtu.be/${videoId}` : urlOrId;
 
     const { stdout } = await execFileAsync(
