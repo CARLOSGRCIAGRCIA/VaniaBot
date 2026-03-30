@@ -125,9 +125,10 @@ export class DownloadQueueService {
 
     void this.limit(async () => {
       try {
-        await task.execute();
-      } catch {
-        // Error already handled in wrapped task
+        const result = await task.execute();
+        task.resolve(result);
+      } catch (error) {
+        task.reject(error);
       } finally {
         this.processing--;
         void this.processNext();

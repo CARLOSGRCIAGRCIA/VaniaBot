@@ -7,14 +7,17 @@ import {
 
 describe('DownloadQueueService', () => {
   let queue: DownloadQueueService;
+  let testId: string;
 
   beforeEach(() => {
+    testId = `test-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
     queue = DownloadQueueService.getInstance(2);
+    queue.clear();
   });
 
   it('should add task to queue', async () => {
     const task = queue.add({
-      id: 'task1',
+      id: `${testId}-task1`,
       priority: 1,
       execute: async () => 'result',
     });
@@ -24,8 +27,8 @@ describe('DownloadQueueService', () => {
 
   it('should execute multiple tasks', async () => {
     const results = await Promise.all([
-      queue.add({ id: 'task1', priority: 1, execute: async () => 'result1' }),
-      queue.add({ id: 'task2', priority: 1, execute: async () => 'result2' }),
+      queue.add({ id: `${testId}-task1`, priority: 1, execute: async () => 'result1' }),
+      queue.add({ id: `${testId}-task2`, priority: 1, execute: async () => 'result2' }),
     ]);
 
     expect(results).toContain('result1');
@@ -35,7 +38,7 @@ describe('DownloadQueueService', () => {
   it('should handle task errors', async () => {
     await expect(
       queue.add({
-        id: 'error-task',
+        id: `${testId}-error-task`,
         priority: 1,
         execute: async () => {
           throw new Error('task failed');
@@ -52,7 +55,7 @@ describe('DownloadQueueService', () => {
   });
 
   it('should clear queue', async () => {
-    queue.add({ id: 'task1', priority: 1, execute: async () => 'result' });
+    queue.add({ id: `${testId}-clear-task`, priority: 1, execute: async () => 'result' });
     queue.clear();
 
     const stats = queue.getStats();
@@ -69,7 +72,7 @@ describe('DownloadQueueService', () => {
     let called = false;
 
     await queue.add({
-      id: 'callback-task',
+      id: `${testId}-callback-task`,
       priority: 1,
       execute: async () => 'result',
       onSuccess: () => {
@@ -85,7 +88,7 @@ describe('DownloadQueueService', () => {
 
     await expect(
       queue.add({
-        id: 'error-callback',
+        id: `${testId}-error-callback`,
         priority: 1,
         execute: async () => {
           throw new Error('failed');
@@ -104,7 +107,7 @@ describe('DownloadQueueService', () => {
 
     await Promise.all([
       queue.add({
-        id: 'low',
+        id: `${testId}-low`,
         priority: 1,
         execute: async () => {
           order.push('low');
@@ -112,7 +115,7 @@ describe('DownloadQueueService', () => {
         },
       }),
       queue.add({
-        id: 'high',
+        id: `${testId}-high`,
         priority: 10,
         execute: async () => {
           order.push('high');
@@ -128,35 +131,37 @@ describe('DownloadQueueService', () => {
 
 describe('ParallelDownloader', () => {
   let downloader: ParallelDownloader;
+  let testId: string;
 
   beforeEach(() => {
+    testId = `test-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
     downloader = new ParallelDownloader(3);
   });
 
   it('should download all tasks', async () => {
     const results = await downloader.downloadAll([
-      { id: 'task1', execute: async () => 'result1' },
-      { id: 'task2', execute: async () => 'result2' },
+      { id: `${testId}-task1`, execute: async () => 'result1' },
+      { id: `${testId}-task2`, execute: async () => 'result2' },
     ]);
 
     expect(results.size).toBe(2);
-    expect(results.get('task1')).toBe('result1');
-    expect(results.get('task2')).toBe('result2');
+    expect(results.get(`${testId}-task1`)).toBe('result1');
+    expect(results.get(`${testId}-task2`)).toBe('result2');
   });
 
   it('should return map even with failures', async () => {
     const results = await downloader.downloadAll([
-      { id: 'success', execute: async () => 'ok' },
+      { id: `${testId}-success`, execute: async () => 'ok' },
       {
-        id: 'fail',
+        id: `${testId}-fail`,
         execute: async () => {
           throw new Error('failed');
         },
       },
     ]);
 
-    expect(results.has('success')).toBe(true);
-    expect(results.get('success')).toBe('ok');
+    expect(results.has(`${testId}-success`)).toBe(true);
+    expect(results.get(`${testId}-success`)).toBe('ok');
   });
 
   it('should return stats', () => {
