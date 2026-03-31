@@ -10,3 +10,5 @@ subbot-sessions
 subbots.json
 coverage
 backups
+# WAL files
+data/wal/
