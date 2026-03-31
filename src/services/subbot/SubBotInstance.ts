@@ -16,7 +16,6 @@
  * @github CARLOSGRCIAGRCIA
  */
 import makeWASocket, {
-  useMultiFileAuthState,
   makeCacheableSignalKeyStore,
   DisconnectReason,
   fetchLatestBaileysVersion,
@@ -29,6 +28,7 @@ import { join } from 'path';
 import { EventEmitter } from 'events';
 import type { SubBotConfig } from '@/types/subbot.js';
 import { subBotDatabase } from './SubBotDatabase.js';
+import { useEncryptedMultiFileAuthState } from './EncryptedAuthState.js';
 import { logger, logError } from '@/utils/logger.js';
 import { cacheManager } from '@/core/CacheManager.js';
 
@@ -241,7 +241,7 @@ export class SubBotInstance extends EventEmitter {
     try {
       mkdirSync(this.config.sessionPath, { recursive: true });
       const { version } = await fetchLatestBaileysVersion();
-      const { state, saveCreds } = await useMultiFileAuthState(this.config.sessionPath);
+      const { state, saveCreds } = await useEncryptedMultiFileAuthState(this.config.sessionPath);
       const hasExistingCreds = !!state.creds.registered;
 
       logger.debug(
@@ -271,7 +271,9 @@ export class SubBotInstance extends EventEmitter {
       });
 
       this.sock.ev.on('creds.update', () => {
-        saveCreds().catch(err => logError(`SubBotInstance[${this.config.id}].saveCreds`, err));
+        saveCreds().catch((err: unknown) =>
+          logError(`SubBotInstance[${this.config.id}].saveCreds`, err),
+        );
         if (!this.connectionEstablished && this.sock?.authState?.creds?.registered) {
           this.connectionEstablished = true;
           void this.onFullyConnected();
