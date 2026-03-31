@@ -404,6 +404,18 @@ export class AIService {
     let session = this.sessions.get(key);
 
     if (!session) {
+      const maxSessions = env.MAX_AI_SESSIONS;
+      if (this.sessions.size >= maxSessions) {
+        logger.warn(`[AI] Max sessions (${maxSessions}) reached, evicting oldest`);
+        const oldest = [...this.sessions.entries()].sort(
+          (a, b) => a[1].lastActivity - b[1].lastActivity,
+        )[0];
+        if (oldest) {
+          this.sessions.delete(oldest[0]);
+          this.dirtySessions.delete(oldest[0]);
+        }
+      }
+
       session = {
         chatJid,
         senderJid,
