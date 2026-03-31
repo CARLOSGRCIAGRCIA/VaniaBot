@@ -1,4 +1,6 @@
 import { serviceManager } from '../system/Servicemanager.js';
+import { gameStateService } from './GameStateService.js';
+import { logger } from '@/utils/logger.js';
 
 export interface DailyMission {
   id: string;
@@ -114,6 +116,21 @@ class DailyMissionService {
     return DailyMissionService.instance;
   }
 
+  loadFromPersistence(): void {
+    gameStateService.clearExpiredMissions();
+    const now = Date.now();
+    const allMissions = gameStateService.getAllUserMissions();
+
+    for (const userMission of allMissions) {
+      const hasValidMission = userMission.missions.some(m => m.expiresAt > now);
+      if (hasValidMission) {
+        this.userMissions.set(userMission.userId, userMission.missions);
+        this.lastReset.set(userMission.userId, userMission.lastReset);
+      }
+    }
+    logger.debug(`[DailyMission] Loaded missions for ${this.userMissions.size} users`);
+  }
+
   private shouldResetMissions(userId: string): boolean {
     const lastReset = this.lastReset.get(userId) || 0;
     const now = Date.now();
@@ -150,6 +167,15 @@ class DailyMissionService {
 
     this.userMissions.set(userId, progress);
     this.lastReset.set(userId, Date.now());
+    this.saveMissions(userId);
+  }
+
+  private saveMissions(userId: string): void {
+    const missions = this.userMissions.get(userId);
+    const resetTime = this.lastReset.get(userId) || Date.now();
+    if (missions) {
+      gameStateService.setUserMissions(userId, missions, resetTime);
+    }
   }
 
   private selectRandomMissions(count: number): DailyMission[] {
@@ -187,6 +213,7 @@ class DailyMissionService {
       }
     }
 
+    this.saveMissions(userId);
     return completedMissions;
   }
 
@@ -218,6 +245,7 @@ class DailyMissionService {
     await serviceManager.levelService.addXP(userId, mission.xpReward);
 
     missionProgress.claimed = true;
+    this.saveMissions(userId);
 
     return {
       success: true,

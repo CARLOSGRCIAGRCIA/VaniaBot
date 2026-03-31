@@ -1,4 +1,6 @@
 import { serviceManager } from '../system/Servicemanager.js';
+import { gameStateService } from '../rpg/GameStateService.js';
+import { logger } from '@/utils/logger.js';
 
 export interface Loan {
   id: string;
@@ -26,6 +28,42 @@ class LoanService {
       LoanService.instance = new LoanService();
     }
     return LoanService.instance;
+  }
+
+  loadFromPersistence(): void {
+    const savedLoans = gameStateService.getLoans();
+    this.loans.clear();
+    for (const loan of savedLoans) {
+      this.loans.set(loan.id, {
+        id: loan.id,
+        lenderJid: loan.lenderJid,
+        borrowerJid: loan.borrowerJid,
+        amount: loan.amount,
+        interestRate: loan.interestRate,
+        totalToRepay: loan.totalToRepay,
+        remaining: loan.remaining,
+        createdAt: loan.createdAt,
+        dueDate: loan.dueDate,
+        status: loan.status,
+      });
+    }
+    logger.debug(`[Loan] Loaded ${this.loans.size} loans`);
+  }
+
+  private saveLoans(): void {
+    const loans = Array.from(this.loans.values()).map(l => ({
+      id: l.id,
+      lenderJid: l.lenderJid,
+      borrowerJid: l.borrowerJid,
+      amount: l.amount,
+      interestRate: l.interestRate,
+      totalToRepay: l.totalToRepay,
+      remaining: l.remaining,
+      createdAt: l.createdAt,
+      dueDate: l.dueDate,
+      status: l.status,
+    }));
+    gameStateService.setLoans(loans);
   }
 
   async requestLoan(
@@ -75,6 +113,7 @@ class LoanService {
     };
 
     this.loans.set(loan.id, loan);
+    this.saveLoans();
 
     return {
       success: true,
@@ -114,6 +153,7 @@ class LoanService {
 
     loan.status = 'paid';
     loan.remaining = 0;
+    this.saveLoans();
 
     return {
       success: true,
@@ -134,12 +174,18 @@ class LoanService {
   checkOverdueLoans(): Loan[] {
     const now = Date.now();
     const overdue: Loan[] = [];
+    let changed = false;
 
     for (const loan of this.loans.values()) {
       if (loan.status === 'active' && loan.dueDate < now) {
         loan.status = 'defaulted';
         overdue.push(loan);
+        changed = true;
       }
+    }
+
+    if (changed) {
+      this.saveLoans();
     }
 
     return overdue;

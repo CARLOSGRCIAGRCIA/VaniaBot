@@ -1,6 +1,8 @@
 import { itemRegistry } from './ItemRegistry.js';
 import { itemService } from './ItemService.js';
 import { serviceManager } from '../system/Servicemanager.js';
+import { gameStateService, type PersistedMarketOffer } from './GameStateService.js';
+import { logger } from '@/utils/logger.js';
 
 export interface TradeOffer {
   id: string;
@@ -30,6 +32,36 @@ export class TradeService {
       TradeService.instance = new TradeService();
     }
     return TradeService.instance;
+  }
+
+  loadFromPersistence(): void {
+    const offers = gameStateService.getMarketOffers();
+    this.marketOffers.clear();
+    for (const offer of offers) {
+      this.marketOffers.set(offer.id, {
+        id: offer.id,
+        sellerJid: offer.sellerJid,
+        itemId: offer.itemId,
+        itemName: offer.itemName,
+        price: offer.price,
+        quantity: offer.quantity,
+        createdAt: offer.createdAt,
+      });
+    }
+    logger.debug(`[Trade] Loaded ${this.marketOffers.size} market offers`);
+  }
+
+  private saveOffers(): void {
+    const offers: PersistedMarketOffer[] = Array.from(this.marketOffers.values()).map(o => ({
+      id: o.id,
+      sellerJid: o.sellerJid,
+      itemId: o.itemId,
+      itemName: o.itemName,
+      price: o.price,
+      quantity: o.quantity,
+      createdAt: o.createdAt,
+    }));
+    gameStateService.setMarketOffers(offers);
   }
 
   async createOffer(
@@ -81,6 +113,7 @@ export class TradeService {
     };
 
     this.marketOffers.set(offerId, offer);
+    this.saveOffers();
 
     for (let i = 0; i < quantity; i++) {
       await itemService.removeItem(jid, item.itemId);
@@ -129,6 +162,7 @@ export class TradeService {
     }
 
     this.marketOffers.delete(offerId);
+    this.saveOffers();
 
     const itemData = itemRegistry.getItem(offer.itemId);
 
@@ -154,6 +188,7 @@ export class TradeService {
     }
 
     this.marketOffers.delete(offerId);
+    this.saveOffers();
 
     return {
       success: true,
