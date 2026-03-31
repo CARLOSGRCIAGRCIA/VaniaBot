@@ -118,6 +118,30 @@ class RealTimeAntiSpam {
   }
 }
 
+const COMMAND_TIMEOUT_MS = 30000;
+
+async function withTimeout<T>(
+  promise: Promise<T>,
+  timeoutMs: number,
+  commandName: string,
+): Promise<T> {
+  let timeoutId: ReturnType<typeof setTimeout> | undefined;
+
+  const timeoutPromise = new Promise<never>((_resolve, reject) => {
+    timeoutId = setTimeout(() => {
+      reject(new Error(`Command ${commandName} timed out after ${timeoutMs}ms`));
+    }, timeoutMs);
+  });
+
+  try {
+    return await Promise.race([promise, timeoutPromise]);
+  } finally {
+    if (timeoutId !== undefined) {
+      clearTimeout(timeoutId);
+    }
+  }
+}
+
 interface QueuedMessage {
   id: string;
   handler: () => Promise<void>;
@@ -512,15 +536,22 @@ export class WhatsAppClient {
                 logger.debug(`🚀 Running command: ${command.name}`);
                 const cmdStartTime = Date.now();
                 try {
-                  await command.execute(ctx);
+                  await withTimeout(command.execute(ctx), COMMAND_TIMEOUT_MS, command.name);
                   this.stats.commandsExecuted++;
                   this.trackCommandMetric(command.name, Date.now() - cmdStartTime, false);
                   logger.debug(`✅ Command executed successfully: ${command.name}`);
                 } catch (error) {
                   this.stats.errorsCount++;
                   this.trackCommandMetric(command.name, Date.now() - cmdStartTime, true);
-                  logError('Command', new CommandExecutionError(ctx.command, error));
-                  await ctx.reply('Error al ejecutar el comando.').catch(() => {});
+                  if (error instanceof Error && error.message.includes('timed out')) {
+                    logger.error(`⏱️ Command ${command.name} timed out`);
+                    await ctx
+                      .reply('⏱️ El comando tardó demasiado. Intenta de nuevo.')
+                      .catch(() => {});
+                  } else {
+                    logError('Command', new CommandExecutionError(ctx.command, error));
+                    await ctx.reply('Error al ejecutar el comando.').catch(() => {});
+                  }
                 }
               });
 
