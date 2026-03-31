@@ -77,6 +77,10 @@ const envSchema = z.object({
   /** Session storage directory path */
   SESSION_PATH: z.string().default('./vaniasession'),
 
+  /** Encryption key for SubBot sessions (AES-256-GCM).
+   * Format: 32 chars salt + password. Generate with: node -e "console.log(require('crypto').randomBytes(32).toString('hex') + require('crypto').randomBytes(32).toString('hex'))" */
+  SESSION_ENCRYPTION_KEY: z.string().optional(),
+
   /** Use pairing code instead of QR code for authentication */
   USE_PAIRING_CODE: z
     .string()
@@ -219,6 +223,12 @@ const envSchema = z.object({
 
   /** Flood check window in milliseconds */
   FLOOD_WINDOW_MS: z
+    .string()
+    .transform(val => parseInt(val) || 1000)
+    .default('1000'),
+
+  /** Maximum AI conversation sessions */
+  MAX_AI_SESSIONS: z
     .string()
     .transform(val => parseInt(val) || 1000)
     .default('1000'),
