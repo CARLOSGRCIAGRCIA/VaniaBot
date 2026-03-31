@@ -160,7 +160,7 @@ export class JsonDatabase extends Database {
 
   private indexes = new Map<string, CollectionIndex>();
   private readonly indexedFields: Record<string, string[]> = {
-    users: ['level', 'isOwner', 'isAdmin', 'isBanned'],
+    users: ['level', 'isOwner', 'isAdmin', 'isBanned', 'xp', 'money', 'bank'],
     groups: ['onlyAdmin', 'welcomeEnabled'],
   };
 
