@@ -63,6 +63,7 @@ export class ModerationService {
     };
 
     await this.db.set(this.BANS_COLLECTION, banKey, banRecord);
+    await this.db.flush();
 
     await this.logAction({
       userId: normalizedUserId,
@@ -83,6 +84,7 @@ export class ModerationService {
     if (!ban) return false;
 
     await this.db.delete(this.BANS_COLLECTION, banKey);
+    await this.db.flush();
     return true;
   }
 
@@ -147,6 +149,7 @@ export class ModerationService {
     };
 
     await this.db.set(this.MUTES_COLLECTION, muteKey, muteRecord);
+    await this.db.flush();
 
     await this.logAction({
       userId: normalizedUserId,
@@ -169,6 +172,7 @@ export class ModerationService {
     if (!mute) return false;
 
     await this.db.delete(this.MUTES_COLLECTION, muteKey);
+    await this.db.flush();
     return true;
   }
 

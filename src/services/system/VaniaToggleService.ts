@@ -21,7 +21,7 @@ export class VaniaToggleService {
     const record = await this.db.get<ToggleRecord>(this.COLLECTION, this.normalizeJid(chatJid));
 
     if (!record) {
-      return true;
+      return false;
     }
 
     return record.enabled;
@@ -75,7 +75,7 @@ export class VaniaToggleService {
   async getStatus(chatJid: string): Promise<{ enabled: boolean; record: ToggleRecord | null }> {
     const record = await this.db.get<ToggleRecord>(this.COLLECTION, this.normalizeJid(chatJid));
     return {
-      enabled: record?.enabled ?? true,
+      enabled: record?.enabled ?? false,
       record,
     };
   }

@@ -41,7 +41,7 @@ export interface PersistedLoan {
   remaining: number;
   createdAt: number;
   dueDate: number;
-  status: 'active' | 'paid' | 'defaulted';
+  status: 'pending' | 'active' | 'rejected' | 'paid' | 'defaulted';
 }
 
 export interface PersistedGameState {

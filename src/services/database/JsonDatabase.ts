@@ -147,7 +147,7 @@ class UnifiedCache {
   }
 }
 
-const CRITICAL_COLLECTIONS = ['users', 'groups', 'settings', 'economy', 'levels'];
+const CRITICAL_COLLECTIONS = ['users', 'groups', 'settings', 'economy', 'levels', 'vania_toggle'];
 
 export class JsonDatabase extends Database {
   private data!: JsonData;

@@ -124,13 +124,13 @@ export class GroupService {
       isActive: true,
       onlyAdmin: false,
       welcome: {
-        enabled: true,
+        enabled: false,
       },
       goodbye: {
-        enabled: true,
+        enabled: false,
       },
       antiSpam: {
-        enabled: true,
+        enabled: false,
         maxMessages: 10,
         timeWindow: 60,
       },
@@ -193,9 +193,11 @@ export class GroupService {
    * @returns Promise<void>
    */
   async setWelcome(jid: string, enabled: boolean, message?: string): Promise<void> {
-    await this.updateGroup(jid, {
+    await this.db.update<GroupSettings>(this.COLLECTION, jid, {
       welcome: { enabled, message },
+      updatedAt: Date.now(),
     });
+    await this.db.flush();
   }
 
   /**
@@ -207,9 +209,11 @@ export class GroupService {
    * @returns Promise<void>
    */
   async setGoodbye(jid: string, enabled: boolean, message?: string): Promise<void> {
-    await this.updateGroup(jid, {
+    await this.db.update<GroupSettings>(this.COLLECTION, jid, {
       goodbye: { enabled, message },
+      updatedAt: Date.now(),
     });
+    await this.db.flush();
   }
 
   /**
@@ -221,9 +225,11 @@ export class GroupService {
    */
   async toggleAntiSpam(jid: string, enabled: boolean): Promise<void> {
     const group = await this.getGroup(jid);
-    await this.updateGroup(jid, {
+    await this.db.update<GroupSettings>(this.COLLECTION, jid, {
       antiSpam: { ...group.antiSpam, enabled },
+      updatedAt: Date.now(),
     });
+    await this.db.flush();
   }
 
   /**
@@ -235,9 +241,11 @@ export class GroupService {
    */
   async toggleAntiLink(jid: string, enabled: boolean): Promise<void> {
     const group = await this.getGroup(jid);
-    await this.updateGroup(jid, {
+    await this.db.update<GroupSettings>(this.COLLECTION, jid, {
       antiLink: { ...group.antiLink, enabled },
+      updatedAt: Date.now(),
     });
+    await this.db.flush();
   }
 
   /**
@@ -251,9 +259,11 @@ export class GroupService {
     const group = await this.getGroup(jid);
     const domains = [...group.antiLink.allowedDomains, domain];
 
-    await this.updateGroup(jid, {
+    await this.db.update<GroupSettings>(this.COLLECTION, jid, {
       antiLink: { ...group.antiLink, allowedDomains: domains },
+      updatedAt: Date.now(),
     });
+    await this.db.flush();
   }
 
   /**
@@ -267,47 +277,57 @@ export class GroupService {
     const group = await this.getGroup(jid);
     const domains = group.antiLink.allowedDomains.filter(d => d !== domain);
 
-    await this.updateGroup(jid, {
+    await this.db.update<GroupSettings>(this.COLLECTION, jid, {
       antiLink: { ...group.antiLink, allowedDomains: domains },
+      updatedAt: Date.now(),
     });
+    await this.db.flush();
   }
 
   async addBadWord(jid: string, word: string): Promise<void> {
     const group = await this.getGroup(jid);
     const words = [...group.antiWords.words, word.toLowerCase()];
 
-    await this.updateGroup(jid, {
+    await this.db.update<GroupSettings>(this.COLLECTION, jid, {
       antiWords: { ...group.antiWords, words },
+      updatedAt: Date.now(),
     });
+    await this.db.flush();
   }
 
   async removeBadWord(jid: string, word: string): Promise<void> {
     const group = await this.getGroup(jid);
     const words = group.antiWords.words.filter(w => w !== word.toLowerCase());
 
-    await this.updateGroup(jid, {
+    await this.db.update<GroupSettings>(this.COLLECTION, jid, {
       antiWords: { ...group.antiWords, words },
+      updatedAt: Date.now(),
     });
+    await this.db.flush();
   }
 
   async incrementMessageCount(jid: string): Promise<void> {
     const group = await this.getGroup(jid);
-    await this.updateGroup(jid, {
+    await this.db.update<GroupSettings>(this.COLLECTION, jid, {
       stats: {
         ...group.stats,
         totalMessages: group.stats.totalMessages + 1,
       },
+      updatedAt: Date.now(),
     });
+    await this.db.flush();
   }
 
   async incrementCommandCount(jid: string): Promise<void> {
     const group = await this.getGroup(jid);
-    await this.updateGroup(jid, {
+    await this.db.update<GroupSettings>(this.COLLECTION, jid, {
       stats: {
         ...group.stats,
         totalCommands: group.stats.totalCommands + 1,
       },
+      updatedAt: Date.now(),
     });
+    await this.db.flush();
   }
 
   async getAllGroups(): Promise<GroupSettings[]> {
@@ -337,7 +357,11 @@ export class GroupService {
    * @returns Promise<void>
    */
   async setOnlyAdmin(jid: string, enabled: boolean): Promise<void> {
-    await this.updateGroup(jid, { onlyAdmin: enabled });
+    await this.db.update<GroupSettings>(this.COLLECTION, jid, {
+      onlyAdmin: enabled,
+      updatedAt: Date.now(),
+    });
+    await this.db.flush();
   }
 
   /**

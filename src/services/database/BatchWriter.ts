@@ -172,6 +172,13 @@ export class BatchWriter {
     }
   }
 
+  async forceFlushNow(): Promise<void> {
+    if (this.pendingWrites.size === 0) {
+      return;
+    }
+    await this.flushNow();
+  }
+
   getPendingCount(): number {
     return this.pendingWrites.size;
   }
