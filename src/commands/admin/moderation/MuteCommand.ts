@@ -7,6 +7,7 @@ import {
 } from '@/types/index.js';
 import { logError } from '@/utils/logger.js';
 import { serviceManager } from '@/services/system/Servicemanager.js';
+import { getTargetUser, getErrorMessage } from '@/utils/moderationUtils.js';
 
 export class MuteCommand extends Command {
   name = 'mute';
@@ -21,12 +22,14 @@ export class MuteCommand extends Command {
   };
 
   async execute(ctx: MessageContext): Promise<void> {
-    const mentionedJid = ctx.message.message?.extendedTextMessage?.contextInfo?.mentionedJid?.[0];
+    const target = getTargetUser(ctx);
 
-    if (!mentionedJid) {
-      await ctx.reply('❌ You must mention a user to mute');
+    if (!target) {
+      await ctx.reply(getErrorMessage('mutear'));
       return;
     }
+
+    const { jid: mentionedJid } = target;
 
     const cleanArgs = ctx.args.filter(arg => !arg.startsWith('@'));
 

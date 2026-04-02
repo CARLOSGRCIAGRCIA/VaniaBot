@@ -22,6 +22,7 @@ export class VaniaToggleMiddleware extends Middleware {
         return;
       }
     } catch {
+      await next();
       return;
     }
 

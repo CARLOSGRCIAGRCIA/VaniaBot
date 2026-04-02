@@ -69,8 +69,9 @@ export class QcCommand extends Command {
           type: 'quote',
           format: 'png',
           backgroundColor: '#000000',
+          // Pedir 512x512 directamente para evitar resize que corta la imagen
           width: 512,
-          height: 768,
+          height: 512,
           scale: 2,
           messages: [
             {
@@ -95,7 +96,8 @@ export class QcCommand extends Command {
         imageBuffer = await this.buildLocalQuoteImage(nombre, cleanText, pp);
       }
 
-      const resizedBuffer = await ImageProcessor.resizeImage(imageBuffer, 512, 512);
+      // contain: escala sin recortar, rellena con transparente si hace falta
+      const resizedBuffer = await ImageProcessor.resizeContain(imageBuffer, 512, 512);
 
       const stickerInfo = await primeService.formatStickerInfo(
         ctx.sock,
@@ -116,12 +118,12 @@ export class QcCommand extends Command {
   }
 
   /**
-   * Genera una quote card usando SVG + resvg-js para rasterizar (sin FFmpeg, sin sharp).
-   * Funciona en Termux nativamente.
+   * Quote card 512x512, avatar centrado arriba, texto centrado abajo.
+   * Layout diseñado para verse bien como sticker de WhatsApp.
    */
   private async buildLocalQuoteImage(name: string, text: string, ppUrl: string): Promise<Buffer> {
-    const width = 512;
-    const height = 512;
+    const W = 512;
+    const H = 512;
 
     let ppDataUri = '';
     try {
@@ -130,67 +132,101 @@ export class QcCommand extends Command {
       const mime = (resp.headers['content-type'] as string) || 'image/jpeg';
       ppDataUri = `data:${mime};base64,${b64}`;
     } catch {
-      // Sin imagen de perfil
+      // sin foto — usará inicial
     }
 
-    const escapedName = this.escapeXml(name);
-    const escapedText = this.escapeXml(text);
+    const eName = this.escapeXml(name);
+    const eText = this.escapeXml(text);
+
+    const AV_CX = W / 2;
+    const AV_CY = 115;
+    const AV_R = 58;
 
     const avatarBlock = ppDataUri
-      ? `
-        <defs>
-          <clipPath id="avatarClip">
-            <circle cx="80" cy="80" r="48"/>
+      ? `<defs>
+          <clipPath id="av">
+            <circle cx="${AV_CX}" cy="${AV_CY}" r="${AV_R}"/>
           </clipPath>
         </defs>
-        <image href="${ppDataUri}" x="32" y="32" width="96" height="96" clip-path="url(#avatarClip)"/>
-      `
-      : `
-        <circle cx="80" cy="80" r="48" fill="#7C3AED"/>
-        <text x="80" y="95" font-family="Arial" font-size="40" font-weight="bold" fill="white" text-anchor="middle">${escapedName.charAt(0).toUpperCase()}</text>
-      `;
+        <circle cx="${AV_CX}" cy="${AV_CY}" r="${AV_R + 4}" fill="#7C3AED" opacity="0.5"/>
+        <image href="${ppDataUri}"
+          x="${AV_CX - AV_R}" y="${AV_CY - AV_R}"
+          width="${AV_R * 2}" height="${AV_R * 2}"
+          clip-path="url(#av)"/>`
+      : `<circle cx="${AV_CX}" cy="${AV_CY}" r="${AV_R}" fill="#7C3AED"/>
+         <text x="${AV_CX}" y="${AV_CY + 20}"
+           font-family="Arial" font-size="52" font-weight="bold"
+           fill="white" text-anchor="middle">${eName.charAt(0).toUpperCase()}</text>`;
 
-    const lines = this.wrapText(escapedText, 22);
-    let textRows = '';
-    lines.forEach((line, i) => {
-      textRows += `<text x="256" y="${220 + i * 48}" font-family="Arial, sans-serif" font-size="34" fill="white" text-anchor="middle">${line}</text>`;
-    });
+    const NAME_Y = AV_CY + AV_R + 36;
+    const SEP_Y = NAME_Y + 20;
+    const TEXT_BASE = SEP_Y + 42;
+    const LINE_H = 48;
 
-    const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}">
+    const lines = this.wrapText(eText, 19);
+    const textRows = lines
+      .map(
+        (line, i) =>
+          `<text x="${W / 2}" y="${TEXT_BASE + i * LINE_H}"
+            font-family="Arial, sans-serif" font-size="38"
+            fill="white" text-anchor="middle">${line}</text>`,
+      )
+      .join('\n');
+
+    const svg = `<svg xmlns="http://www.w3.org/2000/svg"
+        xmlns:xlink="http://www.w3.org/1999/xlink"
+        width="${W}" height="${H}" viewBox="0 0 ${W} ${H}">
       <defs>
         <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stop-color="#1a1a2e"/>
-          <stop offset="100%" stop-color="#16213e"/>
+          <stop offset="0%"   stop-color="#1a1a2e"/>
+          <stop offset="100%" stop-color="#0f0f1a"/>
         </linearGradient>
       </defs>
-      <rect width="${width}" height="${height}" fill="url(#bg)" rx="24"/>
-      <text x="30" y="175" font-family="Georgia, serif" font-size="120" fill="#7C3AED" opacity="0.4">"</text>
-      <text x="420" y="350" font-family="Georgia, serif" font-size="120" fill="#7C3AED" opacity="0.4">"</text>
+      <rect width="${W}" height="${H}" fill="url(#bg)" rx="30"/>
+
+      <!-- Comillas decorativas -->
+      <text x="20" y="78" font-family="Georgia,serif" font-size="96"
+        fill="#7C3AED" opacity="0.3">"</text>
+      <text x="${W - 38}" y="${H - 14}" font-family="Georgia,serif" font-size="96"
+        fill="#7C3AED" opacity="0.3">"</text>
+
       ${avatarBlock}
-      <text x="152" y="68" font-family="Arial, sans-serif" font-size="28" font-weight="bold" fill="white">${escapedName}</text>
-      <text x="152" y="98" font-family="Arial, sans-serif" font-size="20" fill="#a0a0c0">@${escapedName.toLowerCase().replace(/\s+/g, '')}</text>
-      <line x1="40" y1="145" x2="472" y2="145" stroke="#7C3AED" stroke-width="2" opacity="0.5"/>
+
+      <!-- Nombre -->
+      <text x="${W / 2}" y="${NAME_Y}"
+        font-family="Arial,sans-serif" font-size="26" font-weight="bold"
+        fill="#C084FC" text-anchor="middle">${eName}</text>
+
+      <!-- Separador -->
+      <line x1="80" y1="${SEP_Y}" x2="${W - 80}" y2="${SEP_Y}"
+        stroke="#7C3AED" stroke-width="1.5" opacity="0.6"/>
+
+      <!-- Texto de la cita -->
       ${textRows}
-      <text x="256" y="480" font-family="Arial, sans-serif" font-size="18" fill="#6060a0" text-anchor="middle">VaniaBot 💝</text>
+
+      <!-- Footer -->
+      <text x="${W / 2}" y="${H - 16}"
+        font-family="Arial,sans-serif" font-size="15"
+        fill="#3a3a6a" text-anchor="middle">VaniaBot</text>
     </svg>`;
 
-    // Usar resvg-js (WASM) para rasterizar — no necesita FFmpeg ni sharp
-    return await ImageProcessor.svgToBuffer(svg, width, height);
+    return await ImageProcessor.svgToBuffer(svg, W, H);
   }
 
   private wrapText(text: string, maxChars: number): string[] {
     const words = text.split(' ');
     const lines: string[] = [];
-    let currentLine = '';
-    words.forEach(word => {
-      if ((currentLine + word).length <= maxChars) {
-        currentLine += (currentLine ? ' ' : '') + word;
+    let current = '';
+    for (const word of words) {
+      const next = current ? `${current} ${word}` : word;
+      if (next.length <= maxChars) {
+        current = next;
       } else {
-        if (currentLine) lines.push(currentLine);
-        currentLine = word;
+        if (current) lines.push(current);
+        current = word;
       }
-    });
-    if (currentLine) lines.push(currentLine);
+    }
+    if (current) lines.push(current);
     return lines.length > 0 ? lines : [text];
   }
 

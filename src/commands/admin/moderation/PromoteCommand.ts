@@ -9,6 +9,7 @@ import {
 import { logError } from '@/utils/logger.js';
 import { serviceManager } from '@/services/system/Servicemanager.js';
 import { cacheManager } from '@/core/CacheManager.js';
+import { getTargetUser, getErrorMessage } from '@/utils/moderationUtils.js';
 
 export class PromoteCommand extends Command {
   name = 'promote';
@@ -24,12 +25,14 @@ export class PromoteCommand extends Command {
   };
 
   async execute(ctx: MessageContext): Promise<void> {
-    const mentionedJid = ctx.message.message?.extendedTextMessage?.contextInfo?.mentionedJid?.[0];
+    const target = getTargetUser(ctx);
 
-    if (!mentionedJid) {
-      await ctx.reply('❌ You must mention a user to promote');
+    if (!target) {
+      await ctx.reply(getErrorMessage('promover'));
       return;
     }
+
+    const { jid: mentionedJid } = target;
 
     if (mentionedJid === ctx.sender.jid) {
       await ctx.reply('❌ You cannot promote yourself');

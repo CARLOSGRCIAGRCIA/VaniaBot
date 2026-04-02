@@ -2,6 +2,7 @@ import { Command } from '../../Command.js';
 import { CommandCategory, CommandContext, PermissionLevel } from '@/types/index.js';
 import type { MessageContext } from '@/types/index.js';
 import { serviceManager } from '@/services/system/Servicemanager.js';
+import { getTargetUser, getErrorMessage } from '@/utils/moderationUtils.js';
 
 export class WarnCommand extends Command {
   name = 'warn';
@@ -16,12 +17,14 @@ export class WarnCommand extends Command {
   };
 
   async execute(ctx: MessageContext): Promise<void> {
-    const mentionedJid = ctx.message.message?.extendedTextMessage?.contextInfo?.mentionedJid?.[0];
+    const target = getTargetUser(ctx);
 
-    if (!mentionedJid) {
-      await ctx.reply('Please mention a user to warn.');
+    if (!target) {
+      await ctx.reply(getErrorMessage('advertir'));
       return;
     }
+
+    const { jid: mentionedJid } = target;
 
     if (mentionedJid === ctx.sender.jid) {
       await ctx.reply('You cannot warn yourself.');

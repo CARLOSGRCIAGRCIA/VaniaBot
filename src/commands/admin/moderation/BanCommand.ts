@@ -8,6 +8,7 @@ import {
 } from '@/types/index.js';
 import { logError } from '@/utils/logger.js';
 import { serviceManager } from '@/services/system/Servicemanager.js';
+import { getTargetUser, getErrorMessage } from '@/utils/moderationUtils.js';
 
 export class BanCommand extends Command {
   name = 'ban';
@@ -23,12 +24,14 @@ export class BanCommand extends Command {
   };
 
   async execute(ctx: MessageContext): Promise<void> {
-    const mentionedJid = ctx.message.message?.extendedTextMessage?.contextInfo?.mentionedJid?.[0];
+    const target = getTargetUser(ctx);
 
-    if (!mentionedJid) {
-      await ctx.reply('❌ You must mention a user to ban');
+    if (!target) {
+      await ctx.reply(getErrorMessage('banear'));
       return;
     }
+
+    const { jid: mentionedJid } = target;
 
     if (mentionedJid === ctx.sender.jid) {
       await ctx.reply('❌ You cannot ban yourself');
