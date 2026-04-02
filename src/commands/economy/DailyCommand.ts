@@ -36,7 +36,15 @@ export class DailyCommand extends Command {
 
       const streak = this.calculateStreak(user.lastDaily);
       const streakBonus = Math.min(streak * this.STREAK_BONUS, this.MAX_STREAK_BONUS);
-      const totalReward = this.BASE_REWARD + streakBonus;
+      let totalReward = this.BASE_REWARD + streakBonus;
+
+      const dailyBonusBuff = user.activeBuffs?.find(
+        b => b.buffId === 'daily_bonus' && b.expiresAt > Date.now(),
+      );
+      if (dailyBonusBuff) {
+        const bonusAmount = Math.floor(totalReward * (dailyBonusBuff.value / 100));
+        totalReward += bonusAmount;
+      }
 
       const xpBuff = user.activeBuffs?.find(
         b => b.buffId === 'xp_boost' && b.expiresAt > Date.now(),
@@ -64,6 +72,8 @@ export class DailyCommand extends Command {
       let bonusText = '';
       if (streak >= 7) bonusText = '\n🔥 *BONUS SEMANAL!* +$500';
       if (streak >= 30) bonusText = '\n⭐ *BONUS MENSUAL!* +$2000';
+      if (dailyBonusBuff)
+        bonusText += `\n🎁 *BONUS DIARIO:* +${Math.floor(totalReward * (dailyBonusBuff.value / 100))}`;
       if (xpBuff) bonusText += `\n✨ *BONUS XP:* +${xpBuff.value}%`;
 
       await ctx.reply(

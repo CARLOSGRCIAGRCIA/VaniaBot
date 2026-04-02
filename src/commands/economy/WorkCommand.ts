@@ -43,14 +43,20 @@ export class WorkCommand extends Command {
       // Achievement tracking is non-critical
     }
 
-    const xpGained = Math.floor(earned / 10);
+    const xpBuff = user.activeBuffs?.find(b => b.buffId === 'xp_boost' && b.expiresAt > Date.now());
+    const xpMultiplier = xpBuff ? 1 + xpBuff.value / 100 : 1;
+
+    const xpGained = Math.floor((earned / 10) * xpMultiplier);
     await serviceManager.levelService.addXP(ctx.sender.jid, xpGained);
 
     const updatedUser = await serviceManager.userService.getUser(ctx.sender.jid);
 
     let bonusText = '';
     if (incomeBuff) {
-      bonusText = `\n💰 *BONUS:* +${incomeBuff.value}%`;
+      bonusText = `\n💰 *BONUS INGRESO:* +${incomeBuff.value}%`;
+    }
+    if (xpBuff) {
+      bonusText += `\n✨ *BONUS XP:* +${xpBuff.value}%`;
     }
 
     await ctx.reply(

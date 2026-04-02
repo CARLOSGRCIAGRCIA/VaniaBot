@@ -10,20 +10,26 @@ export interface ToggleRecord {
 }
 
 export class VaniaToggleService {
-  private db: IDatabase;
+  private db!: IDatabase;
   private readonly COLLECTION = 'vania_toggle';
 
-  constructor(db: IDatabase) {
+  setDatabase(db: IDatabase): void {
     this.db = db;
+  }
+
+  private normalizeJid(jid: string): string {
+    return jid.split('@')[0].split(':')[0] + '@s.whatsapp.net';
+  }
+
+  isEnabledSync(_chatJid: string): boolean {
+    return false;
   }
 
   async isEnabled(chatJid: string): Promise<boolean> {
     const record = await this.db.get<ToggleRecord>(this.COLLECTION, this.normalizeJid(chatJid));
-
     if (!record) {
       return false;
     }
-
     return record.enabled;
   }
 
@@ -78,9 +84,5 @@ export class VaniaToggleService {
       enabled: record?.enabled ?? false,
       record,
     };
-  }
-
-  private normalizeJid(jid: string): string {
-    return jid.split('@')[0].split(':')[0] + '@s.whatsapp.net';
   }
 }

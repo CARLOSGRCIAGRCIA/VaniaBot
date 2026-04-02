@@ -51,7 +51,8 @@ export class ServiceManager {
       this.groupService = new GroupService(this.db);
       this.levelService = new LevelService(this.db, this.userService);
       this.moderationService = new ModerationService(this.db);
-      this.vaniaToggleService = new VaniaToggleService(this.db);
+      this.vaniaToggleService = new VaniaToggleService();
+      this.vaniaToggleService.setDatabase(this.db);
       this.primeService = PrimeService.getInstance();
       this.primeService.setGroupService(this.groupService);
 

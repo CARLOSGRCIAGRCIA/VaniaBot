@@ -291,6 +291,37 @@ export class UserService {
     return true;
   }
 
+  async transferMoney(fromJid: string, toJid: string, amount: number): Promise<boolean> {
+    const fromUser = await this.getUser(fromJid);
+    const toUser = await this.getUser(toJid);
+
+    if (fromUser.isOwner || toUser.isOwner) {
+      if (fromUser.isOwner) {
+        await this.updateUser(toJid, {
+          money: toUser.isOwner ? this.OWNER_MONEY : toUser.money + amount,
+        });
+        return true;
+      }
+      if (toUser.isOwner) {
+        return true;
+      }
+    }
+
+    if (fromUser.money < amount) {
+      return false;
+    }
+
+    await this.updateUser(fromJid, {
+      money: fromUser.money - amount,
+    });
+
+    await this.updateUser(toJid, {
+      money: toUser.money + amount,
+    });
+
+    return true;
+  }
+
   async addBank(jid: string, amount: number): Promise<void> {
     const user = await this.getUser(jid);
 
@@ -475,7 +506,7 @@ export class UserService {
   async getTopByXP(limit: number = 10): Promise<User[]> {
     const result = await this.db.getPaginated<User>(this.COLLECTION, {
       page: 1,
-      limit: Math.min(limit * 10, 1000),
+      limit: Math.min(limit + 20, 200),
       sortBy: 'xp',
       sortOrder: 'desc',
     });
@@ -485,7 +516,7 @@ export class UserService {
   async getTopByMoney(limit: number = 10): Promise<User[]> {
     const result = await this.db.getPaginated<User>(this.COLLECTION, {
       page: 1,
-      limit: Math.min(limit * 10, 1000),
+      limit: Math.min(limit + 20, 200),
       sortBy: 'money',
       sortOrder: 'desc',
     });
@@ -495,7 +526,7 @@ export class UserService {
   async getTopByLevel(limit: number = 10): Promise<User[]> {
     const result = await this.db.getPaginated<User>(this.COLLECTION, {
       page: 1,
-      limit: Math.min(limit * 10, 1000),
+      limit: Math.min(limit + 20, 200),
       sortBy: 'level',
       sortOrder: 'desc',
     });

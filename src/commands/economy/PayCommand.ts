@@ -45,8 +45,16 @@ export class PayCommand extends Command {
       return;
     }
 
-    await serviceManager.userService.removeMoney(ctx.sender.jid, amount);
-    await serviceManager.userService.addMoney(mentionedJid, amount);
+    const success = await serviceManager.userService.transferMoney(
+      ctx.sender.jid,
+      mentionedJid,
+      amount,
+    );
+
+    if (!success) {
+      await ctx.reply('❌ No tienes suficiente dinero');
+      return;
+    }
 
     const receiver = await serviceManager.userService.getUser(mentionedJid);
 

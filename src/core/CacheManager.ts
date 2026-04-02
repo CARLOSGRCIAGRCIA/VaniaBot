@@ -76,7 +76,7 @@ export class UnifiedCacheManager {
     });
 
     this.userCache = new LRUCache({
-      max: 500,
+      max: 2000,
       ttl: 10 * 60 * 1000,
       updateAgeOnGet: true,
     });

@@ -12,6 +12,7 @@ export interface ImageProcessorResult {
 
 export class ImageProcessor {
   private static sharpAvailable: boolean | null = null;
+  private static resvgAvailable: boolean | null = null;
   private static readonly TEMP_DIR = './data/temp';
 
   static async isSharpAvailable(): Promise<boolean> {
@@ -26,7 +27,7 @@ export class ImageProcessor {
       this.sharpAvailable = true;
     } catch {
       this.sharpAvailable = false;
-      logger.warn('[ImageProcessor] Sharp not available, using Jimp/FFmpeg fallback');
+      logger.warn('[ImageProcessor] Sharp not available, using Jimp/resvg fallback');
     }
     return this.sharpAvailable;
   }
@@ -58,12 +59,84 @@ export class ImageProcessor {
   }
 
   /**
+   * Convierte contenido SVG a un Buffer PNG.
+   * Estrategia:
+   *   1. @resvg/resvg-js  — WASM puro, funciona en Termux sin dependencias nativas
+   *   2. @napi-rs/canvas  — si está instalado
+   */
+  static async svgToBuffer(svgContent: string, width: number, height: number): Promise<Buffer> {
+    // 1. resvg-js (WASM, sin bindings nativos, funciona en Termux)
+    try {
+      const { Resvg } = await import('@resvg/resvg-js');
+      const resvg = new Resvg(svgContent, {
+        fitTo: { mode: 'width', value: width },
+      });
+      const pngData = resvg.render();
+      return Buffer.from(pngData.asPng());
+    } catch (err) {
+      logger.warn('[ImageProcessor] resvg-js failed:', err);
+    }
+
+    // 2. @napi-rs/canvas
+    try {
+      return await this.svgToBufferCanvas(svgContent, width, height);
+    } catch (err) {
+      logger.warn('[ImageProcessor] canvas SVG render failed:', err);
+    }
+
+    throw new Error('No SVG renderer available (install @resvg/resvg-js)');
+  }
+
+  private static async svgToBufferCanvas(
+    svgContent: string,
+    width: number,
+    height: number,
+  ): Promise<Buffer> {
+    const { createCanvas, loadImage } = await import('@napi-rs/canvas');
+    const canvas = createCanvas(width, height);
+    const ctx = canvas.getContext('2d');
+
+    const textBlocks = [...svgContent.matchAll(/<text([^>]*)>([\s\S]*?)<\/text>/gi)];
+    for (const [, attrs, rawContent] of textBlocks) {
+      const content = rawContent
+        .replace(/&amp;/g, '&')
+        .replace(/&lt;/g, '<')
+        .replace(/&gt;/g, '>')
+        .replace(/&quot;/g, '"')
+        .replace(/&apos;/g, "'");
+
+      const x = parseFloat(attrs.match(/\bx="([\d.]+)"/)?.[1] ?? '0');
+      const y = parseFloat(attrs.match(/\by="([\d.]+)"/)?.[1] ?? '0');
+      const fontSize = attrs.match(/font-size="(\d+)"/)?.[1] ?? '40';
+      const fill = attrs.match(/fill="([^"]+)"/)?.[1] ?? '#ffffff';
+      const fontFamily = (attrs.match(/font-family="([^"]+)"/)?.[1] ?? 'Arial')
+        .split(',')[0]
+        .trim()
+        .replace(/['"]/g, '');
+      const fontWeight = attrs.match(/font-weight="([^"]+)"/)?.[1] ?? 'normal';
+      const anchor = (attrs.match(/text-anchor="([^"]+)"/)?.[1] ?? 'start') as
+        | 'start'
+        | 'end'
+        | 'left'
+        | 'right'
+        | 'center';
+
+      ctx.font = `${fontWeight} ${fontSize}px "${fontFamily}", Arial`;
+      ctx.fillStyle = fill;
+      ctx.textAlign = anchor;
+      ctx.fillText(content.trim(), x, y);
+    }
+
+    return canvas.toBuffer('image/png');
+  }
+
+  /**
    * Compone texto SVG sobre una imagen base.
    *
-   * Estrategia de fallback (sin sharp):
-   *   1. FFmpeg overlay con librsvg  — funciona en Termux con `pkg install ffmpeg`
-   *   2. @napi-rs/canvas              — si está instalado (`npm i @napi-rs/canvas`)
-   *   3. Imagen base sin texto        — degradación graciosa, el comando no muere
+   * Estrategia (sin sharp):
+   *   1. resvg-js → PNG overlay + Jimp composite  (Termux friendly)
+   *   2. @napi-rs/canvas
+   *   3. Imagen base sin texto (degradación graciosa)
    */
   static async compositeText(
     imagePath: string,
@@ -80,18 +153,13 @@ export class ImageProcessor {
 
   private static async compositeTextSharp(imagePath: string, svgContent: string): Promise<Buffer> {
     const sharp = (await import('sharp')).default;
-
     try {
       const svgBuffer = Buffer.from(svgContent);
       const pngFromSvg = await sharp(svgBuffer).png().toBuffer();
-      logger.debug(`[ImageProcessor] SVG converted to PNG: ${pngFromSvg.length} bytes`);
-
       const result = await sharp(imagePath)
         .composite([{ input: pngFromSvg, top: 0, left: 0 }])
         .png()
         .toBuffer();
-
-      logger.debug(`[ImageProcessor] Composite result: ${result.length} bytes`);
       return result;
     } catch (err) {
       logger.error('[ImageProcessor] Sharp composite error:', err);
@@ -105,88 +173,31 @@ export class ImageProcessor {
     width: number,
     height: number,
   ): Promise<Buffer> {
-    if (!existsSync(this.TEMP_DIR)) {
-      mkdirSync(this.TEMP_DIR, { recursive: true });
-    }
-
-    const ts = Date.now();
-    const svgPath = join(this.TEMP_DIR, `overlay-${ts}.svg`);
-    const outPath = join(this.TEMP_DIR, `composite-${ts}.png`);
-
-    const fullSvg = svgContent.includes('xmlns')
-      ? svgContent
-      : svgContent.replace('<svg', '<svg xmlns="http://www.w3.org/2000/svg"');
-
-    writeFileSync(svgPath, fullSvg, 'utf8');
-
+    // Estrategia 1: resvg-js rasteriza el SVG, Jimp hace el composite
+    // No necesita FFmpeg con librsvg. Funciona en Termux.
     try {
-      await this.ffmpegOverlay(imagePath, svgPath, outPath, width, height);
-      const result = readFileSync(outPath);
-      this.cleanup(svgPath, outPath);
-      return result;
+      const svgBuffer = await this.svgToBuffer(svgContent, width, height);
+      const base = await Jimp.read(imagePath);
+      const overlay = await Jimp.read(svgBuffer);
+      base.composite(overlay, 0, 0);
+      return await base.getBuffer('image/png');
     } catch (err) {
-      logger.warn('[ImageProcessor] FFmpeg overlay falló:', err);
-      this.cleanup(svgPath, outPath);
+      logger.warn('[ImageProcessor] resvg+Jimp composite failed:', err);
     }
 
+    // Estrategia 2: @napi-rs/canvas (parseo manual del SVG)
     try {
       const buf = await this.compositeTextCanvas(imagePath, svgContent, width, height);
-      this.cleanup(svgPath);
       return buf;
     } catch {
       logger.warn('[ImageProcessor] Canvas fallback falló, devolviendo imagen base');
-      this.cleanup(svgPath);
     }
 
+    // Estrategia 3: imagen base sin texto
     const image = await Jimp.read(imagePath);
     return await image.getBuffer('image/png');
   }
 
-  /**
-   * FFmpeg overlay via librsvg.
-   * En Termux: pkg install ffmpeg  (ya incluye librsvg desde ~2023)
-   */
-  private static ffmpegOverlay(
-    baseImage: string,
-    svgPath: string,
-    output: string,
-    width: number,
-    height: number,
-  ): Promise<void> {
-    return new Promise((resolve, reject) => {
-      const args = [
-        '-y',
-        '-i',
-        baseImage,
-        '-i',
-        svgPath,
-        '-filter_complex',
-        `[1:v]scale=${width}:${height}[ovr];[0:v][ovr]overlay=0:0`,
-        '-frames:v',
-        '1',
-        output,
-      ];
-      logger.debug(`[ImageProcessor] FFmpeg args: ${args.join(' ')}`);
-      const proc = spawn('ffmpeg', args);
-      let stderr = '';
-      proc.stderr.on('data', d => (stderr += d.toString()));
-      proc.on('close', code => {
-        if (code !== 0) {
-          logger.warn(`[ImageProcessor] FFmpeg exit code ${code}: ${stderr.slice(-400)}`);
-        }
-        code === 0
-          ? resolve()
-          : reject(new Error(`FFmpeg overlay exit ${code}: ${stderr.slice(-400)}`));
-      });
-      proc.on('error', reject);
-    });
-  }
-
-  /**
-   * Fallback con @napi-rs/canvas.
-   * Parsea los <text> del SVG y los dibuja manualmente sobre la imagen base.
-   * Instalar: npm install @napi-rs/canvas
-   */
   private static async compositeTextCanvas(
     imagePath: string,
     svgContent: string,
@@ -196,7 +207,6 @@ export class ImageProcessor {
     const { createCanvas, loadImage } = await import('@napi-rs/canvas');
     const canvas = createCanvas(width, height);
     const ctx = canvas.getContext('2d');
-
     const base = await loadImage(imagePath);
     ctx.drawImage(base, 0, 0, width, height);
 

@@ -13,7 +13,6 @@ export class QcCommand extends Command {
   usage = '!qc <text>';
   examples = ['!qc Hello World', '!qc @user Your text here'];
   cooldown = 5000;
-
   private stickerService: StickerService;
 
   constructor() {
@@ -23,7 +22,6 @@ export class QcCommand extends Command {
 
   async execute(ctx: MessageContext): Promise<void> {
     let text: string;
-
     if (ctx.args.length >= 1) {
       text = ctx.args.join(' ');
     } else if (ctx.quoted?.conversation || ctx.quoted?.extendedTextMessage?.text) {
@@ -64,8 +62,8 @@ export class QcCommand extends Command {
       }
 
       const nombre = ctx.sender.pushName || 'User';
-
       let imageBuffer: Buffer | null = null;
+
       try {
         const obj = {
           type: 'quote',
@@ -98,17 +96,16 @@ export class QcCommand extends Command {
       }
 
       const resizedBuffer = await ImageProcessor.resizeImage(imageBuffer, 512, 512);
+
       const stickerInfo = await primeService.formatStickerInfo(
         ctx.sock,
         ctx.chat.jid,
         ctx.chat.isGroup,
       );
-
       const stiker = await this.stickerService.createSticker(resizedBuffer, {
         pack: stickerInfo.pack,
         author: stickerInfo.author,
       });
-
       await ctx.sock.sendMessage(ctx.chat.jid, { sticker: stiker });
       await ctx.react('✅');
     } catch (error: unknown) {
@@ -119,8 +116,8 @@ export class QcCommand extends Command {
   }
 
   /**
-   * Genera una quote card simple usando solo SVG + FFmpeg (sin sharp).
-   * Descarga la foto de perfil si está disponible; si no, usa un círculo de color.
+   * Genera una quote card usando SVG + resvg-js para rasterizar (sin FFmpeg, sin sharp).
+   * Funciona en Termux nativamente.
    */
   private async buildLocalQuoteImage(name: string, text: string, ppUrl: string): Promise<Buffer> {
     const width = 512;
@@ -160,7 +157,6 @@ export class QcCommand extends Command {
     });
 
     const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}">
-      <!-- Fondo degradado oscuro -->
       <defs>
         <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
           <stop offset="0%" stop-color="#1a1a2e"/>
@@ -168,66 +164,18 @@ export class QcCommand extends Command {
         </linearGradient>
       </defs>
       <rect width="${width}" height="${height}" fill="url(#bg)" rx="24"/>
-
-      <!-- Comillas decorativas -->
       <text x="30" y="175" font-family="Georgia, serif" font-size="120" fill="#7C3AED" opacity="0.4">"</text>
       <text x="420" y="350" font-family="Georgia, serif" font-size="120" fill="#7C3AED" opacity="0.4">"</text>
-
-      <!-- Avatar -->
       ${avatarBlock}
-
-      <!-- Nombre -->
       <text x="152" y="68" font-family="Arial, sans-serif" font-size="28" font-weight="bold" fill="white">${escapedName}</text>
       <text x="152" y="98" font-family="Arial, sans-serif" font-size="20" fill="#a0a0c0">@${escapedName.toLowerCase().replace(/\s+/g, '')}</text>
-
-      <!-- Línea separadora -->
       <line x1="40" y1="145" x2="472" y2="145" stroke="#7C3AED" stroke-width="2" opacity="0.5"/>
-
-      <!-- Texto de la cita -->
       ${textRows}
-
-      <!-- Footer -->
       <text x="256" y="480" font-family="Arial, sans-serif" font-size="18" fill="#6060a0" text-anchor="middle">VaniaBot 💝</text>
     </svg>`;
 
-    const { writeFileSync, readFileSync, existsSync, mkdirSync, unlinkSync } = await import('fs');
-    const { join } = await import('path');
-    const { spawn } = await import('child_process');
-
-    const tempDir = './data/temp';
-    if (!existsSync(tempDir)) mkdirSync(tempDir, { recursive: true });
-
-    const ts = Date.now();
-    const svgPath = join(tempDir, `qc-svg-${ts}.svg`);
-    const pngPath = join(tempDir, `qc-png-${ts}.png`);
-
-    writeFileSync(svgPath, svg, 'utf8');
-
-    try {
-      await new Promise<void>((resolve, reject) => {
-        const proc = spawn('ffmpeg', ['-y', '-i', svgPath, pngPath]);
-        let stderr = '';
-        proc.stderr.on('data', d => (stderr += d.toString()));
-        proc.on('close', code =>
-          code === 0 ? resolve() : reject(new Error(`FFmpeg SVG→PNG: ${stderr.slice(-300)}`)),
-        );
-        proc.on('error', reject);
-      });
-
-      const buf = readFileSync(pngPath);
-      try {
-        unlinkSync(svgPath);
-      } catch {}
-      try {
-        unlinkSync(pngPath);
-      } catch {}
-      return buf;
-    } catch {
-      try {
-        unlinkSync(svgPath);
-      } catch {}
-      return Buffer.from(svg, 'utf8');
-    }
+    // Usar resvg-js (WASM) para rasterizar — no necesita FFmpeg ni sharp
+    return await ImageProcessor.svgToBuffer(svg, width, height);
   }
 
   private wrapText(text: string, maxChars: number): string[] {

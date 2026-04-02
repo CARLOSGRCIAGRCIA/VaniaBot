@@ -749,6 +749,58 @@ export class AIService {
     }
   }
 
+  async chatWithCustomPrompt(
+    senderJid: string,
+    userMessage: string,
+    customSystemPrompt: string,
+    _storeName?: string,
+  ): Promise<string> {
+    try {
+      const circuitBreaker = circuitBreakerManager.getOrCreate('ai-store', {
+        failureThreshold: 3,
+        successThreshold: 2,
+        timeout: 30000,
+        name: 'ai-store',
+      });
+
+      const result = await circuitBreaker.execute(async () => {
+        return await retryManager.retryOperation(
+          'ai-store-chat',
+          async () => {
+            const completion = await this.client.chat.completions.create({
+              model: GROQ_MODELS.chat,
+              messages: [
+                { role: 'system', content: customSystemPrompt },
+                { role: 'user', content: userMessage },
+              ],
+              max_tokens: 1024,
+              temperature: 0.7,
+            });
+            return completion;
+          },
+          {
+            maxAttempts: 2,
+            baseDelay: 1000,
+            maxDelay: 5000,
+          },
+        );
+      });
+
+      if (!result.result) {
+        throw result.error || new Error('AI request failed');
+      }
+
+      return result.result.choices[0]?.message?.content?.trim() ?? '';
+    } catch (error) {
+      if (error instanceof CircuitOpenError) {
+        return 'Servicio de IA temporalmente no disponible. Intenta más tarde.';
+      }
+      const groqError = error as GroqError;
+      logger.error('❌ [AI] store chat error:', groqError.message);
+      return this.friendlyError(groqError);
+    }
+  }
+
   /**
    * Transcribes a WhatsApp voice note buffer to plain text using Whisper.
    *

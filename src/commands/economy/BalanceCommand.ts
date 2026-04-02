@@ -45,16 +45,11 @@ export class BalanceCommand extends Command {
       message += `📊 Total: $${totalBalance.toLocaleString()}\n`;
     }
 
-    const allUsers = await serviceManager.userService.getAllUsers();
-    const sortedByMoney = allUsers
-      .filter(u => !u.isOwner)
-      .map(u => ({ ...u, total: u.money + (u.bank || 0) }))
-      .sort((a, b) => b.total - a.total);
-
-    const rank = sortedByMoney.findIndex(u => u.jid === targetJid) + 1;
+    const allUsers = await serviceManager.userService.getTopByMoney(100);
+    const rank = allUsers.findIndex(u => u.jid === targetJid) + 1;
 
     if (rank > 0) {
-      message += `\n📊 Rank: #${rank} de ${sortedByMoney.length}`;
+      message += `\n📊 Rank: #${rank} de ${allUsers.length}+`;
     }
 
     const canClaimDaily = serviceManager.userService.canClaimDaily(targetUser);

@@ -26,67 +26,61 @@ const VANIABOT_FACTS: string[] = [
   '🌙 «VaniaBot» empezó como un juego…',
 ];
 
-async function translateToSpanish(text: string): Promise<string> {
-  try {
-    const params = new URLSearchParams({ q: text, langpair: 'en|es' });
-    const circuitBreaker = circuitBreakerManager.getOrCreate('mymemory-translate', {
-      failureThreshold: 3,
-      successThreshold: 2,
-      timeout: 10000,
-      monitoringPeriod: 60000,
-      name: 'mymemory-translate',
-    });
-
-    return await circuitBreaker.execute(async () => {
-      const res = await fetch(`https://api.mymemory.translated.net/get?${params}`, {
-        signal: AbortSignal.timeout(6000),
-      });
-      if (!res.ok) throw new Error(`status ${res.status}`);
-      const data = (await res.json()) as {
-        responseData?: { translatedText?: string };
-        responseStatus?: number;
-      };
-      const translated = data.responseData?.translatedText?.trim();
-      if (!translated || data.responseStatus !== 200) {
-        throw new Error('respuesta invalida de MyMemory');
-      }
-      return translated;
-    });
-  } catch (_err) {
-    logger.warn(`[Translate] FAIL MyMemory — usando texto original`);
-    return text;
-  }
-}
+const cachedFacts: string[] = [];
+let lastFactCacheTime = 0;
+const FACT_CACHE_DURATION = 60 * 60 * 1000;
 
 async function getRandomFact(): Promise<string> {
-  const roll = Math.random();
-  if (roll < 0.15) {
-    return VANIABOT_FACTS[Math.floor(Math.random() * VANIABOT_FACTS.length)];
-  }
-  try {
-    const circuitBreaker = circuitBreakerManager.getOrCreate('uselessfacts', {
-      failureThreshold: 3,
-      successThreshold: 2,
-      timeout: 10000,
-      monitoringPeriod: 60000,
-      name: 'uselessfacts',
-    });
+  const now = Date.now();
 
-    const raw = await circuitBreaker.execute(async () => {
-      const res = await fetch('https://uselessfacts.jsph.pl/api/v2/facts/random?language=en', {
-        signal: AbortSignal.timeout(5000),
+  if (cachedFacts.length === 0 || now - lastFactCacheTime > FACT_CACHE_DURATION) {
+    cachedFacts.length = 0;
+    try {
+      const circuitBreaker = circuitBreakerManager.getOrCreate('uselessfacts', {
+        failureThreshold: 3,
+        successThreshold: 2,
+        timeout: 10000,
+        monitoringPeriod: 60000,
+        name: 'uselessfacts',
       });
-      if (!res.ok) throw new Error(`status ${res.status}`);
-      const data = (await res.json()) as { text?: string };
-      const text = data.text?.trim();
-      if (!text) throw new Error('respuesta vacia de la API');
-      return text;
-    });
 
-    return await translateToSpanish(raw);
-  } catch (_err) {
-    return VANIABOT_FACTS[Math.floor(Math.random() * VANIABOT_FACTS.length)];
+      const results = await Promise.all(
+        Array(5)
+          .fill(null)
+          .map(async () => {
+            try {
+              const res = await circuitBreaker.execute(async () => {
+                const resp = await fetch(
+                  'https://uselessfacts.jsph.pl/api/v2/facts/random?language=en',
+                  {
+                    signal: AbortSignal.timeout(5000),
+                  },
+                );
+                if (!resp.ok) throw new Error(`status ${resp.status}`);
+                const data = (await resp.json()) as { text?: string };
+                return data.text?.trim();
+              });
+              return res;
+            } catch {
+              return null;
+            }
+          }),
+      );
+
+      const validFacts = results.filter((f): f is string => f !== null);
+      cachedFacts.push(...validFacts);
+      lastFactCacheTime = now;
+    } catch {
+      // Keep existing cached facts
+    }
   }
+
+  const roll = Math.random();
+  if (roll < 0.15 && cachedFacts.length > 0) {
+    return cachedFacts[Math.floor(Math.random() * cachedFacts.length)];
+  }
+
+  return VANIABOT_FACTS[Math.floor(Math.random() * VANIABOT_FACTS.length)];
 }
 
 function formatFact(fact: string): string {
