@@ -82,6 +82,8 @@ export class PluginLoader {
       this.preloadCategories.add('utility');
       this.preloadCategories.add('economy');
       this.preloadCategories.add('game');
+      this.preloadCategories.add('games');
+      this.preloadCategories.add('group');
       this.preloadCategories.add('media');
       this.preloadCategories.add('fun');
       this.preloadCategories.add('rpg');

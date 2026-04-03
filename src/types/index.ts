@@ -24,12 +24,14 @@ export enum CommandCategory {
   SUBBOT = 'subbot',
   ECONOMY = 'economy',
   MODERATION = 'moderation',
+  GROUP = 'group',
   MEDIA = 'media',
   GAME = 'game',
   INFORMATION = 'information',
   ADMIN = 'admin',
   OWNER = 'owner',
   RPG = 'rpg',
+  FREEFIRE = 'freefire',
 }
 
 export enum PermissionLevel {

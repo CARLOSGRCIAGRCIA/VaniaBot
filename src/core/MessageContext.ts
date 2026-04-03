@@ -42,6 +42,7 @@ export class MessageContext implements IMessageContext {
   constructor(
     public sock: WASocket,
     public message: proto.IWebMessageInfo,
+    public botId: string = 'main',
   ) {
     this.text = this.extractText();
     const parsed = this.parseCommand();

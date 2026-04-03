@@ -38,6 +38,9 @@ import { welcomeService } from '@/services/system/WelcomeService.js';
 import { subBotManager } from '@/services/subbot/SubBotManager.js';
 import { rateLimitService } from '@/services/system/RateLimitService.js';
 import { PermissionService } from '@/services/PermissionService.js';
+import { antiDeleteService } from '@/services/system/AntiDeleteService.js';
+import { antiCallService } from '@/services/system/AntiCallService.js';
+import { env } from '@/config/env.js';
 
 interface RateLimitResult {
   allowed: boolean;
@@ -383,6 +386,11 @@ export class WhatsAppClient {
           handleReaccion(this.sock, msg).catch(err => logError('handleReaccion', err));
           continue;
         }
+
+        antiDeleteService.storeMessage(this.sock, msg).catch(err => {
+          logger.debug('Error storing message for anti-delete:', err);
+        });
+
         this.handleMessageRealTime(msg);
       }
     });
@@ -396,6 +404,123 @@ export class WhatsAppClient {
         if (update.id) cacheManager.invalidateGroupMetadata(update.id);
       }
     });
+
+    this.sock.ev.on('messages.delete', async update => {
+      void this.handleMessageDeletion(update);
+    });
+
+    this.sock.ev.on('call', async calls => {
+      void this.handleIncomingCalls(calls);
+    });
+  }
+
+  private async handleIncomingCalls(calls: BaileysEventMap['call']): Promise<void> {
+    if (!antiCallService.isEnabled()) return;
+
+    for (const call of calls) {
+      const callId = call.id;
+      const caller = call.from;
+      const isVideo = call.isVideo;
+      const isGroup = call.isGroup;
+
+      if (antiCallService.shouldBlock(caller)) continue;
+
+      try {
+        logger.info(
+          `Rejecting call ${callId} from ${caller} (video: ${isVideo}, group: ${isGroup})`,
+        );
+        await this.sock.rejectCall(callId, caller);
+
+        const callerName = caller.split('@')[0];
+        const ownerMsg =
+          `📵 *LLAMADA RECHAZADA*\n\n` +
+          `👤 De: @${callerName}\n` +
+          `🎥 Tipo: ${isVideo ? 'Video' : 'Voz'}\n` +
+          `👥 Grupo: ${isGroup ? 'Sí' : 'No'}\n` +
+          `🕐 Hora: ${new Date().toLocaleString()}`;
+
+        try {
+          await this.sock.sendMessage(env.OWNER_JID, {
+            text: ownerMsg,
+            mentions: [caller],
+          });
+        } catch {
+          logger.debug('Could not send anti-call notification to owner');
+        }
+      } catch (err) {
+        logger.debug('Error rejecting call:', err);
+      }
+    }
+  }
+
+  private async handleMessageDeletion(update: BaileysEventMap['messages.delete']): Promise<void> {
+    try {
+      const botJid = this.sock.user?.id || '';
+      const botNumber = botJid.split(':')[0];
+
+      const keys = 'keys' in update ? update.keys : [];
+
+      for (const key of keys) {
+        const messageId = key.id;
+        if (!messageId) continue;
+
+        const deletedBy = key.participant || key.remoteJid || '';
+        if (deletedBy.includes(botNumber)) continue;
+
+        const original = antiDeleteService.getMessage(messageId);
+        if (!original) continue;
+
+        const notification = antiDeleteService.formatDeletedMessageNotification(
+          deletedBy,
+          original,
+          this.sock,
+        );
+
+        try {
+          await this.sock.sendMessage(env.OWNER_JID, {
+            text: notification,
+            mentions: [deletedBy, original.sender],
+          });
+
+          if (original.mediaBuffer && original.mediaType) {
+            const mediaOptions: Record<string, unknown> = {
+              caption: `📎 *Medio eliminado:* ${original.mediaType}\nDe: @${original.sender.split('@')[0]}`,
+              mentions: [original.sender],
+            };
+
+            if (original.mediaType === 'image') {
+              await this.sock.sendMessage(env.OWNER_JID, {
+                image: original.mediaBuffer,
+                ...mediaOptions,
+              });
+            } else if (original.mediaType === 'video') {
+              await this.sock.sendMessage(env.OWNER_JID, {
+                video: original.mediaBuffer,
+                ...mediaOptions,
+              });
+            } else if (original.mediaType === 'sticker') {
+              await this.sock.sendMessage(env.OWNER_JID, {
+                sticker: original.mediaBuffer,
+                ...mediaOptions,
+              });
+            } else if (original.mediaType === 'audio') {
+              await this.sock.sendMessage(env.OWNER_JID, {
+                audio: original.mediaBuffer,
+                mimetype: 'audio/mpeg',
+                ptt: false,
+                ...mediaOptions,
+              });
+            }
+          }
+        } catch (err) {
+          logger.debug('Error sending anti-delete notification:', err);
+        }
+
+        antiDeleteService.deleteMessage(messageId);
+      }
+    } catch (err) {
+      logError('handleMessageDeletion', err);
+    }
   }
 
   private handleMessageRealTime(message: WAMessage): void {
