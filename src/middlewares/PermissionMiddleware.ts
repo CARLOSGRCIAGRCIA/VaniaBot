@@ -52,6 +52,8 @@ export class PermissionMiddleware extends Middleware {
     }
 
     if (ctx.chat.isGroup) {
+      await ctx.loadBotPermissions();
+
       if (ctx.sender.jid.endsWith('@lid')) {
         const isOwner = await PermissionService.isOwnerAsync(ctx.sock, ctx.sender.jid);
         if (isOwner) {
