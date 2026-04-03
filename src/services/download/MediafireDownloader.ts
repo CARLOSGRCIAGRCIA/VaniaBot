@@ -1,12 +1,11 @@
 /**
  * @fileoverview MediafireDownloader.ts - Download files from Mediafire
  *
- * Downloads files from Mediafire using @bochilteam/scraper-mediafire.
+ * Downloads files from Mediafire using manual HTML parsing.
  *
  * @module services/download/MediafireDownloader
  */
 
-import { mediafiredl } from '@bochilteam/scraper-mediafire';
 import { logger } from '@/utils/logger.js';
 import fs from 'fs';
 import path from 'path';
@@ -33,15 +32,36 @@ export class MediafireDownloader {
 
   async getInfo(url: string): Promise<MediafireResult> {
     try {
-      const result = await mediafiredl(url);
-      if (!result.filename) {
-        return { ok: false, error: 'No se pudo obtener info del archivo' };
+      const response = await axios.get(url, {
+        headers: {
+          'User-Agent':
+            'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        },
+        timeout: 30000,
+      });
+
+      const html = response.data as string;
+
+      const filenameMatch = html.match(/class="filename"[^>]*>([^<]+)<\/span>/i);
+      const filesizeMatch = html.match(/class="file-size"[^>]*>([^<]+)<\/span>/i);
+      const directLinkMatch =
+        html.match(/id="downloadButton"[^>]+href=["']([^"']+)["']/i) ||
+        html.match(/href="(https?:\/\/download[^"]+mediafire[^"]+)"/i) ||
+        html.match(/a\s+href="([^"]+)"\s+class="[^"]*download[^"]*"/i);
+
+      const filename = filenameMatch ? filenameMatch[1].trim() : null;
+      const filesize = filesizeMatch ? filesizeMatch[1].trim() : null;
+      const directUrl = directLinkMatch ? directLinkMatch[1].trim() : null;
+
+      if (!filename || !directUrl) {
+        return { ok: false, error: 'No se pudo extraer info del archivo' };
       }
+
       return {
         ok: true,
-        filename: result.filename,
-        size: result.filesizeH,
-        url: result.url,
+        filename,
+        size: filesize || 'Desconocido',
+        url: directUrl,
       };
     } catch (error) {
       logger.error('MediafireDownloader.getInfo error:', error);
