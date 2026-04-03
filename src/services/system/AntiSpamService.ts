@@ -27,6 +27,7 @@ export class AntiSpamService {
   private readonly maxMessagesPerMinute: number;
   private readonly banDurationMs: number;
   private readonly cleanupIntervalMs: number;
+  private cleanupInterval?: ReturnType<typeof setInterval>;
 
   constructor(options: AntiSpamOptions = {}) {
     this.maxMessagesPerSecond =
@@ -75,7 +76,8 @@ export class AntiSpamService {
   }
 
   startCleanup(): void {
-    setInterval(() => {
+    if (this.cleanupInterval) return;
+    this.cleanupInterval = setInterval(() => {
       try {
         const now = Date.now();
         for (const [userJid, messages] of this.userMessages.entries()) {
@@ -90,6 +92,13 @@ export class AntiSpamService {
         logError('[AntiSpamService] Cleanup failed', error);
       }
     }, this.cleanupIntervalMs);
+  }
+
+  stopCleanup(): void {
+    if (this.cleanupInterval) {
+      clearInterval(this.cleanupInterval);
+      this.cleanupInterval = undefined;
+    }
   }
 
   clearUser(userJid: string): void {

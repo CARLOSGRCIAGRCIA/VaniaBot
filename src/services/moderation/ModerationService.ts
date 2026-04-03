@@ -260,4 +260,34 @@ export class ModerationService {
       sortOrder: 'desc',
     });
   }
+
+  async getGroupMutes(groupId: string): Promise<MuteRecord[]> {
+    const normalizedGroupId = normalizeJid(groupId);
+    const allMutes = await this.db.getAll<MuteRecord>(this.MUTES_COLLECTION);
+
+    const activeMutes = allMutes.filter(mute => {
+      if (mute.groupId !== normalizedGroupId) return false;
+      if (Date.now() > mute.expiresAt) {
+        void this.unmuteUser(groupId, mute.userId);
+        return false;
+      }
+      return true;
+    });
+
+    return activeMutes.sort((a, b) => a.expiresAt - b.expiresAt);
+  }
+
+  async getAllActiveMutes(): Promise<MuteRecord[]> {
+    const allMutes = await this.db.getAll<MuteRecord>(this.MUTES_COLLECTION);
+
+    const activeMutes = allMutes.filter(mute => {
+      if (Date.now() > mute.expiresAt) {
+        void this.unmuteUser(mute.groupId, mute.userId);
+        return false;
+      }
+      return true;
+    });
+
+    return activeMutes.sort((a, b) => a.expiresAt - b.expiresAt);
+  }
 }

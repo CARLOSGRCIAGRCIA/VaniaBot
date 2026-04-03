@@ -2,8 +2,14 @@
  * SubBotManager.ts
  *
  * Main manager for VaniaBot's subbot system.
- * Handles the lifecycle of multiple subbot instances,
- * including registration, connection, message handling, and events.
+ * Handles the lifecycle of multiple subbot instances with slot system.
+ *
+ * Features:
+ * - Per-instance message deduplication
+ * - Per-instance contact caching
+ * - Runtime state persistence
+ * - Profile auto-apply
+ * - Robust health check with auto-reconnect
  *
  * @author **Carlos G** ⭐
  * @github CARLOSGRCIAGRCIA
@@ -13,10 +19,16 @@
  */
 
 import { randomBytes } from 'crypto';
-import { rmSync, existsSync } from 'fs';
+import { rmSync, existsSync, mkdirSync, readFileSync, writeFileSync, renameSync } from 'fs';
 import { EventEmitter } from 'events';
 import type { WAMessage, proto, WASocket } from '@whiskeysockets/baileys';
-import type { SubBotConfig, SubBotStatus } from '@/types/subbot.js';
+import type {
+  SubBotConfig,
+  SubBotSlot,
+  BotRuntimeState,
+  ContactCacheEntry,
+} from '@/types/subbot.js';
+import { SUBBOT_CONFIG } from '@/config/subbot.js';
 import { SubBotInstance } from './SubBotInstance.js';
 import { subBotDatabase } from './SubBotDatabase.js';
 import { logger, logError } from '@/utils/logger.js';
@@ -37,20 +49,10 @@ import { handleReaccion } from '@/handlers/ReaccionHandler.js';
 import { quizAnswerHandler } from '@/handlers/QuizAnswerHandler.js';
 import { handleMention } from '@/handlers/AiMentionHandler.js';
 import { welcomeService } from '@/services/system/WelcomeService.js';
-import { PermissionService } from '@/services/PermissionService.js';
 import { CommandExecutionError } from '@/utils/errors.js';
 import type { IMiddleware } from '@/types/index.js';
 import type { BaileysEventMap } from '@whiskeysockets/baileys';
 import { AntiSpamService } from '@/services/system/AntiSpamService.js';
-
-/**
- * Maximum number of subbots allowed in the system
- */
-const MAX_SUBBOTS = 50;
-/**
- * Base path where subbot sessions are stored
- */
-const SESSION_BASE_PATH = './data/subbot-sessions';
 
 interface MiddlewareConfig {
   middleware: IMiddleware;
@@ -60,43 +62,21 @@ interface MiddlewareConfig {
 
 type GroupParticipantsUpdate = BaileysEventMap['group-participants.update'];
 
-/**
- * Gestor principal del sistema de subbots.
- * Implementa el patrón Singleton para gestionar múltiples instancias de subbots.
- * Maneja el registro, conexión, mensajes, middlewares y eventos de grupos.
- *
- * @example
- * ```typescript
- * const manager = SubBotManager.getInstance();
- * await manager.initialize();
- * const subBot = await manager.registerSubBot(ownerJid, name, phoneNumber);
- * ```
- *
- * @see {@link SubBotInstance} para la gestión de conexiones individuales
- * @see {@link subBotDatabase} para el almacenamiento persistente
- */
 export class SubBotManager extends EventEmitter {
   private static instance: SubBotManager;
   private instances = new Map<string, SubBotInstance>();
   private middlewaresPerInstance = new Map<string, MiddlewareConfig[]>();
   private antiSpamPerInstance = new Map<string, AntiSpamService>();
-  private processedMessages = new Set<string>();
+  private runtimeStates = new Map<string, BotRuntimeState>();
   private mainSock?: WASocket;
+  private healthCheckInterval?: ReturnType<typeof setInterval>;
+  private settingsSyncInterval?: ReturnType<typeof setInterval>;
 
-  /**
-   * Constructor privado para implementar el patrón Singleton.
-   * Usa EventEmitter para manejar eventos de subbots.
-   */
   private constructor() {
     super();
+    this.ensureRuntimeDir();
   }
 
-  /**
-   * Obtiene la instancia única del gestor de subbots (patrón Singleton).
-   *
-   * @returns La instancia de SubBotManager
-   * @throws No lanza errores
-   */
   static getInstance(): SubBotManager {
     if (!SubBotManager.instance) {
       SubBotManager.instance = new SubBotManager();
@@ -104,38 +84,37 @@ export class SubBotManager extends EventEmitter {
     return SubBotManager.instance;
   }
 
-  /**
-   * Establece el socket principal del bot para enviar notificaciones.
-   *
-   * @param sock - Socket de Baileys del bot principal
-   * @returns void
-   */
+  private ensureRuntimeDir(): void {
+    try {
+      mkdirSync(SUBBOT_CONFIG.RUNTIME_STATE_DIR, { recursive: true });
+    } catch {}
+  }
+
   setMainSocket(sock: WASocket): void {
     this.mainSock = sock;
     logger.info('🌸 SubBotManager: socket principal registrado');
   }
 
-  /**
-   * Inicializa el gestor de subbots cargando subbots activas desde la base de datos.
-   *
-   * @returns Promise<void> - Promesa que se resuelve cuando inicia correctamente
-   * @throws Error si falla la conexión con la base de datos
-   */
   async initialize(): Promise<void> {
     logger.info('🌸 Iniciando SubBotManager (VaniaBot)...');
-    const active = subBotDatabase.getActive();
-    logger.info(`📦 ${active.length} subbots activas encontradas`);
-    for (const subConfig of active) {
-      await this.launchInstance(subConfig);
+
+    const activeSlots = subBotDatabase.getActiveSlots();
+    logger.info(`📦 ${activeSlots.length} slots activos encontrados`);
+
+    for (const slot of activeSlots) {
+      if (slot.id) {
+        const subConfig = subBotDatabase.get(slot.id);
+        if (subConfig) {
+          await this.launchInstance(subConfig);
+        }
+      }
     }
 
     this.startHealthCheck();
+    this.startSettingsSync();
 
     logger.info('✅ SubBotManager inicializada correctamente');
   }
-
-  private healthCheckInterval?: NodeJS.Timeout;
-  private readonly HEALTH_CHECK_INTERVAL = 10 * 60 * 1000;
 
   private startHealthCheck(): void {
     if (this.healthCheckInterval) return;
@@ -143,30 +122,44 @@ export class SubBotManager extends EventEmitter {
     this.healthCheckInterval = setInterval(async () => {
       logger.debug('🔍 SubBotManager: ejecutando health check...');
 
-      const activeSubBots = subBotDatabase.getActive();
+      const activeSlots = subBotDatabase.getActiveSlots();
 
-      for (const subConfig of activeSubBots) {
-        const instance = this.instances.get(subConfig.id);
+      for (const slot of activeSlots) {
+        if (!slot.id) continue;
+
+        const instance = this.instances.get(slot.id);
+        const runtimeState = this.runtimeStates.get(slot.id);
 
         if (!instance) {
-          logger.warn(`⚠️ SubBot[${subConfig.id}] sin instancia, reactivando...`);
-          try {
-            await this.launchInstance(subConfig);
-          } catch (error) {
-            logError(`SubBotManager.healthCheck: reactivate ${subConfig.id}`, error);
+          logger.warn(`⚠️ SubBot[${slot.id}] sin instancia, reactivando...`);
+          const subConfig = subBotDatabase.get(slot.id);
+          if (subConfig) {
+            try {
+              await this.launchInstance(subConfig);
+            } catch (error) {
+              logError(`HealthCheck reactivate ${slot.id}`, error);
+            }
           }
           continue;
         }
 
-        logger.debug(
-          `🔍 SubBot[${subConfig.id}] status check: connected=${instance.isConnected()}`,
-        );
-      }
-    }, this.HEALTH_CHECK_INTERVAL);
+        if (slot.status === 'linking') {
+          const staleTime = slot.requestedAt ? Date.now() - slot.requestedAt : 0;
+          if (staleTime > SUBBOT_CONFIG.BOT_CONNECTING_STALE_MS) {
+            logger.warn(`⚠️ SubBot[${slot.id}] linking stale, restarting...`);
+            await this.reconnectByOwner(slot.ownerJid || '');
+          }
+        }
 
-    logger.info(
-      `✅ Health check de subbots iniciado (cada ${this.HEALTH_CHECK_INTERVAL / 60000} minutos)`,
-    );
+        if (slot.status === 'pending' && runtimeState?.pairingPendingAt) {
+          const staleTime = Date.now() - runtimeState.pairingPendingAt;
+          if (staleTime > SUBBOT_CONFIG.BOT_PAIRING_STALE_MS) {
+            logger.warn(`⚠️ SubBot[${slot.id}] pairing stale, resetting...`);
+            await this.resetSlot(slot.slot);
+          }
+        }
+      }
+    }, SUBBOT_CONFIG.HEALTH_CHECK_INTERVAL);
   }
 
   private stopHealthCheck(): void {
@@ -176,39 +169,93 @@ export class SubBotManager extends EventEmitter {
     }
   }
 
-  async registerSubBot(
+  private startSettingsSync(): void {
+    if (this.settingsSyncInterval) return;
+
+    this.settingsSyncInterval = setInterval(() => {
+      try {
+        const freshSlots = subBotDatabase.getMaxSlots();
+        logger.debug(`Settings sync: maxSlots=${freshSlots}`);
+      } catch (error) {
+        logger.debug(`Settings sync failed: ${error}`);
+      }
+    }, SUBBOT_CONFIG.SETTINGS_SYNC_INTERVAL_MS);
+  }
+
+  private stopSettingsSync(): void {
+    if (this.settingsSyncInterval) {
+      clearInterval(this.settingsSyncInterval);
+      this.settingsSyncInterval = undefined;
+    }
+  }
+
+  async requestSubBot(
     ownerJid: string,
     ownerName: string,
     phoneNumber: string,
-  ): Promise<SubBotConfig> {
-    if (subBotDatabase.existsByOwner(ownerJid)) {
-      throw new Error('Ya tienes una subbot registrada. Usa .delbot para eliminarla primero.');
-    }
-    const total = subBotDatabase.getAll().length;
-    if (total >= MAX_SUBBOTS) {
-      throw new Error('Se alcanzó el límite máximo de subbots.');
+    slotNumber?: number,
+    isOwnerRequest = false,
+  ): Promise<{ slot: SubBotSlot; subConfig?: SubBotConfig; pairingCode?: string }> {
+    const cleanPhone = phoneNumber.replace(/\D/g, '');
+
+    let targetSlot: SubBotSlot | undefined;
+
+    if (slotNumber && isOwnerRequest) {
+      targetSlot = subBotDatabase.getSlot(slotNumber);
+      if (!targetSlot) {
+        throw new Error(`Slot ${slotNumber} no existe`);
+      }
+      if (targetSlot.status !== 'free') {
+        throw new Error(`Slot ${slotNumber} ya está ocupado`);
+      }
+    } else {
+      targetSlot = subBotDatabase.getFreeSlot();
+      if (!targetSlot) {
+        throw new Error('No hay slots disponibles');
+      }
     }
 
-    const id = randomBytes(8).toString('hex');
-    const sessionPath = `${SESSION_BASE_PATH}/${id}`;
+    if (!subBotDatabase.isPublicRequestsEnabled() && !isOwnerRequest) {
+      throw new Error('Las solicitudes de subbot están desactivadas');
+    }
 
-    const subConfig: SubBotConfig = {
-      id,
+    const reserved = subBotDatabase.reserveSlot(targetSlot.slot, cleanPhone, ownerName);
+
+    if (!reserved) {
+      throw new Error('No se pudo reservar el slot');
+    }
+
+    const subBotId = randomBytes(8).toString('hex');
+    const name = `VaniaBot-${ownerName.slice(0, 10)}`;
+
+    const subConfig = subBotDatabase.activateSlot(
+      targetSlot.slot,
+      subBotId,
       ownerJid,
       ownerName,
-      phoneNumber: phoneNumber.replace(/\D/g, ''),
-      sessionPath,
-      prefix: config.prefix,
-      name: `VaniaBot-${ownerName.slice(0, 10)}`,
-      active: true,
-      createdAt: Date.now(),
-      status: 'pending',
-    };
+      cleanPhone,
+      name,
+    );
 
-    subBotDatabase.set(subConfig);
-    logger.info(`🌸 SubBot registrada: id=${id} owner=${ownerJid} phone=${subConfig.phoneNumber}`);
+    if (!subConfig) {
+      throw new Error('No se pudo activar el slot');
+    }
+
+    const slot = subBotDatabase.getSlot(targetSlot.slot);
+    if (!slot) {
+      throw new Error('No se encontró el slot');
+    }
+    slot.status = 'pending';
+    subBotDatabase.save();
+
     await this.launchInstance(subConfig);
-    return subConfig;
+
+    const instance = this.instances.get(subBotId);
+    if (instance?.pairingCode) {
+      return { slot, subConfig, pairingCode: instance.pairingCode };
+    }
+
+    return { slot, subConfig };
   }
 
   private buildMiddlewares(subBotId: string): MiddlewareConfig[] {
@@ -228,6 +275,216 @@ export class SubBotManager extends EventEmitter {
     return mws;
   }
 
+  private getOrCreateRuntimeState(subBotId: string): BotRuntimeState {
+    let state = this.runtimeStates.get(subBotId);
+    if (!state) {
+      state = this.loadRuntimeState(subBotId) || {
+        id: subBotId,
+        recentMessageIds: new Map(),
+        contactNameCache: new Map(),
+        lastProfileAppliedAt: 0,
+        lastProfileSignature: '',
+      };
+      this.runtimeStates.set(subBotId, state);
+    }
+    return state;
+  }
+
+  private getRuntimeStateFile(botId: string): string {
+    return `${SUBBOT_CONFIG.RUNTIME_STATE_DIR}/${botId}.json`;
+  }
+
+  private loadRuntimeState(botId: string): BotRuntimeState | null {
+    const file = this.getRuntimeStateFile(botId);
+    if (!existsSync(file)) return null;
+
+    try {
+      const data = JSON.parse(readFileSync(file, 'utf-8'));
+      const updatedAt = data?.updatedAt || 0;
+      if (Date.now() - updatedAt > SUBBOT_CONFIG.BOT_RUNTIME_STATE_TTL_MS) {
+        return null;
+      }
+
+      return {
+        id: data.id,
+        recentMessageIds: new Map(data.recentMessageIds || []),
+        contactNameCache: new Map(
+          (data.contactNameCache || []).map(([k, v]: [string, ContactCacheEntry]) => [k, v]),
+        ),
+        lastProfileAppliedAt: data.lastProfileAppliedAt || 0,
+        lastProfileSignature: data.lastProfileSignature || '',
+        pairingPendingAt: data.pairingPendingAt,
+      };
+    } catch {
+      return null;
+    }
+  }
+
+  private scheduleRuntimeStateWrite(botState: BotRuntimeState): void {
+    const file = this.getRuntimeStateFile(botState.id);
+    const data = {
+      id: botState.id,
+      recentMessageIds: Array.from(botState.recentMessageIds.entries()),
+      contactNameCache: Array.from(botState.contactNameCache.entries()),
+      lastProfileAppliedAt: botState.lastProfileAppliedAt,
+      lastProfileSignature: botState.lastProfileSignature,
+      pairingPendingAt: botState.pairingPendingAt,
+      updatedAt: Date.now(),
+    };
+
+    try {
+      const tmpFile = `${file}.tmp`;
+      writeFileSync(tmpFile, JSON.stringify(data));
+      renameSync(tmpFile, file);
+    } catch (error) {
+      logger.debug(`Runtime state write failed: ${error}`);
+    }
+  }
+
+  private markAndCheckRecentMessage(subBotId: string, raw: WAMessage): boolean {
+    const botState = this.runtimeStates.get(subBotId);
+    if (!botState) return false;
+
+    const { remoteJid, participant, id } = raw.key;
+    if (!remoteJid || !id) return false;
+
+    const key = `${remoteJid}|${participant || ''}|${id}`;
+    const now = Date.now();
+
+    const messageIds = botState.recentMessageIds;
+    for (const [savedKey, savedAt] of messageIds) {
+      if (now - savedAt > SUBBOT_CONFIG.MESSAGE_DEDUP_TTL_MS) {
+        messageIds.delete(savedKey);
+      }
+    }
+
+    const existingAt = messageIds.get(key);
+    if (existingAt && now - existingAt <= SUBBOT_CONFIG.MESSAGE_DEDUP_TTL_MS) {
+      return true;
+    }
+
+    messageIds.set(key, now);
+
+    while (messageIds.size > SUBBOT_CONFIG.MESSAGE_DEDUP_MAX_ENTRIES) {
+      const oldestKey = messageIds.keys().next().value;
+      if (oldestKey) messageIds.delete(oldestKey);
+      else break;
+    }
+
+    return false;
+  }
+
+  private getStoreContactName(subBotId: string, sock: WASocket, ...ids: string[]): string {
+    const botState = this.runtimeStates.get(subBotId);
+    if (!botState) return '';
+
+    const contacts = (sock as unknown as { store?: { contacts?: Record<string, unknown> } }).store
+      ?.contacts;
+    if (!contacts) return '';
+
+    const now = Date.now();
+    const cacheKeys: string[] = [];
+
+    for (const value of ids) {
+      if (!value) continue;
+      const normalized = this.normalizeJidUser(value);
+      cacheKeys.push(value.toLowerCase());
+      if (normalized) {
+        cacheKeys.push(normalized.toLowerCase());
+        cacheKeys.push(`${normalized}@s.whatsapp.net`.toLowerCase());
+      }
+    }
+
+    const cache = botState.contactNameCache;
+    for (const key of cacheKeys) {
+      const cached = cache.get(key);
+      if (cached && now - cached.cachedAt <= SUBBOT_CONFIG.CONTACT_CACHE_TTL_MS) {
+        cache.delete(key);
+        cache.set(key, cached);
+        return cached.name;
+      }
+      cache.delete(key);
+    }
+
+    for (const value of ids) {
+      if (!value) continue;
+      const normalized = this.normalizeJidUser(value);
+      const candidates = [value];
+      if (normalized) {
+        candidates.push(`${normalized}@s.whatsapp.net`);
+      }
+
+      for (const candidate of candidates) {
+        const entry = contacts?.[candidate] as
+          | {
+              notify?: string;
+              name?: string;
+              verifiedName?: string;
+            }
+          | undefined;
+        const name = entry?.notify || entry?.name || entry?.verifiedName || '';
+
+        if (name) {
+          const cacheEntry = { name, cachedAt: now };
+          for (const key of cacheKeys) {
+            cache.set(key, cacheEntry);
+          }
+
+          while (cache.size > SUBBOT_CONFIG.CONTACT_CACHE_MAX_ENTRIES) {
+            const oldestKey = cache.keys().next().value;
+            if (oldestKey) cache.delete(oldestKey);
+            else break;
+          }
+
+          return name;
+        }
+      }
+    }
+
+    return '';
+  }
+
+  private normalizeJidUser(value: string): string {
+    return value.replace(/\D/g, '');
+  }
+
+  private async applyConfiguredProfile(subBotId: string, sock: WASocket): Promise<void> {
+    const botState = this.runtimeStates.get(subBotId);
+    const subConfig = subBotDatabase.get(subBotId);
+    if (!botState || !subConfig || !sock?.user?.id) return;
+
+    const desiredName = subConfig.name || `VaniaBot`;
+    const desiredBio = subConfig.bio || `VaniaBot Subbot activo ✨`;
+    const desiredPhoto = subConfig.photo || null;
+
+    const signature = JSON.stringify({ desiredName, desiredBio, desiredPhoto });
+
+    if (
+      botState.lastProfileSignature === signature &&
+      Date.now() - botState.lastProfileAppliedAt < 10 * 60 * 1000
+    ) {
+      return;
+    }
+
+    try {
+      if (desiredName && typeof sock.updateProfileName === 'function') {
+        await sock.updateProfileName(desiredName);
+      }
+      if (desiredBio && typeof sock.updateProfileStatus === 'function') {
+        await sock.updateProfileStatus(desiredBio);
+      }
+      if (desiredPhoto && typeof sock.updateProfilePicture === 'function') {
+        await sock.updateProfilePicture(sock.user.id, { url: desiredPhoto });
+      }
+
+      botState.lastProfileSignature = signature;
+      botState.lastProfileAppliedAt = Date.now();
+      this.scheduleRuntimeStateWrite(botState);
+    } catch (error) {
+      logger.warn(`SubBot[${subBotId}] profile apply failed: ${error}`);
+    }
+  }
+
   private async launchInstance(subConfig: SubBotConfig): Promise<void> {
     if (this.instances.has(subConfig.id)) {
       logger.debug(`🔄 SubBot[${subConfig.id}] deteniendo instancia anterior...`);
@@ -237,6 +494,7 @@ export class SubBotManager extends EventEmitter {
       this.antiSpamPerInstance.delete(subConfig.id);
     }
 
+    this.getOrCreateRuntimeState(subConfig.id);
     const middlewares = this.buildMiddlewares(subConfig.id);
     this.middlewaresPerInstance.set(subConfig.id, middlewares);
 
@@ -245,8 +503,14 @@ export class SubBotManager extends EventEmitter {
     this.antiSpamPerInstance.set(subConfig.id, antiSpam);
 
     const instance = new SubBotInstance(subConfig);
+    const runtimeState = this.runtimeStates.get(subConfig.id);
+    if (!runtimeState) {
+      throw new Error('No se encontró el estado de runtime');
+    }
+    runtimeState.pairingPendingAt = Date.now();
+    this.scheduleRuntimeStateWrite(runtimeState);
 
-    let pairingCodeTimeout: NodeJS.Timeout | undefined;
+    let pairingCodeTimeout: ReturnType<typeof setTimeout> | undefined;
 
     instance.on('pairingCode', async (code: string) => {
       if (pairingCodeTimeout) {
@@ -255,6 +519,10 @@ export class SubBotManager extends EventEmitter {
 
       if (!this.mainSock) return;
       logger.info(`🔑 SubBot[${subConfig.id}] enviando código a ${subConfig.ownerJid}`);
+
+      runtimeState.pairingPendingAt = Date.now();
+      this.scheduleRuntimeStateWrite(runtimeState);
+
       try {
         await this.mainSock.sendMessage(subConfig.ownerJid, {
           text:
@@ -287,7 +555,8 @@ export class SubBotManager extends EventEmitter {
         });
 
         pairingCodeTimeout = setTimeout(async () => {
-          if (subConfig.status !== 'connected' && this.mainSock) {
+          const slot = subBotDatabase.getSlot(subConfig.slot);
+          if (slot && (slot.status === 'pending' || slot.status === 'linking') && this.mainSock) {
             logger.warn(`⏰ SubBot[${subConfig.id}] código no utilizado, reenviando...`);
             try {
               await this.mainSock.sendMessage(subConfig.ownerJid, {
@@ -325,7 +594,10 @@ export class SubBotManager extends EventEmitter {
         return;
       }
 
-      // Precargar grupos para reducir cold start
+      runtimeState.pairingPendingAt = undefined;
+      subBotDatabase.updateSlotStatus(subConfig.slot, 'connected');
+      this.scheduleRuntimeStateWrite(runtimeState);
+
       try {
         const groups = await Promise.race([
           instance.sock?.groupFetchAllParticipating(),
@@ -345,6 +617,12 @@ export class SubBotManager extends EventEmitter {
         );
       }
 
+      setTimeout(() => {
+        if (instance.sock) {
+          void this.applyConfiguredProfile(subConfig.id, instance.sock);
+        }
+      }, SUBBOT_CONFIG.PROFILE_APPLY_DELAY_MS);
+
       try {
         await this.mainSock.sendMessage(subConfig.ownerJid, {
           text:
@@ -357,21 +635,14 @@ export class SubBotManager extends EventEmitter {
             `🏷️ Nombre:\n` +
             `   *${subConfig.name}*\n` +
             `\n` +
+            `📁 Slot:\n` +
+            `   *${subConfig.slot}*\n` +
+            `\n` +
             `Número:\n` +
             `   *+${subConfig.phoneNumber}*\n` +
             `\n` +
             `Prefijo:\n` +
             `   *${config.prefix}*\n` +
-            `\n` +
-            `ID:\n` +
-            `   \`${subConfig.id}\`\n` +
-            `\n` +
-            `✨ Tu SubBot tiene\n` +
-            `   todos mis comandos\n` +
-            `   disponibles.\n` +
-            `\n` +
-            `🦋 Puedes usarla igual\n` +
-            `   que a VaniaBot.\n` +
             `\n` +
             `   ¡Disfrútala! 💗\n` +
             `╰━━━━━━━━━━━━━━━━━━━━╯`,
@@ -384,6 +655,9 @@ export class SubBotManager extends EventEmitter {
     instance.on('sessionInvalid', async () => {
       if (!this.mainSock) return;
       logger.warn(`⚠️ SubBot[${subConfig.id}] sesión inválida, notificando owner`);
+
+      subBotDatabase.updateSlotStatus(subConfig.slot, 'disconnected');
+
       try {
         await this.mainSock.sendMessage(subConfig.ownerJid, {
           text:
@@ -402,16 +676,14 @@ export class SubBotManager extends EventEmitter {
             `\n` +
             `   *.reconbot*\n` +
             `\n` +
-            `Cuando quieras,\n` +
-            `   puedo ayudarte\n` +
-            `   a vincularla otra vez.\n` +
-            `\n` +
             `   Estoy aquí 💗\n` +
             `╰━━━━━━━━━━━━━━━━━━━━╯`,
         });
-      } catch {
-        // Ignore notification errors during reconnection
-      }
+      } catch {}
+    });
+
+    instance.on('disconnected', async () => {
+      subBotDatabase.updateSlotStatus(subConfig.slot, 'disconnected');
     });
 
     instance.on('message', (msg: WAMessage, sock: WASocket) => {
@@ -429,8 +701,9 @@ export class SubBotManager extends EventEmitter {
     });
 
     this.instances.set(subConfig.id, instance);
+    subBotDatabase.updateSlotStatus(subConfig.slot, 'linking');
     await instance.start();
-    logger.info(`✅ SubBot[${subConfig.id}] instancia lanzada`);
+    logger.info(`✅ SubBot[${subConfig.id}] instancia lanzada en slot ${subConfig.slot}`);
   }
 
   private async handleSubBotMessage(
@@ -443,9 +716,7 @@ export class SubBotManager extends EventEmitter {
     const messageId = msg.key.id;
     if (!messageId) return;
 
-    if (this.processedMessages.has(messageId)) return;
-    this.processedMessages.add(messageId);
-    setTimeout(() => this.processedMessages.delete(messageId), 60000);
+    if (this.markAndCheckRecentMessage(subConfig.id, msg)) return;
 
     const startTime = Date.now();
 
@@ -460,31 +731,19 @@ export class SubBotManager extends EventEmitter {
       const ctx = new MessageContext(sock, msg as proto.IWebMessageInfo);
 
       if (ctx.chat.isGroup) {
-        logger.debug(`[MUTE SubBot] Verificando mute para ${ctx.sender.jid} en ${ctx.chat.jid}`);
-
         const isMuted = await serviceManager.moderationService.isMuted(
           ctx.chat.jid,
           ctx.sender.jid,
         );
 
-        logger.debug(`[MUTE SubBot] Resultado: ${isMuted}`);
-
         if (isMuted) {
-          const botJid = sock.user?.id ?? '';
-          if (botJid) {
-            cacheManager.invalidateGroupMetadata(ctx.chat.jid);
-          }
-          await ctx.loadBotPermissions();
-
           if (ctx.chat.isBotAdmin) {
             try {
               await sock.sendMessage(ctx.chat.jid, { delete: msg.key });
-              logger.info(`[MUTE] Mensaje eliminado en SubBot: ${msg.key.id}`);
             } catch (error) {
               logError('[MUTE] Error al eliminar mensaje en SubBot', error);
             }
           }
-
           return;
         }
       }
@@ -607,157 +866,203 @@ export class SubBotManager extends EventEmitter {
   }
 
   async stopSubBot(ownerJid: string): Promise<void> {
-    const subConfig = subBotDatabase.getByOwner(ownerJid);
-    if (!subConfig) throw new Error('No tienes una subbot registrada.');
-    logger.info(`🛑 SubBot[${subConfig.id}] deteniendo por solicitud del owner`);
-    const instance = this.instances.get(subConfig.id);
-    if (instance) {
-      await instance.stop();
-      this.instances.delete(subConfig.id);
-      this.middlewaresPerInstance.delete(subConfig.id);
-      this.antiSpamPerInstance.delete(subConfig.id);
-    }
-    subBotDatabase.update(subConfig.id, { active: false, status: 'disconnected' });
-  }
+    const slot = subBotDatabase.getOwnerSlots(ownerJid).find(s => s.status === 'connected');
+    if (!slot || !slot.id) throw new Error('No tienes una subbot activa.');
 
-  async deleteSubBot(ownerJid: string): Promise<void> {
-    const subConfig = subBotDatabase.getByOwner(ownerJid);
-    if (!subConfig) throw new Error('No tienes una subbot registrada.');
-    logger.info(`🗑️ SubBot[${subConfig.id}] eliminando...`);
-    const instance = this.instances.get(subConfig.id);
+    logger.info(`🛑 SubBot[${slot.id}] deteniendo por solicitud del owner`);
+    const instance = this.instances.get(slot.id);
     if (instance) {
       await instance.stop();
-      instance.clearSession();
-      this.instances.delete(subConfig.id);
-      this.middlewaresPerInstance.delete(subConfig.id);
-      this.antiSpamPerInstance.delete(subConfig.id);
-    }
-    if (existsSync(subConfig.sessionPath)) {
-      try {
-        rmSync(subConfig.sessionPath, { recursive: true, force: true });
-      } catch {
-        // Ignore cleanup errors if session path doesn't exist
+      this.instances.delete(slot.id);
+      this.middlewaresPerInstance.delete(slot.id);
+
+      const antiSpam = this.antiSpamPerInstance.get(slot.id);
+      if (antiSpam) {
+        antiSpam.stopCleanup();
+        this.antiSpamPerInstance.delete(slot.id);
       }
     }
-    subBotDatabase.delete(subConfig.id);
-    logger.info(`✅ SubBot[${subConfig.id}] eliminada completamente`);
+
+    const botState = this.runtimeStates.get(slot.id);
+    if (botState) {
+      this.scheduleRuntimeStateWrite(botState);
+      this.runtimeStates.delete(slot.id);
+    }
+
+    subBotDatabase.updateSlotStatus(slot.slot, 'disconnected');
   }
 
-  async reconnectSubBot(ownerJid: string): Promise<void> {
-    const subConfig = subBotDatabase.getByOwner(ownerJid);
-    if (!subConfig) throw new Error('No tienes una subbot registrada.');
-    logger.info(`🔄 SubBot[${subConfig.id}] reconectando automáticamente...`);
+  async deleteSubBot(ownerJid: string, slotNumber?: number): Promise<void> {
+    let slot: SubBotSlot | undefined;
 
-    const instance = this.instances.get(subConfig.id);
+    if (slotNumber) {
+      slot = subBotDatabase.getOwnerSlotById(ownerJid, slotNumber);
+    } else {
+      slot = subBotDatabase.getOwnerSlots(ownerJid).pop();
+    }
+
+    if (!slot || !slot.id) throw new Error('No tienes una subbot en ese slot.');
+
+    logger.info(`🗑️ SubBot[${slot.id}] eliminando...`);
+    const instance = this.instances.get(slot.id);
     if (instance) {
       await instance.stop();
-      this.instances.delete(subConfig.id);
-      this.middlewaresPerInstance.delete(subConfig.id);
-      this.antiSpamPerInstance.delete(subConfig.id);
+      this.instances.delete(slot.id);
+      this.middlewaresPerInstance.delete(slot.id);
+
+      const antiSpam = this.antiSpamPerInstance.get(slot.id);
+      if (antiSpam) {
+        antiSpam.stopCleanup();
+        this.antiSpamPerInstance.delete(slot.id);
+      }
     }
 
-    subBotDatabase.update(subConfig.id, {
-      active: true,
-      status: 'connecting',
-      pairingCode: undefined,
-    });
-
-    const fresh = subBotDatabase.get(subConfig.id);
-    if (!fresh) {
-      throw new Error('Subbot not found after update');
+    if (existsSync(`${SUBBOT_CONFIG.SESSION_BASE_PATH}/${slot.id}`)) {
+      try {
+        rmSync(`${SUBBOT_CONFIG.SESSION_BASE_PATH}/${slot.id}`, { recursive: true, force: true });
+      } catch {}
     }
-    await this.launchInstance(fresh);
+
+    const runtimeFile = this.getRuntimeStateFile(slot.id);
+    if (existsSync(runtimeFile)) {
+      try {
+        rmSync(runtimeFile, { force: true });
+      } catch {}
+    }
+
+    const botState = this.runtimeStates.get(slot.id);
+    if (botState) {
+      this.runtimeStates.delete(slot.id);
+    }
+
+    subBotDatabase.releaseSlot(slot.slot);
+    logger.info(`✅ Slot ${slot.slot} liberado completamente`);
   }
 
-  getStatus(ownerJid: string): SubBotStatus | null {
-    const subConfig = subBotDatabase.getByOwner(ownerJid);
-    if (!subConfig) return null;
-    return {
-      id: subConfig.id,
-      status: subConfig.status,
-      name: subConfig.name,
-      phoneNumber: subConfig.phoneNumber,
-      ownerJid: subConfig.ownerJid,
-      connectedAt: subConfig.connectedAt,
-    };
+  async reconnectByOwner(ownerJid: string, slotNumber?: number): Promise<void> {
+    let slot: SubBotSlot | undefined;
+
+    if (slotNumber) {
+      slot = subBotDatabase.getOwnerSlotById(ownerJid, slotNumber);
+    } else {
+      const slots = subBotDatabase.getOwnerSlots(ownerJid);
+      slot = slots.find(s => s.status === 'disconnected') || slots[0];
+    }
+
+    if (!slot || !slot.id) throw new Error('No tienes una subbot para reconectar.');
+
+    logger.info(`🔄 SubBot[${slot.id}] reconectando...`);
+
+    const instance = this.instances.get(slot.id);
+    if (instance) {
+      await instance.stop();
+      this.instances.delete(slot.id);
+      this.middlewaresPerInstance.delete(slot.id);
+
+      const antiSpam = this.antiSpamPerInstance.get(slot.id);
+      if (antiSpam) {
+        antiSpam.stopCleanup();
+        this.antiSpamPerInstance.delete(slot.id);
+      }
+    }
+
+    const botState = this.runtimeStates.get(slot.id);
+    if (botState) {
+      botState.pairingPendingAt = Date.now();
+      this.scheduleRuntimeStateWrite(botState);
+    }
+
+    subBotDatabase.updateSlotStatus(slot.slot, 'pending');
+
+    const subConfig = subBotDatabase.get(slot.id);
+    if (!subConfig) {
+      throw new Error('Configuración no encontrada');
+    }
+
+    await this.launchInstance(subConfig);
   }
 
-  getAllStatus(): SubBotStatus[] {
-    return subBotDatabase.getAll().map(s => ({
-      id: s.id,
-      status: s.status,
-      name: s.name,
-      phoneNumber: s.phoneNumber,
-      ownerJid: s.ownerJid,
-      connectedAt: s.connectedAt,
-    }));
+  async resetSlot(slotNumber: number): Promise<void> {
+    const slot = subBotDatabase.getSlot(slotNumber);
+    if (!slot || !slot.id) throw new Error('Slot no encontrado o vacío.');
+
+    logger.info(`🔄 Slot[${slotNumber}] reseteando sesión...`);
+
+    const instance = this.instances.get(slot.id);
+    if (instance) {
+      await instance.stop();
+      this.instances.delete(slot.id);
+      this.middlewaresPerInstance.delete(slot.id);
+
+      const antiSpam = this.antiSpamPerInstance.get(slot.id);
+      if (antiSpam) {
+        antiSpam.stopCleanup();
+        this.antiSpamPerInstance.delete(slot.id);
+      }
+    }
+
+    try {
+      rmSync(`${SUBBOT_CONFIG.SESSION_BASE_PATH}/${slot.id}`, { recursive: true, force: true });
+    } catch {}
+
+    const runtimeFile = this.getRuntimeStateFile(slot.id);
+    if (existsSync(runtimeFile)) {
+      try {
+        rmSync(runtimeFile, { force: true });
+      } catch {}
+    }
+
+    const botState = this.runtimeStates.get(slot.id);
+    if (botState) {
+      this.runtimeStates.delete(slot.id);
+    }
+
+    slot.id = undefined;
+    slot.status = 'free';
+    slot.connectedAt = undefined;
+    subBotDatabase.save();
+
+    logger.info(`✅ Slot[${slotNumber}] reseteado`);
+  }
+
+  getStatus(ownerJid: string, slotNumber?: number): SubBotSlot | null {
+    if (slotNumber) {
+      const slot = subBotDatabase.getOwnerSlotById(ownerJid, slotNumber);
+      return slot || null;
+    }
+    const slots = subBotDatabase.getOwnerSlots(ownerJid);
+    return slots[0] || null;
+  }
+
+  getAllStatus(): SubBotSlot[] {
+    return subBotDatabase.getAllSlots();
   }
 
   getTotalConnected(): number {
-    return subBotDatabase.getAll().filter(s => s.status === 'connected').length;
+    return subBotDatabase.getActiveSlots().filter(s => s.status === 'connected').length;
   }
 
-  private async notifyAdminsMute(ctx: MessageContext, sock: WASocket): Promise<void> {
-    try {
-      const admins = await PermissionService.getGroupAdmins(sock, ctx.chat.jid);
-      const botJid = sock.user?.id;
-      const adminJids = admins.filter(admin => admin !== botJid);
-
-      if (adminJids.length === 0) {
-        logger.debug(`[MUTE] No hay admins para notificar en ${ctx.chat.jid}`);
-        return;
-      }
-
-      const muteInfo = await serviceManager.moderationService.getMuteInfo(
-        ctx.chat.jid,
-        ctx.sender.jid,
-      );
-      const timeRemaining = await serviceManager.moderationService.getMuteTimeRemaining(
-        ctx.chat.jid,
-        ctx.sender.jid,
-      );
-      const timeText = this.formatTimeRemaining(timeRemaining);
-
-      for (const adminJid of adminJids) {
-        try {
-          await sock.sendMessage(adminJid, {
-            text:
-              `🔇 *Aviso de Mute (SubBot)*\n\n` +
-              `El usuario *${ctx.sender.pushName || 'Desconocido'}* está muteado pero intentó enviar un mensaje.\n\n` +
-              `📝 Razón: ${muteInfo?.reason || 'No especificada'}\n` +
-              `⏱️ Tiempo restante: ${timeText}\n` +
-              `💬 Mensaje: ${ctx.text.slice(0, 100)}${ctx.text.length > 100 ? '...' : ''}\n\n` +
-              `⚠️ El bot necesita ser admin para eliminar automáticamente los mensajes muteados.`,
-          });
-        } catch (error) {
-          logger.debug(`[MUTE] Error notificando admin ${adminJid}:`, error);
-        }
-      }
-    } catch (error) {
-      logError('[MUTE] Error notifyAdmins', error);
-    }
-  }
-
-  private formatTimeRemaining(ms: number): string {
-    if (ms <= 0) return 'Expira inmediatamente';
-    const seconds = Math.floor(ms / 1000);
-    const minutes = Math.floor(seconds / 60);
-    const hours = Math.floor(minutes / 60);
-    const days = Math.floor(hours / 24);
-    if (days > 0) return `${days} día${days > 1 ? 's' : ''}`;
-    if (hours > 0) return `${hours} hora${hours > 1 ? 's' : ''}`;
-    if (minutes > 0) return `${minutes} minuto${minutes > 1 ? 's' : ''}`;
-    return `${seconds} segundo${seconds > 1 ? 's' : ''}`;
+  getSlotInfo(slotNumber: number): SubBotSlot | undefined {
+    return subBotDatabase.getSlot(slotNumber);
   }
 
   async shutdown(): Promise<void> {
     logger.info(`🛑 SubBotManager cerrando ${this.instances.size} subbots...`);
     this.stopHealthCheck();
+    this.stopSettingsSync();
+
+    for (const [, botState] of this.runtimeStates) {
+      this.scheduleRuntimeStateWrite(botState);
+    }
+
     const stops = Array.from(this.instances.values()).map(i => i.stop());
     await Promise.allSettled(stops);
+
     this.instances.clear();
     this.middlewaresPerInstance.clear();
     this.antiSpamPerInstance.clear();
+    this.runtimeStates.clear();
+
     logger.info('✅ SubBotManager cerrada');
   }
 }
