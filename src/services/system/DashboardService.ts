@@ -576,7 +576,7 @@ export class DashboardService {
           resolve();
         });
 
-        this.server.on('error', err => {
+        this.server.on('error', (err: Error) => {
           logger.error('Error iniciando dashboard:', err);
           this.addLog('error', `Dashboard error: ${err.message}`);
           reject(err);

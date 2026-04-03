@@ -149,7 +149,10 @@ export class PanelServer {
 
     this.app.use(
       cors({
-        origin: (origin, callback) => {
+        origin: (
+          origin: string | undefined,
+          callback: (err: Error | null, allow: boolean) => void,
+        ) => {
           if (
             !origin ||
             this.config.allowedOrigins.includes('*') ||
@@ -157,7 +160,7 @@ export class PanelServer {
           ) {
             callback(null, true);
           } else {
-            callback(new Error('Not allowed by CORS'));
+            callback(null, false);
           }
         },
         credentials: true,
