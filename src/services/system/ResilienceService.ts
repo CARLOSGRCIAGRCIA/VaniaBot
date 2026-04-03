@@ -1,0 +1,203 @@
+import path from 'path';
+import fs from 'fs';
+
+const DB_DIR = path.join(process.cwd(), 'database');
+const FILE = path.join(DB_DIR, 'resilience.json');
+
+export interface CommandFailureEntry {
+  failures: number[];
+  disabledUntil: number;
+  lastError: string;
+  lastFailureAt: number;
+}
+
+export interface ResilienceStore {
+  enabled: boolean;
+  threshold: number;
+  windowMs: number;
+  cooldownMs: number;
+  commands: Record<string, CommandFailureEntry>;
+}
+
+function ensureDir(): void {
+  if (!fs.existsSync(DB_DIR)) {
+    fs.mkdirSync(DB_DIR, { recursive: true });
+  }
+}
+
+function loadStore(): ResilienceStore {
+  ensureDir();
+  try {
+    if (!fs.existsSync(FILE)) {
+      return createDefaultStore();
+    }
+    const raw = fs.readFileSync(FILE, 'utf-8');
+    const data = JSON.parse(raw);
+    if (typeof data === 'object' && data !== null) {
+      return data as ResilienceStore;
+    }
+    return createDefaultStore();
+  } catch {
+    return createDefaultStore();
+  }
+}
+
+function saveStore(store: ResilienceStore): void {
+  ensureDir();
+  fs.writeFileSync(FILE, JSON.stringify(store, null, 2));
+}
+
+function createDefaultStore(): ResilienceStore {
+  return {
+    enabled: true,
+    threshold: 4,
+    windowMs: 10 * 60 * 1000,
+    cooldownMs: 15 * 60 * 1000,
+    commands: {},
+  };
+}
+
+function clampNumber(value: number, min: number, max: number, fallback: number): number {
+  const n = Number(value);
+  if (!Number.isFinite(n)) return fallback;
+  return Math.min(max, Math.max(min, n));
+}
+
+function formatDuration(ms: number): string {
+  const seconds = Math.floor(ms / 1000);
+  const minutes = Math.floor(seconds / 60);
+  const hours = Math.floor(minutes / 60);
+  const days = Math.floor(hours / 24);
+
+  if (days > 0) return `${days}d ${hours % 24}h`;
+  if (hours > 0) return `${hours}h ${minutes % 60}m`;
+  if (minutes > 0) return `${minutes}m`;
+  return `${seconds}s`;
+}
+
+export class ResilienceService {
+  private store: ResilienceStore;
+
+  constructor() {
+    this.store = loadStore();
+  }
+
+  private ensureCommand(name: string): CommandFailureEntry {
+    const key = name.toLowerCase().trim();
+    if (!this.store.commands[key]) {
+      this.store.commands[key] = {
+        failures: [],
+        disabledUntil: 0,
+        lastError: '',
+        lastFailureAt: 0,
+      };
+    }
+    return this.store.commands[key];
+  }
+
+  private pruneFailures(entry: CommandFailureEntry): void {
+    const now = Date.now();
+    const windowMs = this.store.windowMs;
+    entry.failures = entry.failures.filter(timestamp => now - timestamp <= windowMs);
+  }
+
+  recordFailure(commandName: string, error: unknown): void {
+    if (!this.store.enabled) return;
+
+    const entry = this.ensureCommand(commandName);
+    this.pruneFailures(entry);
+    entry.failures.push(Date.now());
+    entry.lastFailureAt = Date.now();
+    entry.lastError = String(
+      (error as { message?: string })?.message || error || 'error desconocido',
+    ).slice(0, 220);
+
+    if (entry.failures.length >= this.store.threshold) {
+      entry.disabledUntil = Date.now() + this.store.cooldownMs;
+      entry.failures = [];
+    }
+
+    saveStore(this.store);
+  }
+
+  recordSuccess(commandName: string): void {
+    const entry = this.ensureCommand(commandName);
+    entry.failures = [];
+    saveStore(this.store);
+  }
+
+  isBlocked(commandName: string): { blocked: boolean; remainingMs: number; lastError: string } {
+    const entry = this.ensureCommand(commandName);
+    const disabledUntil = entry.disabledUntil;
+    const now = Date.now();
+
+    if (!disabledUntil || now >= disabledUntil) {
+      if (disabledUntil) {
+        entry.disabledUntil = 0;
+        saveStore(this.store);
+      }
+      return { blocked: false, remainingMs: 0, lastError: entry.lastError };
+    }
+
+    return {
+      blocked: true,
+      remainingMs: disabledUntil - now,
+      lastError: entry.lastError,
+    };
+  }
+
+  getSnapshot(): {
+    enabled: boolean;
+    threshold: number;
+    cooldownMs: number;
+    commands: Array<{
+      command: string;
+      blocked: boolean;
+      disabledUntil: number;
+      lastError: string;
+    }>;
+  } {
+    const commands = Object.entries(this.store.commands)
+      .map(([command, entry]) => ({
+        command,
+        blocked: entry.disabledUntil > Date.now(),
+        disabledUntil: entry.disabledUntil,
+        lastError: entry.lastError,
+      }))
+      .sort((a, b) => b.disabledUntil - a.disabledUntil);
+
+    return {
+      enabled: this.store.enabled,
+      threshold: this.store.threshold,
+      cooldownMs: this.store.cooldownMs,
+      commands,
+    };
+  }
+
+  setConfig(patch: { enabled?: boolean; threshold?: number; cooldownMs?: number }): void {
+    if (patch.enabled !== undefined) {
+      this.store.enabled = Boolean(patch.enabled);
+    }
+    if (patch.threshold !== undefined) {
+      this.store.threshold = clampNumber(patch.threshold, 2, 20, 4);
+    }
+    if (patch.cooldownMs !== undefined) {
+      this.store.cooldownMs = clampNumber(
+        patch.cooldownMs,
+        60_000,
+        24 * 60 * 60 * 1000,
+        15 * 60 * 1000,
+      );
+    }
+    saveStore(this.store);
+  }
+
+  clearCommand(commandName: string): void {
+    const key = commandName.toLowerCase().trim();
+    delete this.store.commands[key];
+    saveStore(this.store);
+  }
+}
+
+export const resilienceService = new ResilienceService();
+export { formatDuration };
