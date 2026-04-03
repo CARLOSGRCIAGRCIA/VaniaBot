@@ -279,8 +279,7 @@ export class ImageProcessor {
    * No usa el decoder SVG de FFmpeg (requiere librsvg, ausente en Termux).
    * Solo usa el filtro drawtext de libavfilter, disponible en el FFmpeg de Termux.
    *
-   * FIX Termux: se pasa `fontfile=` explícitamente porque Android no expone
-   * las fuentes del sistema en rutas estándar de Linux.
+   * NOTA: `bold=` eliminado — no soportado en el FFmpeg de Termux (ARM64).
    */
   private static async compositeTextFFmpegDrawtext(
     imagePath: string,
@@ -332,11 +331,11 @@ export class ImageProcessor {
   /**
    * Convierte un ParsedTextBlock a una cláusula `drawtext` de FFmpeg.
    *
-   * - SVG  y = baseline del texto
-   * - FFmpeg y = borde superior del bounding box → restamos ~82% del fontSize
-   * - text-anchor="middle" → x = cx - text_w/2 (expresión FFmpeg)
+   * - SVG  y = baseline → FFmpeg y = top del bounding box (restamos ~82% fontSize)
+   * - text-anchor="middle" → x = cx - text_w/2  (expresión FFmpeg)
    * - Colores: SVG #RRGGBB → FFmpeg 0xRRGGBBAA
    * - fontfile= obligatorio en Termux/Android
+   * - bold= eliminado: no soportado en Termux FFmpeg
    */
   private static buildDrawtextFilter(b: ParsedTextBlock, fontPath: string): string {
     if (!b.content) return '';
@@ -367,11 +366,10 @@ export class ImageProcessor {
 
     // SVG baseline → FFmpeg top (aprox. 82% del font-size)
     const yVal = Math.max(0, Math.round(b.y - b.fontSize * 0.82));
-    const boldFlag = b.fontWeight === 'bold' ? 1 : 0;
 
     return (
       `drawtext=fontfile='${fontPath}':text='${escaped}'` +
-      `:x=${xExpr}:y=${yVal}:fontsize=${b.fontSize}:fontcolor=${color}:bold=${boldFlag}`
+      `:x=${xExpr}:y=${yVal}:fontsize=${b.fontSize}:fontcolor=${color}`
     );
   }
 
