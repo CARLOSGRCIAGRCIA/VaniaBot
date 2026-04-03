@@ -44,8 +44,8 @@ const CONFLICT_RECONNECT_DELAY = 20_000;
 
 // Health-check: intervalo entre revisiones y tiempo de confirmación antes
 // de reconectar (evita falsos positivos por prekey bundle / GC pause / RAM)
-const HEALTH_CHECK_INTERVAL = 5 * 60_000; // revisar cada 5 min
-const HEALTH_CHECK_CONFIRM_WAIT = 30_000; // esperar 30s antes de reconectar
+const HEALTH_CHECK_INTERVAL = 10 * 60_000; // revisar cada 10 min
+const HEALTH_CHECK_CONFIRM_WAIT = 20_000; // esperar 20s antes de reconectar
 const PING_INTERVAL = 30_000;
 
 const MAX_TRUE_LOGOUTS = 2;
@@ -68,6 +68,7 @@ const CONFLICT_CODE = 440;
 export class SubBotInstance extends EventEmitter {
   public sock?: WASocket;
   public config: SubBotConfig;
+  public pairingCode?: string;
 
   private reconnectAttempts = 0;
   private pairingCodeRequested = false;
@@ -157,9 +158,25 @@ export class SubBotInstance extends EventEmitter {
   private isSocketReallyConnected(): boolean {
     if (!this.sock || this.destroyed) return false;
     try {
+      // Verificar múltiples condiciones para evitar falsos positivos
+      if (!this.sock.user?.id) return false;
+
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const ws = (this.sock as any).ws;
-      return ws?.readyState === 1 && !!this.sock.user?.id && this.connectionEstablished;
+      const readyState = ws?.readyState;
+
+      // readyState: 0=CONNECTING, 1=OPEN, 2=CLOSING, 3=CLOSED
+      // Solo confirmamos desconexión si está en CLOSED (3) o sin user.id
+      if (readyState === 3) return false;
+
+      // Si está CONNECTING o CLOSING, esperamos - no reconectamos todavía
+      if (readyState === 0 || readyState === 2) {
+        logger.debug(`SubBot[${this.config.id}] socket en estado transitorio: ${readyState}`);
+        return true; // Consideramos conectado mientras transiciona
+      }
+
+      // readyState === 1 (OPEN) y tenemos user.id = conectado
+      return readyState === 1;
     } catch {
       return false;
     }
