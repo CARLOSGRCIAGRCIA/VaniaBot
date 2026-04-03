@@ -1,5 +1,6 @@
 import { WhatsAppClient } from './core/Client.js';
 import { logger, logError } from './utils/logger.js';
+import { panelServer } from './services/webhook/PanelServer.js';
 
 const originalConsoleError = console.error;
 console.error = function (...args: unknown[]) {
@@ -21,6 +22,11 @@ async function main(): Promise<void> {
   global.client = client;
   await client.initialize();
   logger.info('Bot iniciado correctamente');
+
+  const disablePanel = process.env.PANEL_DISABLED === 'true';
+  if (!disablePanel) {
+    await panelServer.start();
+  }
 }
 
 async function shutdown(reason: string): Promise<void> {
@@ -28,6 +34,7 @@ async function shutdown(reason: string): Promise<void> {
   if (client) {
     await client.shutdown();
   }
+  await panelServer.stop();
   process.exit(0);
 }
 
