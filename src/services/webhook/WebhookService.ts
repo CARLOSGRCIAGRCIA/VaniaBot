@@ -1,18 +1,29 @@
 /**
- * WebhookService.ts
+ * @fileoverview WebhookService.ts - Handles external subbot requests via webhook
  *
- * Handles subbot requests from external panels.
- * Manages pairing code generation and delivery.
+ * Manages subbot creation requests from external panels or services.
+ * Handles pairing code generation and delivery via callbacks.
  *
  * @author **Carlos G** ⭐
  * @github CARLOSGRCIAGRCIA
  * @created 2026-04-03
+ * @module services/webhook/WebhookService
  */
 
 import { subBotDatabase } from '@/services/subbot/SubBotDatabase.js';
 import { subBotManager } from '@/services/subbot/SubBotManager.js';
 import { logger, logError } from '@/utils/logger.js';
 
+/**
+ * Incoming webhook request data.
+ *
+ * @interface WebhookRequest
+ * @property {string} requestToken - Unique identifier for the request
+ * @property {string} phoneNumber - Phone number to link to subbot
+ * @property {string} [subbotName] - Optional display name for subbot
+ * @property {string} [ownerName] - Optional owner display name
+ * @property {string} [ownerJid] - Optional owner WhatsApp JID
+ */
 export interface WebhookRequest {
   requestToken: string;
   phoneNumber: string;
@@ -21,6 +32,17 @@ export interface WebhookRequest {
   ownerJid?: string;
 }
 
+/**
+ * Response returned after processing a webhook request.
+ *
+ * @interface WebhookResponse
+ * @property {boolean} success - Whether the request was successful
+ * @property {string} [requestToken] - The request identifier
+ * @property {string} [pairingCode] - Generated pairing code (if ready)
+ * @property {string} [message] - Status or error message
+ * @property {number} [slot] - Assigned slot number
+ * @property {string} [subbotId] - Subbot instance identifier
+ */
 export interface WebhookResponse {
   success: boolean;
   requestToken?: string;
@@ -30,6 +52,22 @@ export interface WebhookResponse {
   subbotId?: string;
 }
 
+/**
+ * Status of a webhook request.
+ *
+ * @interface WebhookStatus
+ * @property {string} requestToken - Request identifier
+ * @property {'pending'|'generating'|'ready'|'expired'|'cancelled'} status - Current status
+ * @property {string} phoneNumber - Associated phone number
+ * @property {string} [subbotName] - Subbot display name
+ * @property {string} [ownerName] - Owner display name
+ * @property {string} [ownerJid] - Owner WhatsApp JID
+ * @property {number} createdAt - Timestamp when request was created
+ * @property {number} expiresAt - Timestamp when request expires
+ * @property {string} [pairingCode] - Generated pairing code
+ * @property {number} [slot] - Assigned slot number
+ * @property {string} [subbotId] - Subbot instance ID
+ */
 export interface WebhookStatus {
   requestToken: string;
   status: 'pending' | 'generating' | 'ready' | 'expired' | 'cancelled';
@@ -44,14 +82,44 @@ export interface WebhookStatus {
   subbotId?: string;
 }
 
+/**
+ * WebhookService class - Manages external subbot requests.
+ *
+ * Handles incoming webhook requests for creating subbots,
+ * generates pairing codes, and sends callbacks to external services.
+ *
+ * @class WebhookService
+ * @singleton
+ * @example
+ * const webhook = WebhookService.getInstance();
+ * const result = await webhook.handleSubBotRequest({
+ *   requestToken: 'unique-123',
+ *   phoneNumber: '5215512345678',
+ *   callbackUrl: 'https://mysite.com/webhook'
+ * });
+ */
 export class WebhookService {
   private static instance: WebhookService;
   private pendingRequests = new Map<string, WebhookStatus>();
   private readonly REQUEST_EXPIRY_MS = 5 * 60 * 1000;
   private readonly CALLBACK_TIMEOUT_MS = 3 * 60 * 1000;
 
+  /**
+   * Creates a new WebhookService instance.
+   * Use getInstance() for singleton pattern.
+   *
+   * @constructor
+   * @private
+   */
   private constructor() {}
 
+  /**
+   * Gets the singleton WebhookService instance.
+   *
+   * @method getInstance
+   * @returns {WebhookService} The singleton instance
+   * @static
+   */
   static getInstance(): WebhookService {
     if (!WebhookService.instance) {
       WebhookService.instance = new WebhookService();
@@ -59,6 +127,21 @@ export class WebhookService {
     return WebhookService.instance;
   }
 
+  /**
+   * Processes a new subbot request from an external panel.
+   *
+   * @method handleSubBotRequest
+   * @param {WebhookRequest} request - The webhook request data
+   * @param {string} [callbackUrl] - Optional URL to send pairing code to
+   * @returns {Promise<WebhookResponse>} Result of processing the request
+   * @example
+   * const result = await webhookService.handleSubBotRequest({
+   *   requestToken: 'req-123',
+   *   phoneNumber: '5215512345678',
+   *   subbotName: 'MyBot',
+   *   ownerName: 'John'
+   * }, 'https://mysite.com/callback');
+   */
   async handleSubBotRequest(
     request: WebhookRequest,
     callbackUrl?: string,
@@ -185,10 +268,24 @@ export class WebhookService {
     }
   }
 
+  /**
+   * Gets the status of a webhook request.
+   *
+   * @method getStatus
+   * @param {string} requestToken - The request identifier
+   * @returns {WebhookStatus | null} Request status or null if not found
+   */
   getStatus(requestToken: string): WebhookStatus | null {
     return this.pendingRequests.get(requestToken) || null;
   }
 
+  /**
+   * Cancels a pending webhook request.
+   *
+   * @method cancelRequest
+   * @param {string} requestToken - The request identifier to cancel
+   * @returns {Promise<boolean>} True if cancelled, false if not found
+   */
   async cancelRequest(requestToken: string): Promise<boolean> {
     const status = this.pendingRequests.get(requestToken);
     if (!status) return false;
@@ -204,12 +301,29 @@ export class WebhookService {
     return true;
   }
 
+  /**
+   * Gets all pending webhook requests.
+   *
+   * @method getAllPending
+   * @returns {WebhookStatus[]} Array of pending requests
+   */
   getAllPending(): WebhookStatus[] {
     return Array.from(this.pendingRequests.values()).filter(
       s => s.status === 'pending' || s.status === 'generating' || s.status === 'ready',
     );
   }
 
+  /**
+   * Gets webhook statistics.
+   *
+   * @method getStats
+   * @returns {Object} Statistics about webhook requests and slots
+   * @property {number} pending - Number of pending requests
+   * @property {number} ready - Number of ready requests
+   * @property {number} total - Total active requests
+   * @property {number} availableSlots - Available subbot slots
+   * @property {number} usedSlots - Used subbot slots
+   */
   getStats(): {
     pending: number;
     ready: number;
@@ -227,6 +341,13 @@ export class WebhookService {
     };
   }
 
+  /**
+   * Schedules automatic expiry for a request.
+   *
+   * @method scheduleExpiry
+   * @param {string} requestToken - Request to schedule expiry for
+   * @private
+   */
   private scheduleExpiry(requestToken: string): void {
     setTimeout(() => {
       const status = this.pendingRequests.get(requestToken);
@@ -238,6 +359,15 @@ export class WebhookService {
     }, this.REQUEST_EXPIRY_MS);
   }
 
+  /**
+   * Sends a callback to an external URL with the pairing code.
+   *
+   * @method sendCallback
+   * @param {string} callbackUrl - URL to send the callback to
+   * @param {WebhookStatus} status - The webhook status to send
+   * @returns {Promise<void>}
+   * @private
+   */
   private async sendCallback(callbackUrl: string, status: WebhookStatus): Promise<void> {
     try {
       const response = await fetch(callbackUrl, {
@@ -265,6 +395,11 @@ export class WebhookService {
     }
   }
 
+  /**
+   * Cleans up expired and cancelled requests.
+   *
+   * @method cleanup
+   */
   cleanup(): void {
     for (const [token, status] of this.pendingRequests) {
       if (status.status === 'expired' || status.status === 'cancelled') {
@@ -274,4 +409,8 @@ export class WebhookService {
   }
 }
 
+/**
+ * Singleton instance of WebhookService.
+ * @type {WebhookService}
+ */
 export const webhookService = WebhookService.getInstance();

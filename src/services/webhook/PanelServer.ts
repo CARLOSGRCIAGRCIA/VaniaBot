@@ -1,12 +1,14 @@
 /**
- * PanelServer.ts
+ * @fileoverview PanelServer.ts - Express server for VaniaBot web dashboard
  *
- * Express server for VaniaBot Panel.
- * Provides REST API for subbot management and serves the web panel.
+ * Provides a REST API for bot management and serves the web panel interface.
+ * Includes endpoints for subbot management, system metrics, commands, groups,
+ * and moderation features.
  *
  * @author **Carlos G** ⭐
  * @github CARLOSGRCIAGRCIA
  * @created 2026-04-03
+ * @module services/webhook/PanelServer
  */
 
 import express from 'express';
@@ -26,6 +28,17 @@ import { cacheManager } from '@/core/CacheManager.js';
 import type { WhatsAppClient } from '@/core/Client.js';
 import { logger } from '@/utils/logger.js';
 
+/**
+ * Configuration interface for the Panel server.
+ *
+ * @interface PanelConfig
+ * @property {number} port - HTTP port to listen on
+ * @property {string} host - Host address to bind to
+ * @property {string} webhookToken - Secret token for webhook authentication
+ * @property {string[]} allowedOrigins - CORS allowed origins
+ * @property {string} panelPath - Path to static panel files
+ * @property {string} [callbackSecret] - Optional callback secret
+ */
 export interface PanelConfig {
   port: number;
   host: string;
@@ -35,6 +48,10 @@ export interface PanelConfig {
   callbackSecret?: string;
 }
 
+/**
+ * Default configuration values.
+ * Can be overridden by environment variables or data/panel-config.json
+ */
 const DEFAULT_CONFIG: PanelConfig = {
   port: process.env.PANEL_PORT ? parseInt(process.env.PANEL_PORT) : 3000,
   host: process.env.PANEL_HOST || '0.0.0.0',
@@ -44,6 +61,13 @@ const DEFAULT_CONFIG: PanelConfig = {
   callbackSecret: process.env.PANEL_CALLBACK_SECRET,
 };
 
+/**
+ * Loads panel configuration from file and environment.
+ *
+ * @function loadPanelConfig
+ * @returns {PanelConfig} Merged configuration from defaults, env vars, and config file
+ * @private
+ */
 function loadPanelConfig(): PanelConfig {
   const configPath = './data/panel-config.json';
   if (existsSync(configPath)) {
@@ -55,12 +79,37 @@ function loadPanelConfig(): PanelConfig {
   return DEFAULT_CONFIG;
 }
 
+/**
+ * PanelServer class - Express server for VaniaBot web dashboard.
+ *
+ * Provides REST API endpoints for:
+ * - Bot status and metrics
+ * - SubBot slot management
+ * - Webhook integration
+ * - System health checks
+ * - Command statistics
+ * - Group management
+ * - Moderation logs
+ *
+ * @class PanelServer
+ * @singleton
+ * @example
+ * const panel = PanelServer.getInstance();
+ * await panel.start();
+ */
 export class PanelServer {
   private static instance: PanelServer;
   private app: express.Application;
   private server: ReturnType<express.Application['listen']> | null = null;
   private config: PanelConfig;
 
+  /**
+   * Creates a new PanelServer instance.
+   * Use getInstance() for singleton pattern.
+   *
+   * @constructor
+   * @private
+   */
   private constructor() {
     this.config = loadPanelConfig();
     this.app = express();
@@ -69,6 +118,13 @@ export class PanelServer {
     this.setupErrorHandling();
   }
 
+  /**
+   * Gets the singleton PanelServer instance.
+   *
+   * @method getInstance
+   * @returns {PanelServer} The singleton instance
+   * @static
+   */
   static getInstance(): PanelServer {
     if (!PanelServer.instance) {
       PanelServer.instance = new PanelServer();
@@ -76,6 +132,13 @@ export class PanelServer {
     return PanelServer.instance;
   }
 
+  /**
+   * Sets up Express middleware.
+   * Includes helmet security, CORS, rate limiting, and body parsing.
+   *
+   * @method setupMiddleware
+   * @private
+   */
   private setupMiddleware(): void {
     this.app.use(
       helmet({
@@ -115,9 +178,18 @@ export class PanelServer {
     this.app.use('/api/', apiLimiter);
   }
 
+  /**
+   * Sets up all API routes and static file serving.
+   *
+   * @method setupRoutes
+   * @private
+   */
   private setupRoutes(): void {
     this.app.use(express.static(this.config.panelPath));
 
+    /**
+     * GET / - Serve main dashboard page
+     */
     this.app.get('/', (_req: Request, res: Response) => {
       const indexPath = join(this.config.panelPath, 'index.html');
       if (existsSync(indexPath)) {
@@ -127,6 +199,10 @@ export class PanelServer {
       }
     });
 
+    /**
+     * GET /api/health - Basic health check
+     * @returns {Object} Simple status response
+     */
     this.app.get('/api/health', (_req: Request, res: Response) => {
       res.json({
         status: 'ok',
@@ -135,6 +211,10 @@ export class PanelServer {
       });
     });
 
+    /**
+     * GET /api/stats - Complete bot statistics
+     * @returns {Object} Bots, memory, slots, webhook, and stats info
+     */
     this.app.get('/api/stats', (_req: Request, res: Response) => {
       const slots = subBotDatabase.getAllSlots();
       const webhookStats = webhookService.getStats();
@@ -197,6 +277,15 @@ export class PanelServer {
       });
     });
 
+    /**
+     * POST /api/webhook/request - Create new subbot request via webhook
+     * @param {Object} body - Request data
+     * @param {string} body.requestToken - Unique request identifier
+     * @param {string} body.phoneNumber - Phone number for subbot
+     * @param {string} [body.subbotName] - Optional subbot name
+     * @param {string} [body.ownerName] - Optional owner name
+     * @param {string} [body.callbackUrl] - Optional callback URL
+     */
     this.app.post('/api/webhook/request', async (req: Request, res: Response) => {
       const token = req.headers['x-bot-webhook-token'] as string;
 
@@ -229,6 +318,10 @@ export class PanelServer {
       }
     });
 
+    /**
+     * GET /api/webhook/status/:requestToken - Get webhook request status
+     * @param {string} requestToken - Request identifier
+     */
     this.app.get('/api/webhook/status/:requestToken', (req: Request, res: Response) => {
       const token = req.headers['x-bot-webhook-token'] as string;
 
@@ -258,6 +351,10 @@ export class PanelServer {
       });
     });
 
+    /**
+     * POST /api/webhook/cancel/:requestToken - Cancel a pending webhook request
+     * @param {string} requestToken - Request identifier to cancel
+     */
     this.app.post('/api/webhook/cancel/:requestToken', async (req: Request, res: Response) => {
       const token = req.headers['x-bot-webhook-token'] as string;
 
@@ -276,6 +373,10 @@ export class PanelServer {
       }
     });
 
+    /**
+     * GET /api/slots - List all subbot slots
+     * @returns {Object} Slot information
+     */
     this.app.get('/api/slots', (_req: Request, res: Response) => {
       const slots = subBotDatabase.getAllSlots();
       res.json({
@@ -292,6 +393,10 @@ export class PanelServer {
       });
     });
 
+    /**
+     * GET /api/slot/:slot - Get specific slot details
+     * @param {number} slot - Slot number
+     */
     this.app.get('/api/slot/:slot', (req: Request, res: Response) => {
       const slotNumber = parseInt(req.params.slot as string);
       const slot = subBotDatabase.getSlot(slotNumber);
@@ -317,6 +422,11 @@ export class PanelServer {
       });
     });
 
+    /**
+     * POST /api/slot/:slot/reconnect - Reconnect a subbot slot
+     * @param {number} slot - Slot number
+     * @requires X-Api-Token header
+     */
     this.app.post('/api/slot/:slot/reconnect', async (req: Request, res: Response) => {
       const token = req.headers['x-api-token'] as string;
 
@@ -343,6 +453,11 @@ export class PanelServer {
       }
     });
 
+    /**
+     * POST /api/slot/:slot/release - Release a subbot slot
+     * @param {number} slot - Slot number
+     * @requires X-Api-Token header
+     */
     this.app.post('/api/slot/:slot/release', async (req: Request, res: Response) => {
       const token = req.headers['x-api-token'] as string;
 
@@ -369,6 +484,9 @@ export class PanelServer {
       }
     });
 
+    /**
+     * GET /api/settings - Get panel settings
+     */
     this.app.get('/api/settings', (_req: Request, res: Response) => {
       res.json({
         publicRequests: subBotDatabase.isPublicRequestsEnabled(),
@@ -376,6 +494,13 @@ export class PanelServer {
       });
     });
 
+    /**
+     * POST /api/settings - Update panel settings
+     * @param {Object} body - Settings to update
+     * @param {boolean} [body.publicRequests] - Enable/disable public requests
+     * @param {number} [body.maxSlots] - Maximum number of slots
+     * @requires X-Api-Token header
+     */
     this.app.post('/api/settings', (req: Request, res: Response) => {
       const token = req.headers['x-api-token'] as string;
 
@@ -401,6 +526,9 @@ export class PanelServer {
       });
     });
 
+    /**
+     * GET /api/bots - List all connected bots
+     */
     this.app.get('/api/bots', (_req: Request, res: Response) => {
       const bots: Array<{ id: string; name: string; connected: boolean; uptime?: number }> = [];
       const mainBotConnected =
@@ -414,6 +542,9 @@ export class PanelServer {
       res.json(bots);
     });
 
+    /**
+     * GET /api/health/detailed - Detailed health check with system info
+     */
     this.app.get('/api/health/detailed', async (_req: Request, res: Response) => {
       try {
         const memory = process.memoryUsage();
@@ -446,6 +577,9 @@ export class PanelServer {
       }
     });
 
+    /**
+     * GET /api/commands/metrics - Command execution statistics
+     */
     this.app.get('/api/commands/metrics', (_req: Request, res: Response) => {
       const client = (global as { client?: WhatsAppClient }).client;
       const metrics = client?.getStats()?.commandMetrics || new Map();
@@ -487,6 +621,9 @@ export class PanelServer {
       });
     });
 
+    /**
+     * GET /api/moderation/bans - List all bans
+     */
     this.app.get('/api/moderation/bans', async (_req: Request, res: Response) => {
       try {
         const db = serviceManager.db;
@@ -506,6 +643,9 @@ export class PanelServer {
       }
     });
 
+    /**
+     * GET /api/moderation/mutes - List all active mutes
+     */
     this.app.get('/api/moderation/mutes', async (_req: Request, res: Response) => {
       try {
         const db = serviceManager.db;
@@ -527,6 +667,10 @@ export class PanelServer {
       }
     });
 
+    /**
+     * GET /api/moderation/actions - Recent moderation actions
+     * @param {number} [limit=50] - Maximum number of actions to return
+     */
     this.app.get('/api/moderation/actions', async (req: Request, res: Response) => {
       try {
         const db = serviceManager.db;
@@ -547,6 +691,9 @@ export class PanelServer {
       }
     });
 
+    /**
+     * GET /api/groups - List all groups with settings
+     */
     this.app.get('/api/groups', async (_req: Request, res: Response) => {
       try {
         if (!serviceManager.groupService) {
@@ -575,6 +722,10 @@ export class PanelServer {
       }
     });
 
+    /**
+     * GET /api/groups/:jid - Get specific group details
+     * @param {string} jid - Group JID
+     */
     this.app.get('/api/groups/:jid', async (req: Request, res: Response) => {
       try {
         if (!serviceManager.groupService) {
@@ -593,12 +744,21 @@ export class PanelServer {
       }
     });
 
+    /**
+     * GET /api/cache/stats - Cache statistics
+     */
     this.app.get('/api/cache/stats', (_req: Request, res: Response) => {
       const stats = cacheManager.getStats?.() || { hits: 0, misses: 0 };
       res.json(stats);
     });
   }
 
+  /**
+   * Sets up global error handling middleware.
+   *
+   * @method setupErrorHandling
+   * @private
+   */
   private setupErrorHandling(): void {
     this.app.use((err: Error, _req: Request, res: Response, _next: NextFunction) => {
       logger.error('Panel server error:', err);
@@ -609,11 +769,26 @@ export class PanelServer {
     });
   }
 
+  /**
+   * Validates API token for protected endpoints.
+   *
+   * @method validateApiToken
+   * @param {string} [token] - Token to validate
+   * @returns {boolean} True if valid or no token required
+   * @private
+   */
   private validateApiToken(token: string | undefined): boolean {
     if (!this.config.webhookToken) return false;
     return token === this.config.webhookToken;
   }
 
+  /**
+   * Generates the welcome HTML page when panel files are missing.
+   *
+   * @method getWelcomePage
+   * @returns {string} HTML page content
+   * @private
+   */
   private getWelcomePage(): string {
     return `
 <!DOCTYPE html>
@@ -669,6 +844,16 @@ export class PanelServer {
     `;
   }
 
+  /**
+   * Starts the HTTP server on configured port.
+   *
+   * @method start
+   * @returns {Promise<void>} Resolves when server starts
+   * @example
+   * const panel = PanelServer.getInstance();
+   * await panel.start();
+   * console.log('Panel running on port 3000');
+   */
   async start(): Promise<void> {
     const http = await import('http');
 
@@ -699,6 +884,12 @@ export class PanelServer {
     });
   }
 
+  /**
+   * Stops the HTTP server gracefully.
+   *
+   * @method stop
+   * @returns {Promise<void>} Resolves when server stops
+   */
   async stop(): Promise<void> {
     return new Promise(resolve => {
       if (this.server) {
@@ -712,9 +903,19 @@ export class PanelServer {
     });
   }
 
+  /**
+   * Gets the current panel configuration.
+   *
+   * @method getConfig
+   * @returns {PanelConfig} Current configuration
+   */
   getConfig(): PanelConfig {
     return { ...this.config };
   }
 }
 
+/**
+ * Singleton instance of PanelServer.
+ * @type {PanelServer}
+ */
 export const panelServer = PanelServer.getInstance();
