@@ -11,7 +11,7 @@ import { logger } from '@/utils/logger.js';
 import fs from 'fs';
 import path from 'path';
 import os from 'os';
-import cheerio from 'cheerio';
+import * as cheerio from 'cheerio';
 
 const TMP_DIR = path.join(os.tmpdir(), 'vaniabot-pinterest');
 
