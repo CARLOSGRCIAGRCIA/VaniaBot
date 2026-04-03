@@ -7,7 +7,7 @@ import path from 'path';
 export class RulesCLKCommand extends Command {
   name = 'rules clk';
   description = 'Reglas CLK';
-  category = CommandCategory.UTILITY;
+  category = CommandCategory.FREEFIRE;
   aliases = ['rules clk'];
   usage = '!rules clk';
   examples = ['!rules clk'];

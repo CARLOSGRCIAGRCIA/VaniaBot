@@ -13,7 +13,7 @@ interface ListaConfig {
 export class ListaCommand extends Command {
   name: string;
   description: string;
-  category = CommandCategory.GAME;
+  category = CommandCategory.FREEFIRE;
   aliases: string[];
   contexts = [CommandContext.GROUP];
 

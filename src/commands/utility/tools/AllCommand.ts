@@ -8,7 +8,7 @@ export class AllCommand extends Command {
   name = 'all';
   description = 'Mention all group members with an optional message';
   category = CommandCategory.UTILITY;
-  aliases = ['everyone', 'tagall'];
+  aliases = ['everyone', 'tagall', 'todos', 'all'];
   usage = '!all [message]';
   examples = ['!all', '!all Hello everyone!'];
   contexts = [CommandContext.GROUP];
