@@ -11,7 +11,6 @@ import { logger } from '@/utils/logger.js';
 import fs from 'fs';
 import path from 'path';
 import os from 'os';
-import * as cheerio from 'cheerio';
 
 const TMP_DIR = path.join(os.tmpdir(), 'vaniabot-pinterest');
 
@@ -46,42 +45,31 @@ export class PinterestDownloader {
         },
       });
 
-      const $ = cheerio.load(response.data);
+      const html = response.data;
       const media: PinterestMedia[] = [];
 
-      $('img[srcset]').each((_, el) => {
-        const srcset = $(el).attr('srcset');
-        if (srcset) {
-          const urls = srcset.split(',').map(s => s.trim().split(' ')[0]);
-          const bestUrl = urls[urls.length - 1];
-          if (bestUrl && bestUrl.includes('pinterest')) {
-            media.push({
-              type: 'image',
-              url: bestUrl.replace(/\/[^/]+\/\d+x\d+\//, '/Originals/'),
-            });
+      const imgMatches = [...html.matchAll(/<img[^>]+srcset=["']([^"']+)["'][^>]*>/gi)];
+      for (const match of imgMatches) {
+        const srcset = match[1];
+        const urls = srcset.split(',').map((s: string) => s.trim().split(' ')[0]);
+        const bestUrl = urls[urls.length - 1];
+        if (bestUrl && (bestUrl.includes('pinterest') || bestUrl.includes('pinimg'))) {
+          const cleanUrl = bestUrl.replace(/&amp;/g, '&');
+          if (!media.some(m => m.url === cleanUrl)) {
+            media.push({ type: 'image', url: cleanUrl });
           }
         }
-      });
+      }
 
-      $('video source').each((_, el) => {
-        const src = $(el).attr('src');
-        if (src) {
-          media.push({
-            type: 'video',
-            url: src,
-          });
-        }
-      });
-
-      const jsonData =
-        $('script[data-test-id="pin-closeup"]').html() ||
-        $('script[type="application/ld+json"]').html();
-      if (jsonData) {
+      const jsonLdMatch = html.match(
+        /<script[^>]+type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/i,
+      );
+      if (jsonLdMatch) {
         try {
-          const data = JSON.parse(jsonData);
+          const data = JSON.parse(jsonLdMatch[1]);
           if (data?.image) {
             const imgUrl = typeof data.image === 'string' ? data.image : data.image?.[0];
-            if (imgUrl) {
+            if (imgUrl && !media.some(m => m.url === imgUrl)) {
               media.unshift({ type: 'image', url: imgUrl });
             }
           }
@@ -95,6 +83,15 @@ export class PinterestDownloader {
             }
           }
         } catch {}
+      }
+
+      if (media.length === 0) {
+        const ogImageMatch = html.match(
+          /<meta[^>]+property=["']og:image["'][^>]+content=["']([^"']+)["'][^>]*>/i,
+        );
+        if (ogImageMatch) {
+          media.push({ type: 'image', url: ogImageMatch[1] });
+        }
       }
 
       if (media.length === 0) {
