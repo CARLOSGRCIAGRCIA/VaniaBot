@@ -25,6 +25,8 @@ export class ImageProcessor {
   private static resvgAvailable: boolean | null = null;
   private static readonly TEMP_DIR = './data/temp';
 
+  private static fontPath: string | null | undefined = undefined;
+
   static async isSharpAvailable(): Promise<boolean> {
     if (this.sharpAvailable !== null) return this.sharpAvailable;
     try {
@@ -37,7 +39,7 @@ export class ImageProcessor {
       this.sharpAvailable = true;
     } catch {
       this.sharpAvailable = false;
-      logger.warn('[ImageProcessor] Sharp not available, using FFmpeg drawtext fallback');
+      logger.warn('[ImageProcessor] Sharp no disponible, usando FFmpeg drawtext como fallback');
     }
     return this.sharpAvailable;
   }
@@ -51,6 +53,53 @@ export class ImageProcessor {
       this.resvgAvailable = false;
     }
     return this.resvgAvailable;
+  }
+
+  /**
+   * Busca una fuente TTF utilizable por FFmpeg drawtext.
+   *
+   * Orden de prioridad:
+   *   1. data/assets/font.ttf  (fuente propia — más confiable)
+   *   2. /system/fonts/*       (fuentes del sistema Android, accesibles desde Termux)
+   *   3. Paquetes de fuentes de Termux (pkg install font-dejavu)
+   *   4. Rutas estándar de Linux (PC / VPS)
+   */
+  private static async findFont(): Promise<string | null> {
+    if (this.fontPath !== undefined) return this.fontPath;
+
+    const candidates = [
+      // Fuente propia del proyecto (mayor prioridad)
+      join(process.cwd(), 'data', 'assets', 'font.ttf'),
+      // Android system fonts — accesibles desde Termux sin root
+      '/system/fonts/Roboto-Regular.ttf',
+      '/system/fonts/DroidSans.ttf',
+      '/system/fonts/NotoSans-Regular.ttf',
+      '/system/fonts/NotoSansCJK-Regular.ttc',
+      '/system/fonts/Arial.ttf',
+      // Termux: pkg install font-dejavu
+      '/data/data/com.termux/files/usr/share/fonts/TTF/DejaVuSans.ttf',
+      '/data/data/com.termux/files/usr/share/fonts/truetype/DejaVu/DejaVuSans.ttf',
+      // Linux / VPS fallbacks
+      '/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf',
+      '/usr/share/fonts/TTF/DejaVuSans.ttf',
+      '/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf',
+      '/usr/share/fonts/truetype/freefont/FreeSans.ttf',
+    ];
+
+    for (const p of candidates) {
+      if (existsSync(p)) {
+        this.fontPath = p;
+        logger.debug(`[ImageProcessor] Fuente encontrada: ${p}`);
+        return p;
+      }
+    }
+
+    this.fontPath = null;
+    logger.warn(
+      '[ImageProcessor] No se encontró ninguna fuente TTF. ' +
+        'Pon una en data/assets/font.ttf o ejecuta: pkg install font-dejavu',
+    );
+    return null;
   }
 
   static async loadImage(imagePath: string): Promise<ImageProcessorResult> {
@@ -78,25 +127,23 @@ export class ImageProcessor {
   }
 
   static async svgToBuffer(svgContent: string, width: number, height: number): Promise<Buffer> {
-    // 1. resvg-js (WASM puro, funciona en Termux si está instalado)
     if (await this.isResvgAvailable()) {
       try {
         const { Resvg } = await import('@resvg/resvg-js');
         const resvg = new Resvg(svgContent, { fitTo: { mode: 'width', value: width } });
         return Buffer.from(resvg.render().asPng());
       } catch (err) {
-        logger.warn('[ImageProcessor] resvg-js failed:', err);
+        logger.warn('[ImageProcessor] resvg-js falló:', err);
       }
     }
 
-    // 2. @napi-rs/canvas (parseo manual de text blocks)
     try {
       return await this.svgToBufferCanvas(svgContent, width, height);
     } catch (err) {
-      logger.warn('[ImageProcessor] canvas SVG render failed:', err);
+      logger.warn('[ImageProcessor] canvas SVG render falló:', err);
     }
 
-    throw new Error('No SVG renderer available. Run: npm install @resvg/resvg-js');
+    throw new Error('No hay renderer SVG disponible. Ejecuta: npm install @resvg/resvg-js');
   }
 
   private static async svgToBufferCanvas(
@@ -117,15 +164,16 @@ export class ImageProcessor {
     return canvas.toBuffer('image/png');
   }
 
-  /**
-   * Dibuja texto (definido como SVG) sobre una imagen base.
-   *
-   * En Termux (sin sharp, sin librsvg):
-   *   1. FFmpeg drawtext filter  ← funciona en Termux, no necesita librsvg
-   *   2. resvg-js + Jimp         ← si está instalado
-   *   3. @napi-rs/canvas         ← parseo manual
-   *   4. imagen base sin texto   ← último recurso
-   */
+  // ─────────────────────────────────────────────
+  //  Composite: imagen base + texto SVG
+  //
+  //  En Termux (sin sharp, sin librsvg):
+  //    1. FFmpeg drawtext  ← no necesita librsvg, solo una fuente TTF
+  //    2. resvg-js + Jimp  ← si está instalado
+  //    3. @napi-rs/canvas  ← parseo manual
+  //    4. imagen base sola ← último recurso
+  // ─────────────────────────────────────────────
+
   static async compositeText(
     imagePath: string,
     svgContent: string,
@@ -155,12 +203,14 @@ export class ImageProcessor {
   ): Promise<Buffer> {
     if (!existsSync(this.TEMP_DIR)) mkdirSync(this.TEMP_DIR, { recursive: true });
 
+    // 1. FFmpeg drawtext (Termux compatible si hay fuente TTF)
     try {
       return await this.compositeTextFFmpegDrawtext(imagePath, svgContent);
     } catch (err) {
       logger.warn('[ImageProcessor] FFmpeg drawtext falló:', err);
     }
 
+    // 2. resvg-js + Jimp
     if (await this.isResvgAvailable()) {
       try {
         const { Resvg } = await import('@resvg/resvg-js');
@@ -175,20 +225,26 @@ export class ImageProcessor {
       }
     }
 
+    // 3. @napi-rs/canvas
     try {
       return await this.compositeTextCanvas(imagePath, svgContent);
     } catch {
       logger.warn('[ImageProcessor] Canvas fallback falló, devolviendo imagen base');
     }
 
+    // 4. Imagen base sin texto
     logger.error('[ImageProcessor] Todos los métodos fallaron, enviando imagen base sin texto');
     return (await Jimp.read(imagePath)).getBuffer('image/png');
   }
 
   /**
    * Parsea los <text> del SVG y construye un filtro `drawtext` para FFmpeg.
-   * No usa el decoder SVG de FFmpeg (librsvg), solo el filtro drawtext
-   * de libavfilter — que sí está disponible en el FFmpeg de Termux.
+   *
+   * No usa el decoder SVG de FFmpeg (requiere librsvg, ausente en Termux).
+   * Solo usa el filtro drawtext de libavfilter, que sí está disponible.
+   *
+   * FIX Termux: se pasa `fontfile=` explícitamente porque Android no expone
+   * las fuentes del sistema en rutas estándar de Linux.
    */
   private static async compositeTextFFmpegDrawtext(
     imagePath: string,
@@ -199,7 +255,10 @@ export class ImageProcessor {
       return (await Jimp.read(imagePath)).getBuffer('image/png');
     }
 
-    const filters = blocks.map(b => this.buildDrawtextFilter(b)).filter(Boolean);
+    // Buscar fuente antes de construir los filtros
+    const fontPath = await this.findFont();
+
+    const filters = blocks.map(b => this.buildDrawtextFilter(b, fontPath)).filter(Boolean);
     if (filters.length === 0) {
       return (await Jimp.read(imagePath)).getBuffer('image/png');
     }
@@ -208,14 +267,14 @@ export class ImageProcessor {
 
     await new Promise<void>((resolve, reject) => {
       const args = ['-y', '-i', imagePath, '-vf', filters.join(','), outPath];
-      logger.debug(`[ImageProcessor] FFmpeg drawtext: ${filters.length} bloque(s) de texto`);
+      logger.debug(`[ImageProcessor] FFmpeg drawtext: ${filters.length} bloque(s), font: ${fontPath ?? 'ninguna'}`);
       const proc = spawn('ffmpeg', args);
       let stderr = '';
       proc.stderr.on('data', d => (stderr += d.toString()));
       proc.on('close', code =>
         code === 0
           ? resolve()
-          : reject(new Error(`FFmpeg drawtext exit ${code}: ${stderr.slice(-500)}`)),
+          : reject(new Error(`FFmpeg drawtext exit ${code}: ${stderr.slice(-800)}`)),
       );
       proc.on('error', reject);
     });
@@ -233,18 +292,20 @@ export class ImageProcessor {
    * - FFmpeg y = borde superior del bounding box → restamos ~82% del fontSize
    * - text-anchor="middle" → x = cx - text_w/2 (expresión FFmpeg)
    * - Colores: SVG #RRGGBB → FFmpeg 0xRRGGBBAA
+   * - fontfile= es obligatorio en Termux (Android no tiene rutas de fuentes estándar)
    */
-  private static buildDrawtextFilter(b: ParsedTextBlock): string {
+  private static buildDrawtextFilter(b: ParsedTextBlock, fontPath: string | null): string {
     if (!b.content) return '';
 
-    // Escapado para FFmpeg drawtext
-    // El texto va entre comillas simples; hay que escapar: \ : '
+    // Escapado para FFmpeg drawtext: \ : ' [ ]
     const escaped = b.content
       .replace(/\\/g, '\\\\')
-      .replace(/'/g, '') // eliminar apóstrofes (escaparlos falla en algunas versiones)
+      .replace(/'/g, '')        // apóstrofes: eliminar (escaparlos falla en algunas versiones)
       .replace(/:/g, '\\:')
       .replace(/\[/g, '\\[')
       .replace(/\]/g, '\\]');
+
+    if (!escaped.trim()) return '';
 
     // Color SVG → FFmpeg (0xRRGGBBFF)
     let color = b.fill;
@@ -252,29 +313,25 @@ export class ImageProcessor {
       const hex = color.replace('#', '');
       color = `0x${
         hex.length === 3
-          ? hex
-              .split('')
-              .map(c => c + c)
-              .join('')
+          ? hex.split('').map(c => c + c).join('')
           : hex
       }FF`;
     }
 
     // Posición X según text-anchor
     let xExpr: string;
-    if (b.textAnchor === 'middle') {
-      xExpr = `${b.x}-text_w/2`;
-    } else if (b.textAnchor === 'end') {
-      xExpr = `${b.x}-text_w`;
-    } else {
-      xExpr = `${b.x}`;
-    }
+    if (b.textAnchor === 'middle')    xExpr = `${b.x}-text_w/2`;
+    else if (b.textAnchor === 'end')  xExpr = `${b.x}-text_w`;
+    else                              xExpr = `${b.x}`;
 
     // SVG baseline → FFmpeg top (aproximación: 82% del font-size)
     const yVal = Math.max(0, Math.round(b.y - b.fontSize * 0.82));
     const boldFlag = b.fontWeight === 'bold' ? 1 : 0;
 
-    return `drawtext=text='${escaped}':x=${xExpr}:y=${yVal}:fontsize=${b.fontSize}:fontcolor=${color}:bold=${boldFlag}`;
+    // fontfile= solo si tenemos una fuente real (fix Termux)
+    const fontfileClause = fontPath ? `fontfile='${fontPath}':` : '';
+
+    return `drawtext=${fontfileClause}text='${escaped}':x=${xExpr}:y=${yVal}:fontsize=${b.fontSize}:fontcolor=${color}:bold=${boldFlag}`;
   }
 
   private static parseSvgTextBlocks(svgContent: string): ParsedTextBlock[] {
@@ -325,8 +382,8 @@ export class ImageProcessor {
 
   /**
    * Resize con COVER (recorta para rellenar el cuadro).
-   * Usar solo cuando se prefiere rellenar sin bordes negros.
    */
+
   static async resizeImage(buffer: Buffer, width: number, height: number): Promise<Buffer> {
     const useSharp = await this.isSharpAvailable();
     if (useSharp) {
@@ -340,7 +397,7 @@ export class ImageProcessor {
 
   /**
    * Resize con CONTAIN (escala proporcional, rellena con transparente).
-   * Usar para stickers y quotes donde no se puede recortar el contenido.
+   * Usar para stickers donde no se puede recortar el contenido.
    */
   static async resizeContain(buffer: Buffer, width: number, height: number): Promise<Buffer> {
     const useSharp = await this.isSharpAvailable();
@@ -351,7 +408,6 @@ export class ImageProcessor {
         .png()
         .toBuffer();
     }
-    // Jimp: contain mantiene aspect ratio, rellena con transparente
     const image = await Jimp.read(buffer);
     image.contain({ w: width, h: height });
     return await image.getBuffer('image/png');
