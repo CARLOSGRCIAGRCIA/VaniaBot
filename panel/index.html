@@ -1,0 +1,1319 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>VaniaBot Dashboard</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+    <style>
+      :root {
+        --primary: #667eea;
+        --primary-dark: #5a67d8;
+        --secondary: #764ba2;
+        --success: #48bb78;
+        --warning: #ed8936;
+        --danger: #f56565;
+        --bg-dark: #0f0f23;
+        --bg-card: #16213e;
+        --bg-card-hover: #1a2744;
+        --text: #e2e8f0;
+        --text-muted: #a0aec0;
+        --border: rgba(255, 255, 255, 0.08);
+      }
+
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      body {
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        background: linear-gradient(135deg, var(--bg-dark) 0%, #0a0a1a 100%);
+        color: var(--text);
+        min-height: 100vh;
+      }
+
+      .dashboard {
+        max-width: 1600px;
+        margin: 0 auto;
+        padding: 1.5rem;
+      }
+
+      header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 1rem 1.5rem;
+        background: var(--bg-card);
+        border-radius: 1rem;
+        margin-bottom: 1.5rem;
+        border: 1px solid var(--border);
+      }
+
+      .logo {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+      }
+
+      .logo-emoji {
+        font-size: 2.5rem;
+      }
+      .logo h1 {
+        font-size: 1.5rem;
+        background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+      }
+
+      .header-status {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+      }
+
+      .status-badge {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.5rem 1rem;
+        background: rgba(72, 187, 120, 0.15);
+        border-radius: 2rem;
+        font-size: 0.875rem;
+        color: var(--success);
+      }
+
+      .status-dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background: var(--success);
+        animation: pulse 2s infinite;
+      }
+
+      .status-dot.warning {
+        background: var(--warning);
+      }
+      .status-dot.danger {
+        background: var(--danger);
+      }
+
+      @keyframes pulse {
+        0%,
+        100% {
+          opacity: 1;
+        }
+        50% {
+          opacity: 0.5;
+        }
+      }
+
+      .refresh-btn {
+        background: var(--primary);
+        border: none;
+        color: white;
+        padding: 0.5rem 1rem;
+        border-radius: 0.5rem;
+        cursor: pointer;
+        font-weight: 600;
+        transition: all 0.3s;
+      }
+
+      .refresh-btn:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+      }
+
+      .grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 1rem;
+        margin-bottom: 1.5rem;
+      }
+
+      .stat-card {
+        background: var(--bg-card);
+        border-radius: 1rem;
+        padding: 1.25rem;
+        border: 1px solid var(--border);
+        transition: all 0.3s;
+      }
+
+      .stat-card:hover {
+        background: var(--bg-card-hover);
+        transform: translateY(-2px);
+      }
+
+      .stat-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 0.75rem;
+      }
+
+      .stat-label {
+        font-size: 0.75rem;
+        color: var(--text-muted);
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+      }
+
+      .stat-icon {
+        font-size: 1.25rem;
+        opacity: 0.8;
+      }
+
+      .stat-value {
+        font-size: 2rem;
+        font-weight: 700;
+        background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+      }
+
+      .stat-sub {
+        font-size: 0.7rem;
+        color: var(--text-muted);
+        margin-top: 0.25rem;
+      }
+
+      .section {
+        background: var(--bg-card);
+        border-radius: 1rem;
+        padding: 1.5rem;
+        margin-bottom: 1.5rem;
+        border: 1px solid var(--border);
+      }
+
+      .section-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 1.25rem;
+      }
+
+      .section-title {
+        font-size: 1.1rem;
+        font-weight: 600;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+      }
+
+      .tabs {
+        display: flex;
+        gap: 0.5rem;
+        margin-bottom: 1rem;
+        flex-wrap: wrap;
+      }
+
+      .tab {
+        padding: 0.6rem 1.2rem;
+        background: transparent;
+        border: 1px solid var(--border);
+        border-radius: 0.5rem;
+        color: var(--text-muted);
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.3s;
+      }
+
+      .tab:hover {
+        border-color: var(--primary);
+        color: var(--text);
+      }
+      .tab.active {
+        background: var(--primary);
+        border-color: var(--primary);
+        color: white;
+      }
+
+      .tab-content {
+        display: none;
+      }
+      .tab-content.active {
+        display: block;
+      }
+
+      .chart-container {
+        position: relative;
+        height: 300px;
+        margin-top: 1rem;
+      }
+
+      .table-container {
+        overflow-x: auto;
+      }
+
+      table {
+        width: 100%;
+        border-collapse: collapse;
+      }
+
+      th,
+      td {
+        padding: 0.75rem;
+        text-align: left;
+        border-bottom: 1px solid var(--border);
+      }
+
+      th {
+        font-size: 0.7rem;
+        text-transform: uppercase;
+        color: var(--text-muted);
+        font-weight: 600;
+      }
+
+      td {
+        font-size: 0.875rem;
+      }
+
+      tr:hover {
+        background: rgba(255, 255, 255, 0.02);
+      }
+
+      .badge {
+        display: inline-block;
+        padding: 0.25rem 0.6rem;
+        border-radius: 1rem;
+        font-size: 0.7rem;
+        font-weight: 600;
+      }
+
+      .badge-success {
+        background: rgba(72, 187, 120, 0.2);
+        color: var(--success);
+      }
+      .badge-warning {
+        background: rgba(237, 137, 54, 0.2);
+        color: var(--warning);
+      }
+      .badge-danger {
+        background: rgba(245, 101, 101, 0.2);
+        color: var(--danger);
+      }
+      .badge-info {
+        background: rgba(102, 126, 234, 0.2);
+        color: var(--primary);
+      }
+
+      .slots-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+        gap: 0.75rem;
+      }
+
+      .slot {
+        background: rgba(255, 255, 255, 0.03);
+        border-radius: 0.75rem;
+        padding: 1rem;
+        text-align: center;
+        border: 1px solid var(--border);
+        transition: all 0.3s;
+      }
+
+      .slot:hover {
+        border-color: var(--primary);
+        transform: translateY(-2px);
+      }
+      .slot-number {
+        font-size: 1.5rem;
+        font-weight: 700;
+      }
+      .slot-status {
+        font-size: 0.65rem;
+        padding: 0.2rem 0.5rem;
+        border-radius: 1rem;
+        display: inline-block;
+        margin-top: 0.5rem;
+      }
+
+      .slot.free .slot-status {
+        background: rgba(72, 187, 120, 0.2);
+        color: var(--success);
+      }
+      .slot.connected .slot-status {
+        background: rgba(102, 126, 234, 0.2);
+        color: var(--primary);
+      }
+      .slot.pending .slot-status,
+      .slot.linking .slot-status {
+        background: rgba(237, 137, 54, 0.2);
+        color: var(--warning);
+      }
+      .slot.disconnected .slot-status {
+        background: rgba(245, 101, 101, 0.2);
+        color: var(--danger);
+      }
+
+      .slot-info {
+        font-size: 0.65rem;
+        color: var(--text-muted);
+        margin-top: 0.4rem;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+
+      .health-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+        gap: 1rem;
+      }
+
+      .health-item {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        padding: 0.75rem;
+        background: rgba(255, 255, 255, 0.02);
+        border-radius: 0.5rem;
+      }
+
+      .health-icon {
+        width: 36px;
+        height: 36px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1rem;
+      }
+
+      .health-icon.pass {
+        background: rgba(72, 187, 120, 0.2);
+        color: var(--success);
+      }
+      .health-icon.warn {
+        background: rgba(237, 137, 54, 0.2);
+        color: var(--warning);
+      }
+      .health-icon.fail {
+        background: rgba(245, 101, 101, 0.2);
+        color: var(--danger);
+      }
+
+      .health-info h4 {
+        font-size: 0.875rem;
+        font-weight: 600;
+      }
+      .health-info p {
+        font-size: 0.7rem;
+        color: var(--text-muted);
+      }
+
+      .logs-container {
+        max-height: 400px;
+        overflow-y: auto;
+        font-family: 'Monaco', 'Menlo', monospace;
+        font-size: 0.75rem;
+      }
+
+      .log-entry {
+        display: flex;
+        gap: 0.75rem;
+        padding: 0.5rem;
+        border-bottom: 1px solid var(--border);
+      }
+
+      .log-entry:hover {
+        background: rgba(255, 255, 255, 0.02);
+      }
+      .log-time {
+        color: var(--text-muted);
+        white-space: nowrap;
+      }
+      .log-level {
+        font-weight: 600;
+        min-width: 50px;
+      }
+      .log-level.info {
+        color: var(--primary);
+      }
+      .log-level.error {
+        color: var(--danger);
+      }
+      .log-level.warn {
+        color: var(--warning);
+      }
+      .log-level.success {
+        color: var(--success);
+      }
+      .log-message {
+        flex: 1;
+        word-break: break-all;
+      }
+
+      .group-item {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 1rem;
+        background: rgba(255, 255, 255, 0.02);
+        border-radius: 0.5rem;
+        margin-bottom: 0.5rem;
+        transition: all 0.3s;
+      }
+
+      .group-item:hover {
+        background: rgba(255, 255, 255, 0.04);
+      }
+      .group-name {
+        font-weight: 600;
+        font-size: 0.9rem;
+      }
+      .group-meta {
+        font-size: 0.7rem;
+        color: var(--text-muted);
+      }
+      .group-settings {
+        display: flex;
+        gap: 0.5rem;
+        flex-wrap: wrap;
+      }
+
+      .loading {
+        display: inline-block;
+        width: 18px;
+        height: 18px;
+        border: 2px solid rgba(255, 255, 255, 0.1);
+        border-top-color: var(--primary);
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
+      }
+
+      @keyframes spin {
+        to {
+          transform: rotate(360deg);
+        }
+      }
+
+      .empty-state {
+        text-align: center;
+        padding: 2rem;
+        color: var(--text-muted);
+      }
+
+      .empty-state-icon {
+        font-size: 2.5rem;
+        margin-bottom: 0.5rem;
+      }
+
+      .two-col {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 1.5rem;
+      }
+
+      @media (max-width: 1024px) {
+        .two-col {
+          grid-template-columns: 1fr;
+        }
+      }
+
+      .progress-bar {
+        height: 6px;
+        background: rgba(255, 255, 255, 0.1);
+        border-radius: 3px;
+        overflow: hidden;
+        margin-top: 0.5rem;
+      }
+
+      .progress-fill {
+        height: 100%;
+        background: linear-gradient(90deg, var(--primary), var(--secondary));
+        border-radius: 3px;
+        transition: width 0.5s ease;
+      }
+
+      .top-commands {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 0.75rem;
+      }
+
+      .command-item {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 0.75rem;
+        background: rgba(255, 255, 255, 0.02);
+        border-radius: 0.5rem;
+      }
+
+      .command-name {
+        font-family: monospace;
+        font-size: 0.85rem;
+        color: var(--primary);
+      }
+
+      .command-count {
+        font-weight: 700;
+        font-size: 1rem;
+      }
+
+      .command-bar {
+        flex: 1;
+        height: 4px;
+        background: rgba(255, 255, 255, 0.1);
+        border-radius: 2px;
+        margin: 0 1rem;
+        overflow: hidden;
+      }
+
+      .command-bar-fill {
+        height: 100%;
+        background: var(--primary);
+        border-radius: 2px;
+      }
+
+      footer {
+        text-align: center;
+        padding: 1.5rem;
+        color: var(--text-muted);
+        font-size: 0.8rem;
+        border-top: 1px solid var(--border);
+        margin-top: 1rem;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="dashboard">
+      <header>
+        <div class="logo">
+          <span class="logo-emoji">🌸</span>
+          <h1>VaniaBot Dashboard</h1>
+        </div>
+        <div class="header-status">
+          <div class="status-badge">
+            <span class="status-dot" id="mainBotStatus"></span>
+            <span id="mainBotText">Conectando...</span>
+          </div>
+          <button class="refresh-btn" onclick="refreshAll()">
+            <span class="loading" id="refreshLoading" style="display: none"></span>
+            <span id="refreshText">Actualizar</span>
+          </button>
+        </div>
+      </header>
+
+      <div class="grid">
+        <div class="stat-card">
+          <div class="stat-header">
+            <span class="stat-label">Mensajes/min</span>
+            <span class="stat-icon">💬</span>
+          </div>
+          <div class="stat-value" id="msgsPerMin">-</div>
+          <div class="stat-sub">Promedio: <span id="avgMsgs">0</span>/min</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-header">
+            <span class="stat-label">Comandos/min</span>
+            <span class="stat-icon">⚡</span>
+          </div>
+          <div class="stat-value" id="cmdsPerMin">-</div>
+          <div class="stat-sub">Total: <span id="totalCmds">0</span></div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-header">
+            <span class="stat-label">RAM Usada</span>
+            <span class="stat-icon">🧠</span>
+          </div>
+          <div class="stat-value" id="ramPercent">-</div>
+          <div class="stat-sub"><span id="ramUsed">0</span> / <span id="ramTotal">0</span> GB</div>
+          <div class="progress-bar">
+            <div class="progress-fill" id="ramProgress" style="width: 0%"></div>
+          </div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-header">
+            <span class="stat-label">SubBots Activos</span>
+            <span class="stat-icon">🤖</span>
+          </div>
+          <div class="stat-value"><span id="activeBots">0</span>/<span id="totalBots">0</span></div>
+          <div class="stat-sub">Slots disponibles: <span id="availableSlots">0</span></div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-header">
+            <span class="stat-label">Grupos</span>
+            <span class="stat-icon">👥</span>
+          </div>
+          <div class="stat-value" id="totalGroups">-</div>
+          <div class="stat-sub">Activos: <span id="activeGroups">0</span></div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-header">
+            <span class="stat-label">Errores/min</span>
+            <span class="stat-icon">⚠️</span>
+          </div>
+          <div class="stat-value" id="errorsPerMin">-</div>
+          <div class="stat-sub">Total: <span id="totalErrors">0</span></div>
+        </div>
+      </div>
+
+      <div class="tabs">
+        <button class="tab active" data-tab="overview">📊 Overview</button>
+        <button class="tab" data-tab="commands">⚡ Comandos</button>
+        <button class="tab" data-tab="moderation">🛡️ Moderación</button>
+        <button class="tab" data-tab="groups">👥 Grupos</button>
+        <button class="tab" data-tab="subbots">🤖 SubBots</button>
+        <button class="tab" data-tab="system">💻 Sistema</button>
+        <button class="tab" data-tab="logs">📋 Logs</button>
+      </div>
+
+      <div id="tab-overview" class="tab-content active">
+        <div class="two-col">
+          <div class="section">
+            <div class="section-header">
+              <h3 class="section-title">📈 Actividad en Tiempo Real</h3>
+            </div>
+            <div class="chart-container">
+              <canvas id="activityChart"></canvas>
+            </div>
+          </div>
+          <div class="section">
+            <div class="section-header">
+              <h3 class="section-title">🧠 Uso de Memoria</h3>
+            </div>
+            <div class="chart-container">
+              <canvas id="memoryChart"></canvas>
+            </div>
+          </div>
+        </div>
+        <div class="section">
+          <div class="section-header">
+            <h3 class="section-title">🏆 Top Comandos</h3>
+          </div>
+          <div class="top-commands" id="topCommands">
+            <div class="empty-state">
+              <div class="empty-state-icon">⏳</div>
+              <p>Cargando...</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div id="tab-commands" class="tab-content">
+        <div class="section">
+          <div class="section-header">
+            <h3 class="section-title">⚡ Estadísticas de Comandos</h3>
+          </div>
+          <div class="table-container">
+            <table id="commandsTable">
+              <thead>
+                <tr>
+                  <th>Comando</th>
+                  <th>Ejecuciones</th>
+                  <th>Tiempo Total</th>
+                  <th>Tiempo Promedio</th>
+                  <th>Errores</th>
+                </tr>
+              </thead>
+              <tbody id="commandsBody">
+                <tr>
+                  <td colspan="5" class="empty-state">Cargando...</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <div id="tab-moderation" class="tab-content">
+        <div class="section">
+          <div class="section-header">
+            <h3 class="section-title">🛡️ Acciones de Moderación</h3>
+          </div>
+          <div class="table-container">
+            <table>
+              <thead>
+                <tr>
+                  <th>Usuario</th>
+                  <th>Acción</th>
+                  <th>Moderador</th>
+                  <th>Razón</th>
+                  <th>Fecha</th>
+                </tr>
+              </thead>
+              <tbody id="moderationBody">
+                <tr>
+                  <td colspan="5" class="empty-state">Cargando...</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+        <div class="two-col">
+          <div class="section">
+            <div class="section-header">
+              <h3 class="section-title">🔨 Baneos Activos</h3>
+            </div>
+            <div id="bansList"><div class="empty-state">Sin datos</div></div>
+          </div>
+          <div class="section">
+            <div class="section-header">
+              <h3 class="section-title">🔇 Mutes Activos</h3>
+            </div>
+            <div id="mutesList"><div class="empty-state">Sin datos</div></div>
+          </div>
+        </div>
+      </div>
+
+      <div id="tab-groups" class="tab-content">
+        <div class="section">
+          <div class="section-header">
+            <h3 class="section-title">👥 Grupos Registrados</h3>
+          </div>
+          <div id="groupsList">
+            <div class="empty-state">
+              <div class="empty-state-icon">👥</div>
+              <p>Cargando grupos...</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div id="tab-subbots" class="tab-content">
+        <div class="section">
+          <div class="section-header">
+            <h3 class="section-title">🤖 Slots de SubBots</h3>
+          </div>
+          <div class="slots-grid" id="slotsGrid">
+            <div class="empty-state">Cargando slots...</div>
+          </div>
+        </div>
+      </div>
+
+      <div id="tab-system" class="tab-content">
+        <div class="section">
+          <div class="section-header">
+            <h3 class="section-title">💻 Estado del Sistema</h3>
+          </div>
+          <div class="health-grid" id="healthGrid">
+            <div class="empty-state">Cargando estado...</div>
+          </div>
+        </div>
+        <div class="two-col">
+          <div class="section">
+            <div class="section-header">
+              <h3 class="section-title">📊 Caché</h3>
+            </div>
+            <div id="cacheStats"><div class="empty-state">Cargando...</div></div>
+          </div>
+          <div class="section">
+            <div class="section-header">
+              <h3 class="section-title">⏱️ Uptime</h3>
+            </div>
+            <div id="uptimeStats">
+              <div class="stat-card">
+                <div class="stat-label">Tiempo Activo</div>
+                <div class="stat-value" id="uptimeValue">-</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div id="tab-logs" class="tab-content">
+        <div class="section">
+          <div class="section-header">
+            <h3 class="section-title">📋 Logs del Dashboard</h3>
+            <button
+              class="refresh-btn"
+              onclick="loadLogs()"
+              style="padding: 0.3rem 0.8rem; font-size: 0.75rem"
+            >
+              Actualizar
+            </button>
+          </div>
+          <div class="logs-container" id="logsContainer">
+            <div class="empty-state">Sin logs</div>
+          </div>
+        </div>
+      </div>
+
+      <footer>
+        <p>VaniaBot Dashboard • Desarrollado con 💜</p>
+      </footer>
+    </div>
+
+    <script>
+      const API_BASE = '';
+      let activityChart, memoryChart;
+      let refreshInterval;
+
+      document.addEventListener('DOMContentLoaded', () => {
+        initCharts();
+        setupTabs();
+        loadAllData();
+        refreshInterval = setInterval(loadAllData, 30000);
+      });
+
+      function setupTabs() {
+        document.querySelectorAll('.tab').forEach(tab => {
+          tab.addEventListener('click', () => {
+            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+            tab.classList.add('active');
+            document.getElementById('tab-' + tab.dataset.tab).classList.add('active');
+          });
+        });
+      }
+
+      function initCharts() {
+        const activityCtx = document.getElementById('activityChart').getContext('2d');
+        activityChart = new Chart(activityCtx, {
+          type: 'line',
+          data: {
+            labels: [],
+            datasets: [
+              {
+                label: 'Mensajes',
+                data: [],
+                borderColor: '#667eea',
+                backgroundColor: 'rgba(102, 126, 234, 0.1)',
+                fill: true,
+                tension: 0.4,
+              },
+              {
+                label: 'Comandos',
+                data: [],
+                borderColor: '#48bb78',
+                backgroundColor: 'rgba(72, 187, 120, 0.1)',
+                fill: true,
+                tension: 0.4,
+              },
+            ],
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: { legend: { labels: { color: '#a0aec0' } } },
+            scales: {
+              x: { grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#a0aec0' } },
+              y: {
+                grid: { color: 'rgba(255,255,255,0.05)' },
+                ticks: { color: '#a0aec0' },
+                beginAtZero: true,
+              },
+            },
+          },
+        });
+
+        const memoryCtx = document.getElementById('memoryChart').getContext('2d');
+        memoryChart = new Chart(memoryCtx, {
+          type: 'doughnut',
+          data: {
+            labels: ['Usado', 'Libre'],
+            datasets: [{ data: [0, 100], backgroundColor: ['#667eea', 'rgba(255,255,255,0.1)'] }],
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: { legend: { position: 'bottom', labels: { color: '#a0aec0' } } },
+          },
+        });
+      }
+
+      async function refreshAll() {
+        document.getElementById('refreshLoading').style.display = 'inline-block';
+        document.getElementById('refreshText').style.display = 'none';
+        await loadAllData();
+        document.getElementById('refreshLoading').style.display = 'none';
+        document.getElementById('refreshText').style.display = 'inline';
+      }
+
+      async function loadAllData() {
+        await Promise.all([
+          loadStats(),
+          loadMetrics(),
+          loadCommands(),
+          loadModeration(),
+          loadGroups(),
+          loadSlots(),
+          loadHealth(),
+          loadLogs(),
+        ]);
+      }
+
+      async function loadStats() {
+        try {
+          const res = await fetch(API_BASE + '/api/stats');
+          const data = await res.json();
+
+          document.getElementById('msgsPerMin').textContent = data.averages?.messages || 0;
+          document.getElementById('avgMsgs').textContent = data.averages?.messages || 0;
+          document.getElementById('cmdsPerMin').textContent = data.averages?.commands || 0;
+          document.getElementById('totalCmds').textContent = data.stats?.commandsExecuted || 0;
+          document.getElementById('errorsPerMin').textContent = data.averages?.errors || 0;
+          document.getElementById('totalErrors').textContent = data.stats?.errorsCount || 0;
+
+          const ramUsed = (data.memorySystem?.used / 1024 / 1024 / 1024).toFixed(1);
+          const ramTotal = (data.memorySystem?.total / 1024 / 1024 / 1024).toFixed(1);
+          const ramPct = data.memorySystem?.percentage || 0;
+          document.getElementById('ramUsed').textContent = ramUsed;
+          document.getElementById('ramTotal').textContent = ramTotal;
+          document.getElementById('ramPercent').textContent = ramPct + '%';
+          document.getElementById('ramProgress').style.width = ramPct + '%';
+
+          const mainBot = data.bots?.find(b => b.id === 'main');
+          const statusDot = document.getElementById('mainBotStatus');
+          const statusText = document.getElementById('mainBotText');
+          if (mainBot?.connected) {
+            statusDot.className = 'status-dot';
+            statusText.textContent = 'Online';
+          } else {
+            statusDot.className = 'status-dot danger';
+            statusText.textContent = 'Offline';
+          }
+
+          const subBots = data.bots?.filter(b => b.id !== 'main') || [];
+          const connectedSubBots = subBots.filter(b => b.connected).length;
+          document.getElementById('activeBots').textContent = connectedSubBots;
+          document.getElementById('totalBots').textContent = subBots.length;
+          document.getElementById('availableSlots').textContent = data.slots?.available || 0;
+
+          document.getElementById('uptimeValue').textContent = formatUptime(data.uptime);
+
+          if (data.cache) {
+            document.getElementById('cacheStats').innerHTML = `
+            <div class="health-item"><div class="health-info"><h4>Entradas</h4><p>${data.cache.size || 0}</p></div></div>
+            <div class="health-item"><div class="health-info"><h4>Hits</h4><p>${data.cache.hits || 0}</p></div></div>
+            <div class="health-item"><div class="health-info"><h4>Misses</h4><p>${data.cache.misses || 0}</p></div></div>
+          `;
+          }
+
+          memoryChart.data.datasets[0].data = [ramUsed, (ramTotal - ramUsed).toFixed(1)];
+          memoryChart.update('none');
+        } catch (err) {
+          console.error('Stats error:', err);
+        }
+      }
+
+      async function loadMetrics() {
+        try {
+          const res = await fetch(API_BASE + '/api/metrics/realtime');
+          const data = await res.json();
+
+          const history = data.history || [];
+          const labels = history.map(m =>
+            new Date(m.timestamp * (m.timestamp > 1e12 ? 1 : 1000)).toLocaleTimeString(),
+          );
+          const msgsData = history.map(m => m.messagesPerMinute);
+          const cmdsData = history.map(m => m.commandsPerMinute);
+
+          activityChart.data.labels = labels;
+          activityChart.data.datasets[0].data = msgsData;
+          activityChart.data.datasets[1].data = cmdsData;
+          activityChart.update('none');
+        } catch (err) {
+          console.error('Metrics error:', err);
+        }
+      }
+
+      async function loadCommands() {
+        try {
+          const res = await fetch(API_BASE + '/api/commands/metrics');
+          const data = await res.json();
+
+          const top = (data.topCommands || data.commands || []).slice(0, 8);
+          const maxCount = top.length > 0 ? top[0].count : 1;
+
+          if (top.length > 0) {
+            document.getElementById('topCommands').innerHTML = top
+              .map(
+                cmd => `
+            <div class="command-item">
+              <span class="command-name">/${cmd.name}</span>
+              <div class="command-bar"><div class="command-bar-fill" style="width: ${(cmd.count / maxCount) * 100}%"></div></div>
+              <span class="command-count">${cmd.count}</span>
+            </div>
+          `,
+              )
+              .join('');
+          } else {
+            document.getElementById('topCommands').innerHTML =
+              '<div class="empty-state">Sin datos</div>';
+          }
+
+          const tbody = document.getElementById('commandsBody');
+          const commands = (data.commands || []).slice(0, 30);
+          if (commands.length > 0) {
+            tbody.innerHTML = commands
+              .map(
+                cmd => `
+            <tr>
+              <td><code style="color: var(--primary)">/${cmd.name}</code></td>
+              <td>${cmd.count}</td>
+              <td>${cmd.totalTime}ms</td>
+              <td>${cmd.avgTime}ms</td>
+              <td>${cmd.errors > 0 ? '<span class="badge badge-danger">' + cmd.errors + '</span>' : '0'}</td>
+            </tr>
+          `,
+              )
+              .join('');
+          } else {
+            tbody.innerHTML =
+              '<tr><td colspan="5" class="empty-state">Sin comandos ejecutados</td></tr>';
+          }
+        } catch (err) {
+          console.error('Commands error:', err);
+        }
+      }
+
+      async function loadModeration() {
+        try {
+          const [actionsRes, bansRes, mutesRes] = await Promise.all([
+            fetch(API_BASE + '/api/moderation/actions?limit=20'),
+            fetch(API_BASE + '/api/moderation/bans'),
+            fetch(API_BASE + '/api/moderation/mutes'),
+          ]);
+
+          const actions = await actionsRes.json();
+          const bans = await bansRes.json();
+          const mutes = await mutesRes.json();
+
+          const actionsBody = document.getElementById('moderationBody');
+          if (actions.actions?.length > 0) {
+            actionsBody.innerHTML = actions.actions
+              .map(
+                a => `
+            <tr>
+              <td>${a.userName || a.userId}</td>
+              <td><span class="badge badge-${getActionBadge(a.action)}">${a.action.toUpperCase()}</span></td>
+              <td>${a.moderator}</td>
+              <td>${a.reason || '-'}</td>
+              <td>${new Date(a.timestamp).toLocaleString()}</td>
+            </tr>
+          `,
+              )
+              .join('');
+          } else {
+            actionsBody.innerHTML =
+              '<tr><td colspan="5" class="empty-state">Sin acciones de moderación</td></tr>';
+          }
+
+          const bansList = document.getElementById('bansList');
+          if (bans.bans?.length > 0) {
+            bansList.innerHTML = bans.bans
+              .slice(0, 10)
+              .map(
+                b => `
+            <div class="health-item">
+              <div class="health-info">
+                <h4>${b.userName || b.userId}</h4>
+                <p>${b.reason || 'Sin razón'}</p>
+              </div>
+              <span class="badge badge-danger">Baneado</span>
+            </div>
+          `,
+              )
+              .join('');
+          } else {
+            bansList.innerHTML = '<div class="empty-state">Sin baneos activos</div>';
+          }
+
+          const mutesList = document.getElementById('mutesList');
+          if (mutes.mutes?.length > 0) {
+            mutesList.innerHTML = mutes.mutes
+              .slice(0, 10)
+              .map(
+                m => `
+            <div class="health-item">
+              <div class="health-info">
+                <h4>${m.userName || m.userId}</h4>
+                <p>Expira: ${new Date(m.expiresAt).toLocaleString()}</p>
+              </div>
+              <span class="badge badge-warning">Muteado</span>
+            </div>
+          `,
+              )
+              .join('');
+          } else {
+            mutesList.innerHTML = '<div class="empty-state">Sin mutes activos</div>';
+          }
+        } catch (err) {
+          console.error('Moderation error:', err);
+        }
+      }
+
+      async function loadGroups() {
+        try {
+          const res = await fetch(API_BASE + '/api/groups');
+          const data = await res.json();
+
+          document.getElementById('totalGroups').textContent = data.total || 0;
+          document.getElementById('activeGroups').textContent = data.active || 0;
+
+          const groupsList = document.getElementById('groupsList');
+          if (data.groups?.length > 0) {
+            groupsList.innerHTML = data.groups
+              .map(
+                g => `
+            <div class="group-item">
+              <div>
+                <div class="group-name">${g.name}</div>
+                <div class="group-meta">${g.jid}</div>
+              </div>
+              <div class="group-settings">
+                ${g.welcome ? '<span class="badge badge-info">Welcome</span>' : ''}
+                ${g.goodbye ? '<span class="badge badge-info">Goodbye</span>' : ''}
+                ${g.antiLink ? '<span class="badge badge-warning">Antilink</span>' : ''}
+                ${g.antiSpam ? '<span class="badge badge-warning">Antispam</span>' : ''}
+                ${g.onlyAdmin ? '<span class="badge badge-danger">Admin Only</span>' : ''}
+                ${!g.isActive ? '<span class="badge badge-danger">Inactivo</span>' : ''}
+              </div>
+            </div>
+          `,
+              )
+              .join('');
+          } else {
+            groupsList.innerHTML =
+              '<div class="empty-state"><div class="empty-state-icon">👥</div><p>No hay grupos registrados</p></div>';
+          }
+        } catch (err) {
+          console.error('Groups error:', err);
+        }
+      }
+
+      async function loadSlots() {
+        try {
+          const res = await fetch(API_BASE + '/api/slots');
+          const data = await res.json();
+
+          const slotsGrid = document.getElementById('slotsGrid');
+          if (data.details?.length > 0) {
+            slotsGrid.innerHTML = data.details
+              .map(
+                slot => `
+            <div class="slot ${slot.status}">
+              <div class="slot-number">#${slot.slot}</div>
+              <span class="slot-status">${getStatusLabel(slot.status)}</span>
+              <div class="slot-info">${slot.name || slot.phoneNumber || '-'}</div>
+              ${slot.phoneNumber ? '<div class="slot-info">' + slot.phoneNumber + '</div>' : ''}
+            </div>
+          `,
+              )
+              .join('');
+          } else {
+            slotsGrid.innerHTML = '<div class="empty-state">No hay slots configurados</div>';
+          }
+        } catch (err) {
+          console.error('Slots error:', err);
+        }
+      }
+
+      async function loadHealth() {
+        try {
+          const res = await fetch(API_BASE + '/api/health/detailed');
+          const data = await res.json();
+
+          const healthGrid = document.getElementById('healthGrid');
+          const checks = data.checks || [];
+          const statuses = {
+            pass: { icon: '✅', class: 'pass', label: 'OK' },
+            warn: { icon: '⚠️', class: 'warn', label: 'Advertencia' },
+            fail: { icon: '❌', class: 'fail', label: 'Fallido' },
+          };
+
+          healthGrid.innerHTML = checks
+            .map(check => {
+              const status = statuses[check.status] || statuses.pass;
+              return `
+            <div class="health-item">
+              <div class="health-icon ${status.class}">${status.icon}</div>
+              <div class="health-info">
+                <h4>${check.name}</h4>
+                <p>${check.message || status.label}</p>
+              </div>
+            </div>
+          `;
+            })
+            .join('');
+
+          if (data.system) {
+            document.getElementById('uptimeStats').innerHTML = `
+            <div class="stat-card">
+              <div class="stat-label">Tiempo Activo</div>
+              <div class="stat-value">${formatUptime(data.uptime)}</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-label">Plataforma</div>
+              <div class="stat-value" style="font-size: 1.5rem">${data.system.platform}</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-label">CPU</div>
+              <div class="stat-value" style="font-size: 1.5rem">${data.system.cpuCount} cores</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-label">Node.js</div>
+              <div class="stat-value" style="font-size: 1.2rem">${data.process?.nodeVersion || '-'}</div>
+            </div>
+          `;
+          }
+        } catch (err) {
+          console.error('Health error:', err);
+        }
+      }
+
+      async function loadLogs() {
+        try {
+          const res = await fetch(API_BASE + '/api/logs?limit=50');
+          const data = await res.json();
+
+          const container = document.getElementById('logsContainer');
+          if (data.logs?.length > 0) {
+            container.innerHTML = data.logs
+              .map(
+                log => `
+            <div class="log-entry">
+              <span class="log-time">${new Date(log.timestamp).toLocaleTimeString()}</span>
+              <span class="log-level ${log.level}">${log.level.toUpperCase()}</span>
+              <span class="log-message">${log.message}</span>
+            </div>
+          `,
+              )
+              .join('');
+          } else {
+            container.innerHTML = '<div class="empty-state">Sin logs disponibles</div>';
+          }
+        } catch (err) {
+          console.error('Logs error:', err);
+        }
+      }
+
+      function formatUptime(seconds) {
+        if (!seconds) return '-';
+        const d = Math.floor(seconds / 86400);
+        const h = Math.floor((seconds % 86400) / 3600);
+        const m = Math.floor((seconds % 3600) / 60);
+        const s = Math.floor(seconds % 60);
+        if (d > 0) return `${d}d ${h}h ${m}m`;
+        if (h > 0) return `${h}h ${m}m ${s}s`;
+        return `${m}m ${s}s`;
+      }
+
+      function getStatusLabel(status) {
+        const labels = {
+          free: 'LIBRE',
+          reserved: 'RESERVADO',
+          pending: 'PENDIENTE',
+          linking: 'VINCULANDO',
+          connected: 'CONECTADO',
+          disconnected: 'DESCONECTADO',
+        };
+        return labels[status] || status?.toUpperCase() || '-';
+      }
+
+      function getActionBadge(action) {
+        const badges = {
+          ban: 'danger',
+          kick: 'danger',
+          mute: 'warning',
+          warn: 'warning',
+        };
+        return badges[action] || 'info';
+      }
+    </script>
+  </body>
+</html>
