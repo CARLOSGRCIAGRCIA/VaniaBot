@@ -8,19 +8,32 @@ interface MercadoLibreItem {
   title: string;
   price: string;
   link: string;
+  condition: string;
+}
+
+interface MLApiResult {
+  title: string;
+  price: number;
+  currency_id: string;
+  permalink: string;
+  condition: string;
+}
+
+interface MLApiResponse {
+  results: MLApiResult[];
 }
 
 export class MercadoLibreCommand extends Command {
-  name = 'mercadolibre';
+  name        = 'mercadolibre';
   description = 'Buscar productos en MercadoLibre';
-  category = CommandCategory.MEDIA;
-  aliases = ['ml', 'mercadolibre'];
-  usage = '!mercadolibre <búsqueda>';
-  examples = ['!mercadolibre TV Samsung', '!mercadolibre iPhone'];
-  cooldown = 15_000;
+  category    = CommandCategory.MEDIA;
+  aliases     = ['ml', 'mercadolibre'];
+  usage       = '!mercadolibre <búsqueda>';
+  examples    = ['!mercadolibre TV Samsung', '!mercadolibre iPhone'];
+  cooldown    = 15_000;
 
   async execute(ctx: MessageContext): Promise<void> {
-    const query = ctx.args.join(' ');
+    const query = ctx.args.join(' ').trim();
 
     if (!query) {
       await ctx.reply(
@@ -38,19 +51,23 @@ export class MercadoLibreCommand extends Command {
 
       if (items.length === 0) {
         await ctx.react('❌');
-        await ctx.reply(`❌ No se encontraron resultados para: ${query}`);
+        await ctx.reply(`❌ No se encontraron resultados para: *${query}*`);
         return;
       }
 
       const maxItems = Math.min(items.length, 10);
-      let message = `╭━━━〔 🛒 MERCADO LIBRE 〕━━━⬣\n\n`;
+      const conditionLabel = (c: string) => (c === 'new' ? '🆕 Nuevo' : '♻️ Usado');
+
+      let message = `╭━━━〔 🛒 MERCADO LIBRE 〕━━━⬣\n`;
+      message += `✩ *${query}* ✩\n\n`;
 
       for (let i = 0; i < maxItems; i++) {
         const item = items[i];
         const shortTitle =
           item.title.length > 50 ? item.title.substring(0, 50) + '...' : item.title;
-        message += `${i + 1}. *${shortTitle}*\n`;
-        message += `   💰 ${item.price}\n`;
+
+        message += `*${i + 1}.* ${shortTitle}\n`;
+        message += `   💰 ${item.price}  ${conditionLabel(item.condition)}\n`;
         message += `   🔗 ${item.link}\n\n`;
       }
 
@@ -61,57 +78,33 @@ export class MercadoLibreCommand extends Command {
     } catch (error) {
       logger.error('[MercadoLibreCommand] Error:', error);
       await ctx.react('❌');
-      await ctx.reply(`˚₊· ͟͟͞͞➳ *error* ˚₊· ͟͟͞͞➳\n\n` + `❌ No pude buscar en MercadoLibre.`);
+      await ctx.reply(
+        `˚₊· ͟͟͞͞➳ *error* ˚₊· ͟͟͞͞➳\n\n` +
+          `❌ No pude buscar en MercadoLibre. Intenta de nuevo.`,
+      );
     }
   }
 
   private async searchMercadoLibre(query: string): Promise<MercadoLibreItem[]> {
     const encodedQuery = encodeURIComponent(query);
-    const url = `https://listado.mercadolibre.com/${encodedQuery}`;
 
-    const response = await axios.get(url, {
+    const url = `https://api.mercadolibre.com/sites/MLM/search?q=${encodedQuery}&limit=10`;
+
+    const response = await axios.get<MLApiResponse>(url, {
+      timeout: 15_000,
       headers: {
-        'User-Agent':
-          'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        Accept: 'application/json',
       },
-      timeout: 30_000,
     });
 
-    const html = response.data as string;
-    const items: MercadoLibreItem[] = [];
+    const results = response.data?.results;
+    if (!results || results.length === 0) return [];
 
-    const titleRegex = /"title":"([^"]+)"/g;
-    const priceRegex = /"price":(\d+)/g;
-    const linkRegex = /"permalink":"([^"]+)"/g;
-
-    let titleMatch;
-    let priceMatch;
-    let linkMatch;
-
-    const titles: string[] = [];
-    while ((titleMatch = titleRegex.exec(html)) !== null) {
-      titles.push(titleMatch[1]);
-    }
-
-    const prices: string[] = [];
-    while ((priceMatch = priceRegex.exec(html)) !== null) {
-      prices.push('$' + parseInt(priceMatch[1]).toLocaleString());
-    }
-
-    const links: string[] = [];
-    while ((linkMatch = linkRegex.exec(html)) !== null) {
-      links.push(linkMatch[1]);
-    }
-
-    const minLength = Math.min(titles.length, prices.length, links.length);
-    for (let i = 0; i < minLength; i++) {
-      items.push({
-        title: titles[i],
-        price: prices[i],
-        link: links[i].substring(0, 60) + '...',
-      });
-    }
-
-    return items;
+    return results.map(item => ({
+      title:     item.title,
+      price:     `${item.currency_id} $${item.price.toLocaleString('es-MX')}`,
+      link:      item.permalink,
+      condition: item.condition,
+    }));
   }
 }
