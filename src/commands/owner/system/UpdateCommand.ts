@@ -20,54 +20,87 @@ import { logger } from '@/utils/logger.js';
 const execAsync = promisify(exec);
 
 export class UpdateCommand extends Command {
-  name = 'update';
+  name        = 'update';
   description = 'Actualiza el bot desde git';
-  category = CommandCategory.OWNER;
-  aliases = ['actualizar', 'gitpull'];
-  usage = '!update';
-  examples = ['!update'];
-  permission = PermissionLevel.OWNER;
-  contexts = [CommandContext.BOTH];
+  category    = CommandCategory.OWNER;
+  aliases     = ['actualizar', 'gitpull'];
+  usage       = '!update';
+  examples    = ['!update'];
+  permission  = PermissionLevel.OWNER;
+  contexts    = [CommandContext.BOTH];
 
   async execute(ctx: MessageContext): Promise<void> {
     await ctx.react('📥');
-    await ctx.reply(`📥 *Actualizando bot...*\n\nObteniendo cambios de git...`);
+    await ctx.reply(
+      `˚₊· ͟͟͞͞➳ *update* ˚₊· ͟͟͞͞➳\n\n` +
+        `📥 iniciando actualización...\n` +
+        `✿ verificando estado del repositorio`,
+    );
 
     try {
-      const { stdout: status } = await execAsync('git status --short');
+      // Solo detecta cambios en archivos trackeados — ignora .vania-session y otros untracked
+      const { stdout: status } = await execAsync('git status --short --untracked-files=no');
+
       if (status.trim()) {
+        await ctx.react('⚠️');
         await ctx.reply(
-          `⚠️ *Hay cambios sin guardar*\n\nPor favor guarda o stash tus cambios antes de actualizar.`,
+          `˚₊· ͟͟͞͞➳ *update* ˚₊· ͟͟͞͞➳\n\n` +
+            `⚠️ hay cambios sin guardar\n\n` +
+            `✿ guarda o haz stash antes de actualizar\n\n` +
+            `\`\`\`${status.trim()}\`\`\``,
         );
         return;
       }
 
-      await ctx.reply(`📥 Ejecutando git pull...`);
+      await ctx.reply(
+        `˚₊· ͟͟͞͞➳ *update* ˚₊· ͟͟͞͞➳\n\n` +
+          `📡 ejecutando git pull...`,
+      );
 
-      const { stdout: pull } = await execAsync('git pull origin main', { timeout: 60000 });
+      const { stdout: pull } = await execAsync('git pull origin main', { timeout: 60_000 });
 
       if (pull.includes('Already up to date')) {
-        await ctx.reply(`✅ *El bot ya está actualizado*`);
+        await ctx.react('✅');
+        await ctx.reply(
+          `˚₊· ͟͟͞͞➳ *update* ˚₊· ͟͟͞͞➳\n\n` +
+            `✿ ya estás al día ✿\n\n` +
+            `✅ no hay cambios nuevos en el repositorio`,
+        );
         return;
       }
 
-      await ctx.reply(`📦 Ejecutando npm install...`);
+      await ctx.reply(
+        `˚₊· ͟͟͞͞➳ *update* ˚₊· ͟͟͞͞➳\n\n` +
+          `📦 instalando dependencias...`,
+      );
 
-      await execAsync('npm install', { timeout: 120000 });
+      await execAsync('npm install', { timeout: 120_000 });
 
-      await ctx.reply(`🔨 Compilando TypeScript...`);
+      await ctx.reply(
+        `˚₊· ͟͟͞͞➳ *update* ˚₊· ͟͟͞͞➳\n\n` +
+          `🔨 compilando TypeScript...`,
+      );
 
-      await execAsync('npm run build', { timeout: 120000 });
+      await execAsync('npm run build', { timeout: 120_000 });
 
-      logger.info('Update completed, restarting...');
-      await ctx.reply(`✅ *Actualización completada*\n\n🔄 Reiniciando bot...`);
+      logger.info('[UpdateCommand] Actualización completada, reiniciando...');
 
-      setTimeout(() => {
-        process.exit(0);
-      }, 3000);
+      await ctx.react('✅');
+      await ctx.reply(
+        `˚₊· ͟͟͞͞➳ *update* ˚₊· ͟͟͞͞➳\n\n` +
+          `✿ actualización completada ✿\n\n` +
+          `🔄 el bot se reiniciará en 3 segundos...`,
+      );
+
+      setTimeout(() => process.exit(0), 3_000);
     } catch (error) {
-      console.error('UpdateCommand error:', error);
-      await ctx.reply(`❌ *Error al actualizar*\n\n${error}`);
+      logger.error('[UpdateCommand] Error:', error);
+      await ctx.react('❌');
+      await ctx.reply(
+        `˚₊· ͟͟͞͞➳ *update* ˚₊· ͟͟͞͞➳\n\n` +
+          `✿ error al actualizar ✿\n\n` +
+          `❌ ${error instanceof Error ? error.message : String(error)}`,
+      );
     }
   }
 }
