@@ -77,9 +77,7 @@ export class GitHubSearchCommand extends Command {
         )
         .join('\n───────────────\n\n');
 
-      await ctx.reply(
-        `╭━〔GITHUB SEARCH〕━⬣\n\n` + results + `\n╰━━━━━━━━━━━━━━⬣`,
-      );
+      await ctx.reply(`╭━〔GITHUB SEARCH〕━⬣\n\n` + results + `\n╰━━━━━━━━━━━━━━⬣`);
 
       await ctx.react('✅');
     } catch (error) {

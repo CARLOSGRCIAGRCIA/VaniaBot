@@ -135,7 +135,7 @@ export class PersonalidadCommand extends Command {
 ┃
 ┃ 🎯 *Género:* ${pickRandom(GENDERS)}
 ┃
-╰━━━━━━━━━━━━━━━━━⬣`;
+╰━━━━━━━━━━━━━⬣`;
 
     await ctx.reply(personalidad);
   }

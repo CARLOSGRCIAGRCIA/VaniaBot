@@ -27,10 +27,6 @@ const EFFECTS: Record<string, { filter: string; description: string }> = {
   tupai: { filter: '-filter:a "atempo=0.5,asetrate=65100"', description: 'Tupai/Chipmunk' },
   reverse: { filter: '-filter_complex "areverse"', description: 'Reverse' },
   earrape: { filter: '-af volume=12', description: 'Earrape' },
-  smooth: {
-    filter: '-filter:v "minterpolate=\'mi_mode=mci:mc_mode=aobmc:vsbmc=1:fps=120\'"',
-    description: 'Smooth',
-  },
   blown: { filter: '-af acrusher=.1:1:64:0:log', description: 'Blown' },
   fat: { filter: '-filter:a "atempo=1.6,asetrate=22100"', description: 'Fat' },
 };
@@ -67,7 +63,7 @@ export class AudioEffectCommand extends Command {
       return;
     }
 
-    const mime = ctx.quoted.audioMessage?.mimetype || '';
+    const mime = ctx.quoted.audioMessage?.mimetype ?? '';
     if (!mime.includes('audio')) {
       await ctx.reply(
         `˚₊· ͟͟͞͞➳ *no es audio* ˚₊· ͟͟͞͞➳\n\n` + `✿ Necesito que respondas a un *audio/nota de voz*.`,
@@ -77,36 +73,43 @@ export class AudioEffectCommand extends Command {
 
     await ctx.react('⏳');
 
+    const inputFile = path.join(TMP_DIR, `input_${getRandom('.mp3')}`);
+    const outputFile = path.join(TMP_DIR, `output_${getRandom('.ogg')}`);
+
     try {
-      if (!fs.existsSync(TMP_DIR)) {
-        fs.mkdirSync(TMP_DIR, { recursive: true });
-      }
+      fs.mkdirSync(TMP_DIR, { recursive: true });
 
-      const quotedMsg = ctx.quoted;
+      const contextInfo =
+        ctx.message.message?.extendedTextMessage?.contextInfo ??
+        ctx.message.message?.audioMessage?.contextInfo ??
+        ctx.message.message?.imageMessage?.contextInfo;
+
       const quotedAsMessage: WAMessage = {
-        key: ctx.message.key,
-        message: quotedMsg,
+        key: {
+          remoteJid: ctx.message.key.remoteJid,
+          id: contextInfo?.stanzaId,
+          fromMe: contextInfo?.participant === ctx.sock.user?.id,
+          participant: contextInfo?.participant,
+        },
+        message: ctx.quoted,
       } as WAMessage;
+
       const mediaBuffer = await downloadMediaMessage(quotedAsMessage, 'buffer', {});
-      const inputFile = path.join(TMP_DIR, `input_${getRandom('.mp3')}`);
-      const outputFile = path.join(TMP_DIR, `output_${getRandom('.mp3')}`);
+      fs.writeFileSync(inputFile, mediaBuffer as Buffer);
 
-      fs.writeFileSync(inputFile, mediaBuffer);
+      const ffmpegCommand = `ffmpeg -y -i "${inputFile}" ${effect.filter} -c:a libopus -b:a 64k "${outputFile}"`;
+      logger.info(`[AudioEffectCommand] Running: ${ffmpegCommand}`);
 
-      const ffmpegCommand = `ffmpeg -i "${inputFile}" ${effect.filter} "${outputFile}"`;
-
-      await execAsync(ffmpegCommand);
+      const { stderr } = await execAsync(ffmpegCommand);
+      if (stderr) logger.debug(`[AudioEffectCommand] ffmpeg stderr: ${stderr}`);
 
       const outputBuffer = fs.readFileSync(outputFile);
 
       await ctx.sock.sendMessage(ctx.chat.jid, {
         audio: outputBuffer,
-        mimetype: 'audio/mpeg',
+        mimetype: 'audio/ogg; codecs=opus',
         ptt: true,
       });
-
-      fs.unlinkSync(inputFile);
-      fs.unlinkSync(outputFile);
 
       await ctx.react('✅');
     } catch (error) {
@@ -115,6 +118,14 @@ export class AudioEffectCommand extends Command {
       await ctx.reply(
         `˚₊· ͟͟͞͞➳ *error* ˚₊· ͟͟͞͞➳\n\n` + `❌ No pude aplicar el efecto. Intenta con otro audio.`,
       );
+    } finally {
+      for (const f of [inputFile, outputFile]) {
+        try {
+          if (fs.existsSync(f)) fs.unlinkSync(f);
+        } catch {
+          /* ignorar */
+        }
+      }
     }
   }
 }
