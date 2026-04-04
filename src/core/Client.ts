@@ -32,6 +32,7 @@ import { cacheManager } from '@/core/CacheManager.js';
 import { handleReaccion } from '@/handlers/ReaccionHandler.js';
 import { quizAnswerHandler } from '@/handlers/QuizAnswerHandler.js';
 import { handleMention } from '@/handlers/AiMentionHandler.js';
+import { handleAudioResponse } from '@/handlers/AudioResponseHandler.js';
 import type { IMiddleware } from '@/types/index.js';
 import { EventEmitter } from 'events';
 import { welcomeService } from '@/services/system/WelcomeService.js';
@@ -386,6 +387,8 @@ export class WhatsAppClient {
           handleReaccion(this.sock, msg).catch(err => logError('handleReaccion', err));
           continue;
         }
+
+        handleAudioResponse(this.sock, msg).catch(err => logError('handleAudioResponse', err));
 
         antiDeleteService.storeMessage(this.sock, msg).catch(err => {
           logger.debug('Error storing message for anti-delete:', err);

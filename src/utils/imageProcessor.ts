@@ -306,7 +306,9 @@ export class ImageProcessor {
     const outPath = join(this.TEMP_DIR, `drawtext-${Date.now()}.png`);
     const vfArg = filters.join(',');
 
-    logger.warn(`[ImageProcessor] FFmpeg drawtext: ${filters.length} bloque(s) | font: ${fontPath}`);
+    logger.warn(
+      `[ImageProcessor] FFmpeg drawtext: ${filters.length} bloque(s) | font: ${fontPath}`,
+    );
 
     await new Promise<void>((resolve, reject) => {
       const args = ['-y', '-i', imagePath, '-vf', vfArg, outPath];
@@ -355,14 +357,21 @@ export class ImageProcessor {
     let color = b.fill;
     if (color.startsWith('#')) {
       const hex = color.replace('#', '');
-      color = `0x${hex.length === 3 ? hex.split('').map(c => c + c).join('') : hex}FF`;
+      color = `0x${
+        hex.length === 3
+          ? hex
+              .split('')
+              .map(c => c + c)
+              .join('')
+          : hex
+      }FF`;
     }
 
     // Posición X según text-anchor
     let xExpr: string;
-    if (b.textAnchor === 'middle')    xExpr = `${b.x}-text_w/2`;
-    else if (b.textAnchor === 'end')  xExpr = `${b.x}-text_w`;
-    else                              xExpr = `${b.x}`;
+    if (b.textAnchor === 'middle') xExpr = `${b.x}-text_w/2`;
+    else if (b.textAnchor === 'end') xExpr = `${b.x}-text_w`;
+    else xExpr = `${b.x}`;
 
     // SVG baseline → FFmpeg top (aprox. 82% del font-size)
     const yVal = Math.max(0, Math.round(b.y - b.fontSize * 0.82));

@@ -64,6 +64,10 @@ export interface GroupSettings {
     enabled: boolean;
   };
 
+  audios: boolean;
+
+  nsfw: boolean;
+
   prime: {
     enabled: boolean;
   };
@@ -149,6 +153,8 @@ export class GroupService {
       economy: {
         enabled: true,
       },
+      audios: false,
+      nsfw: false,
       prime: {
         enabled: false,
       },
@@ -373,5 +379,21 @@ export class GroupService {
   async getOnlyAdmin(jid: string): Promise<boolean> {
     const group = await this.getGroup(jid);
     return group.onlyAdmin;
+  }
+
+  async toggleAudios(jid: string, enabled: boolean): Promise<void> {
+    await this.db.update<GroupSettings>(this.COLLECTION, jid, {
+      audios: enabled,
+      updatedAt: Date.now(),
+    });
+    await this.db.flush();
+  }
+
+  async toggleNSFW(jid: string, enabled: boolean): Promise<void> {
+    await this.db.update<GroupSettings>(this.COLLECTION, jid, {
+      nsfw: enabled,
+      updatedAt: Date.now(),
+    });
+    await this.db.flush();
   }
 }

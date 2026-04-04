@@ -126,6 +126,9 @@ const envSchema = z.object({
   /** Groq API key for AI features (get free at https://console.groq.com/keys) */
   GROQ_API_KEY: z.string().optional(),
 
+  /** DeepAI API key for image processing (get at https://deepai.org) */
+  DEEPAI_API_KEY: z.string().optional(),
+
   /** Log level: error | warn | info | debug */
   LOG_LEVEL: z.enum(['error', 'warn', 'info', 'debug']).default('debug'),
 
