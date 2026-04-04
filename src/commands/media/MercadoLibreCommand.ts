@@ -1,7 +1,7 @@
 import { Command } from '../Command.js';
 import { CommandCategory } from '@/types/index.js';
 import type { MessageContext } from '@/types/index.js';
-import axios from 'axios';
+import axios, { AxiosError } from 'axios';
 import { logger } from '@/utils/logger.js';
 
 interface MercadoLibreItem {
@@ -76,7 +76,24 @@ export class MercadoLibreCommand extends Command {
       await ctx.reply(message);
       await ctx.react('✅');
     } catch (error) {
-      logger.error('[MercadoLibreCommand] Error:', error);
+      if (error instanceof AxiosError) {
+        logger.error('[MercadoLibreCommand] AxiosError:', {
+          message: error.message,
+          code:    error.code,
+          status:  error.response?.status,
+          data:    JSON.stringify(error.response?.data).substring(0, 300),
+          url:     error.config?.url,
+        });
+      } else if (error instanceof Error) {
+        logger.error('[MercadoLibreCommand] Error:', {
+          name:    error.name,
+          message: error.message,
+          stack:   error.stack?.split('\n').slice(0, 5).join('\n'),
+        });
+      } else {
+        logger.error('[MercadoLibreCommand] Unknown error:', error);
+      }
+
       await ctx.react('❌');
       await ctx.reply(
         `˚₊· ͟͟͞͞➳ *error* ˚₊· ͟͟͞͞➳\n\n` +
@@ -87,8 +104,9 @@ export class MercadoLibreCommand extends Command {
 
   private async searchMercadoLibre(query: string): Promise<MercadoLibreItem[]> {
     const encodedQuery = encodeURIComponent(query);
-
     const url = `https://api.mercadolibre.com/sites/MLM/search?q=${encodedQuery}&limit=10`;
+
+    logger.info(`[MercadoLibreCommand] Fetching: ${url}`);
 
     const response = await axios.get<MLApiResponse>(url, {
       timeout: 15_000,
@@ -96,6 +114,9 @@ export class MercadoLibreCommand extends Command {
         Accept: 'application/json',
       },
     });
+
+    logger.info(`[MercadoLibreCommand] HTTP ${response.status} — results: ${response.data?.results?.length ?? 'undefined'}`);
+    logger.info(`[MercadoLibreCommand] Raw response: ${JSON.stringify(response.data).substring(0, 500)}`);
 
     const results = response.data?.results;
     if (!results || results.length === 0) return [];
