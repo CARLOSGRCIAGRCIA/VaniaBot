@@ -23,14 +23,24 @@ interface MLApiResponse {
   results: MLApiResult[];
 }
 
+interface MLTokenResponse {
+  access_token: string;
+  expires_in: number;
+  token_type: string;
+}
+
+// Cache del token en memoria — sobrevive entre comandos, se renueva automáticamente
+let cachedToken: string | null = null;
+let tokenExpiresAt: number = 0;
+
 export class MercadoLibreCommand extends Command {
-  name        = 'mercadolibre';
+  name = 'mercadolibre';
   description = 'Buscar productos en MercadoLibre';
-  category    = CommandCategory.MEDIA;
-  aliases     = ['ml', 'mercadolibre'];
-  usage       = '!mercadolibre <búsqueda>';
-  examples    = ['!mercadolibre TV Samsung', '!mercadolibre iPhone'];
-  cooldown    = 15_000;
+  category = CommandCategory.MEDIA;
+  aliases = ['ml', 'mercadolibre'];
+  usage = '!mercadolibre <búsqueda>';
+  examples = ['!mercadolibre TV Samsung', '!mercadolibre iPhone'];
+  cooldown = 15_000;
 
   async execute(ctx: MessageContext): Promise<void> {
     const query = ctx.args.join(' ').trim();
@@ -79,16 +89,16 @@ export class MercadoLibreCommand extends Command {
       if (error instanceof AxiosError) {
         logger.error('[MercadoLibreCommand] AxiosError:', {
           message: error.message,
-          code:    error.code,
-          status:  error.response?.status,
-          data:    JSON.stringify(error.response?.data).substring(0, 300),
-          url:     error.config?.url,
+          code: error.code,
+          status: error.response?.status,
+          data: JSON.stringify(error.response?.data).substring(0, 300),
+          url: error.config?.url,
         });
       } else if (error instanceof Error) {
         logger.error('[MercadoLibreCommand] Error:', {
-          name:    error.name,
+          name: error.name,
           message: error.message,
-          stack:   error.stack?.split('\n').slice(0, 5).join('\n'),
+          stack: error.stack?.split('\n').slice(0, 5).join('\n'),
         });
       } else {
         logger.error('[MercadoLibreCommand] Unknown error:', error);
@@ -96,13 +106,49 @@ export class MercadoLibreCommand extends Command {
 
       await ctx.react('❌');
       await ctx.reply(
-        `˚₊· ͟͟͞͞➳ *error* ˚₊· ͟͟͞͞➳\n\n` +
-          `❌ No pude buscar en MercadoLibre. Intenta de nuevo.`,
+        `˚₊· ͟͟͞͞➳ *error* ˚₊· ͟͟͞͞➳\n\n` + `❌ No pude buscar en MercadoLibre. Intenta de nuevo.`,
       );
     }
   }
 
+  private async getAccessToken(): Promise<string> {
+    const now = Date.now();
+
+    if (cachedToken && now < tokenExpiresAt - 60_000) {
+      return cachedToken;
+    }
+
+    const appId = process.env.ML_APP_ID;
+    const secret = process.env.ML_SECRET;
+
+    if (!appId || !secret) {
+      throw new Error('ML_APP_ID o ML_SECRET no están definidos en .env');
+    }
+
+    logger.info('[MercadoLibreCommand] Solicitando nuevo access token...');
+
+    const response = await axios.post<MLTokenResponse>(
+      'https://api.mercadolibre.com/oauth/token',
+      new URLSearchParams({
+        grant_type: 'client_credentials',
+        client_id: appId,
+        client_secret: secret,
+      }),
+      {
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        timeout: 10_000,
+      },
+    );
+
+    cachedToken = response.data.access_token;
+    tokenExpiresAt = now + response.data.expires_in * 1000;
+
+    logger.info(`[MercadoLibreCommand] Token obtenido, expira en ${response.data.expires_in}s`);
+    return cachedToken;
+  }
+
   private async searchMercadoLibre(query: string): Promise<MercadoLibreItem[]> {
+    const token = await this.getAccessToken();
     const encodedQuery = encodeURIComponent(query);
     const url = `https://api.mercadolibre.com/sites/MLM/search?q=${encodedQuery}&limit=10`;
 
@@ -112,19 +158,21 @@ export class MercadoLibreCommand extends Command {
       timeout: 15_000,
       headers: {
         Accept: 'application/json',
+        Authorization: `Bearer ${token}`,
       },
     });
 
-    logger.info(`[MercadoLibreCommand] HTTP ${response.status} — results: ${response.data?.results?.length ?? 'undefined'}`);
-    logger.info(`[MercadoLibreCommand] Raw response: ${JSON.stringify(response.data).substring(0, 500)}`);
+    logger.info(
+      `[MercadoLibreCommand] HTTP ${response.status} — results: ${response.data?.results?.length ?? 0}`,
+    );
 
     const results = response.data?.results;
     if (!results || results.length === 0) return [];
 
     return results.map(item => ({
-      title:     item.title,
-      price:     `${item.currency_id} $${item.price.toLocaleString('es-MX')}`,
-      link:      item.permalink,
+      title: item.title,
+      price: `${item.currency_id} $${item.price.toLocaleString('es-MX')}`,
+      link: item.permalink,
       condition: item.condition,
     }));
   }

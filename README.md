@@ -574,20 +574,26 @@ GROQ_API_KEY=gsk_tu_api_key_aqui
 | `.trilatero [hora] [color]`        | Lista trilátero                          |
 | `.hexagonal [hora] [color]`        | Lista hexagonal                          |
 
-### Media y Stickers (10 comandos)
+### Media y Stickers (17 comandos)
 
-| Comando                   | Descripción                          |
-| :------------------------ | :----------------------------------- |
-| `.sticker`                | Convertir imagen/video/GIF a sticker |
-| `.take <pack>/<author>`   | Cambiar pack o autor del sticker     |
-| `.nota <texto>`           | Sticker de nota adhesiva             |
-| `.pat <texto>`            | Sticker meme de Patrick              |
-| `.qc <texto>`             | Sticker de cita con foto de perfil   |
-| `.ytmp3 <búsqueda o URL>` | Descargar audio de YouTube           |
-| `.ytmp4 <búsqueda o URL>` | Descargar video de YouTube           |
-| `.tiktok <URL>`           | Video de TikTok sin marca de agua    |
-| `.instagram <URL>`        | Reel o post de Instagram             |
-| `.facebook <URL>`         | Video de Facebook                    |
+| Comando                      | Descripción                                 |
+| :--------------------------- | :------------------------------------------ |
+| `.sticker`                   | Convertir imagen/video/GIF a sticker        |
+| `.take <pack>/<author>`      | Cambiar pack o autor del sticker            |
+| `.nota <texto>`              | Sticker de nota adhesiva                    |
+| `.pat <texto>`               | Sticker meme de Patrick                     |
+| `.qc <texto>`                | Sticker de cita con foto de perfil          |
+| `.ytmp3 <búsqueda o URL>`    | Descargar audio de YouTube                  |
+| `.ytmp4 <búsqueda o URL>`    | Descargar video de YouTube                  |
+| `.tiktok <URL>`              | Video de TikTok sin marca de agua           |
+| `.instagram <URL>`           | Reel o post de Instagram                    |
+| `.facebook <URL>`            | Video de Facebook                           |
+| `.descuentos [reddit/promo]` | Ofertas de Reddit y PromoDescuentos         |
+| `.gitclone <url>`            | Descargar repositorio GitHub como ZIP       |
+| `.githubsearch <query>`      | Buscar repositorios en GitHub               |
+| `.toanime`                   | Convertir imagen a estilo anime (responder) |
+| `.togif`                     | Convertir video a GIF (responder)           |
+| `.animelink`                 | Lista de páginas de anime                   |
 
 ### Poesía (13 comandos)
 
@@ -606,6 +612,27 @@ GROQ_API_KEY=gsk_tu_api_key_aqui
 | `.votar <ID>`                    | Votar trabajo poético             |
 | `.poetop [tipo]`                 | Ranking de votos                  |
 | `.poetstats`                     | Tus estadísticas poéticas         |
+
+### Gestión de Grupos (5 comandos)
+
+| Comando            | Descripción                            |
+| :----------------- | :------------------------------------- |
+| `.link`            | Obtener enlace de invitación del grupo |
+| `.invite <número>` | Enviar invitación al número            |
+| `.add <número>`    | Agregar usuario directamente al grupo  |
+| `.fantasmas`       | Ver lista de usuarios inactivos        |
+| `.kickfantasmas`   | Expulsar usuarios fantasmas            |
+
+### Interacciones (7 comandos)
+
+| Comando           | Alias      | Descripción                   |
+| :---------------- | :--------- | :---------------------------- |
+| `.hug <@usuario>` | `.abrazar` | Abrazar a alguien             |
+| `.cry`            | `.llorar`  | Llorar                        |
+| `.sleep`          | `.dormir`  | Dormir                        |
+| `.personalidad`   | -          | Análisis fake de personalidad |
+| `.formarpareja5`  | -          | Formar 5 parejas aleatorias   |
+| `.reirse`         | `.laugh`   | Reírse                        |
 
 ### Owner (4 comandos) - Solo owners del bot
 
