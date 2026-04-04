@@ -117,7 +117,7 @@ export class PersonalidadCommand extends Command {
       return;
     }
 
-    const personalidad = `╭━━━〔 🔍 PERSONALIDAD 〕━━━⬣
+    const personalidad = `╭━━〔PERSONALIDAD〕━━⬣
 ┃
 ┃ 👤 *Nombre:* ${name}
 ┃
@@ -135,7 +135,7 @@ export class PersonalidadCommand extends Command {
 ┃
 ┃ 🎯 *Género:* ${pickRandom(GENDERS)}
 ┃
-╰━━━━━━━━━━━━━━━━━━━━━━⬣`;
+╰━━━━━━━━━━━━━━━━━⬣`;
 
     await ctx.reply(personalidad);
   }
