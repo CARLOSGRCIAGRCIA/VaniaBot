@@ -75,10 +75,10 @@ export class GitHubSearchCommand extends Command {
             `📋 Issues: ${repo.open_issues}\n` +
             `📝 Descripción: ${repo.description || 'Sin descripción'}\n`,
         )
-        .join('\n─────────────────\n\n');
+        .join('\n───────────────\n\n');
 
       await ctx.reply(
-        `╭━━━〔 🍟 GITHUB SEARCH 〕━━━⬣\n\n` + results + `\n╰━━━━━━━━━━━━━━━━━━━━━━⬣`,
+        `╭━〔GITHUB SEARCH〕━⬣\n\n` + results + `\n╰━━━━━━━━━━━━━━⬣`,
       );
 
       await ctx.react('✅');
