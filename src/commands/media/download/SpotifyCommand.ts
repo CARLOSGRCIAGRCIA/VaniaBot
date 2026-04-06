@@ -75,18 +75,27 @@ export class SpotifyCommand extends Command {
     try {
       const result = await spotifyService.search(input, 5);
 
-      if (!result.ok || !result.results || result.results.length === 0) {
+      if (result._tag === 'Left') {
+        await ctx.react('❌');
+        await ctx.reply(`❌ ${result.left.message}`);
+        return;
+      }
+
+      const searchData = result.right;
+      if (!searchData.results || searchData.results.length === 0) {
         await ctx.react('❌');
         await ctx.reply(`❌ No se encontraron resultados para: *${input}*`);
         return;
       }
 
-      const first = result.results[0];
-      let downloadUrl = result.download_url;
+      const first = searchData.results[0];
+      let downloadUrl = searchData.download_url;
 
       if (!downloadUrl) {
         const dlResult = await spotifyService.getDownloadUrl(input);
-        downloadUrl = dlResult.download_url;
+        if (dlResult._tag === 'Right') {
+          downloadUrl = dlResult.right.download_url;
+        }
       }
 
       const caption = `🎵 *${first.title}*\n👤 ${first.artist || 'Artista desconocido'}`;
@@ -131,7 +140,7 @@ export class SpotifyCommand extends Command {
         let text = `🎵 *Resultados para:* ${input}\n`;
         text += `━━━━━━━━━━━━━━━━━━━━\n\n`;
 
-        result.results.slice(0, 5).forEach((track, i) => {
+        searchData.results.slice(0, 5).forEach((track, i) => {
           text += `🎵 *${i + 1}.* ${track.title}\n`;
           text += `   👤 ${track.artist || 'Desconocido'}\n`;
           if (track.album) text += `   💿 ${track.album}\n`;

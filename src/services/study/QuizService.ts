@@ -1,3 +1,4 @@
+import { Either, right, left } from '@/utils/either.js';
 import { questionGenerator } from './QuestionGenerator.js';
 import { answerValidator } from './AnswerValidator.js';
 import { difficultyEngine, QUESTION_TIMEOUT_SECS, HINT_OFFER_SECS } from './DifficultyEngine.js';
@@ -12,6 +13,14 @@ import {
 } from './QuizTypes.js';
 
 export type SendFn = (groupId: string, text: string) => Promise<void>;
+
+export interface StartQuizSuccess {
+  firstQuestion: QuizQuestion;
+  difficulty: QuizDifficulty;
+}
+
+export type StartQuizError = { message: string };
+export type StartQuizResult = Either<StartQuizError, StartQuizSuccess>;
 
 export interface StartQuizOptions {
   groupId: string;
@@ -40,17 +49,11 @@ export class QuizService {
     return this.sessions.get(groupId);
   }
 
-  async startSession(opts: StartQuizOptions): Promise<{
-    success: boolean;
-    error?: string;
-    firstQuestion?: QuizQuestion;
-    difficulty?: QuizDifficulty;
-  }> {
+  async startSession(opts: StartQuizOptions): Promise<StartQuizResult> {
     if (this.sessions.has(opts.groupId)) {
-      return {
-        success: false,
-        error: 'Ya hay un quiz activo en este grupo. Usa *!quiz stop* para detenerlo.',
-      };
+      return left({
+        message: 'Ya hay un quiz activo en este grupo. Usa *!quiz stop* para detenerlo.',
+      });
     }
 
     const total = Math.min(Math.max(opts.totalQuestions, 1), MAX_QUESTIONS);
@@ -79,10 +82,7 @@ export class QuizService {
 
     if (!question) {
       this.sessions.delete(opts.groupId);
-      return {
-        success: false,
-        error: 'No pude generar preguntas. Intenta de nuevo.',
-      };
+      return left({ message: 'No pude generar preguntas. Intenta de nuevo.' });
     }
 
     session.currentQuestion = question;
@@ -96,7 +96,7 @@ export class QuizService {
       opts.awardXP,
     );
 
-    return { success: true, firstQuestion: question, difficulty };
+    return right({ firstQuestion: question, difficulty });
   }
 
   async processAnswer(

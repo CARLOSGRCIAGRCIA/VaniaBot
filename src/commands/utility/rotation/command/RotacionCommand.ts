@@ -2,6 +2,7 @@ import { Command } from '../../../Command.js';
 import { CommandCategory } from '@/types/index.js';
 import type { MessageContext } from '@/types/index.js';
 import { aiService } from '@/services/external/AIService.js';
+import { isRight } from '@/utils/either.js';
 
 import {
   parseCoord,
@@ -174,8 +175,7 @@ export class RotacionCommand extends Command {
 
     const prompt = buildAIPrompt(analysis, scored, myZone, goal.label);
     const aiResp = await aiService.generate(prompt, 200);
-    const aiText =
-      aiResp.success && aiResp.text ? aiResp.text : 'Análisis calculado por motor táctico.';
+    const aiText = isRight(aiResp) ? aiResp.right : 'Análisis calculado por motor táctico.';
 
     const result = formatAnalysis(analysis, scored, start.label, goal.label, myZone, aiText);
 

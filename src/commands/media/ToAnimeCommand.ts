@@ -1,7 +1,7 @@
 import { Command } from '../Command.js';
 import { CommandCategory } from '@/types/index.js';
 import type { MessageContext } from '@/types/index.js';
-import { downloadMediaMessage, type WAMessage } from '@whiskeysockets/baileys';
+import { downloadMediaMessage, type proto, type WAMessage } from '@whiskeysockets/baileys';
 import axios from 'axios';
 import { env } from '@/config/env.js';
 
@@ -15,14 +15,14 @@ export class ToAnimeCommand extends Command {
   cooldown = 30_000;
 
   async execute(ctx: MessageContext): Promise<void> {
-    if (!ctx.quoted) {
+    if (!ctx.quoted || !ctx.quoted.imageMessage) {
       await ctx.reply(
         `˚₊· ͟͟͞͞➳ *falta la imagen* ˚₊· ͟͟͞͞➳\n\n` + `✿ Responde a una *imagen* con *!toanime*`,
       );
       return;
     }
 
-    const mime = ctx.quoted.imageMessage?.mimetype || '';
+    const mime = ctx.quoted.imageMessage.mimetype || '';
     if (!mime.startsWith('image/')) {
       await ctx.reply(
         `˚₊· ͟͟͞͞➳ *no es imagen* ˚₊· ͟͟͞͞➳\n\n` + `✿ Necesito que respondas a una *imagen*.`,
@@ -48,12 +48,8 @@ export class ToAnimeCommand extends Command {
     await ctx.reply(`˚₊· ͟͟͞͞➳ *convirtiendo a anime...* ˚₊· ͟͟͞͞➳`);
 
     try {
-      const quotedAsMessage: WAMessage = {
-        key: ctx.message.key,
-        message: ctx.quoted,
-      } as WAMessage;
-
-      const imageBuffer = await downloadMediaMessage(quotedAsMessage, 'buffer', {});
+      const fakeMsg = { message: ctx.quoted } as unknown as proto.IWebMessageInfo;
+      const imageBuffer = await downloadMediaMessage(fakeMsg, 'buffer', {});
 
       const tempPath = `/tmp/toanime_${Date.now()}.jpg`;
       const fs = await import('fs');

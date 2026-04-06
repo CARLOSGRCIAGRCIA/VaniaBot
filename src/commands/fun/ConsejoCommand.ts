@@ -1,5 +1,6 @@
 import { Command } from '../Command.js';
 import { aiService } from '@/services/external/AIService.js';
+import { isRight } from '@/utils/either.js';
 import { AI_PROMPTS } from '@/config/ai-prompts.js';
 import {
   CommandCategory,
@@ -35,13 +36,13 @@ export class ConsejoCommand extends Command {
 
       const response = await aiService.generate(prompt, 150);
 
-      if (!response.success || !response.text) {
+      if (!isRight(response)) {
         const fallback = CONSEJOS[Math.floor(Math.random() * CONSEJOS.length)];
         await ctx.reply(`💡 *Consejo del día* 💡\n\n${fallback}`);
         return;
       }
 
-      await ctx.reply(`💡 *Consejo del día* 💡\n\n${response.text.trim()}`);
+      await ctx.reply(`💡 *Consejo del día* 💡\n\n${response.right.trim()}`);
       await ctx.react('✨');
     } catch {
       const fallback = CONSEJOS[Math.floor(Math.random() * CONSEJOS.length)];

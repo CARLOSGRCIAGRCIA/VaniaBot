@@ -4,6 +4,7 @@ import { exec } from 'child_process';
 import { logError, logger } from '@/utils/logger.js';
 import { promisify } from 'util';
 import { aiService } from '@/services/external/AIService.js';
+import { Either, right, left, isRight } from '@/utils/either.js';
 
 const execAsync = promisify(exec);
 const TEMP_DIR = './data/temp/audio';
@@ -27,17 +28,18 @@ export interface AudioAnalisis {
   recomendacion: string;
 }
 
-export interface TranscripcionCompleta {
-  success: boolean;
-  texto?: string;
+export interface TranscripcionCompletaSuccess {
+  texto: string;
   resumen?: string;
   puntosClave?: string[];
   idioma?: string;
   duracionEst?: string;
   info?: AudioInfo;
   analisis?: AudioAnalisis;
-  error?: string;
 }
+
+export type TranscripcionError = { message: string };
+export type TranscripcionCompleta = Either<TranscripcionError, TranscripcionCompletaSuccess>;
 
 const MAGIC: Record<string, { offset: number; bytes: number[] }> = {
   ogg: { offset: 0, bytes: [0x4f, 0x67, 0x67, 0x53] },
@@ -205,7 +207,7 @@ class AudioService {
 
     const response = await aiService.generate(prompt, 150);
 
-    if (!response.success || !response.text) {
+    if (!isRight(response)) {
       return {
         tipo: 'voz',
         confianza: 0.5,
@@ -215,7 +217,7 @@ class AudioService {
     }
 
     try {
-      const clean = response.text.replace(/```json|```/g, '').trim();
+      const clean = response.right.replace(/```json|```/g, '').trim();
       const parsed = JSON.parse(clean);
       return {
         tipo: parsed.tipo ?? 'voz',
@@ -246,12 +248,12 @@ class AudioService {
 
     const response = await aiService.generate(prompt, 400);
 
-    if (!response.success || !response.text) {
+    if (!isRight(response)) {
       return { resumen: transcripcion.slice(0, 200), puntosClave: [] };
     }
 
     try {
-      const clean = response.text.replace(/```json|```/g, '').trim();
+      const clean = response.right.replace(/```json|```/g, '').trim();
       const parsed = JSON.parse(clean);
       return {
         resumen: parsed.resumen ?? '',
@@ -271,7 +273,7 @@ class AudioService {
   }): Promise<TranscripcionCompleta> {
     const info = this.validar(opts.buffer, opts.esNotaDeVoz);
     if (!info.valido) {
-      return { success: false, error: info.error, info };
+      return left({ message: info.error ?? 'Audio inválido' });
     }
 
     const duracionEst = estimarDuracion(info.tamañoKB, opts.extension);
@@ -281,77 +283,68 @@ class AudioService {
 
     const transcResponse = await aiService.transcribeAudio(buffer, extension, opts.idioma);
 
-    if (!transcResponse.success || !transcResponse.text) {
-      return {
-        success: false,
-        error: transcResponse.error ?? 'No pude transcribir el audio.',
-        info,
-      };
+    if (!isRight(transcResponse)) {
+      return left({ message: transcResponse.left.message ?? 'No pude transcribir el audio.' });
     }
 
-    const texto = transcResponse.text.trim();
+    const texto = transcResponse.right.trim();
 
     if (!texto) {
-      return {
-        success: false,
-        error: 'No se detectó voz en el audio. Asegúrate de que haya voz clara.',
-        info,
-        duracionEst,
-      };
+      return left({ message: 'No se detectó voz en el audio. Asegúrate de que haya voz clara.' });
     }
     const [analisis, resumenData] = await Promise.all([
       this.analizarTipo(texto, duracionEst),
       opts.resumir ? this.resumir(texto) : Promise.resolve(null),
     ]);
 
-    return {
-      success: true,
+    return right({
       texto,
       resumen: resumenData?.resumen,
       puntosClave: resumenData?.puntosClave,
       duracionEst,
       info,
       analisis,
-    };
+    });
   }
 
   formatearResultado(
     result: TranscripcionCompleta,
     modo: 'simple' | 'completo' | 'resumen',
   ): string {
-    if (!result.success) {
-      return `❌ ${result.error}`;
+    if (result._tag === 'Left') {
+      return `❌ ${result.left.message}`;
     }
 
-    const info = result.info;
-    const analisis = result.analisis;
+    const success = result.right;
+    const info = success.info;
+    const analisis = success.analisis;
 
     if (modo === 'simple') {
-      return `🎙️ *Transcripción:*\n\n${result.texto}`;
+      return `🎙️ *Transcripción:*\n\n${success.texto}`;
     }
 
     if (modo === 'resumen') {
       let msg = `📋 *Resumen del audio*\n━━━━━━━━━━\n\n`;
 
-      if (result.resumen) {
-        msg += `📝 *Resumen:*\n${result.resumen}\n\n`;
+      if (success.resumen) {
+        msg += `📝 *Resumen:*\n${success.resumen}\n\n`;
       }
 
-      if (result.puntosClave?.length) {
+      if (success.puntosClave?.length) {
         msg += `🔑 *Puntos clave:*\n`;
-        result.puntosClave.forEach(p => {
+        success.puntosClave.forEach((p: string) => {
           msg += `• ${p}\n`;
         });
         msg += '\n';
       }
 
-      msg += `📄 *Transcripción completa:*\n${result.texto}\n\n`;
+      msg += `📄 *Transcripción completa:*\n${success.texto}\n\n`;
       msg += `> _VaniaBot🎙️ — Transcriptor IA_`;
       return msg;
     }
 
     let msg = `🎙️ *Transcripción*\n━━━━━━━━\n\n`;
-    msg += result.texto;
+    msg += success.texto;
     msg += '\n\n━━━━━━━━\n';
 
     const tipoEmoji: Record<string, string> = {
@@ -368,7 +361,7 @@ class AudioService {
       msg += '\n';
     }
 
-    if (result.duracionEst) msg += `⏱️ Duración: ${result.duracionEst}\n`;
+    if (success.duracionEst) msg += `⏱️ Duración: ${success.duracionEst}\n`;
     if (info?.tamañoKB) msg += `💾 Tamaño: ${info.tamañoKB.toFixed(0)} KB`;
     if (info?.comprimido) msg += ` _(comprimido)_`;
     msg += '\n';

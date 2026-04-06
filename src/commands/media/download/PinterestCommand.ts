@@ -35,8 +35,9 @@ export class PinterestCommand extends Command {
       return;
     }
 
-    if (!url.includes('pinterest')) {
-      await ctx.reply('❌ La URL debe ser de Pinterest');
+    const isPinterestUrl = url.includes('pinterest') || url.includes('pin.it');
+    if (!isPinterestUrl) {
+      await ctx.reply('❌ La URL debe ser de Pinterest (puede ser pin.it/...)');
       return;
     }
 
@@ -46,30 +47,30 @@ export class PinterestCommand extends Command {
     try {
       const result = await pinterestDownloader.getMedia(url);
 
-      if (!result.ok || !result.media || result.media.length === 0) {
+      if (result._tag === 'Left') {
         await ctx.react('❌');
-        await ctx.reply(`❌ No se encontró contenido descargable`);
+        await ctx.reply(`❌ ${result.left.message}`);
         return;
       }
 
-      const media = result.media[0];
+      const media = result.right[0];
 
       if (media.type === 'image') {
         const dlResult = await pinterestDownloader.downloadImage(media.url);
 
-        if (dlResult.ok && dlResult.filePath) {
+        if (dlResult._tag === 'Right') {
           await ctx.sock.sendMessage(
             ctx.chat.jid,
             {
-              image: { url: dlResult.filePath },
+              image: { url: dlResult.right },
               caption: '📌 Pinterest',
             },
             { quoted: ctx.message },
           );
-          pinterestDownloader.cleanup(dlResult.filePath);
+          pinterestDownloader.cleanup(dlResult.right);
           await ctx.react('✅');
         } else {
-          await ctx.reply(`📌 *Pinterest*\n\n🔗 ${media.url}`);
+          await ctx.reply(`❌ ${dlResult.left.message}\n\n🔗 ${media.url}`);
         }
       } else {
         await ctx.reply(`📌 *Pinterest Video*\n\n🔗 ${media.url}`);

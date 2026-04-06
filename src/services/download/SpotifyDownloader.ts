@@ -1,6 +1,7 @@
-import type { DownloadResult } from './DownloadService.js';
-import { DownloadService } from './DownloadService.js';
+import { Either, left, right } from '@/utils/either.js';
+import { DownloadService, type DownloadResult } from './DownloadService.js';
 import { logError } from '@/utils/logger.js';
+import { NetworkError } from '@/utils/errors.js';
 
 export interface SpotifyTrack {
   title: string;
@@ -18,7 +19,7 @@ export class SpotifyDownloader extends DownloadService {
     return /spotify\.com\//i.test(url);
   }
 
-  async getTrackInfo(url: string): Promise<SpotifyTrack | null> {
+  async getTrackInfo(url: string): Promise<Either<NetworkError, SpotifyTrack>> {
     try {
       const output = await this.runCommand(
         'yt-dlp',
@@ -26,15 +27,19 @@ export class SpotifyDownloader extends DownloadService {
         30000,
       );
       const info = JSON.parse(output.trim().split('\n')[0]);
-      return {
+      return right({
         title: info.title ?? 'Spotify track',
         artist: info.artist ?? info.album_artist ?? 'unknown',
         album: info.album ?? 'unknown',
         url,
-      };
+      });
     } catch (error) {
       logError('Spotify getTrackInfo', error);
-      return null;
+      return left(
+        new NetworkError('Error al obtener info de Spotify', {
+          originalError: error instanceof Error ? error.message : String(error),
+        }),
+      );
     }
   }
 
@@ -56,7 +61,7 @@ export class SpotifyDownloader extends DownloadService {
       );
 
       if (!searchOutput || searchOutput.trim() === '') {
-        return { success: false, error: 'No se encontró la canción' };
+        return left(new NetworkError('No se encontró la canción', { query }));
       }
 
       const lines = searchOutput.trim().split('\n');
@@ -66,23 +71,28 @@ export class SpotifyDownloader extends DownloadService {
 
       if (!videoId) {
         logError('Spotify searchAndDownload: videoId is undefined', searchOutput);
-        return {
-          success: false,
-          error: 'No se pudo obtener el video. Respuesta: ' + searchOutput.substring(0, 200),
-        };
+        return left(
+          new NetworkError('No se pudo obtener el video', {
+            response: searchOutput.substring(0, 200),
+          }),
+        );
       }
 
       return await this.downloadFromYouTube(videoUrl, query);
     } catch (error) {
       logError('Spotify searchAndDownload', error);
-      return { success: false, error: 'Error al buscar la canción' };
+      return left(
+        new NetworkError('Error al buscar la canción', {
+          originalError: error instanceof Error ? error.message : String(error),
+        }),
+      );
     }
   }
 
   async downloadTrack(url: string): Promise<DownloadResult> {
     const validation = this.validateUrl(url);
-    if (!validation.valid) {
-      return { success: false, error: validation.error };
+    if (validation._tag === 'Left') {
+      return left(validation.left);
     }
 
     try {
@@ -93,7 +103,7 @@ export class SpotifyDownloader extends DownloadService {
       );
 
       if (!infoOutput || infoOutput.trim() === '') {
-        return { success: false, error: 'No se pudo obtener info de la URL' };
+        return left(new NetworkError('No se pudo obtener info de la URL'));
       }
 
       const info = JSON.parse(infoOutput.trim());
@@ -102,10 +112,12 @@ export class SpotifyDownloader extends DownloadService {
       return await this.downloadFromYouTube(url, title);
     } catch (error) {
       logError('Spotify downloadTrack', error);
-      return {
-        success: false,
-        error: 'Error al procesar URL de Spotify. Prueba buscando por nombre de canción.',
-      };
+      return left(
+        new NetworkError(
+          'Error al procesar URL de Spotify. Prueba buscando por nombre de canción.',
+          { originalError: error instanceof Error ? error.message : String(error) },
+        ),
+      );
     }
   }
 

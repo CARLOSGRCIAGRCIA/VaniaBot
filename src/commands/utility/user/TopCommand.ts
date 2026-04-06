@@ -52,8 +52,12 @@ export class TopCommand extends Command {
 
     users.forEach((user, index) => {
       const position = index + 1;
-      message += `**${position}.** ${user.name}\n`;
-      message += `   ${formatter(user)}\n\n`;
+      const name = user.name || 'Unknown';
+      const level = user.level ?? 1;
+      const xp = user.xp ?? 0;
+      const money = user.money ?? 0;
+      message += `**${position}.** ${name}\n`;
+      message += `   ${formatter({ ...user, level, xp, money } as User)}\n\n`;
     });
 
     message += `Tip: Use !top money | !top level | !top xp`;

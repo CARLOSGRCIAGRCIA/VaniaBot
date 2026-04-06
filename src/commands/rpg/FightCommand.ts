@@ -31,7 +31,7 @@ export class FightCommand extends Command {
 
     if (
       (args.length > 0 && args[0].toLowerCase() === 'flee') ||
-      args[0].toLowerCase() === 'escapar'
+      (args.length > 0 && args[0].toLowerCase() === 'escapar')
     ) {
       await this.flee(ctx);
       return;

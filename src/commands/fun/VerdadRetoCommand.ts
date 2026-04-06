@@ -1,5 +1,6 @@
 import { Command } from '../Command.js';
 import { aiService } from '@/services/external/AIService.js';
+import { isRight } from '@/utils/either.js';
 import { AI_PROMPTS } from '@/config/ai-prompts.js';
 import {
   CommandCategory,
@@ -30,14 +31,14 @@ export class VerdadRetoCommand extends Command {
 
       const response = await aiService.generate(prompt, 500);
 
-      if (!response.success || !response.text) {
+      if (!isRight(response)) {
         await ctx.reply('No pude generar los retos. Intenta de nuevo.');
         return;
       }
 
       await ctx.reply(
         `˚₊· ͟͟͞͞➳ *verdad o reto* ˚₊· ͟͟͞͞➳\n\n` +
-          `${response.text.trim()}\n\n` +
+          `${response.right.trim()}\n\n` +
           `✩ _para @${ctx.sender.pushName || 'ti'}_ ✩`,
       );
 

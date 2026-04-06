@@ -1,13 +1,16 @@
+import { Either, left, right } from '@/utils/either.js';
+
 export interface AIMessage {
   role: 'user' | 'assistant' | 'system';
   content: string;
 }
 
-export interface AIResponse {
-  success: boolean;
-  text?: string;
-  error?: string;
+export interface AIResponseSuccess {
+  text: string;
 }
+
+export type AIResponseError = { message: string };
+export type AIResponse = Either<AIResponseError, AIResponseSuccess>;
 
 export interface AIProvider {
   name: string;

@@ -2,6 +2,7 @@ import { Command } from '../../Command.js';
 import { CommandCategory, CommandContext, type MessageContext } from '@/types/index.js';
 import { TwitterDownloader } from '@/services/download/TwitterDownloader.js';
 import { logger } from '@/utils/logger.js';
+import { isRight } from '@/utils/either.js';
 
 export class TwitterCommand extends Command {
   name = 'twitter';
@@ -44,15 +45,16 @@ export class TwitterCommand extends Command {
     try {
       const result = await this.downloader.downloadVideo(url);
 
-      if (!result.success || !result.filePath) {
-        await ctx.reply(`❌ Error: ${result.error ?? 'No se pudo descargar'}`);
+      if (!isRight(result)) {
+        await ctx.reply(`❌ Error: ${result.left.message ?? 'No se pudo descargar'}`);
         return;
       }
 
+      const downloadResult = result.right;
       await ctx.reply('📤 Enviando video...');
       await ctx.sock.sendMessage(
         ctx.chat.jid,
-        { video: { url: `file://${result.filePath}` }, mimetype: 'video/mp4' },
+        { video: { url: `file://${downloadResult.filePath}` }, mimetype: 'video/mp4' },
         { quoted: ctx.message },
       );
 

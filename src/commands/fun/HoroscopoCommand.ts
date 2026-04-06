@@ -1,5 +1,6 @@
 import { Command } from '../Command.js';
 import { aiService } from '@/services/external/AIService.js';
+import { isRight } from '@/utils/either.js';
 import { AI_PROMPTS } from '@/config/ai-prompts.js';
 import {
   CommandCategory,
@@ -53,14 +54,14 @@ export class HoroscopoCommand extends Command {
 
       const response = await aiService.generate(prompt, 200);
 
-      if (!response.success || !response.text) {
+      if (!isRight(response)) {
         await ctx.reply('No pude generar el horóscopo. Intenta de nuevo.');
         return;
       }
 
       const mensaje = esRandom
-        ? `🔮 *Horóscopo Random* 🔮\n\n${this.signos[signo]}\n\n${response.text.trim()}`
-        : `🔮 *Horóscopo de ${signo}* 🔮\n\n${this.signos[signo]}\n\n${response.text.trim()}`;
+        ? `🔮 *Horóscopo Random* 🔮\n\n${this.signos[signo]}\n\n${response.right.trim()}`
+        : `🔮 *Horóscopo de ${signo}* 🔮\n\n${this.signos[signo]}\n\n${response.right.trim()}`;
 
       await ctx.reply(mensaje);
       await ctx.react('✨');

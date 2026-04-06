@@ -41,13 +41,13 @@ export class BuscarCommand extends Command {
     try {
       const result = await webSearchService.search(query);
 
-      if (!result.ok || !result.results || result.results.length === 0) {
+      if (result._tag === 'Left') {
         await ctx.react('❌');
-        await ctx.reply(`❌ No se encontraron resultados para: *${query}*`);
+        await ctx.reply(`❌ ${result.left.message}`);
         return;
       }
 
-      const text = webSearchService.formatResults(result.results, query);
+      const text = webSearchService.formatResults(result.right, query);
       await ctx.reply(text);
 
       await ctx.react('✅');

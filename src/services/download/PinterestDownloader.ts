@@ -11,6 +11,7 @@ import { logger } from '@/utils/logger.js';
 import fs from 'fs';
 import path from 'path';
 import os from 'os';
+import { left, right, type Either } from '@/utils/either.js';
 
 const TMP_DIR = path.join(os.tmpdir(), 'vaniabot-pinterest');
 
@@ -20,11 +21,13 @@ export interface PinterestMedia {
   thumbnail?: string;
 }
 
-export interface PinterestResult {
-  ok: boolean;
-  media?: PinterestMedia[];
-  error?: string;
-}
+export type PinterestError =
+  | { code: 'PARSE_ERROR'; message: string }
+  | { code: 'NO_CONTENT'; message: string }
+  | { code: 'DOWNLOAD_ERROR'; message: string }
+  | { code: 'NETWORK_ERROR'; message: string };
+
+export type PinterestResult = Either<PinterestError, PinterestMedia[]>;
 
 export class PinterestDownloader {
   private ensureTmpDir(): void {
@@ -95,19 +98,21 @@ export class PinterestDownloader {
       }
 
       if (media.length === 0) {
-        return { ok: false, error: 'No se encontró contenido descargable' };
+        return left({ code: 'NO_CONTENT', message: 'No se encontró contenido descargable' });
       }
 
-      return { ok: true, media };
+      return right(media);
     } catch (error) {
       logger.error('PinterestDownloader.getMedia error:', error);
-      return { ok: false, error: 'Error al obtener contenido de Pinterest' };
+      const message = error instanceof Error ? error.message : 'Error desconocido';
+      return left({
+        code: 'NETWORK_ERROR',
+        message: `Error al obtener contenido de Pinterest: ${message}`,
+      });
     }
   }
 
-  async downloadImage(
-    imageUrl: string,
-  ): Promise<{ ok: boolean; filePath?: string; error?: string }> {
+  async downloadImage(imageUrl: string): Promise<Either<PinterestError, string>> {
     try {
       this.ensureTmpDir();
 
@@ -123,10 +128,11 @@ export class PinterestDownloader {
       const tempPath = path.join(TMP_DIR, `${Date.now()}.${ext}`);
       fs.writeFileSync(tempPath, Buffer.from(response.data));
 
-      return { ok: true, filePath: tempPath };
+      return right(tempPath);
     } catch (error) {
       logger.error('PinterestDownloader.downloadImage error:', error);
-      return { ok: false, error: 'Error al descargar imagen' };
+      const message = error instanceof Error ? error.message : 'Error desconocido';
+      return left({ code: 'DOWNLOAD_ERROR', message: `Error al descargar imagen: ${message}` });
     }
   }
 

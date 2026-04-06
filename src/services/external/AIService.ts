@@ -12,6 +12,7 @@
  * @created 2026-03-16
  */
 
+import { Either, left, right, fromNullable, map, flatMap, match } from '@/utils/either.js';
 import Groq from 'groq-sdk';
 import type { WASocket } from '@whiskeysockets/baileys';
 import { env } from '@/config/env.js';
@@ -27,6 +28,14 @@ import { logError, logger } from '@/utils/logger.js';
 import { createHash } from 'crypto';
 import fs from 'fs';
 import path from 'path';
+import {
+  VBotError,
+  ErrorCode,
+  ValidationError,
+  ServiceUnavailableError,
+  NetworkError,
+  TimeoutError,
+} from '@/utils/errors.js';
 
 /**
  * Represents a single message in an AI conversation.
@@ -37,14 +46,9 @@ export interface AIMessage {
   content: string;
 }
 
-/**
- * Unified response object returned by all AI operations.
- */
-export interface AIResponse {
-  success: boolean;
-  text?: string;
-  error?: string;
-}
+export type AIError = VBotError | ServiceUnavailableError | ValidationError;
+
+export type AIResponse = Either<AIError, string>;
 
 /**
  * Represents an active conversation session scoped to a
@@ -502,15 +506,15 @@ export class AIService {
     return `ai:chat:${hash.digest('hex').slice(0, 16)}`;
   }
 
-  private async getCachedResponse<T>(key: string): Promise<T | null> {
+  private async getCachedResponse(key: string): Promise<AIResponse | null> {
     try {
-      return await unifiedCache.get<T>(key);
+      return await unifiedCache.get<AIResponse>(key);
     } catch {
       return null;
     }
   }
 
-  private async cacheResponse<T>(key: string, value: T, ttl = 300): Promise<void> {
+  private async cacheResponse(key: string, value: AIResponse, ttl = 300): Promise<void> {
     try {
       await unifiedCache.set(key, value, ttl);
     } catch {
@@ -589,10 +593,14 @@ export class AIService {
     userMessage: string,
     fast = false,
   ): Promise<AIResponse> {
+    if (!userMessage.trim()) {
+      return left(new ValidationError('El mensaje no puede estar vacío'));
+    }
+
     const session = this.getSession(chatJid, senderJid);
 
     const cacheKey = this.generateCacheKey(userMessage, chatJid, fast);
-    const cached = await this.getCachedResponse<AIResponse>(cacheKey);
+    const cached = await this.getCachedResponse(cacheKey);
 
     if (cached && session.history.length === 0) {
       return cached;
@@ -658,19 +666,16 @@ export class AIService {
 
       this.markDirty(chatJid, senderJid);
 
-      const response = { success: true, text };
+      const response = right(text);
       await this.cacheResponse(cacheKey, response, 600);
       return response;
     } catch (error) {
       if (error instanceof CircuitOpenError) {
-        return {
-          success: false,
-          error: 'Servicio de IA temporalmente no disponible. Intenta más tarde.',
-        };
+        return left(new ServiceUnavailableError('AI Service'));
       }
       const groqError = error as GroqError;
       logger.error('❌ [AI] chat error:', groqError.message);
-      return { success: false, error: this.friendlyError(groqError) };
+      return left(new NetworkError(this.friendlyError(groqError), { groqError }));
     }
   }
 
@@ -690,7 +695,7 @@ export class AIService {
    */
   async generate(prompt: string, maxTokens = 512): Promise<AIResponse> {
     const cacheKey = this.generateCacheKey(prompt, 'generate', false);
-    const cached = await this.getCachedResponse<AIResponse>(cacheKey);
+    const cached = await this.getCachedResponse(cacheKey);
 
     if (cached) {
       return cached;
@@ -733,19 +738,16 @@ export class AIService {
 
       const completion = result.result;
       const text = completion.choices[0]?.message?.content?.trim() ?? '';
-      const response = { success: true, text };
+      const response = right(text);
       await this.cacheResponse(cacheKey, response, 600);
       return response;
     } catch (error) {
       if (error instanceof CircuitOpenError) {
-        return {
-          success: false,
-          error: 'Servicio de IA temporalmente no disponible. Intenta más tarde.',
-        };
+        return left(new ServiceUnavailableError('AI Service'));
       }
       const groqError = error as GroqError;
       logger.error('❌ [AI] generate error:', groqError.message);
-      return { success: false, error: this.friendlyError(groqError) };
+      return left(new NetworkError(this.friendlyError(groqError), { groqError }));
     }
   }
 
@@ -839,11 +841,11 @@ export class AIService {
         response_format: 'text',
       });
 
-      return { success: true, text: String(transcription).trim() };
+      return right(String(transcription).trim());
     } catch (error) {
       const groqError = error as GroqError;
       logger.error('❌ [AI] transcribeAudio error:', groqError.message);
-      return { success: false, error: this.friendlyError(groqError) };
+      return left(new NetworkError(this.friendlyError(groqError), { groqError }));
     } finally {
       try {
         fs.unlinkSync(tmpPath);

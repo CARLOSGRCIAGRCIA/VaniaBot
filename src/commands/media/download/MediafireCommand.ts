@@ -9,6 +9,7 @@
 import { Command } from '../../Command.js';
 import { CommandCategory, CommandContext, type MessageContext } from '@/types/index.js';
 import { mediafireDownloader } from '@/services/download/MediafireDownloader.js';
+import { isRight } from '@/utils/either.js';
 
 export class MediafireCommand extends Command {
   name = 'mediafire';
@@ -44,35 +45,37 @@ export class MediafireCommand extends Command {
     await ctx.reply(`🔍 Obteniendo info de Mediafire...`);
 
     try {
-      const info = await mediafireDownloader.getInfo(url);
+      const infoResult = await mediafireDownloader.getInfo(url);
 
-      if (!info.ok || !info.url) {
+      if (!isRight(infoResult)) {
         await ctx.react('❌');
-        await ctx.reply(`❌ ${info.error || 'No se pudo obtener info del archivo'}`);
+        await ctx.reply(`❌ ${infoResult.left.message || 'No se pudo obtener info del archivo'}`);
         return;
       }
 
+      const info = infoResult.right;
       await ctx.reply(`📥 Descargando: ${info.filename}...`);
 
       const result = await mediafireDownloader.download(url);
 
-      if (!result.ok || !result.filePath) {
+      if (!isRight(result)) {
         await ctx.react('❌');
         await ctx.reply(
-          `❌ ${result.error || 'Error al descargar'}\n\n🔗 Enlace directo:\n${info.url}`,
+          `❌ ${result.left.message || 'Error al descargar'}\n\n🔗 Enlace directo:\n${info.url}`,
         );
         return;
       }
 
-      const isVideo = /\.(mp4|mkv|avi|mov)$/i.test(result.filename || '');
-      const isAudio = /\.(mp3|wav|ogg|flac)$/i.test(result.filename || '');
+      const downloadResult = result.right;
+      const isVideo = /\.(mp4|mkv|avi|mov)$/i.test(downloadResult.filename || '');
+      const isAudio = /\.(mp3|wav|ogg|flac)$/i.test(downloadResult.filename || '');
 
       if (isVideo) {
-        const caption = `📁 *${result.filename}*\n💾 ${result.size || 'Desconocido'}\n📦 Mediafire`;
+        const caption = `📁 *${downloadResult.filename}*\n💾 ${downloadResult.size || 'Desconocido'}\n📦 Mediafire`;
         await ctx.sock.sendMessage(
           ctx.chat.jid,
           {
-            video: { url: result.filePath },
+            video: { url: downloadResult.filePath },
             caption: caption,
           },
           { quoted: ctx.message },
@@ -81,7 +84,7 @@ export class MediafireCommand extends Command {
         await ctx.sock.sendMessage(
           ctx.chat.jid,
           {
-            audio: { url: result.filePath },
+            audio: { url: downloadResult.filePath },
             mimetype: 'audio/mpeg',
             ptt: false,
           },
@@ -91,16 +94,16 @@ export class MediafireCommand extends Command {
         await ctx.sock.sendMessage(
           ctx.chat.jid,
           {
-            document: { url: result.filePath },
+            document: { url: downloadResult.filePath },
             mimetype: 'application/octet-stream',
-            fileName: result.filename,
-            caption: `📁 *${result.filename}*\n💾 ${result.size || 'Desconocido'}\n📦 Mediafire`,
+            fileName: downloadResult.filename,
+            caption: `📁 *${downloadResult.filename}*\n💾 ${downloadResult.size || 'Desconocido'}\n📦 Mediafire`,
           },
           { quoted: ctx.message },
         );
       }
 
-      mediafireDownloader.cleanup(result.filePath);
+      mediafireDownloader.cleanup(downloadResult.filePath);
       await ctx.react('✅');
     } catch (error) {
       console.error('MediafireCommand error:', error);

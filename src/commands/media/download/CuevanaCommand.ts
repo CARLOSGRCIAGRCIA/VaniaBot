@@ -55,13 +55,13 @@ export class CuevanaCommand extends Command {
     try {
       const result = await cuevanaService.search(input);
 
-      if (!result.ok || !result.results || result.results.length === 0) {
+      if (result._tag === 'Left') {
         await ctx.react('❌');
-        await ctx.reply(`❌ No se encontraron resultados para: *${input}*`);
+        await ctx.reply(`❌ ${result.left.message}`);
         return;
       }
 
-      const text = cuevanaService.formatSearchResults(result.results, input);
+      const text = cuevanaService.formatSearchResults(result.right, input);
       await ctx.reply(text);
 
       await ctx.react('✅');
@@ -104,13 +104,13 @@ export class CuevanaDLCommand extends Command {
     try {
       const detail = await cuevanaService.getDetail(slug, type);
 
-      if (!detail.ok) {
+      if (detail._tag === 'Left') {
         await ctx.react('❌');
-        await ctx.reply(`❌ No se pudo obtener el contenido`);
+        await ctx.reply(`❌ ${detail.left.message}`);
         return;
       }
 
-      const { text, options } = cuevanaService.formatDetail(detail);
+      const { text, options } = cuevanaService.formatDetail(detail.right);
       await ctx.reply(text);
 
       if (options.length > 0) {
@@ -162,18 +162,23 @@ export class CuevanaLinkCommand extends Command {
     try {
       const dlResult = await cuevanaService.getDownload(url);
 
-      if (!dlResult.ok || !dlResult.download_url) {
+      if (dlResult._tag === 'Left') {
         await ctx.react('❌');
-        await ctx.reply(
-          `❌ No se pudo obtener el video.\n${dlResult.error || 'Intenta con otro servidor'}`,
-        );
+        await ctx.reply(`❌ ${dlResult.left.message}`);
+        return;
+      }
+
+      const downloadData = dlResult.right;
+      if (!downloadData.download_url) {
+        await ctx.react('❌');
+        await ctx.reply(`❌ No se pudo obtener el video. Intenta con otro servidor`);
         return;
       }
 
       await this.ensureTmpDir();
 
       const tempPath = path.join(TMP_DIR, `${Date.now()}.mp4`);
-      const response = await axios.get(dlResult.download_url, {
+      const response = await axios.get(downloadData.download_url, {
         responseType: 'stream',
         timeout: 300000,
         headers: {
@@ -191,7 +196,7 @@ export class CuevanaLinkCommand extends Command {
       });
 
       const stat = fs.statSync(tempPath);
-      const caption = `🎬 *Cuevana*\n${dlResult.title || 'Video descargado'}`;
+      const caption = `🎬 *Cuevana*\n${downloadData.title || 'Video descargado'}`;
 
       if (stat.size > 60 * 1024 * 1024) {
         await ctx.sock.sendMessage(
@@ -199,7 +204,7 @@ export class CuevanaLinkCommand extends Command {
           {
             document: { url: tempPath },
             mimetype: 'video/mp4',
-            fileName: `${dlResult.title || 'video'}.mp4`,
+            fileName: `${downloadData.title || 'video'}.mp4`,
             caption: caption,
           },
           { quoted: ctx.message },

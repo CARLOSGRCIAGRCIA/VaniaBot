@@ -730,6 +730,13 @@ export class SubBotManager extends EventEmitter {
 
       const ctx = new MessageContext(sock, msg as proto.IWebMessageInfo);
 
+      const isVaniaToggleCommand = ['vaniaon', 'vaniaoff', 'vaniastatus'].includes(ctx.command);
+
+      if (ctx.chat.isGroup && !isVaniaToggleCommand) {
+        const isEnabled = await serviceManager.vaniaToggleService.isEnabled(ctx.chat.jid);
+        if (!isEnabled) return;
+      }
+
       if (ctx.chat.isGroup) {
         const isMuted = await serviceManager.moderationService.isMuted(
           ctx.chat.jid,
@@ -749,8 +756,6 @@ export class SubBotManager extends EventEmitter {
       }
 
       if (ctx.chat.isGroup && !ctx.command) {
-        const isEnabled = await serviceManager.vaniaToggleService.isEnabled(ctx.chat.jid);
-        if (!isEnabled) return;
         const quizHandled = await quizAnswerHandler.handle(ctx);
         if (quizHandled) return;
         const botJid = sock.user?.id ?? '';

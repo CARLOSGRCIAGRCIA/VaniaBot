@@ -6,7 +6,9 @@
  * @module services/download/MediafireDownloader
  */
 
+import { Either, left, right } from '@/utils/either.js';
 import { logger } from '@/utils/logger.js';
+import { NetworkError, ValidationError } from '@/utils/errors.js';
 import fs from 'fs';
 import path from 'path';
 import os from 'os';
@@ -14,14 +16,18 @@ import axios from 'axios';
 
 const TMP_DIR = path.join(os.tmpdir(), 'vaniabot-mediafire');
 
-export interface MediafireResult {
-  ok: boolean;
-  filename?: string;
-  size?: string;
-  url?: string;
-  filePath?: string;
-  error?: string;
+export interface MediafireInfo {
+  filename: string;
+  size: string;
+  url: string;
 }
+
+export type MediafireError = NetworkError | ValidationError;
+export type MediafireInfoResult = Either<MediafireError, MediafireInfo>;
+export type MediafireDownloadResult = Either<
+  MediafireError,
+  { filename: string; size: string; url: string; filePath: string }
+>;
 
 export class MediafireDownloader {
   private ensureTmpDir(): void {
@@ -30,7 +36,7 @@ export class MediafireDownloader {
     }
   }
 
-  async getInfo(url: string): Promise<MediafireResult> {
+  async getInfo(url: string): Promise<MediafireInfoResult> {
     try {
       const response = await axios.get(url, {
         headers: {
@@ -54,29 +60,34 @@ export class MediafireDownloader {
       const directUrl = directLinkMatch ? directLinkMatch[1].trim() : null;
 
       if (!filename || !directUrl) {
-        return { ok: false, error: 'No se pudo extraer info del archivo' };
+        return left(new ValidationError('No se pudo extraer info del archivo'));
       }
 
-      return {
-        ok: true,
+      return right({
         filename,
         size: filesize || 'Desconocido',
         url: directUrl,
-      };
+      });
     } catch (error) {
       logger.error('MediafireDownloader.getInfo error:', error);
-      return { ok: false, error: 'Error al obtener info de Mediafire' };
+      return left(
+        new NetworkError('Error al obtener info de Mediafire', {
+          originalError: error instanceof Error ? error.message : String(error),
+        }),
+      );
     }
   }
 
-  async download(url: string): Promise<MediafireResult> {
+  async download(url: string): Promise<MediafireDownloadResult> {
     try {
       this.ensureTmpDir();
 
-      const info = await this.getInfo(url);
-      if (!info.ok || !info.url) {
-        return info;
+      const infoResult = await this.getInfo(url);
+      if (infoResult._tag === 'Left') {
+        return left(infoResult.left);
       }
+
+      const info = infoResult.right;
 
       const ext = path.extname(info.filename || 'file');
       const tempPath = path.join(TMP_DIR, `${Date.now()}${ext}`);
@@ -97,16 +108,19 @@ export class MediafireDownloader {
         writer.on('error', reject);
       });
 
-      return {
-        ok: true,
+      return right({
         filename: info.filename,
         size: info.size,
         url: info.url,
         filePath: tempPath,
-      };
+      });
     } catch (error) {
       logger.error('MediafireDownloader.download error:', error);
-      return { ok: false, error: 'Error al descargar de Mediafire' };
+      return left(
+        new NetworkError('Error al descargar de Mediafire', {
+          originalError: error instanceof Error ? error.message : String(error),
+        }),
+      );
     }
   }
 

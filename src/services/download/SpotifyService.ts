@@ -9,6 +9,7 @@
 
 import axios from 'axios';
 import { logger } from '@/utils/logger.js';
+import { left, right, type Either } from '@/utils/either.js';
 
 const DVYER_API = 'https://dv-yer-api.online';
 const DEFAULT_TIMEOUT = 30000;
@@ -22,15 +23,19 @@ export interface SpotifyTrack {
   url: string;
 }
 
-export interface SpotifyResult {
-  ok: boolean;
+export interface SpotifySearchResult {
   query?: string;
   count?: number;
   results?: SpotifyTrack[];
   download_url?: string;
   title?: string;
-  error?: string;
 }
+
+export type SpotifyError =
+  | { code: 'NETWORK_ERROR'; message: string }
+  | { code: 'API_ERROR'; message: string };
+
+export type SpotifyResult = Either<SpotifyError, SpotifySearchResult>;
 
 export class SpotifyService {
   private async fetchJson<T>(url: string, timeout = DEFAULT_TIMEOUT): Promise<T> {
@@ -53,22 +58,27 @@ export class SpotifyService {
   async search(query: string, limit = 10): Promise<SpotifyResult> {
     try {
       const url = `${DVYER_API}/spotify?mode=link&q=${encodeURIComponent(query)}&limit=${limit}&lang=es3`;
-      const data = await this.fetchJson<SpotifyResult>(url);
-      return data;
+      const data = await this.fetchJson<SpotifySearchResult>(url);
+      return right(data);
     } catch (error) {
       logger.error('SpotifyService.search error:', error);
-      return { ok: false, error: 'Error al buscar en Spotify' };
+      const message = error instanceof Error ? error.message : 'Error desconocido';
+      return left({ code: 'NETWORK_ERROR', message: `Error al buscar en Spotify: ${message}` });
     }
   }
 
   async getDownloadUrl(spotifyUrl: string): Promise<SpotifyResult> {
     try {
       const url = `${DVYER_API}/spotify?mode=link&q=${encodeURIComponent(spotifyUrl)}&pick=1&lang=es3`;
-      const data = await this.fetchJson<SpotifyResult>(url);
-      return data;
+      const data = await this.fetchJson<SpotifySearchResult>(url);
+      return right(data);
     } catch (error) {
       logger.error('SpotifyService.getDownloadUrl error:', error);
-      return { ok: false, error: 'Error al obtener URL de descarga' };
+      const message = error instanceof Error ? error.message : 'Error desconocido';
+      return left({
+        code: 'NETWORK_ERROR',
+        message: `Error al obtener URL de descarga: ${message}`,
+      });
     }
   }
 

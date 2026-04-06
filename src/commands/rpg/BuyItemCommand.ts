@@ -1,6 +1,7 @@
 import { Command } from '../Command.js';
 import { CommandCategory, type MessageContext } from '@/types/index.js';
 import { tradeService } from '@/services/rpg/TradeService.js';
+import { isRight } from '@/utils/either.js';
 
 export class BuyItemCommand extends Command {
   name = 'buyitem';
@@ -39,12 +40,12 @@ export class BuyItemCommand extends Command {
     try {
       const result = await tradeService.buyItem(ctx.sender.jid, offer.id);
 
-      if (!result.success) {
-        await ctx.reply(result.message);
+      if (!isRight(result)) {
+        await ctx.reply(result.left.message);
         return;
       }
 
-      await ctx.reply(result.message);
+      await ctx.reply(result.right.message);
       await ctx.react('✅');
     } catch {
       await ctx.reply('❌ Error al comprar item');

@@ -1,4 +1,5 @@
 import { serviceManager } from '../system/Servicemanager.js';
+import { Either, left, right } from '@/utils/either.js';
 import type { User, Pet } from '../database/UserService.js';
 
 export interface PetData {
@@ -9,6 +10,8 @@ export interface PetData {
   baseStats: Record<string, number>;
   type: string;
 }
+
+export type PetResult = Either<{ message: string }, { message: string }>;
 
 export class PetService {
   private static instance: PetService;
@@ -142,17 +145,17 @@ export class PetService {
     return Array.from(this.petData.values());
   }
 
-  async adoptPet(jid: string, petIdOrName: string): Promise<{ success: boolean; message: string }> {
+  async adoptPet(jid: string, petIdOrName: string): Promise<PetResult> {
     const petData = this.getPetDataByName(petIdOrName);
     if (!petData) {
-      return { success: false, message: '❌ Mascota no encontrada' };
+      return left({ message: '❌ Mascota no encontrada' });
     }
 
     const user = await serviceManager.userService.getUser(jid);
     const hasPet = user.pets?.some(p => p.id === petData.id);
 
     if (hasPet) {
-      return { success: false, message: '❌ Ya tienes esta mascota' };
+      return left({ message: '❌ Ya tienes esta mascota' });
     }
 
     const newPet: Pet = {
@@ -170,16 +173,12 @@ export class PetService {
       pets: [...(user.pets || []), newPet],
     });
 
-    return {
-      success: true,
+    return right({
       message: `✅ ¡Adoptaste a ${petData.emoji} ${petData.name}!`,
-    };
+    });
   }
 
-  async releasePet(
-    jid: string,
-    petIdOrName: string,
-  ): Promise<{ success: boolean; message: string }> {
+  async releasePet(jid: string, petIdOrName: string): Promise<PetResult> {
     const user = await serviceManager.userService.getUser(jid);
     const pets = user.pets || [];
 
@@ -190,7 +189,7 @@ export class PetService {
     );
 
     if (petIndex === -1) {
-      return { success: false, message: '❌ No tienes esa mascota' };
+      return left({ message: '❌ No tienes esa mascota' });
     }
 
     const newPets = [...pets];
@@ -198,10 +197,10 @@ export class PetService {
 
     await serviceManager.userService.updateUser(jid, { pets: newPets });
 
-    return { success: true, message: `✅ Liberaste a la mascota` };
+    return right({ message: `✅ Liberaste a la mascota` });
   }
 
-  async feedPet(jid: string, petIdOrName: string): Promise<{ success: boolean; message: string }> {
+  async feedPet(jid: string, petIdOrName: string): Promise<PetResult> {
     const user = await serviceManager.userService.getUser(jid);
     const pets = user.pets || [];
 
@@ -212,18 +211,18 @@ export class PetService {
     );
 
     if (!pet) {
-      return { success: false, message: '❌ No tienes esa mascota' };
+      return left({ message: '❌ No tienes esa mascota' });
     }
 
     if (pet.hunger <= 0) {
-      return { success: false, message: '❌ Tu mascota no tiene hambre' };
+      return left({ message: '❌ Tu mascota no tiene hambre' });
     }
 
     const foodItems = ['bread', 'meat', 'fish', 'apple', 'cookie'];
     const hasFood = user.inventory?.some(i => foodItems.includes(i.itemId));
 
     if (!hasFood) {
-      return { success: false, message: '❌ Necesitas comida para alimentar a tu mascota' };
+      return left({ message: '❌ Necesitas comida para alimentar a tu mascota' });
     }
 
     const foodItem = user.inventory.find(i => foodItems.includes(i.itemId));
@@ -243,10 +242,9 @@ export class PetService {
 
     await serviceManager.userService.updateUser(jid, { pets: updatedPets });
 
-    return {
-      success: true,
+    return right({
       message: `🍖 ¡Alimentaste a ${pet.name}! Hambre: ${newHunger}% | Felicidad: ${newHappiness}%`,
-    };
+    });
   }
 
   async getPetBonus(jid: string): Promise<Record<string, number>> {

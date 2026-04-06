@@ -8,6 +8,7 @@
 
 import axios from 'axios';
 import { logger } from '@/utils/logger.js';
+import { left, right, type Either } from '@/utils/either.js';
 
 const DVYER_API = 'https://dv-yer-api.online';
 const DEFAULT_TIMEOUT = 30000;
@@ -22,12 +23,17 @@ export interface APKApp {
   download?: string;
 }
 
-export interface APKSearchResponse {
+export interface APKSearchResponseInternal {
   ok: boolean;
   count?: number;
   results?: APKApp[];
-  error?: string;
 }
+
+export type APKError =
+  | { code: 'NETWORK_ERROR'; message: string }
+  | { code: 'NOT_FOUND'; message: string };
+
+export type APKSearchResult = Either<APKError, APKApp[]>;
 
 export class APKSearchService {
   private async fetchJson<T>(url: string, timeout = DEFAULT_TIMEOUT): Promise<T> {
@@ -47,14 +53,18 @@ export class APKSearchService {
     }
   }
 
-  async search(query: string, limit = 5, lang = 'es'): Promise<APKSearchResponse> {
+  async search(query: string, limit = 5, lang = 'es'): Promise<APKSearchResult> {
     try {
       const url = `${DVYER_API}/apksearch?q=${encodeURIComponent(query)}&limit=${limit}&lang=${lang}`;
-      const data = await this.fetchJson<APKSearchResponse>(url);
-      return data;
+      const data = await this.fetchJson<APKSearchResponseInternal>(url);
+      if (data.ok && data.results) {
+        return right(data.results);
+      }
+      return left({ code: 'NOT_FOUND', message: 'No se encontraron aplicaciones' });
     } catch (error) {
       logger.error('APKSearchService.search error:', error);
-      return { ok: false, error: 'Error al buscar APK' };
+      const message = error instanceof Error ? error.message : 'Error desconocido';
+      return left({ code: 'NETWORK_ERROR', message: `Error al buscar APK: ${message}` });
     }
   }
 
@@ -67,7 +77,8 @@ export class APKSearchService {
     text += `━━━━━━━━━━━━━━━━━━━━\n\n`;
 
     results.forEach((app, index) => {
-      text += `📦 *${index + 1}.* ${app.name}\n`;
+      const appName = app.name || 'Aplicación sin nombre';
+      text += `📦 *${index + 1}.* ${appName}\n`;
       if (app.developer) text += `   👤 ${app.developer}\n`;
       if (app.version) text += `   📌 Versión: ${app.version}\n`;
       if (app.size) text += `   💾 Tamaño: ${app.size}\n`;

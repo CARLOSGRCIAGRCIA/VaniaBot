@@ -14,6 +14,7 @@ import {
   type MessageContext,
 } from '@/types/index.js';
 import { primeService } from '@/services/system/PrimeService.js';
+import { isRight } from '@/utils/either.js';
 
 async function ejecutarPoesia(
   ctx: MessageContext,
@@ -38,16 +39,18 @@ async function ejecutarPoesia(
     ctx.chat.jid,
   );
 
-  if (!result.success || !result.entry) {
+  if (!isRight(result)) {
     await ctx.react('❌');
-    await ctx.reply(`❌ ${result.error ?? 'No pude generar el contenido. Intenta de nuevo.'}`);
+    await ctx.reply(
+      `❌ ${result.left.message ?? 'No pude generar el contenido. Intenta de nuevo.'}`,
+    );
     return;
   }
 
   await ctx.react('💝');
   const footer = await primeService.formatFooter(ctx.sock, ctx.chat.jid, ctx.chat.isGroup);
   const formattedFooter = footer.replace('>', '> _') + ' — Poesía & Amor_';
-  await ctx.reply(poesiaService.formatEntry(result.entry, true, formattedFooter));
+  await ctx.reply(poesiaService.formatEntry(result.right.entry, true, formattedFooter));
 }
 
 export class PoemaCommand extends Command {

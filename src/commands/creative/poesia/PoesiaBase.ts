@@ -1,6 +1,7 @@
 import { Command } from '../../Command.js';
 import { poesiaService } from '@/services/creative/PoesiaService.js';
 import { parsePoesiaArgs } from '@/services/creative/PoesiaParser.js';
+import { isRight } from '@/utils/either.js';
 import type { ContenidoTipo } from '@/services/creative/PoesiaTypes.js';
 import {
   CommandCategory,
@@ -38,14 +39,14 @@ export abstract class PoesiaBaseCommand extends Command {
       ctx.chat.jid,
     );
 
-    if (!result.success || !result.entry) {
+    if (!isRight(result)) {
       await ctx.react('❌');
-      await ctx.reply(`❌ ${result.error}`);
+      await ctx.reply(`❌ ${result.left.message}`);
       return;
     }
 
     await ctx.react('✅');
-    await ctx.reply(poesiaService.formatEntry(result.entry));
+    await ctx.reply(poesiaService.formatEntry(result.right.entry));
   }
 
   protected abstract sendHelp(ctx: MessageContext): Promise<void>;

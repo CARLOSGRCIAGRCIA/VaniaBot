@@ -2,6 +2,7 @@ import { Command } from '../../Command.js';
 import { CommandCategory, type MessageContext } from '@/types/index.js';
 import { logError } from '@/utils/logger.js';
 import { YouTubeDownloader } from '@/services/download/YouTubeDownloader.js';
+import { isRight } from '@/utils/either.js';
 import fs from 'fs';
 
 export class YtMp3Command extends Command {
@@ -54,18 +55,13 @@ export class YtMp3Command extends Command {
 
       const result = await this.downloader.downloadAudio(video.videoId);
 
-      if (!result.success) {
+      if (!isRight(result)) {
         await ctx.react('❌');
-        await ctx.reply(`❌ Download failed\n\n${result.error}`);
+        await ctx.reply(`❌ Download failed\n\n${result.left.message}`);
         return;
       }
 
-      const filePath = result.filePath;
-      if (!filePath) {
-        await ctx.react('❌');
-        await ctx.reply('❌ File path not found');
-        return;
-      }
+      const filePath = result.right.filePath;
 
       const sanitizeFilename = (title: string): string => {
         return title.replace(/[^\w\s]/gi, '');

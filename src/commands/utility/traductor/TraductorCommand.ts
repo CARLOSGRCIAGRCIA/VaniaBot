@@ -1,5 +1,6 @@
 import { Command } from '../../Command.js';
 import { translatorService } from '@/services/translator/TranslatorService.js';
+import { isRight } from '@/utils/either.js';
 import { resolverIdioma, idiomasDisponibles } from '@/services/translator/TranslatorTypes.js';
 import {
   CommandCategory,
@@ -107,16 +108,17 @@ export class TraductorCommand extends Command {
       await ctx.react('🔍');
       const result = await translatorService.detectarIdioma(texto);
 
-      if (!result.success) {
+      if (!isRight(result)) {
         await ctx.react('❌');
-        await ctx.reply(`❌ ${result.error}`);
+        await ctx.reply(`❌ ${result.left.message}`);
         return;
       }
 
       await ctx.react('✅');
+      const detected = result.right;
       await ctx.reply(
         `🔍 *Idioma detectado:*\n\n` +
-          `${result.bandOrigen} *${result.idiomaOrigen}*\n\n` +
+          `${detected.bandOrigen} *${detected.idiomaOrigen}*\n\n` +
           `_"${texto.slice(0, 100)}${texto.length > 100 ? '...' : ''}"_\n\n` +
           `> _VaniaBot🌐 — Traductor contextual_`,
       );
@@ -214,9 +216,9 @@ export class TraductorCommand extends Command {
       modo,
     });
 
-    if (!result.success) {
+    if (!isRight(result)) {
       await ctx.react('❌');
-      await ctx.reply(`❌ ${result.error}`);
+      await ctx.reply(`❌ ${result.left.message}`);
       return;
     }
 

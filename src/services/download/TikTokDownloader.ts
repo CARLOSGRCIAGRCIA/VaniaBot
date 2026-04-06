@@ -1,6 +1,7 @@
-import type { DownloadResult } from './DownloadService.js';
-import { DownloadService } from './DownloadService.js';
-import { logError } from '@/utils/logger.js';
+import { Either, left, right, map, isRight } from '@/utils/either.js';
+import { DownloadService, type DownloadResult, type DownloadSuccess } from './DownloadService.js';
+import { logError, logger } from '@/utils/logger.js';
+import { ValidationError, NetworkError, NotFoundError } from '@/utils/errors.js';
 
 export interface TikTokVideo {
   title: string;
@@ -17,7 +18,7 @@ export class TikTokDownloader extends DownloadService {
     return /tiktok\.com\//i.test(url) || /vm\.tiktok\.com\//i.test(url);
   }
 
-  async getVideoInfo(url: string): Promise<TikTokVideo | null> {
+  async getVideoInfo(url: string): Promise<Either<NetworkError, TikTokVideo>> {
     try {
       const output = await this.runCommand(
         'yt-dlp',
@@ -25,21 +26,25 @@ export class TikTokDownloader extends DownloadService {
         30000,
       );
       const info = JSON.parse(output.trim().split('\n')[0]);
-      return {
+      return right({
         title: info.title ?? 'TikTok video',
         author: info.uploader ?? info.creator ?? 'unknown',
         url,
-      };
+      });
     } catch (error) {
       logError('TikTok getVideoInfo', error);
-      return null;
+      return left(
+        new NetworkError('Error al obtener info del video', {
+          originalError: error instanceof Error ? error.message : String(error),
+        }),
+      );
     }
   }
 
   async downloadVideo(url: string): Promise<DownloadResult> {
     const validation = this.validateUrl(url);
-    if (!validation.valid) {
-      return { success: false, error: validation.error };
+    if (validation._tag === 'Left') {
+      return left(validation.left);
     }
 
     const outputPath = this.generateOutputPath('tiktok', 'mp4');
@@ -86,8 +91,8 @@ export class TikTokDownloader extends DownloadService {
 
   async downloadAudio(url: string): Promise<DownloadResult> {
     const validation = this.validateUrl(url);
-    if (!validation.valid) {
-      return { success: false, error: validation.error };
+    if (validation._tag === 'Left') {
+      return left(validation.left);
     }
 
     const outputPath = this.generateOutputPath('tiktok_audio', 'mp3');

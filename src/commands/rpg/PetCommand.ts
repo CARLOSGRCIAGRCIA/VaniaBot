@@ -1,6 +1,7 @@
 import { Command } from '../Command.js';
 import { CommandCategory, type MessageContext } from '@/types/index.js';
 import { petService } from '@/services/rpg/PetService.js';
+import { isRight } from '@/utils/either.js';
 import { serviceManager } from '@/services/system/Servicemanager.js';
 import { itemRegistry } from '@/services/rpg/ItemRegistry.js';
 
@@ -71,12 +72,12 @@ export class PetCommand extends Command {
 
       const result = await petService.adoptPet(ctx.sender.jid, petData.id);
 
-      if (!result.success) {
-        await ctx.reply(result.message);
+      if (!isRight(result)) {
+        await ctx.reply(result.left.message);
         return;
       }
 
-      await ctx.reply(result.message);
+      await ctx.reply(result.right.message);
       await ctx.react('🐾');
     } catch {
       await ctx.reply('❌ Error al adoptar mascota');
@@ -92,12 +93,12 @@ export class PetCommand extends Command {
     try {
       const result = await petService.releasePet(ctx.sender.jid, petName);
 
-      if (!result.success) {
-        await ctx.reply(result.message);
+      if (!isRight(result)) {
+        await ctx.reply(result.left.message);
         return;
       }
 
-      await ctx.reply(result.message);
+      await ctx.reply(result.right.message);
     } catch {
       await ctx.reply('❌ Error al liberar mascota');
     }
@@ -112,12 +113,12 @@ export class PetCommand extends Command {
     try {
       const result = await petService.feedPet(ctx.sender.jid, petName);
 
-      if (!result.success) {
-        await ctx.reply(result.message);
+      if (!isRight(result)) {
+        await ctx.reply(result.left.message);
         return;
       }
 
-      await ctx.reply(result.message);
+      await ctx.reply(result.right.message);
       await ctx.react('🍖');
     } catch {
       await ctx.reply('❌ Error al alimentar mascota');

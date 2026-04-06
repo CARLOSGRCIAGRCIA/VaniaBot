@@ -7,20 +7,26 @@
  */
 
 import { File } from 'megajs';
+import { Either, left, right } from '@/utils/either.js';
 import { logger } from '@/utils/logger.js';
+import { NetworkError, ValidationError } from '@/utils/errors.js';
 import fs from 'fs';
 import path from 'path';
 import os from 'os';
 
 const TMP_DIR = path.join(os.tmpdir(), 'vaniabot-mega');
 
-export interface MegaDownloadResult {
-  ok: boolean;
-  name?: string;
-  size?: number;
-  filePath?: string;
-  error?: string;
+export interface MegaFileInfo {
+  name: string;
+  size: number;
 }
+
+export type MegaError = NetworkError | ValidationError;
+export type MegaInfoResult = Either<MegaError, MegaFileInfo>;
+export type MegaDownloadResult = Either<
+  MegaError,
+  { name: string; size: number; filePath: string }
+>;
 
 export class MegaDownloader {
   private ensureTmpDir(): void {
@@ -29,22 +35,30 @@ export class MegaDownloader {
     }
   }
 
-  async getInfo(url: string): Promise<{ name: string; size: number } | null> {
+  async getInfo(url: string): Promise<MegaInfoResult> {
     return new Promise(resolve => {
       try {
         const file = File.fromURL(url);
         void file.loadAttributes(err => {
           if (err) {
-            resolve(null);
+            resolve(left(new ValidationError('No se pudo obtener info del archivo')));
             return;
           }
-          resolve({
-            name: file.name || 'mega-file',
-            size: file.size || 0,
-          });
+          resolve(
+            right({
+              name: file.name || 'mega-file',
+              size: file.size || 0,
+            }),
+          );
         });
-      } catch {
-        resolve(null);
+      } catch (error) {
+        resolve(
+          left(
+            new NetworkError('Error al procesar URL de Mega', {
+              originalError: error instanceof Error ? error.message : String(error),
+            }),
+          ),
+        );
       }
     });
   }
@@ -57,7 +71,7 @@ export class MegaDownloader {
         const file = File.fromURL(url);
         void file.loadAttributes(async err => {
           if (err) {
-            resolve({ ok: false, error: 'Error al obtener info del archivo' });
+            resolve(left(new ValidationError('Error al obtener info del archivo')));
             return;
           }
 
@@ -68,20 +82,34 @@ export class MegaDownloader {
             const data = await file.downloadBuffer({});
             fs.writeFileSync(tempPath, data);
 
-            resolve({
-              ok: true,
-              name,
-              size: data.length,
-              filePath: tempPath,
-            });
+            resolve(
+              right({
+                name,
+                size: data.length,
+                filePath: tempPath,
+              }),
+            );
           } catch (downloadErr) {
             logger.error('Mega download error:', downloadErr);
-            resolve({ ok: false, error: 'Error al descargar archivo' });
+            resolve(
+              left(
+                new NetworkError('Error al descargar archivo', {
+                  originalError:
+                    downloadErr instanceof Error ? downloadErr.message : String(downloadErr),
+                }),
+              ),
+            );
           }
         });
       } catch (error) {
         logger.error('MegaDownloader.download error:', error);
-        resolve({ ok: false, error: 'Error al descargar de Mega.nz' });
+        resolve(
+          left(
+            new NetworkError('Error al descargar de Mega.nz', {
+              originalError: error instanceof Error ? error.message : String(error),
+            }),
+          ),
+        );
       }
     });
   }

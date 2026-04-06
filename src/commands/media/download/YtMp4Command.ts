@@ -3,6 +3,7 @@ import { CommandCategory, type MessageContext } from '@/types/index.js';
 import { logError } from '@/utils/logger.js';
 import { primeService } from '@/services/system/PrimeService.js';
 import { YouTubeDownloader } from '@/services/download/YouTubeDownloader.js';
+import { isRight } from '@/utils/either.js';
 import fs from 'fs';
 
 export class YtMp4Command extends Command {
@@ -55,25 +56,24 @@ export class YtMp4Command extends Command {
 
       const result = await this.downloader.downloadVideo(video.videoId);
 
-      if (!result.success) {
+      if (!isRight(result)) {
         await ctx.react('❌');
-        await ctx.reply(`❌ Download failed\n\n${result.error}`);
+        await ctx.reply(`❌ Download failed\n\n${result.left.message}`);
         return;
       }
 
-      const filePath = result.filePath;
-      if (!filePath) {
-        await ctx.react('❌');
-        await ctx.reply('❌ File path not found');
-        return;
-      }
+      const downloadSuccess = result.right;
+      const filePath = downloadSuccess.filePath;
 
       const footer = await primeService.formatFooter(ctx.sock, ctx.chat.jid, ctx.chat.isGroup);
       await ctx.sock.sendMessage(ctx.chat.jid, {
         video: fs.readFileSync(filePath),
         mimetype: 'video/mp4',
         caption:
-          `🎬 ${video.title}\n` + `📊 ${result.size}MB\n` + `⚡ ${result.source}\n\n` + footer,
+          `🎬 ${video.title}\n` +
+          `📊 ${downloadSuccess.size}MB\n` +
+          `⚡ ${downloadSuccess.source}\n\n` +
+          footer,
       });
 
       await ctx.react('✅');

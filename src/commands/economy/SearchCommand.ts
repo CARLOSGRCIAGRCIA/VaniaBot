@@ -7,10 +7,10 @@ const SEARCH_COOLDOWN = 60 * 1000;
 
 export class SearchCommand extends Command {
   name = 'search';
-  description = 'Buscar dinero en la calle';
+  description = 'Encontrar dinero en la calle';
   category = CommandCategory.ECONOMY;
   requiresRegistration = true;
-  aliases = ['buscar', 'buscar dinero'];
+  aliases = ['encontrar', 'encontrar dinero'];
   usage = '!search';
   cooldown = 60000;
 

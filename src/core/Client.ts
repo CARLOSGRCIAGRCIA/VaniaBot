@@ -581,6 +581,24 @@ export class WhatsAppClient {
                 `📋 MessageContext created: command="${ctx.command}", text="${ctx.text.slice(0, 50)}", isGroup=${ctx.chat.isGroup}`,
               );
 
+              if (ctx.chat.isGroup) {
+                const isVaniaToggleCommand = ['vaniaon', 'vaniaoff', 'vaniastatus'].includes(
+                  ctx.command,
+                );
+
+                if (!isVaniaToggleCommand) {
+                  try {
+                    const isEnabled = await serviceManager.vaniaToggleService.isEnabled(
+                      ctx.chat.jid,
+                    );
+                    if (!isEnabled) {
+                      cacheManager.markMessageProcessed(messageId);
+                      return;
+                    }
+                  } catch {}
+                }
+              }
+
               if (ctx.chat.isGroup && !ctx.command) {
                 const quizHandled = await quizAnswerHandler.handle(ctx);
                 if (quizHandled) {

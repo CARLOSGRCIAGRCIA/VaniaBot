@@ -51,7 +51,7 @@ const createPinoLogger = (category?: string) => {
         colorize: true,
         translateTime: 'HH:MM:ss',
         ignore: 'pid,hostname',
-        minimumLevel: 'info',
+        minimumLevel: 'warn',
         customColors: {
           info: 'green',
           warn: 'yellow',
@@ -198,7 +198,7 @@ const consoleLogger = !IS_PRODUCTION
           colorize: true,
           translateTime: 'HH:MM:ss',
           ignore: 'pid,hostname',
-          minimumLevel: 'info',
+          minimumLevel: 'warn',
         },
       },
     })

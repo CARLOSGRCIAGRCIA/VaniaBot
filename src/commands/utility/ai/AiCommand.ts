@@ -1,6 +1,7 @@
 import { Command } from '../../Command.js';
 import { CommandCategory, CommandContext, type MessageContext } from '@/types/index.js';
 import { aiService } from '@/services/external/AIService.js';
+import { isRight } from '@/utils/either.js';
 
 export class AiCommand extends Command {
   name = 'ai';
@@ -33,16 +34,16 @@ export class AiCommand extends Command {
 
     const response = await aiService.chat(ctx.chat.jid, ctx.sender.jid, ctx.args.join(' '));
 
-    if (!response.success) {
+    if (!isRight(response)) {
       await ctx.react('❌');
-      await ctx.reply(`❌ ${response.error}`);
+      await ctx.reply(`❌ ${response.left.message}`);
       return;
     }
 
     await ctx.react('✅');
 
-    if (response.text) {
-      await ctx.reply(response.text);
+    if (response.right) {
+      await ctx.reply(response.right);
     } else {
       await ctx.reply('✅ Listo');
     }

@@ -9,6 +9,7 @@
 import { Command } from '../../Command.js';
 import { CommandCategory, CommandContext, type MessageContext } from '@/types/index.js';
 import { megaDownloader } from '@/services/download/MegaDownloader.js';
+import { isRight } from '@/utils/either.js';
 
 export class MegaCommand extends Command {
   name = 'mega';
@@ -44,37 +45,39 @@ export class MegaCommand extends Command {
     await ctx.reply(`🔍 Obteniendo info de Mega...`);
 
     try {
-      const info = await megaDownloader.getInfo(url);
+      const infoResult = await megaDownloader.getInfo(url);
 
-      if (!info) {
+      if (!isRight(infoResult)) {
         await ctx.react('❌');
         await ctx.reply('❌ No se pudo obtener info del archivo');
         return;
       }
 
+      const info = infoResult.right;
       await ctx.reply(`📥 Descargando: ${info.name}...`);
 
       const result = await megaDownloader.download(url);
 
-      if (!result.ok || !result.filePath) {
+      if (!isRight(result)) {
         await ctx.react('❌');
-        await ctx.reply(`❌ ${result.error || 'Error al descargar'}`);
+        await ctx.reply(`❌ ${result.left.message || 'Error al descargar'}`);
         return;
       }
 
-      const isVideo = /\.(mp4|mkv|avi|mov)$/i.test(result.name || '');
-      const isAudio = /\.(mp3|wav|ogg|flac)$/i.test(result.name || '');
-      const sizeMB = ((result.size || 0) / (1024 * 1024)).toFixed(2);
+      const downloadResult = result.right;
+      const isVideo = /\.(mp4|mkv|avi|mov)$/i.test(downloadResult.name || '');
+      const isAudio = /\.(mp3|wav|ogg|flac)$/i.test(downloadResult.name || '');
+      const sizeMB = ((downloadResult.size || 0) / (1024 * 1024)).toFixed(2);
 
       if (isVideo) {
-        const caption = `📁 *${result.name}*\n💾 ${sizeMB} MB\n📦 Mega.nz`;
-        if ((result.size || 0) > 60 * 1024 * 1024) {
+        const caption = `📁 *${downloadResult.name}*\n💾 ${sizeMB} MB\n📦 Mega.nz`;
+        if ((downloadResult.size || 0) > 60 * 1024 * 1024) {
           await ctx.sock.sendMessage(
             ctx.chat.jid,
             {
-              document: { url: result.filePath },
+              document: { url: downloadResult.filePath },
               mimetype: 'video/mp4',
-              fileName: result.name,
+              fileName: downloadResult.name,
               caption: caption,
             },
             { quoted: ctx.message },
@@ -83,7 +86,7 @@ export class MegaCommand extends Command {
           await ctx.sock.sendMessage(
             ctx.chat.jid,
             {
-              video: { url: result.filePath },
+              video: { url: downloadResult.filePath },
               caption: caption,
             },
             { quoted: ctx.message },
@@ -93,7 +96,7 @@ export class MegaCommand extends Command {
         await ctx.sock.sendMessage(
           ctx.chat.jid,
           {
-            audio: { url: result.filePath },
+            audio: { url: downloadResult.filePath },
             mimetype: 'audio/mpeg',
             ptt: false,
           },
@@ -103,16 +106,16 @@ export class MegaCommand extends Command {
         await ctx.sock.sendMessage(
           ctx.chat.jid,
           {
-            document: { url: result.filePath },
+            document: { url: downloadResult.filePath },
             mimetype: 'application/octet-stream',
-            fileName: result.name,
-            caption: `📁 *${result.name}*\n💾 ${sizeMB} MB\n📦 Mega.nz`,
+            fileName: downloadResult.name,
+            caption: `📁 *${downloadResult.name}*\n💾 ${sizeMB} MB\n📦 Mega.nz`,
           },
           { quoted: ctx.message },
         );
       }
 
-      megaDownloader.cleanup(result.filePath);
+      megaDownloader.cleanup(downloadResult.filePath);
       await ctx.react('✅');
     } catch (error) {
       console.error('MegaCommand error:', error);

@@ -9,6 +9,7 @@
 
 import axios from 'axios';
 import { logger } from '@/utils/logger.js';
+import { left, right, type Either } from '@/utils/either.js';
 
 const DVYER_API = 'https://dv-yer-api.online';
 const DEFAULT_TIMEOUT = 30000;
@@ -25,16 +26,15 @@ export interface CuevanaSearchResult {
   url_slug?: string;
 }
 
-export interface CuevanaSearchResponse {
+export interface CuevanaSearchResponseInternal {
   ok: boolean;
   mode: string;
   query?: string;
   count?: number;
   results?: CuevanaSearchResult[];
-  error?: string;
 }
 
-export interface CuevanaDetail {
+export interface CuevanaDetailInternal {
   ok: boolean;
   title: string;
   content_type?: string;
@@ -44,7 +44,6 @@ export interface CuevanaDetail {
   downloads_all?: DownloadServer[];
   direct_url?: string;
   seasons?: Season[];
-  error?: string;
 }
 
 export interface DownloadServer {
@@ -66,12 +65,20 @@ export interface Episode {
   episode_path?: string;
 }
 
-export interface CuevanaDownloadResponse {
+export interface CuevanaDownloadResponseInternal {
   ok: boolean;
   download_url?: string;
   title?: string;
-  error?: string;
 }
+
+export type CuevanaError =
+  | { code: 'NETWORK_ERROR'; message: string }
+  | { code: 'NOT_FOUND'; message: string }
+  | { code: 'API_ERROR'; message: string };
+
+export type CuevanaSearchResultType = Either<CuevanaError, CuevanaSearchResult[]>;
+export type CuevanaDetailResult = Either<CuevanaError, CuevanaDetailInternal>;
+export type CuevanaDownloadResult = Either<CuevanaError, CuevanaDownloadResponseInternal>;
 
 function clipText(value: string, max = 72): string {
   const clean = (value || '').replace(/\s+/g, ' ').trim();
@@ -97,36 +104,54 @@ export class CuevanaService {
     }
   }
 
-  async search(query: string, limit = RESULT_LIMIT): Promise<CuevanaSearchResponse> {
+  async search(query: string, limit = RESULT_LIMIT): Promise<CuevanaSearchResultType> {
     try {
       const url = `${DVYER_API}/cuevana?mode=search&q=${encodeURIComponent(query)}&limit=${limit}&type=auto`;
-      const data = await this.fetchJson<CuevanaSearchResponse>(url);
-      return data;
+      const data = await this.fetchJson<CuevanaSearchResponseInternal>(url);
+      if (data.ok && data.results) {
+        return right(data.results);
+      }
+      return left({ code: 'NOT_FOUND', message: 'No se encontraron resultados' });
     } catch (error) {
       logger.error('CuevanaService.search error:', error);
-      return { ok: false, error: 'Error al buscar en Cuevana', mode: 'search' };
+      const message = error instanceof Error ? error.message : 'Error desconocido';
+      return left({ code: 'NETWORK_ERROR', message: `Error al buscar en Cuevana: ${message}` });
     }
   }
 
-  async getDetail(slug: string, type = 'movie', lang = 'lat'): Promise<CuevanaDetail> {
+  async getDetail(slug: string, type = 'movie', lang = 'lat'): Promise<CuevanaDetailResult> {
     try {
       const url = `${DVYER_API}/cuevana?mode=detail&slug=${encodeURIComponent(slug)}&type=${type}&lang=${lang}&pick=fast`;
-      const data = await this.fetchJson<CuevanaDetail>(url);
-      return data;
+      const data = await this.fetchJson<CuevanaDetailInternal>(url);
+      if (data.ok) {
+        return right(data);
+      }
+      return left({ code: 'NOT_FOUND', message: 'No se pudo obtener el detalle' });
     } catch (error) {
       logger.error('CuevanaService.getDetail error:', error);
-      return { ok: false, error: 'Error al obtener detalle', title: '' };
+      const message = error instanceof Error ? error.message : 'Error desconocido';
+      return left({ code: 'NETWORK_ERROR', message: `Error al obtener detalle: ${message}` });
     }
   }
 
-  async getDownload(url: string, lang = 'lat'): Promise<CuevanaDownloadResponse> {
+  async getDownload(url: string, lang = 'lat'): Promise<CuevanaDownloadResult> {
     try {
       const apiUrl = `${DVYER_API}/cuevana/download?url=${encodeURIComponent(url)}&lang=${lang}`;
-      const data = await this.fetchJson<CuevanaDownloadResponse>(apiUrl, DEFAULT_TIMEOUT * 2);
-      return data;
+      const data = await this.fetchJson<CuevanaDownloadResponseInternal>(
+        apiUrl,
+        DEFAULT_TIMEOUT * 2,
+      );
+      if (data.ok) {
+        return right(data);
+      }
+      return left({ code: 'NOT_FOUND', message: 'No se pudo obtener el enlace de descarga' });
     } catch (error) {
       logger.error('CuevanaService.getDownload error:', error);
-      return { ok: false, error: 'Error al obtener enlace de descarga' };
+      const message = error instanceof Error ? error.message : 'Error desconocido';
+      return left({
+        code: 'NETWORK_ERROR',
+        message: `Error al obtener enlace de descarga: ${message}`,
+      });
     }
   }
 
@@ -151,7 +176,7 @@ export class CuevanaService {
     return text;
   }
 
-  formatDetail(detail: CuevanaDetail): { text: string; options: string[] } {
+  formatDetail(detail: CuevanaDetailInternal): { text: string; options: string[] } {
     const options: string[] = [];
     let text = '';
 
@@ -177,7 +202,10 @@ export class CuevanaService {
             );
             const epSample = eps
               .slice(0, 5)
-              .map(ep => `   E${ep.episode}: ${clipText(ep.title || `Episodio ${ep.episode}`, 30)}`)
+              .map(
+                (ep: Episode) =>
+                  `   E${ep.episode}: ${clipText(ep.title || `Episodio ${ep.episode}`, 30)}`,
+              )
               .join('\n');
             if (eps.length > 5) {
               text += epSample;
@@ -201,7 +229,10 @@ export class CuevanaService {
         text += `\n📥 *Servidores de descarga:*\n`;
         const servers = downloads
           .slice(0, 5)
-          .map((d, i) => `   ${i + 1}. ${d.server} (${d.quality}) [${d.language || 'LAT'}]`)
+          .map(
+            (d: DownloadServer, i: number) =>
+              `   ${i + 1}. ${d.server} (${d.quality}) [${d.language || 'LAT'}]`,
+          )
           .join('\n');
         text += servers;
         if (downloads.length > 5) {

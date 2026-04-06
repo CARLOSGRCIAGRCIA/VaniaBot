@@ -1,5 +1,6 @@
 import { randomUUID } from 'crypto';
 import { aiService } from '@/services/external/AIService.js';
+import { isRight, left, right } from '@/utils/either.js';
 import { buildPrompt, MAX_TOKENS } from './PoesiaPrompts.js';
 import {
   ContenidoTipo,
@@ -67,10 +68,9 @@ export class PoesiaService {
     const lastGen = this.cooldowns.get(autorJid) ?? 0;
     const remaining = USER_COOLDOWN - (Date.now() - lastGen);
     if (remaining > 0) {
-      return {
-        success: false,
-        error: `Espera ${Math.ceil(remaining / 1000)}s antes de pedir otro contenido.`,
-      };
+      return left({
+        message: `Espera ${Math.ceil(remaining / 1000)}s antes de pedir otro contenido.`,
+      });
     }
 
     const cacheKey = `${opts.tipo}::${opts.tema ?? ''}::${opts.estilo ?? ''}::${opts.dedicado ?? ''}`;
@@ -88,18 +88,17 @@ export class PoesiaService {
       };
       this._saveEntry(groupId, cloned);
       this.cooldowns.set(autorJid, Date.now());
-      return { success: true, entry: cloned, cached: true };
+      return right({ entry: cloned, cached: true });
     }
 
     const prompt = buildPrompt(opts);
     const maxTok = MAX_TOKENS[opts.tipo] ?? 600;
     const response = await aiService.generate(prompt, maxTok);
 
-    if (!response.success || !response.text) {
-      return {
-        success: false,
-        error: response.error ?? 'No pude generar el contenido. Intenta de nuevo.',
-      };
+    if (!isRight(response)) {
+      return left({
+        message: response.left.message ?? 'No pude generar el contenido. Intenta de nuevo.',
+      });
     }
 
     const entry: ContenidoEntry = {
@@ -108,7 +107,7 @@ export class PoesiaService {
       estilo: opts.estilo,
       tema: opts.tema,
       dedicado: opts.dedicado,
-      contenido: response.text.trim(),
+      contenido: response.right.trim(),
       autor: autorJid,
       autorName,
       groupId,
@@ -123,7 +122,7 @@ export class PoesiaService {
     this._saveEntry(groupId, entry);
     this.cooldowns.set(autorJid, Date.now());
 
-    return { success: true, entry, cached: false };
+    return right({ entry, cached: false });
   }
 
   votar(groupId: string, voterJid: string, entryId?: string): VotoResult {

@@ -41,13 +41,13 @@ export class APKCommand extends Command {
     try {
       const result = await apkSearchService.search(query);
 
-      if (!result.ok || !result.results || result.results.length === 0) {
+      if (result._tag === 'Left') {
         await ctx.react('❌');
-        await ctx.reply(`❌ No se encontraron apps para: *${query}*`);
+        await ctx.reply(`❌ ${result.left.message}`);
         return;
       }
 
-      const text = apkSearchService.formatResults(result.results, query);
+      const text = apkSearchService.formatResults(result.right, query);
       await ctx.reply(text);
 
       await ctx.react('✅');
@@ -84,13 +84,13 @@ export class APKDLCommand extends Command {
     try {
       const result = await apkSearchService.search(query, 1);
 
-      if (!result.ok || !result.results || result.results.length === 0) {
+      if (result._tag === 'Left') {
         await ctx.react('❌');
-        await ctx.reply(`❌ No se encontró: *${query}*`);
+        await ctx.reply(`❌ ${result.left.message}`);
         return;
       }
 
-      const app = result.results[0];
+      const app = result.right[0];
 
       if (app.download) {
         await ctx.react('⬇️');
