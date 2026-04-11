@@ -1,5 +1,6 @@
 import { Command } from '../../Command.js';
 import { audioService } from '@/services/audio/AudioService.js';
+import { isRight } from '@/utils/either.js';
 import {
   CommandCategory,
   CommandContext,
@@ -210,20 +211,21 @@ export class TranscribeCommand extends Command {
       idioma,
     });
 
-    if (!result.success) {
+    if (!isRight(result)) {
       await ctx.react('❌');
-      await ctx.reply(`❌ ${result.error}`);
+      await ctx.reply(`❌ ${result.left.message}`);
       return;
     }
 
-    if (result.analisis?.tipo === 'musica') {
+    const trans = result.right;
+    if (trans.analisis?.tipo === 'musica') {
       await ctx.reply(
         `⚠️ *Nota:* El audio parece contener música. La transcripción puede no ser precisa.\n` +
           `_Whisper está optimizado para voz humana._`,
       );
     }
 
-    if (result.analisis?.tipo === 'ruido') {
+    if (trans.analisis?.tipo === 'ruido') {
       await ctx.reply(
         `⚠️ *Nota:* Se detectó mucho ruido de fondo. La transcripción puede tener errores.\n` +
           `_Intenta con un audio con menos ruido._`,

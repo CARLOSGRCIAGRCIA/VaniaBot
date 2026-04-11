@@ -1,6 +1,7 @@
-import type { DownloadResult } from './DownloadService.js';
-import { DownloadService } from './DownloadService.js';
+import { Either, left, right } from '@/utils/either.js';
+import { DownloadService, type DownloadResult } from './DownloadService.js';
 import { logError } from '@/utils/logger.js';
+import { NetworkError } from '@/utils/errors.js';
 import fs from 'fs';
 
 export interface InstagramMedia {
@@ -36,7 +37,7 @@ export class InstagramDownloader extends DownloadService {
     return /instagram\.com\/(p|reel|reels|tv|stories)\//i.test(url);
   }
 
-  async getMediaInfo(url: string): Promise<InstagramMedia | null> {
+  async getMediaInfo(url: string): Promise<Either<NetworkError, InstagramMedia>> {
     try {
       const output = await this.runCommand(
         'yt-dlp',
@@ -52,22 +53,26 @@ export class InstagramDownloader extends DownloadService {
           ? 'image'
           : 'unknown';
 
-      return {
+      return right({
         title: info.title ?? 'Instagram post',
         author: info.uploader ?? info.channel ?? 'unknown',
         url,
         type,
-      };
+      });
     } catch (error) {
       logError('Instagram getMediaInfo', error);
-      return null;
+      return left(
+        new NetworkError('Error al obtener info de Instagram', {
+          originalError: error instanceof Error ? error.message : String(error),
+        }),
+      );
     }
   }
 
   async downloadVideo(url: string): Promise<DownloadResult> {
     const validation = this.validateUrl(url);
-    if (!validation.valid) {
-      return { success: false, error: validation.error };
+    if (validation._tag === 'Left') {
+      return left(validation.left);
     }
 
     const outputPath = this.generateOutputPath('instagram', 'mp4');
@@ -114,8 +119,8 @@ export class InstagramDownloader extends DownloadService {
 
   async downloadImage(url: string): Promise<DownloadResult> {
     const validation = this.validateUrl(url);
-    if (!validation.valid) {
-      return { success: false, error: validation.error };
+    if (validation._tag === 'Left') {
+      return left(validation.left);
     }
 
     const outputPath = this.generateOutputPath('instagram_img', 'jpg');

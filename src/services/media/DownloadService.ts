@@ -1,14 +1,17 @@
 import axios from 'axios';
+import { Either, left, right } from '@/utils/either.js';
+import { NetworkError, ValidationError } from '@/utils/errors.js';
 import { logError } from '@/utils/logger.js';
 
-export interface DownloadResult {
-  success: boolean;
-  data?: Buffer;
-  filename?: string;
-  mimeType?: string;
-  size?: number;
-  error?: string;
+export interface MediaDownloadSuccess {
+  data: Buffer;
+  filename: string;
+  mimeType: string;
+  size: number;
 }
+
+export type MediaDownloadError = NetworkError | ValidationError;
+export type MediaDownloadResult = Either<MediaDownloadError, MediaDownloadSuccess>;
 
 export interface MediaInfo {
   title?: string;
@@ -23,7 +26,7 @@ export class DownloadService {
   private static readonly MAX_SIZE = 50 * 1024 * 1024;
   private static readonly TIMEOUT = 60000;
 
-  static async downloadFile(url: string): Promise<DownloadResult> {
+  static async downloadFile(url: string): Promise<MediaDownloadResult> {
     try {
       const response = await axios.get(url, {
         responseType: 'arraybuffer',
@@ -38,74 +41,65 @@ export class DownloadService {
       const filename = this.extractFilename(url, response.headers['content-type']);
       const mimeType = response.headers['content-type'] || 'application/octet-stream';
 
-      return {
-        success: true,
+      return right({
         data: buffer,
         filename,
         mimeType,
         size: buffer.length,
-      };
+      });
     } catch (error) {
       logError('DownloadService.downloadFile', error);
-
-      return {
-        success: false,
-      };
+      return left(
+        new NetworkError('Error al descargar archivo', {
+          originalError: error instanceof Error ? error.message : String(error),
+        }),
+      );
     }
   }
 
-  static async downloadImage(url: string): Promise<DownloadResult> {
+  static async downloadImage(url: string): Promise<MediaDownloadResult> {
     const result = await this.downloadFile(url);
 
-    if (!result.success) {
+    if (result._tag === 'Left') {
       return result;
     }
 
     const validImageTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
 
-    if (!validImageTypes.includes(result.mimeType || '')) {
-      return {
-        success: false,
-        error: 'El archivo no es una imagen válida',
-      };
+    if (!validImageTypes.includes(result.right.mimeType)) {
+      return left(new ValidationError('El archivo no es una imagen válida'));
     }
 
     return result;
   }
 
-  static async downloadVideo(url: string): Promise<DownloadResult> {
+  static async downloadVideo(url: string): Promise<MediaDownloadResult> {
     const result = await this.downloadFile(url);
 
-    if (!result.success) {
+    if (result._tag === 'Left') {
       return result;
     }
 
     const validVideoTypes = ['video/mp4', 'video/webm', 'video/quicktime'];
 
-    if (!validVideoTypes.includes(result.mimeType || '')) {
-      return {
-        success: false,
-        error: 'El archivo no es un video válido',
-      };
+    if (!validVideoTypes.includes(result.right.mimeType)) {
+      return left(new ValidationError('El archivo no es un video válido'));
     }
 
     return result;
   }
 
-  static async downloadAudio(url: string): Promise<DownloadResult> {
+  static async downloadAudio(url: string): Promise<MediaDownloadResult> {
     const result = await this.downloadFile(url);
 
-    if (!result.success) {
+    if (result._tag === 'Left') {
       return result;
     }
 
     const validAudioTypes = ['audio/mpeg', 'audio/mp3', 'audio/ogg', 'audio/wav'];
 
-    if (!validAudioTypes.includes(result.mimeType || '')) {
-      return {
-        success: false,
-        error: 'El archivo no es audio válido',
-      };
+    if (!validAudioTypes.includes(result.right.mimeType)) {
+      return left(new ValidationError('El archivo no es audio válido'));
     }
 
     return result;

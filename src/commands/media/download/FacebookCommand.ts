@@ -3,6 +3,7 @@ import { CommandCategory, type MessageContext } from '@/types/index.js';
 import { logError } from '@/utils/logger.js';
 import { primeService } from '@/services/system/PrimeService.js';
 import { FacebookDownloader } from '@/services/download/FacebookDownloader.js';
+import { isRight } from '@/utils/either.js';
 import fs from 'fs';
 
 export class FacebookCommand extends Command {
@@ -48,9 +49,10 @@ export class FacebookCommand extends Command {
     await ctx.react('🔍');
 
     try {
-      const info = await this.downloader.getVideoInfo(url);
+      const infoResult = await this.downloader.getVideoInfo(url);
 
-      if (info) {
+      if (isRight(infoResult)) {
+        const info = infoResult.right;
         await ctx.reply(
           `˚₊· ͟͟͞͞➳ *autor:* ${info.author} ˚₊· ͟͟͞͞➳\n` +
             `✿ *título:* ${info.title.substring(0, 80)}\n\n` +
@@ -64,27 +66,23 @@ export class FacebookCommand extends Command {
 
       const result = await this.downloader.downloadVideo(url);
 
-      if (!result.success) {
+      if (!isRight(result)) {
         await ctx.react('❌');
-        await ctx.reply(`❌ Download failed\n\n${result.error}`);
+        await ctx.reply(`❌ Download failed\n\n${result.left.message}`);
         return;
       }
 
-      const filePath = result.filePath;
-      if (!filePath) {
-        await ctx.react('❌');
-        await ctx.reply('❌ File path not found');
-        return;
-      }
+      const downloadSuccess = result.right;
+      const filePath = downloadSuccess.filePath;
 
       const footer = await primeService.formatFooter(ctx.sock, ctx.chat.jid, ctx.chat.isGroup);
       await ctx.sock.sendMessage(ctx.chat.jid, {
         video: fs.readFileSync(filePath),
         mimetype: 'video/mp4',
         caption:
-          (info ? `˚₊· ͟͟͞͞➳ ${info.author}\n` : '') +
-          `✩ ${result.size}MB\n` +
-          `✿ ${result.source}\n\n` +
+          (isRight(infoResult) ? `˚₊· ͟͟͞͞➳ ${infoResult.right.author}\n` : '') +
+          `✩ ${downloadSuccess.size}MB\n` +
+          `✿ ${downloadSuccess.source}\n\n` +
           footer,
       });
 

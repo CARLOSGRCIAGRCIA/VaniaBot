@@ -1,5 +1,6 @@
 import { Command } from '../../Command.js';
 import { quizService } from '@/services/study/QuizService.js';
+import { isRight } from '@/utils/either.js';
 import { logError } from '@/utils/logger.js';
 import { difficultyEngine } from '@/services/study/DifficultyEngine.js';
 import { QuizCategory, type UserQuizStats } from '@/services/study/QuizTypes.js';
@@ -197,18 +198,12 @@ export class QuizCommand extends Command {
       footer: quizFooter,
     });
 
-    if (!result.success) {
-      await ctx.reply(`❌ ${result.error}`);
+    if (!isRight(result)) {
+      await ctx.reply(`❌ ${result.left.message}`);
       return;
     }
 
-    if (!result.firstQuestion || !result.difficulty) {
-      await ctx.reply('❌ Error al obtener la primera pregunta.');
-      return;
-    }
-
-    const q = result.firstQuestion;
-    const diff = result.difficulty;
+    const { firstQuestion: q, difficulty: diff } = result.right;
 
     await ctx.reply(
       `˚₊· ͟͟͞͞➳ *quiz iniciado* — ${total} preguntas ˚₊· ͟͟͞͞➳\n` +

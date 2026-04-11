@@ -1,5 +1,6 @@
 import { Command } from '../Command.js';
 import { aiService } from '@/services/external/AIService.js';
+import { isRight } from '@/utils/either.js';
 import {
   CommandCategory,
   CommandContext,
@@ -71,8 +72,8 @@ export class FactoCommand extends Command {
 
     const result = await aiService.chat(ctx.chat.jid, ctx.sender.jid, prompt, true);
 
-    if (result.success && result.text) {
-      return result.text.trim();
+    if (isRight(result)) {
+      return result.right.trim();
     }
 
     return this.getRandomFacto();

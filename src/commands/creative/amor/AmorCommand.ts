@@ -1,5 +1,6 @@
 import { Command } from '../../Command.js';
 import { aiService } from '@/services/external/AIService.js';
+import { isRight } from '@/utils/either.js';
 import {
   CommandCategory,
   CommandContext,
@@ -52,7 +53,7 @@ export class AmorCommand extends Command {
       const prompt = this.buildPrompt(tipo, tema, paraNombre);
       const response = await aiService.chat(prompt, ctx.sender.jid, ctx.chat.jid);
 
-      if (!response.success || !response.text) {
+      if (!isRight(response)) {
         await ctx.react('❌');
         await ctx.reply('No pude generar el mensaje. Intenta de nuevo.');
         return;
@@ -60,7 +61,7 @@ export class AmorCommand extends Command {
 
       const header = paraNombre ? `💕 *Para: ${paraNombre}* 💕\n\n` : '💕 *Mensaje de Amor* 💕\n\n';
 
-      await ctx.reply(header + response.text.trim());
+      await ctx.reply(header + response.right.trim());
       await ctx.react('💝');
     } catch {
       await ctx.react('❌');

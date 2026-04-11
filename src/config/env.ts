@@ -235,6 +235,15 @@ const envSchema = z.object({
     .string()
     .transform(val => parseInt(val) || 1000)
     .default('1000'),
+
+  /** Enable Redis for cache and persistence (use in Docker) */
+  USE_REDIS: z
+    .string()
+    .transform(val => val === 'true')
+    .default('false'),
+
+  /** Redis connection URL */
+  REDIS_URL: z.string().default('redis://localhost:6379'),
 });
 
 /**

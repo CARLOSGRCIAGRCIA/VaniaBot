@@ -1,27 +1,37 @@
 import fs from 'fs';
 import path from 'path';
 import { spawn } from 'child_process';
+import { Either, left, right } from '@/utils/either.js';
+import {
+  VBotError,
+  ErrorCode,
+  ValidationError,
+  NetworkError,
+  InvalidURLError,
+} from '@/utils/errors.js';
 import { logError, logger } from '@/utils/logger.js';
 
-export interface DownloadResult {
-  success: boolean;
-  filePath?: string;
-  size?: string;
-  source?: string;
-  error?: string;
-}
+export type DownloadSuccess = {
+  filePath: string;
+  size: string;
+  source: string;
+};
+
+export type DownloadError = ValidationError | NetworkError | VBotError;
+
+export type DownloadResult = Either<DownloadError, DownloadSuccess>;
 
 const BLOCKED_URL_PATTERNS = [
-  /[;&|`$<>{}]/, // Shell metacharacters
-  /localhost/i, // Localhost
-  /127\.\d+\.\d+\.\d+/, // Loopback
-  /10\.\d+\.\d+\.\d+/, // Private Class A
-  /172\.(1[6-9]|2\d|3[01])\.\d+\.\d+/, // Private Class B
-  /192\.168\.\d+\.\d+/, // Private Class C
-  /0\.0\.0\.0/, // All interfaces
-  /::1/, // IPv6 loopback
-  /fc00:/i, // IPv6 private
-  /fe80:/i, // IPv6 link-local
+  /[;&|`$<>{}]/,
+  /localhost/i,
+  /127\.\d+\.\d+\.\d+/,
+  /10\.\d+\.\d+\.\d+/,
+  /172\.(1[6-9]|2\d|3[01])\.\d+\.\d+/,
+  /192\.168\.\d+\.\d+/,
+  /0\.0\.0\.0/,
+  /::1/,
+  /fc00:/i,
+  /fe80:/i,
 ];
 
 export class DownloadService {
@@ -41,36 +51,36 @@ export class DownloadService {
 
   protected resolveOutputPath?(expectedPath: string): string | null;
 
-  protected validateUrl(url: string): { valid: boolean; error?: string } {
+  protected validateUrl(url: string): Either<ValidationError, string> {
     if (!url || url.trim().length === 0) {
-      return { valid: false, error: 'URL is empty' };
+      return left(new ValidationError('URL está vacía'));
     }
 
     if (url.length > 2048) {
-      return { valid: false, error: 'URL too long' };
+      return left(new ValidationError('URL muy larga (máx 2048 caracteres)'));
     }
 
     try {
       const parsed = new URL(url);
 
       if (!['http:', 'https:'].includes(parsed.protocol)) {
-        return { valid: false, error: 'Only HTTP/HTTPS URLs allowed' };
+        return left(new ValidationError('Solo URLs HTTP/HTTPS permitidas'));
       }
 
       for (const pattern of BLOCKED_URL_PATTERNS) {
         if (pattern.test(url)) {
-          return { valid: false, error: 'URL contains blocked patterns' };
+          return left(new ValidationError('URL contiene patrones bloqueados'));
         }
       }
 
       const hostname = parsed.hostname.toLowerCase();
       if (hostname === 'localhost' || hostname === '127.0.0.1') {
-        return { valid: false, error: 'Localhost URLs not allowed' };
+        return left(new ValidationError('URLs localhost no permitidas'));
       }
 
-      return { valid: true };
+      return right(url);
     } catch {
-      return { valid: false, error: 'Invalid URL format' };
+      return left(new InvalidURLError(url, 'formato inválido'));
     }
   }
 
@@ -109,16 +119,19 @@ export class DownloadService {
   protected checkFileSize(
     filePath: string,
     type: 'audio' | 'video',
-  ): { valid: boolean; sizeMB: number } {
+  ): Either<ValidationError, { sizeMB: number }> {
     const stats = fs.statSync(filePath);
     const sizeMB = stats.size / (1024 * 1024);
     const maxSize =
       type === 'audio' ? DownloadService.MAX_AUDIO_SIZE_MB : DownloadService.MAX_VIDEO_SIZE_MB;
 
-    return {
-      valid: sizeMB <= maxSize,
-      sizeMB: parseFloat(sizeMB.toFixed(2)),
-    };
+    if (sizeMB > maxSize) {
+      return left(
+        new ValidationError(`Archivo muy grande: ${sizeMB.toFixed(1)}MB (máx: ${maxSize}MB)`),
+      );
+    }
+
+    return right({ sizeMB: parseFloat(sizeMB.toFixed(2)) });
   }
 
   protected sanitizeFilename(filename: string, maxLength: number = 60): string {
@@ -157,7 +170,7 @@ export class DownloadService {
   ): Promise<DownloadResult> {
     const prefix = this.getDownloadPrefix();
     const tag = prefix ? `[${prefix}]` : '';
-    let lastError = '';
+    let lastError: VBotError | undefined;
 
     for (const method of methods) {
       try {
@@ -173,34 +186,35 @@ export class DownloadService {
         if (fs.existsSync(resolvedPath)) {
           const sizeCheck = this.checkFileSize(resolvedPath, type);
 
-          if (!sizeCheck.valid) {
+          if (sizeCheck._tag === 'Left') {
             fs.unlinkSync(resolvedPath);
-            return {
-              success: false,
-              error: `File too large: ${sizeCheck.sizeMB}MB`,
-            };
+            return left(sizeCheck.left);
           }
 
-          logger.debug(`${tag} ${method.name} succeeded: ${sizeCheck.sizeMB}MB`);
+          logger.debug(`${tag} ${method.name} succeeded: ${sizeCheck.right.sizeMB}MB`);
 
-          return {
-            success: true,
+          return right({
             filePath: resolvedPath,
-            size: sizeCheck.sizeMB.toString(),
+            size: sizeCheck.right.sizeMB.toString(),
             source: method.name,
-          };
+          });
         }
       } catch (error) {
         const err = error as Error;
-        lastError = err.message;
+        lastError = new NetworkError(err.message, { method: method.name });
         logger.debug(`${tag} ${method.name} failed: ${err.message}`);
         continue;
       }
     }
 
-    return {
-      success: false,
-      error: `Descarga fallida. Verifica que yt-dlp y ffmpeg estén instalados. Error: ${lastError}`,
-    };
+    return left(
+      lastError ||
+        new VBotError(
+          'Descarga fallida. Verifica que yt-dlp y ffmpeg estén instalados.',
+          ErrorCode.NETWORK_ERROR,
+          true,
+          { methods: methods.map(m => m.name) },
+        ),
+    );
   }
 }

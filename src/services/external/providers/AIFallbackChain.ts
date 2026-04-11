@@ -1,4 +1,5 @@
 import type { AIMessage, AIProvider, AIResponse } from './AIProvider.js';
+import { isRight, left } from '@/utils/either.js';
 import { GroqProvider } from './GroqProvider.js';
 import { GeminiProvider } from './GeminiProvider.js';
 import { OllamaProvider } from './OllamaProvider.js';
@@ -48,22 +49,19 @@ export class AIFallbackChain {
           result = await provider.chat(messages);
         }
 
-        if (result.success) {
+        if (isRight(result)) {
           logger.debug(`[AI Chain] ${provider.name} succeeded`);
           return result;
         }
 
-        logger.warn(`[AI Chain] ${provider.name} failed: ${result.error}`);
+        logger.warn(`[AI Chain] ${provider.name} failed: ${result.left.message}`);
       } catch (error) {
         const err = error as Error;
         logger.warn(`[AI Chain] ${provider.name} error: ${err.message}`);
       }
     }
 
-    return {
-      success: false,
-      error: 'All AI providers failed. Please try again later.',
-    };
+    return left({ message: 'All AI providers failed. Please try again later.' });
   }
 
   async transcribe(audioBuffer: Buffer, extension: string = 'ogg'): Promise<AIResponse> {
@@ -78,10 +76,7 @@ export class AIFallbackChain {
       }
     }
 
-    return {
-      success: false,
-      error: 'Transcription service unavailable.',
-    };
+    return left({ message: 'Transcription service unavailable.' });
   }
 
   getProviders(): string[] {

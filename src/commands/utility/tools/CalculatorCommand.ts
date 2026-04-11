@@ -185,7 +185,14 @@ export class CalculatorCommand extends Command {
       scope[fn] = math[fn as keyof typeof math];
     }
     for (const c of ALLOWED_CONSTANTS) {
-      scope[c] = math.number(math[c as keyof typeof math] as Parameters<typeof math.number>[0]);
+      try {
+        const value = math[c as keyof typeof math];
+        if (value !== undefined && value !== null) {
+          scope[c] = math.number(value as Parameters<typeof math.number>[0]);
+        }
+      } catch {
+        scope[c] = Math[c as keyof typeof Math] ?? 0;
+      }
     }
 
     const result = math.evaluate(exprWithPercent, scope);

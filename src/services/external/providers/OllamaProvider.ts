@@ -1,4 +1,5 @@
 import type { AIMessage, AIProvider, AIResponse } from './AIProvider.js';
+import { left, right } from '@/utils/either.js';
 import { logger } from '@/utils/logger.js';
 
 export class OllamaProvider implements AIProvider {
@@ -53,11 +54,11 @@ export class OllamaProvider implements AIProvider {
       const data = (await response.json()) as { message?: { content?: string } };
       const text = data.message?.content?.trim() || '';
 
-      return { success: true, text };
+      return right({ text });
     } catch (error) {
       const err = error as { message?: string };
       logger.error('[OllamaProvider] Error:', err.message);
-      return { success: false, error: err.message || 'Ollama error' };
+      return left({ message: err.message || 'Ollama error' });
     }
   }
 

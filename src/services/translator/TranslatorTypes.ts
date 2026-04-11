@@ -108,17 +108,21 @@ export const IDIOMAS: Record<string, { nombre: string; bandera: string; codigo: 
   latín: { nombre: 'Latín', bandera: '🏛️', codigo: 'la' },
 };
 
-export interface TraduccionResult {
-  success: boolean;
-  traduccion?: string;
-  idiomaOrigen?: string;
-  idiomaDestino?: string;
-  bandOrigen?: string;
-  bandDestino?: string;
-  error?: string;
+import { Either } from '@/utils/either.js';
+import { ValidationError, NetworkError } from '@/utils/errors.js';
+
+export interface TraduccionSuccess {
+  traduccion: string;
+  idiomaOrigen: string;
+  idiomaDestino: string;
+  bandOrigen: string;
+  bandDestino: string;
   textoOriginal?: string;
   notas?: string;
 }
+
+export type TraduccionError = ValidationError | NetworkError;
+export type TraduccionResult = Either<TraduccionError, TraduccionSuccess>;
 
 export interface TraduccionOpts {
   texto: string;

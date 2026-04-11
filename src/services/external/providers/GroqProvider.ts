@@ -1,5 +1,6 @@
 import Groq from 'groq-sdk';
 import type { AIMessage, AIProvider, AIResponse } from './AIProvider.js';
+import { left, right } from '@/utils/either.js';
 import { logger } from '@/utils/logger.js';
 
 export class GroqProvider implements AIProvider {
@@ -29,11 +30,11 @@ export class GroqProvider implements AIProvider {
       });
 
       const text = completion.choices[0]?.message?.content?.trim() ?? '';
-      return { success: true, text };
+      return right({ text });
     } catch (error) {
       const err = error as { message?: string; status?: number };
       logger.error('[GroqProvider] Error:', err.message);
-      return { success: false, error: err.message || 'Groq error' };
+      return left({ message: err.message || 'Groq error' });
     }
   }
 
@@ -47,11 +48,11 @@ export class GroqProvider implements AIProvider {
       });
 
       const text = completion.choices[0]?.message?.content?.trim() ?? '';
-      return { success: true, text };
+      return right({ text });
     } catch (error) {
       const err = error as { message?: string; status?: number };
       logger.error('[GroqProvider] Fast error:', err.message);
-      return { success: false, error: err.message || 'Groq error' };
+      return left({ message: err.message || 'Groq error' });
     }
   }
 
@@ -73,11 +74,11 @@ export class GroqProvider implements AIProvider {
 
       fs.unlinkSync(tmpPath);
 
-      return { success: true, text: String(transcription).trim() };
+      return right({ text: String(transcription).trim() });
     } catch (error) {
       const err = error as { message?: string };
       logger.error('[GroqProvider] Transcribe error:', err.message);
-      return { success: false, error: err.message || 'Transcription error' };
+      return left({ message: err.message || 'Transcription error' });
     }
   }
 }

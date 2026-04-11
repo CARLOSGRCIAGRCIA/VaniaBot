@@ -9,6 +9,7 @@
  */
 
 import { aiService } from '@/services/external/AIService.js';
+import { isRight } from '@/utils/either.js';
 import type { QuizDifficulty } from './QuizTypes.js';
 import { logError } from '@/utils/logger.js';
 import type { QuizQuestion } from './QuizTypes.js';
@@ -103,9 +104,9 @@ Reglas:
 - Para dificultad "easy": conceptos fundamentales y ampliamente conocidos.`;
 
     const res = await aiService.generate(prompt, 1500);
-    if (!res.success || !res.text) return [];
+    if (!isRight(res)) return [];
 
-    return this.parseAndValidate(res.text, category, difficulty);
+    return this.parseAndValidate(res.right, category, difficulty);
   }
 
   private parseAndValidate(

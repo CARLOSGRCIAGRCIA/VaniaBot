@@ -330,7 +330,7 @@ export class BlackjackCommand extends Command {
       `🃏 *BLACKJACK* 🃏\n\n` +
         `📊 *Tu mano:* ${playerCards.map(c => this.getCardDisplay(c)).join(' ')}\n` +
         `📈 Puntaje: ${playerScore.score}${playerScore.isSoft ? ' (Soft)' : ''}\n\n` +
-        `🤖 *Del dealer:* ${dealerCards[0]} 🔒\n\n` +
+        `🤖 *Del dealer:* ${this.getCardDisplay(dealerCards[0])} 🔒\n\n` +
         `✿ *Acciones:*\n` +
         `!blackjack ${amount} hit  - Tomar carta\n` +
         `!blackjack ${amount} stand - Quedarte`,

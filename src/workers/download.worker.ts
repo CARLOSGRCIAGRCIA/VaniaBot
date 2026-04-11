@@ -5,6 +5,8 @@ import { InstagramDownloader } from '../services/download/InstagramDownloader.js
 import { TwitterDownloader } from '../services/download/TwitterDownloader.js';
 import { FacebookDownloader } from '../services/download/FacebookDownloader.js';
 import { SpotifyDownloader } from '../services/download/SpotifyDownloader.js';
+import { Either, isRight, isLeft } from '../utils/either.js';
+import { VBotError } from '../utils/errors.js';
 
 interface DownloadTask {
   id: string;
@@ -49,6 +51,25 @@ const downloaders = {
   spotify: new SpotifyDownloader(),
 };
 
+function extractErrorMessage(error: unknown): string {
+  if (error instanceof VBotError) {
+    return error.message;
+  }
+  if (error instanceof Error) {
+    return error.message;
+  }
+  return String(error);
+}
+
+function convertToOldResult(
+  either: Either<{ message: string }, { filePath: string; size: string; source: string }>,
+): DownloadResult {
+  if (isLeft(either)) {
+    return { success: false, error: extractErrorMessage(either.left) };
+  }
+  return { success: true, filePath: either.right.filePath, size: either.right.size };
+}
+
 async function processDownload(task: DownloadTask): Promise<DownloadResult> {
   try {
     switch (task.type) {
@@ -57,7 +78,8 @@ async function processDownload(task: DownloadTask): Promise<DownloadResult> {
         if (!videoId) {
           return { success: false, error: 'Invalid YouTube URL' };
         }
-        return await downloaders.youtube.downloadAudio(videoId);
+        const result = await downloaders.youtube.downloadAudio(videoId);
+        return convertToOldResult(result);
       }
 
       case 'youtube-video': {
@@ -65,26 +87,39 @@ async function processDownload(task: DownloadTask): Promise<DownloadResult> {
         if (!videoId) {
           return { success: false, error: 'Invalid YouTube URL' };
         }
-        return await downloaders.youtube.downloadVideo(videoId);
+        const result = await downloaders.youtube.downloadVideo(videoId);
+        return convertToOldResult(result);
       }
 
-      case 'tiktok-video':
-        return await downloaders.tiktok.downloadVideo(task.url);
+      case 'tiktok-video': {
+        const result = await downloaders.tiktok.downloadVideo(task.url);
+        return convertToOldResult(result);
+      }
 
-      case 'tiktok-audio':
-        return await downloaders.tiktok.downloadAudio(task.url);
+      case 'tiktok-audio': {
+        const result = await downloaders.tiktok.downloadAudio(task.url);
+        return convertToOldResult(result);
+      }
 
-      case 'instagram':
-        return await downloaders.instagram.downloadVideo(task.url);
+      case 'instagram': {
+        const result = await downloaders.instagram.downloadVideo(task.url);
+        return convertToOldResult(result);
+      }
 
-      case 'twitter':
-        return await downloaders.twitter.downloadVideo(task.url);
+      case 'twitter': {
+        const result = await downloaders.twitter.downloadVideo(task.url);
+        return convertToOldResult(result);
+      }
 
-      case 'facebook':
-        return await downloaders.facebook.downloadVideo(task.url);
+      case 'facebook': {
+        const result = await downloaders.facebook.downloadVideo(task.url);
+        return convertToOldResult(result);
+      }
 
-      case 'spotify':
-        return await downloaders.spotify.downloadTrack(task.url);
+      case 'spotify': {
+        const result = await downloaders.spotify.downloadTrack(task.url);
+        return convertToOldResult(result);
+      }
 
       default:
         return { success: false, error: `Unknown download type: ${task.type}` };

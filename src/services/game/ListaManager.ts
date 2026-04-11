@@ -57,12 +57,19 @@ function parsearHora(horaTexto: string): { mex: string; col: string } | null {
   if (horas < 0 || horas > 23 || minutos < 0 || minutos > 59) return null;
 
   const pad = (n: number) => String(n).padStart(2, '0');
+
+  const to12Hour = (h: number) => {
+    const period = h >= 12 ? 'PM' : 'AM';
+    const hour12 = h % 12 || 12;
+    return `${hour12}:${pad(minutos)} ${period}`;
+  };
+
   const mexH = horas;
   const colH = (horas + 1) % 24;
 
   return {
-    mex: `${pad(mexH)}:${pad(minutos)}`,
-    col: `${pad(colH)}:${pad(minutos)}`,
+    mex: to12Hour(mexH),
+    col: to12Hour(colH),
   };
 }
 

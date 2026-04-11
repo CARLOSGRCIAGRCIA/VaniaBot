@@ -1,5 +1,6 @@
 import { GoogleGenerativeAI, HarmCategory, HarmBlockThreshold } from '@google/generative-ai';
 import type { AIMessage, AIProvider, AIResponse } from './AIProvider.js';
+import { left, right } from '@/utils/either.js';
 import { logger } from '@/utils/logger.js';
 
 export class GeminiProvider implements AIProvider {
@@ -21,7 +22,7 @@ export class GeminiProvider implements AIProvider {
 
   async chat(messages: AIMessage[]): Promise<AIResponse> {
     if (!this.client) {
-      return { success: false, error: 'Gemini not configured' };
+      return left({ message: 'Gemini not configured' });
     }
 
     try {
@@ -63,11 +64,11 @@ export class GeminiProvider implements AIProvider {
       const response = result.response;
       const text = response.text();
 
-      return { success: true, text: text.trim() };
+      return right({ text: text.trim() });
     } catch (error) {
       const err = error as { message?: string };
       logger.error('[GeminiProvider] Error:', err.message);
-      return { success: false, error: err.message || 'Gemini error' };
+      return left({ message: err.message || 'Gemini error' });
     }
   }
 

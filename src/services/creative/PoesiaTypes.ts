@@ -1,3 +1,5 @@
+import { Either, left, right } from '@/utils/either.js';
+
 export enum ContenidoTipo {
   POEMA = 'poema',
   FRASE = 'frase',
@@ -61,20 +63,21 @@ export interface ContenidoEntry {
 
 export interface GenerarOpts {
   tipo: ContenidoTipo;
+  estilo?: string;
   tema?: string;
-  estilo?: EstiloPoema;
   dedicado?: string;
-  nombre?: string;
   contexto?: string;
   versos?: number;
+  nombre?: string;
 }
 
-export interface GenerarResult {
-  success: boolean;
-  entry?: ContenidoEntry;
-  error?: string;
+export interface GenerarSuccess {
+  entry: ContenidoEntry;
   cached?: boolean;
 }
+
+export type GenerarError = { message: string };
+export type GenerarResult = Either<GenerarError, GenerarSuccess>;
 
 export interface VotoResult {
   success: boolean;

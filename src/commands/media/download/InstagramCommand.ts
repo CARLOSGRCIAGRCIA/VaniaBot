@@ -3,6 +3,7 @@ import { CommandCategory, type MessageContext } from '@/types/index.js';
 import { logError } from '@/utils/logger.js';
 import { primeService } from '@/services/system/PrimeService.js';
 import { InstagramDownloader } from '@/services/download/InstagramDownloader.js';
+import { isRight } from '@/utils/either.js';
 import fs from 'fs';
 
 export class InstagramCommand extends Command {
@@ -48,8 +49,9 @@ export class InstagramCommand extends Command {
     await ctx.react('🔍');
 
     try {
-      const info = await this.downloader.getMediaInfo(url);
+      const infoResult = await this.downloader.getMediaInfo(url);
 
+      const info = infoResult._tag === 'Right' ? infoResult.right : null;
       const isImage = info?.type === 'image';
 
       await ctx.reply(
@@ -65,25 +67,20 @@ export class InstagramCommand extends Command {
         ? await this.downloader.downloadImage(url)
         : await this.downloader.downloadVideo(url);
 
-      if (!result.success) {
+      if (!isRight(result)) {
         await ctx.react('❌');
-        await ctx.reply(`❌ Download failed\n\n${result.error}`);
+        await ctx.reply(`❌ Download failed\n\n${result.left.message}`);
         return;
       }
 
-      const filePath = result.filePath;
-      if (!filePath) {
-        await ctx.react('❌');
-        await ctx.reply('❌ File path not found');
-        return;
-      }
+      const downloadSuccess = result.right;
 
       const footer = await primeService.formatFooter(ctx.sock, ctx.chat.jid, ctx.chat.isGroup);
-      const fileBuffer = fs.readFileSync(filePath);
+      const fileBuffer = fs.readFileSync(downloadSuccess.filePath);
       const caption =
         (info ? `${isImage ? '🖼️' : '🎬'} @${info.author}\n` : '') +
-        `📊 ${result.size}MB\n` +
-        `⚡ ${result.source}\n\n` +
+        `📊 ${downloadSuccess.size}MB\n` +
+        `⚡ ${downloadSuccess.source}\n\n` +
         footer;
 
       if (isImage) {
@@ -101,7 +98,7 @@ export class InstagramCommand extends Command {
 
       await ctx.react('✅');
 
-      await this.downloader['cleanup'](filePath);
+      await this.downloader['cleanup'](downloadSuccess.filePath);
     } catch (error: unknown) {
       logError('[InstagramCommand] Error', error);
       await ctx.react('❌');

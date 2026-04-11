@@ -8,6 +8,7 @@
 
 import axios from 'axios';
 import { logger } from '@/utils/logger.js';
+import { left, right, type Either } from '@/utils/either.js';
 
 const DUCKDUCKGO_LITE = 'https://lite.duckduckgo.com/lite/';
 const DEFAULT_LIMIT = 10;
@@ -18,12 +19,11 @@ export interface SearchResult {
   snippet: string;
 }
 
-export interface WebSearchResponse {
-  ok: boolean;
-  query?: string;
-  results?: SearchResult[];
-  error?: string;
-}
+export type WebSearchError =
+  | { code: 'NETWORK_ERROR'; message: string }
+  | { code: 'NO_RESULTS'; message: string };
+
+export type WebSearchResult = Either<WebSearchError, SearchResult[]>;
 
 function escapeHtml(text: string): string {
   return text
@@ -35,29 +35,22 @@ function escapeHtml(text: string): string {
 }
 
 export class WebSearchService {
-  async search(query: string, limit = DEFAULT_LIMIT): Promise<WebSearchResponse> {
+  async search(query: string, limit = DEFAULT_LIMIT): Promise<WebSearchResult> {
     try {
-      const response = await axios.post(
-        DUCKDUCKGO_LITE,
-        new URLSearchParams({
-          q: query,
-          kl: 'es-mx',
-        }),
-        {
-          timeout: 15000,
-          headers: {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-            'Content-Type': 'application/x-www-form-urlencoded',
-            Accept: 'text/html',
-          },
+      const response = await axios.get(`https://html.duckduckgo.com/html/`, {
+        params: { q: query, kl: 'es-mx' },
+        timeout: 15000,
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+          Accept: 'text/html',
         },
-      );
+      });
 
       const results: SearchResult[] = [];
       const html = response.data;
 
       const resultRegex =
-        /<a class="result__a" href="([^"]+)">([^<]+)<\/a>[\s\S]*?<a class="result__snippet"[^>]*>([^<]+)</g;
+        /<a class="result__a"[^>]*href="([^"]+)"[^>]*>([^<]+)<\/a>[\s\S]*?<a class="result__snippet"[^>]*>([\s\S]*?)<\/a>/g;
       let match;
 
       while ((match = resultRegex.exec(html)) !== null && results.length < limit) {
@@ -65,30 +58,37 @@ export class WebSearchService {
         const title = escapeHtml(match[2].trim());
         const snippet = escapeHtml(match[3].replace(/<[^>]+>/g, '').trim());
 
-        if (url && title && !url.includes('duckduckgo')) {
-          results.push({ title, url, snippet });
+        if (url && title && !url.includes('duckduckgo') && url.startsWith('http')) {
+          results.push({ title, url, snippet: snippet.slice(0, 200) });
         }
       }
 
       if (results.length === 0) {
-        const simpleRegex = /<a href="(https?:\/\/[^"]+)"[^>]*>([^<]+)<\/a>/g;
+        const simpleRegex = /<a[^>]+href="(https?:\/\/[^"]+)"[^>]*>([^<]+)<\/a>/g;
         while ((match = simpleRegex.exec(html)) !== null && results.length < limit) {
           const url = match[1];
           const title = escapeHtml(match[2].trim());
-          if (url && title && !url.includes('duckduckgo') && !url.includes('yandex')) {
+          if (
+            url &&
+            title &&
+            !url.includes('duckduckgo') &&
+            !url.includes('yandex') &&
+            url.startsWith('http')
+          ) {
             results.push({ title, url, snippet: '' });
           }
         }
       }
 
-      return {
-        ok: true,
-        query,
-        results,
-      };
+      if (results.length === 0) {
+        return left({ code: 'NO_RESULTS', message: 'No se encontraron resultados para: ' + query });
+      }
+
+      return right(results);
     } catch (error) {
       logger.error('WebSearchService.search error:', error);
-      return { ok: false, error: 'Error al realizar búsqueda' };
+      const message = error instanceof Error ? error.message : 'Error desconocido';
+      return left({ code: 'NETWORK_ERROR', message: `Error al realizar búsqueda: ${message}` });
     }
   }
 

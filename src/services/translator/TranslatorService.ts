@@ -1,4 +1,6 @@
+import { Either, isRight, isLeft, left, right } from '@/utils/either.js';
 import { aiService } from '@/services/external/AIService.js';
+import { ValidationError, NetworkError } from '@/utils/errors.js';
 import { resolverIdioma, type TraduccionOpts, type TraduccionResult } from './TranslatorTypes.js';
 
 interface CacheEntry {
@@ -7,7 +9,6 @@ interface CacheEntry {
 }
 
 const CACHE_TTL = 5 * 60 * 1000;
-
 const MAX_CHARS = 2000;
 
 function buildPrompt(opts: TraduccionOpts): string {
@@ -56,27 +57,36 @@ function buildDetectPrompt(texto: string): string {
 Texto: ${texto.slice(0, 300)}`;
 }
 
+function extractErrorMessage(error: unknown): string {
+  if (error instanceof Error) {
+    return error.message;
+  }
+  return String(error);
+}
+
 class TranslatorService {
   private cache = new Map<string, CacheEntry>();
 
   async traducir(opts: TraduccionOpts): Promise<TraduccionResult> {
     if (opts.texto.length > MAX_CHARS) {
-      return {
-        success: false,
-        error: `El texto es muy largo (máx ${MAX_CHARS} caracteres). Tienes ${opts.texto.length}.`,
-      };
+      return left(
+        new ValidationError(
+          `El texto es muy largo (máx ${MAX_CHARS} caracteres). Tienes ${opts.texto.length}.`,
+        ),
+      );
     }
 
     if (!opts.texto.trim()) {
-      return { success: false, error: 'No hay texto para traducir.' };
+      return left(new ValidationError('No hay texto para traducir.'));
     }
 
     const dest = resolverIdioma(opts.idiomaDestino);
     if (!dest) {
-      return {
-        success: false,
-        error: `Idioma desconocido: "${opts.idiomaDestino}". Usa *!traducir idiomas* para ver los disponibles.`,
-      };
+      return left(
+        new ValidationError(
+          `Idioma desconocido: "${opts.idiomaDestino}". Usa *!traducir idiomas* para ver los disponibles.`,
+        ),
+      );
     }
 
     const normalizedOpts: TraduccionOpts = {
@@ -88,7 +98,11 @@ class TranslatorService {
     if (!opts.notas) {
       const cached = this.cache.get(cacheKey);
       if (cached && Date.now() < cached.expiresAt) {
-        return { ...cached.result, notas: '(caché)' };
+        const cachedResult = cached.result;
+        if (cachedResult._tag === 'Right' && cachedResult.right.notas !== undefined) {
+          return right({ ...cachedResult.right, notas: cachedResult.right.notas + ' (caché)' });
+        }
+        return cachedResult;
       }
     }
 
@@ -116,14 +130,15 @@ class TranslatorService {
     const prompt = buildPrompt(normalizedOpts);
     const response = await aiService.generate(prompt, 1000);
 
-    if (!response.success || !response.text) {
-      return {
-        success: false,
-        error: response.error ?? 'No pude traducir el texto. Intenta de nuevo.',
-      };
+    if (isLeft(response)) {
+      return left(
+        new NetworkError(
+          extractErrorMessage(response.left) ?? 'No pude traducir el texto. Intenta de nuevo.',
+        ),
+      );
     }
 
-    let traduccion = response.text.trim();
+    let traduccion = response.right.trim();
     let notas: string | undefined;
 
     if (opts.notas) {
@@ -134,8 +149,7 @@ class TranslatorService {
       }
     }
 
-    const result: TraduccionResult = {
-      success: true,
+    const result = right({
       traduccion,
       textoOriginal: opts.texto,
       idiomaOrigen: origenNombre,
@@ -143,7 +157,7 @@ class TranslatorService {
       bandOrigen: origenBand,
       bandDestino: dest.bandera,
       notas,
-    };
+    });
 
     if (!opts.notas) {
       this.cache.set(cacheKey, { result, expiresAt: Date.now() + CACHE_TTL });
@@ -155,24 +169,26 @@ class TranslatorService {
   async detectarIdioma(texto: string): Promise<TraduccionResult> {
     const detectado = await this._detectarIdioma(texto);
     if (!detectado) {
-      return { success: false, error: 'No pude detectar el idioma.' };
+      return left(new NetworkError('No pude detectar el idioma.'));
     }
 
     const resuelto = resolverIdioma(detectado);
-    return {
-      success: true,
+    return right({
       idiomaOrigen: resuelto?.nombre ?? detectado,
       bandOrigen: resuelto?.bandera ?? '🔍',
       textoOriginal: texto,
-    };
+      traduccion: '',
+      idiomaDestino: '',
+      bandDestino: '',
+    });
   }
 
   private async _detectarIdioma(texto: string): Promise<string | null> {
     const prompt = buildDetectPrompt(texto);
     const response = await aiService.generate(prompt, 10);
-    if (!response.success || !response.text) return null;
+    if (isLeft(response)) return null;
     return (
-      response.text
+      response.right
         .trim()
         .toLowerCase()
         .slice(0, 5)
@@ -188,23 +204,24 @@ class TranslatorService {
   }
 
   formatResult(result: TraduccionResult, mostrarOriginal = false): string {
-    if (!result.success) return `❌ ${result.error}`;
+    if (result._tag === 'Left') return `❌ ${result.left.message}`;
 
+    const success = result.right;
     let msg = '';
 
-    msg += `${result.bandOrigen ?? '🔍'} ${result.idiomaOrigen ?? '?'} `;
-    msg += `→ ${result.bandDestino ?? '🌐'} *${result.idiomaDestino ?? '?'}*\n`;
+    msg += `${success.bandOrigen ?? '🔍'} ${success.idiomaOrigen ?? '?'} `;
+    msg += `→ ${success.bandDestino ?? '🌐'} *${success.idiomaDestino ?? '?'}*\n`;
     msg += `━━━━━━━━━━━━\n\n`;
 
-    if (mostrarOriginal && result.textoOriginal) {
-      msg += `_Original:_\n${result.textoOriginal}\n\n`;
+    if (mostrarOriginal && success.textoOriginal) {
+      msg += `_Original:_\n${success.textoOriginal}\n\n`;
       msg += `_Traducción:_\n`;
     }
 
-    msg += result.traduccion;
+    msg += success.traduccion;
 
-    if (result.notas) {
-      msg += `\n\n${result.notas}`;
+    if (success.notas) {
+      msg += `\n\n${success.notas}`;
     }
 
     msg += `\n\n> _VaniaBot🌐 — Traductor contextual_`;

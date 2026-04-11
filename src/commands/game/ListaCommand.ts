@@ -3,6 +3,7 @@ import { CommandCategory, CommandContext } from '@/types/index.js';
 import type { MessageContext } from '@/types/index.js';
 import { listaManager, type ListaTipo } from '@/services/game/ListaManager.js';
 import { logError } from '@/utils/logger.js';
+import { cacheManager } from '@/core/CacheManager.js';
 
 interface ListaConfig {
   tipo: ListaTipo;
@@ -25,6 +26,23 @@ export class ListaCommand extends Command {
     this.description = `Crea una lista de ${config.name.toUpperCase()}`;
     this.aliases = config.aliases;
     this.config = config;
+  }
+
+  private async getParticipants(ctx: MessageContext): Promise<string[]> {
+    const cachedParticipants = cacheManager.getGroupParticipants(ctx.chat.jid);
+    if (cachedParticipants) return cachedParticipants;
+
+    const cachedMetadata = cacheManager.getGroupMetadata(ctx.chat.jid);
+    const groupMetadata = cachedMetadata ?? (await ctx.sock.groupMetadata(ctx.chat.jid));
+
+    const participants = groupMetadata.participants.map(p => p.id);
+
+    if (!cachedMetadata) {
+      cacheManager.setGroupMetadata(ctx.chat.jid, groupMetadata);
+    }
+    cacheManager.setGroupParticipants(ctx.chat.jid, participants);
+
+    return participants;
   }
 
   async execute(ctx: MessageContext): Promise<void> {
@@ -57,9 +75,11 @@ export class ListaCommand extends Command {
       const textoInicial = listaManager.renderizar(tempLista);
       listaManager.desactivarLista(tempLista.messageId);
 
+      const participants = await this.getParticipants(ctx);
+
       const sent = await ctx.sock.sendMessage(ctx.chat.jid, {
         text: textoInicial,
-        mentions: [],
+        mentions: participants,
       });
 
       if (!sent?.key?.id) {

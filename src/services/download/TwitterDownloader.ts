@@ -1,6 +1,7 @@
-import type { DownloadResult } from './DownloadService.js';
-import { DownloadService } from './DownloadService.js';
+import { Either, left, right } from '@/utils/either.js';
+import { DownloadService, type DownloadResult } from './DownloadService.js';
 import { logError } from '@/utils/logger.js';
+import { NetworkError } from '@/utils/errors.js';
 
 export interface TwitterVideo {
   title: string;
@@ -17,7 +18,7 @@ export class TwitterDownloader extends DownloadService {
     return /twitter\.com\//i.test(url) || /x\.com\//i.test(url);
   }
 
-  async getVideoInfo(url: string): Promise<TwitterVideo | null> {
+  async getVideoInfo(url: string): Promise<Either<NetworkError, TwitterVideo>> {
     try {
       const output = await this.runCommand(
         'yt-dlp',
@@ -25,21 +26,25 @@ export class TwitterDownloader extends DownloadService {
         30000,
       );
       const info = JSON.parse(output.trim().split('\n')[0]);
-      return {
+      return right({
         title: info.title ?? 'Twitter video',
         author: info.uploader ?? 'unknown',
         url,
-      };
+      });
     } catch (error) {
       logError('Twitter getVideoInfo', error);
-      return null;
+      return left(
+        new NetworkError('Error al obtener info de Twitter', {
+          originalError: error instanceof Error ? error.message : String(error),
+        }),
+      );
     }
   }
 
   async downloadVideo(url: string): Promise<DownloadResult> {
     const validation = this.validateUrl(url);
-    if (!validation.valid) {
-      return { success: false, error: validation.error };
+    if (validation._tag === 'Left') {
+      return left(validation.left);
     }
 
     const outputPath = this.generateOutputPath('twitter', 'mp4');
@@ -76,8 +81,8 @@ export class TwitterDownloader extends DownloadService {
 
   async downloadAudio(url: string): Promise<DownloadResult> {
     const validation = this.validateUrl(url);
-    if (!validation.valid) {
-      return { success: false, error: validation.error };
+    if (validation._tag === 'Left') {
+      return left(validation.left);
     }
 
     const outputPath = this.generateOutputPath('twitter_audio', 'mp3');

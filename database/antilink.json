@@ -1,0 +1,12 @@
+{
+  "groups": {
+    "120363420632464927@g.us": {
+      "enabled": true,
+      "mode": "kick",
+      "blockWhatsappGroups": true,
+      "blockWhatsappChannels": true,
+      "blockOtherLinks": true,
+      "whitelist": []
+    }
+  }
+}

@@ -1,5 +1,6 @@
 import { Command } from '../Command.js';
 import { aiService } from '@/services/external/AIService.js';
+import { isRight } from '@/utils/either.js';
 import { AI_PROMPTS } from '@/config/ai-prompts.js';
 import { fallbackAPIService } from '@/services/external/FallbackAPIService.js';
 import {
@@ -30,13 +31,13 @@ export class ChisteCommand extends Command {
       const prompt = tipo === 'largo' ? AI_PROMPTS.CHISTE_LARGO : AI_PROMPTS.CHISTE_CORTO;
       const response = await aiService.generate(prompt, 300);
 
-      if (!response.success || !response.text) {
+      if (!isRight(response)) {
         const fallback = await fallbackAPIService.getJoke(tipo === 'largo' ? 'long' : 'short');
         await ctx.reply(`😄 *Chiste* 😄\n\n${fallback}`);
         return;
       }
 
-      await ctx.reply(`😄 *Chiste ${tipo}* 😄\n\n${response.text.trim()}`);
+      await ctx.reply(`😄 *Chiste ${tipo}* 😄\n\n${response.right.trim()}`);
       await ctx.react('😂');
     } catch {
       const fallback = await fallbackAPIService.getJoke(tipo === 'largo' ? 'long' : 'short');

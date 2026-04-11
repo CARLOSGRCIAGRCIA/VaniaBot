@@ -1,8 +1,9 @@
 import fs from 'fs';
 import { spawnSync } from 'child_process';
-import type { DownloadResult } from './DownloadService.js';
-import { DownloadService } from './DownloadService.js';
+import { Either, left, right } from '@/utils/either.js';
+import { DownloadService, type DownloadResult, type DownloadSuccess } from './DownloadService.js';
 import { searchVideo, type YouTubeVideo } from './YouTubeSearchService.js';
+import { ValidationError, NetworkError } from '@/utils/errors.js';
 
 export type { YouTubeVideo };
 
@@ -235,15 +236,15 @@ export class YouTubeDownloader extends DownloadService {
     return this.tryDownloadMethodsWithPlatform(methods, outputPath, 'video');
   }
 
-  private tryDownloadMethodsWithPlatform(
+  private async tryDownloadMethodsWithPlatform(
     methods: Array<{ name: string; cmd: string; args: string[] }>,
     outputPath: string,
     type: 'audio' | 'video',
-  ): DownloadResult {
+  ): Promise<DownloadResult> {
     const prefix = this.getDownloadPrefix();
     const tag = prefix ? `[${prefix}]` : '';
     const maxSize = type === 'audio' ? this.platform.maxAudioSizeMB : this.platform.maxVideoSizeMB;
-    let lastError = '';
+    let lastError: NetworkError | undefined;
 
     for (const method of methods) {
       try {
@@ -270,32 +271,32 @@ export class YouTubeDownloader extends DownloadService {
 
           if (sizeMB > maxSize) {
             fs.unlinkSync(resolvedPath);
-            return {
-              success: false,
-              error: `File too large: ${sizeMB.toFixed(1)}MB (max: ${maxSize}MB on ${this.platform.isTermux ? 'Termux' : 'Desktop'})`,
-            };
+            return left(
+              new ValidationError(
+                `Archivo muy grande: ${sizeMB.toFixed(1)}MB (máx: ${maxSize}MB on ${this.platform.isTermux ? 'Termux' : 'Desktop'})`,
+              ),
+            );
           }
 
           console.log(`${tag} ${method.name} succeeded: ${sizeMB.toFixed(1)}MB`);
 
-          return {
-            success: true,
+          return right({
             filePath: resolvedPath,
             size: sizeMB.toFixed(1),
             source: method.name,
-          };
+          });
         }
       } catch (error) {
         const err = error as Error;
-        lastError = err.message;
+        lastError = new NetworkError(err.message, { method: method.name });
         console.log(`${tag} ${method.name} failed: ${err.message}`);
         continue;
       }
     }
 
-    return {
-      success: false,
-      error: `Descarga fallida. Verifica que yt-dlp o youtube-dl estén instalados. Error: ${lastError}`,
-    };
+    return left(
+      lastError ||
+        new NetworkError('Descarga fallida. Verifica que yt-dlp o youtube-dl estén instalados.'),
+    );
   }
 }

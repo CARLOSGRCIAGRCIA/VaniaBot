@@ -1,6 +1,7 @@
 import { Worker } from 'worker_threads';
 import { LRUCache } from 'lru-cache';
 import { logger, logError } from '@/utils/logger.js';
+import { left, isRight } from '@/utils/either.js';
 import type { DownloadResult } from './DownloadService.js';
 
 export interface DownloadTask {
@@ -76,7 +77,7 @@ export class DownloadWorkerService {
   }
 
   private setCache(url: string, type: string, result: DownloadResult): void {
-    if (result.success) {
+    if (isRight(result)) {
       const key = this.getCacheKey(url, type);
       this.downloadCache.set(key, {
         result,
@@ -120,10 +121,12 @@ export class DownloadWorkerService {
             if (response.success && response.result) {
               pending.resolve(response.result);
             } else {
-              pending.resolve({
-                success: false,
-                error: response.result?.error || response.error || 'Unknown error',
-              });
+              const errorMsg = response.result
+                ? response.result._tag === 'Left'
+                  ? response.result.left.message
+                  : 'Unknown error'
+                : response.error || 'Unknown error';
+              pending.resolve(left(new Error(errorMsg)));
             }
           }
         });
@@ -175,7 +178,7 @@ export class DownloadWorkerService {
           if (!this.processingUrls.has(task.url)) {
             clearInterval(checkInterval);
             const newCached = this.getFromCache(task.url, task.type);
-            resolve(newCached || { success: false, error: 'Download cancelled' });
+            resolve(newCached || left(new Error('Download cancelled')));
           }
         }, 500);
 

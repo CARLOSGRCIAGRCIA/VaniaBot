@@ -2,6 +2,7 @@ import { itemRegistry } from './ItemRegistry.js';
 import { itemService } from './ItemService.js';
 import { serviceManager } from '../system/Servicemanager.js';
 import { gameStateService, type PersistedMarketOffer } from './GameStateService.js';
+import { Either, left, right } from '@/utils/either.js';
 import { logger } from '@/utils/logger.js';
 
 export interface TradeOffer {
@@ -14,10 +15,7 @@ export interface TradeOffer {
   createdAt: number;
 }
 
-export interface TradeResult {
-  success: boolean;
-  message: string;
-}
+export type TradeResult = Either<{ message: string }, { message: string }>;
 
 export class TradeService {
   private static instance: TradeService;
@@ -73,7 +71,7 @@ export class TradeService {
     const user = await serviceManager.userService.getUser(jid);
 
     if (price < 1) {
-      return { success: false, message: '❌ El precio debe ser mayor a 0' };
+      return left({ message: '❌ El precio debe ser mayor a 0' });
     }
 
     const item = user.inventory?.find(
@@ -83,22 +81,22 @@ export class TradeService {
     );
 
     if (!item) {
-      return { success: false, message: '❌ No tienes ese item' };
+      return left({ message: '❌ No tienes ese item' });
     }
 
     const itemData = itemRegistry.getItem(item.itemId);
     if (!itemData) {
-      return { success: false, message: '❌ Item no válido' };
+      return left({ message: '❌ Item no válido' });
     }
 
     if ((item.quantity || 1) < quantity) {
-      return { success: false, message: `❌ No tienes suficientes ${item.name}` };
+      return left({ message: `❌ No tienes suficientes ${item.name}` });
     }
 
     const hasCooldown = this.tradeCooldowns.get(jid);
     if (hasCooldown && Date.now() - hasCooldown < this.TRADE_COOLDOWN) {
       const remaining = Math.ceil((this.TRADE_COOLDOWN - (Date.now() - hasCooldown)) / 1000);
-      return { success: false, message: `❌ Espera ${remaining}s antes de vender de nuevo` };
+      return left({ message: `❌ Espera ${remaining}s antes de vender de nuevo` });
     }
 
     const offerId = `${jid}_${item.itemId}_${Date.now()}`;
@@ -121,21 +119,20 @@ export class TradeService {
 
     this.tradeCooldowns.set(jid, Date.now());
 
-    return {
-      success: true,
+    return right({
       message: `✅ Pusiste ${quantity}x ${item.name} en el mercado por $${price * quantity}`,
-    };
+    });
   }
 
   async buyItem(jid: string, offerId: string): Promise<TradeResult> {
     const offer = this.marketOffers.get(offerId);
 
     if (!offer) {
-      return { success: false, message: '❌ Oferta no encontrada' };
+      return left({ message: '❌ Oferta no encontrada' });
     }
 
     if (offer.sellerJid === jid) {
-      return { success: false, message: '❌ No puedes comprar tu propia oferta' };
+      return left({ message: '❌ No puedes comprar tu propia oferta' });
     }
 
     const buyer = await serviceManager.userService.getUser(jid);
@@ -144,15 +141,14 @@ export class TradeService {
     const sellerGets = totalPrice - marketFee;
 
     if (buyer.money < totalPrice) {
-      return {
-        success: false,
+      return left({
         message: `❌ No tienes suficiente dinero. Necesitas: $${totalPrice}`,
-      };
+      });
     }
 
     const removed = await serviceManager.userService.removeMoney(jid, totalPrice);
     if (!removed) {
-      return { success: false, message: '❌ Error al procesar el pago' };
+      return left({ message: '❌ Error al procesar el pago' });
     }
 
     await serviceManager.userService.addMoney(offer.sellerJid, sellerGets);
@@ -166,21 +162,20 @@ export class TradeService {
 
     const itemData = itemRegistry.getItem(offer.itemId);
 
-    return {
-      success: true,
+    return right({
       message: `✅ ¡Compraste ${offer.quantity}x ${itemData?.name || offer.itemName} por $${totalPrice}!\n💰 El vendedor recibió: $${sellerGets}\n📊 Comisión del mercado: $${marketFee}`,
-    };
+    });
   }
 
   async cancelOffer(jid: string, offerId: string): Promise<TradeResult> {
     const offer = this.marketOffers.get(offerId);
 
     if (!offer) {
-      return { success: false, message: '❌ Oferta no encontrada' };
+      return left({ message: '❌ Oferta no encontrada' });
     }
 
     if (offer.sellerJid !== jid) {
-      return { success: false, message: '❌ No puedes cancelar ofertas de otros' };
+      return left({ message: '❌ No puedes cancelar ofertas de otros' });
     }
 
     for (let i = 0; i < offer.quantity; i++) {
@@ -190,10 +185,9 @@ export class TradeService {
     this.marketOffers.delete(offerId);
     this.saveOffers();
 
-    return {
-      success: true,
+    return right({
       message: `✅ Cancelaste la oferta. Tu/s item/s devuelto/s al inventario`,
-    };
+    });
   }
 
   getMarketOffers(): TradeOffer[] {

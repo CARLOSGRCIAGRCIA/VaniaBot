@@ -1,5 +1,6 @@
 import { Command } from '../Command.js';
 import { aiService } from '@/services/external/AIService.js';
+import { isRight } from '@/utils/either.js';
 import { AI_PROMPTS } from '@/config/ai-prompts.js';
 import { fallbackAPIService } from '@/services/external/FallbackAPIService.js';
 import {
@@ -30,13 +31,13 @@ export class AnimeCommand extends Command {
       const prompt = AI_PROMPTS.ANIME(safeGenero);
       const response = await aiService.generate(prompt, 200);
 
-      if (!response.success || !response.text) {
+      if (!isRight(response)) {
         const fallback = await fallbackAPIService.getAnimeRecommendation(safeGenero);
         await ctx.reply(`🎌 *Recomendación Random* 🎌\n\n${fallback}`);
         return;
       }
 
-      await ctx.reply(`🎌 *Recomendación de Anime* 🎌\n\n${response.text.trim()}`);
+      await ctx.reply(`🎌 *Recomendación de Anime* 🎌\n\n${response.right.trim()}`);
       await ctx.react('✨');
     } catch {
       const fallback = await fallbackAPIService.getAnimeRecommendation(safeGenero);

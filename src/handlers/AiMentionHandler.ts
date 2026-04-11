@@ -13,6 +13,7 @@
  */
 
 import { aiService } from '@/services/external/AIService.js';
+import { isRight } from '@/utils/either.js';
 import type { MessageContext } from '@/types/index.js';
 import { serviceManager } from '@/services/system/Servicemanager.js';
 import { PermissionService } from '@/services/PermissionService.js';
@@ -78,20 +79,23 @@ function detectPromptInjection(text: string): { blocked: boolean; reason?: strin
 /**
  * Handles mention events for AI chat.
  * Checks if the bot was mentioned and routes to AI service if valid.
- *
- * @param ctx - The message context
- * @param botJid - The bot's JID to check against
- * @returns true if mention was handled, false otherwise
- *
- * @example
- * ```typescript
- * const botJid = sock.user?.id ?? '';
- * await handleMention(ctx, botJid);
- * ```
  */
 export async function handleMention(ctx: MessageContext, botJid: string): Promise<boolean> {
   const rawText: string = ctx.text ?? '';
   const message = ctx.message.message;
+
+  if (ctx.message.key.fromMe) {
+    return false;
+  }
+
+  const messageParticipant = ctx.message.key.participant;
+  if (messageParticipant) {
+    const botUserId = ctx.sock.user?.id?.split('@')[0].split(':')[0];
+    const participantClean = messageParticipant.split('@')[0].split(':')[0];
+    if (participantClean === botUserId) {
+      return false;
+    }
+  }
 
   const mentionedJids: string[] = message?.extendedTextMessage?.contextInfo?.mentionedJid ?? [];
 
@@ -149,13 +153,13 @@ export async function handleMention(ctx: MessageContext, botJid: string): Promis
 
   const response = await aiService.chat(ctx.chat.jid, ctx.sender.jid, cleanText);
 
-  if (!response.success) {
+  if (!isRight(response)) {
     await ctx.react('❌');
-    await ctx.reply(`❌ ${response.error}`);
+    await ctx.reply(`❌ ${response.left.message}`);
     return true;
   }
 
   await ctx.react('✅');
-  await ctx.reply(response.text ?? '');
+  await ctx.reply(response.right ?? '');
   return true;
 }

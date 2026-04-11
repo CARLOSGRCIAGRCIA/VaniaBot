@@ -1,6 +1,7 @@
-import type { DownloadResult } from './DownloadService.js';
-import { DownloadService } from './DownloadService.js';
+import { Either, left, right } from '@/utils/either.js';
+import { DownloadService, type DownloadResult } from './DownloadService.js';
 import { logError } from '@/utils/logger.js';
+import { NetworkError } from '@/utils/errors.js';
 
 export interface FacebookVideo {
   title: string;
@@ -22,7 +23,7 @@ export class FacebookDownloader extends DownloadService {
     );
   }
 
-  async getVideoInfo(url: string): Promise<FacebookVideo | null> {
+  async getVideoInfo(url: string): Promise<Either<NetworkError, FacebookVideo>> {
     try {
       const output = await this.runCommand(
         'yt-dlp',
@@ -30,21 +31,25 @@ export class FacebookDownloader extends DownloadService {
         30000,
       );
       const info = JSON.parse(output.trim().split('\n')[0]);
-      return {
+      return right({
         title: info.title ?? 'Facebook video',
         author: info.uploader ?? info.channel ?? 'unknown',
         url,
-      };
+      });
     } catch (error) {
       logError('Facebook getVideoInfo', error);
-      return null;
+      return left(
+        new NetworkError('Error al obtener info de Facebook', {
+          originalError: error instanceof Error ? error.message : String(error),
+        }),
+      );
     }
   }
 
   async downloadVideo(url: string): Promise<DownloadResult> {
     const validation = this.validateUrl(url);
-    if (!validation.valid) {
-      return { success: false, error: validation.error };
+    if (validation._tag === 'Left') {
+      return left(validation.left);
     }
 
     const outputPath = this.generateOutputPath('facebook', 'mp4');

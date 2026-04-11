@@ -1,6 +1,7 @@
 import { Command } from '../Command.js';
 import { CommandCategory, CommandContext } from '@/types/index.js';
 import type { MessageContext } from '@/types/index.js';
+import { getBotJid } from '@/services/PermissionService.js';
 
 export class AddCommand extends Command {
   name = 'add';
@@ -28,8 +29,10 @@ export class AddCommand extends Command {
 
     try {
       const groupMeta = await ctx.sock.groupMetadata(ctx.chat.jid);
-      const botJid = ctx.sock.user?.id;
-      const botIsAdmin = groupMeta.participants.find(p => p.id === botJid)?.admin;
+      const botJid = getBotJid(ctx.sock);
+      const botIsAdmin = groupMeta.participants.find(
+        p => p.id === botJid || p.id.includes(botJid.split('@')[0]),
+      )?.admin;
 
       if (!botIsAdmin) {
         await ctx.reply(
