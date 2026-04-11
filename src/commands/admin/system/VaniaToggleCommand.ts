@@ -21,18 +21,20 @@ export class VaniaOffCommand extends Command {
 
   async execute(ctx: MessageContext): Promise<void> {
     try {
-      const isEnabled = await serviceManager.vaniaToggleService.isEnabled(ctx.chat.jid);
+      const isEnabled = await serviceManager.vaniaToggleService.isEnabled(ctx.chat.jid, ctx.botId);
 
       if (!isEnabled) {
-        await ctx.reply('🔴 *Vania ya está desactivada* en este grupo.');
+        const botName = ctx.botId === 'main' ? 'Vania' : ctx.botId;
+        await ctx.reply(`🔴 *${botName} ya está desactivada* en este grupo.`);
         return;
       }
 
-      await serviceManager.vaniaToggleService.disable(ctx.chat.jid, ctx.sender.jid);
+      await serviceManager.vaniaToggleService.disable(ctx.chat.jid, ctx.sender.jid, ctx.botId);
 
+      const botName = ctx.botId === 'main' ? 'Vania' : ctx.botId;
       await ctx.react('🔴');
       await ctx.reply(
-        `˚₊· ͟͟͞͞➳ *Vania está descansando* ˚₊· ͟͟͞͞➳\n\n` +
+        `˚₊· ͟͟͞͞➳ *${botName} está descansando* ˚₊· ͟͟͞͞➳\n\n` +
           `No voy a responder hasta que me activen con *!vaniaon*.\n\n` +
           `_Me apagó @${ctx.sender.pushName || 'admin'}_ ✿`,
       );
@@ -56,18 +58,20 @@ export class VaniaOnCommand extends Command {
 
   async execute(ctx: MessageContext): Promise<void> {
     try {
-      const isEnabled = await serviceManager.vaniaToggleService.isEnabled(ctx.chat.jid);
+      const isEnabled = await serviceManager.vaniaToggleService.isEnabled(ctx.chat.jid, ctx.botId);
 
       if (isEnabled) {
-        await ctx.reply('🟢 *Vania ya está activada* en este grupo.');
+        const botName = ctx.botId === 'main' ? 'Vania' : ctx.botId;
+        await ctx.reply(`🟢 *${botName} ya está activada* en este grupo.`);
         return;
       }
 
-      await serviceManager.vaniaToggleService.enable(ctx.chat.jid, ctx.sender.jid);
+      await serviceManager.vaniaToggleService.enable(ctx.chat.jid, ctx.sender.jid, ctx.botId);
 
+      const botName = ctx.botId === 'main' ? 'Vania' : ctx.botId;
       await ctx.react('🟢');
       await ctx.reply(
-        `˚₊· ͟͟͞͞➳ *Vania ya está aquí* ˚₊· ͟͟͞͞➳\n\n` +
+        `˚₊· ͟͟͞͞➳ *${botName} ya está aquí* ˚₊· ͟͟͞͞➳\n\n` +
           `¡Listo, ya puedo funcionar! ✿\n\n` +
           `_Me encendió @${ctx.sender.pushName || 'admin'}_ ✩`,
       );
@@ -91,11 +95,15 @@ export class VaniaStatusCommand extends Command {
 
   async execute(ctx: MessageContext): Promise<void> {
     try {
-      const { enabled, record } = await serviceManager.vaniaToggleService.getStatus(ctx.chat.jid);
+      const { enabled, record } = await serviceManager.vaniaToggleService.getStatus(
+        ctx.chat.jid,
+        ctx.botId,
+      );
 
+      const botName = ctx.botId === 'main' ? 'Vania' : ctx.botId;
       const status = enabled ? '🟢 *Activada*' : '🔴 *Desactivada*';
 
-      let info = `📊 *Estado de Vania*\n\n${status}`;
+      let info = `📊 *Estado de ${botName}*\n\n${status}`;
 
       if (record) {
         if (!enabled && record.disabledBy) {
