@@ -75,8 +75,31 @@ export class DatabaseSwitcher {
   private async initializeRedis(): Promise<void> {
     try {
       let url = this.config.redisUrl;
-      if (!url && this.config.redisHost) {
-        url = `redis://${this.config.redisHost}:${this.config.redisPort || 6379}`;
+
+      if (!url && this.config.useRedis) {
+        const possibleHosts = ['vania-redis', 'redis', 'localhost'];
+
+        for (const host of possibleHosts) {
+          try {
+            const testUrl = `redis://${host}:6379`;
+            logger.debug(`[DatabaseSwitcher] Probando Redis en ${testUrl}...`);
+
+            const testClient = createClient({ url: testUrl });
+            await testClient.connect();
+            const ping = await testClient.ping();
+            await testClient.quit();
+
+            if (ping === 'PONG') {
+              url = testUrl;
+              logger.info(`[DatabaseSwitcher] ✅ Redis encontrado en ${host}`);
+              break;
+            }
+          } catch {
+            logger.debug(
+              `[DatabaseSwitcher] Redis no disponible en ${host}, intentando siguiente...`,
+            );
+          }
+        }
       }
 
       if (!url) {
