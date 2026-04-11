@@ -5,6 +5,7 @@ import { primeService } from '@/services/system/PrimeService.js';
 import { InstagramDownloader } from '@/services/download/InstagramDownloader.js';
 import { isRight } from '@/utils/either.js';
 import fs from 'fs';
+import axios from 'axios';
 
 export class InstagramCommand extends Command {
   name = 'instagram';
@@ -54,12 +55,26 @@ export class InstagramCommand extends Command {
       const info = infoResult._tag === 'Right' ? infoResult.right : null;
       const isImage = info?.type === 'image';
 
-      await ctx.reply(
-        (info
-          ? `${isImage ? '˚₊·' : '✩'} *autor:* @${info.author}\n` +
-            `✿ *título:* ${info.title.substring(0, 80)}\n\n`
-          : '') + `✩ un momentito, descargando... ✩`,
+      const thumbnailBuffer = await this.getPreviewImage(
+        (info as { thumbnailUrl?: string })?.thumbnailUrl,
       );
+
+      const caption =
+        (info
+          ? `${isImage ? '🖼️' : '🎬'} *@${info.author}*\n` + `✿ ${info.title.substring(0, 60)}\n`
+          : '') +
+        `⬇️ descargando...\n` +
+        `🔗 ${url}`;
+
+      if (thumbnailBuffer) {
+        await ctx.sock.sendMessage(ctx.chat.jid, {
+          image: thumbnailBuffer,
+          caption,
+          mimetype: 'image/jpeg',
+        });
+      } else {
+        await ctx.reply(caption);
+      }
 
       await ctx.react('⏳');
 
@@ -77,22 +92,23 @@ export class InstagramCommand extends Command {
 
       const footer = await primeService.formatFooter(ctx.sock, ctx.chat.jid, ctx.chat.isGroup);
       const fileBuffer = fs.readFileSync(downloadSuccess.filePath);
-      const caption =
+      const sendCaption =
         (info ? `${isImage ? '🖼️' : '🎬'} @${info.author}\n` : '') +
         `📊 ${downloadSuccess.size}MB\n` +
-        `⚡ ${downloadSuccess.source}\n\n` +
+        `⚡ ${downloadSuccess.source}\n` +
+        `🔗 ${url}\n\n` +
         footer;
 
       if (isImage) {
         await ctx.sock.sendMessage(ctx.chat.jid, {
           image: fileBuffer,
-          caption,
+          caption: sendCaption,
         });
       } else {
         await ctx.sock.sendMessage(ctx.chat.jid, {
           video: fileBuffer,
           mimetype: 'video/mp4',
-          caption,
+          caption: sendCaption,
         });
       }
 
@@ -104,6 +120,19 @@ export class InstagramCommand extends Command {
       await ctx.react('❌');
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
       await ctx.reply(`❌ Error: ${errorMessage}`);
+    }
+  }
+
+  private async getPreviewImage(thumbnailUrl?: string): Promise<Buffer | null> {
+    if (!thumbnailUrl) return null;
+    try {
+      const response = await axios.get<ArrayBuffer>(thumbnailUrl, {
+        responseType: 'arraybuffer',
+        timeout: 10000,
+      });
+      return Buffer.from(response.data);
+    } catch {
+      return null;
     }
   }
 }

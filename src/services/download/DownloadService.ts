@@ -51,6 +51,26 @@ export class DownloadService {
 
   protected resolveOutputPath?(expectedPath: string): string | null;
 
+  protected DOWNLOAD_PREVIEW_ENABLED = true;
+  protected DEFAULT_QUALITY = '720';
+
+  getQualityFromArgs(args: string[]): { quality: string; remainingArgs: string[] } {
+    const validQualities: string[] = ['360', '480', '720', '1080'];
+    const remainingArgs = [...args];
+    let quality = this.DEFAULT_QUALITY;
+
+    for (let i = 0; i < remainingArgs.length; i++) {
+      const arg = remainingArgs[i];
+      if (arg && validQualities.includes(arg)) {
+        quality = arg;
+        remainingArgs.splice(i, 1);
+        break;
+      }
+    }
+
+    return { quality, remainingArgs };
+  }
+
   protected validateUrl(url: string): Either<ValidationError, string> {
     if (!url || url.trim().length === 0) {
       return left(new ValidationError('URL está vacía'));

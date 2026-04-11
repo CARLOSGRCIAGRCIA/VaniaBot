@@ -3,6 +3,8 @@ import { CommandCategory, CommandContext, type MessageContext } from '@/types/in
 import { TwitterDownloader } from '@/services/download/TwitterDownloader.js';
 import { logger } from '@/utils/logger.js';
 import { isRight } from '@/utils/either.js';
+import fs from 'fs';
+import axios from 'axios';
 
 export class TwitterCommand extends Command {
   name = 'twitter';
@@ -39,10 +41,34 @@ export class TwitterCommand extends Command {
       return;
     }
 
-    await ctx.react('⏬');
-    await ctx.reply('🔄 Descargando video...');
+    await ctx.react('🔍');
 
     try {
+      const infoResult = await this.downloader.getVideoInfo(url);
+      const info = infoResult._tag === 'Right' ? infoResult.right : null;
+
+      const thumbnailBuffer = await this.getPreviewImage(
+        (info as { thumbnailUrl?: string })?.thumbnailUrl,
+      );
+
+      const caption =
+        `🐦 *Twitter/X*\n` +
+        (info ? `✿ ${info.title.substring(0, 60)}\n` : '') +
+        `⬇️ descargando...\n` +
+        `🔗 ${url}`;
+
+      if (thumbnailBuffer) {
+        await ctx.sock.sendMessage(ctx.chat.jid, {
+          image: thumbnailBuffer,
+          caption,
+          mimetype: 'image/jpeg',
+        });
+      } else {
+        await ctx.reply(caption);
+      }
+
+      await ctx.react('⏬');
+
       const result = await this.downloader.downloadVideo(url);
 
       if (!isRight(result)) {
@@ -51,17 +77,33 @@ export class TwitterCommand extends Command {
       }
 
       const downloadResult = result.right;
-      await ctx.reply('📤 Enviando video...');
-      await ctx.sock.sendMessage(
-        ctx.chat.jid,
-        { video: { url: `file://${downloadResult.filePath}` }, mimetype: 'video/mp4' },
-        { quoted: ctx.message },
-      );
+      const fileBuffer = fs.readFileSync(downloadResult.filePath);
+
+      await ctx.sock.sendMessage(ctx.chat.jid, {
+        video: fileBuffer,
+        mimetype: 'video/mp4',
+        caption: `🐦 Twitter/X\n📊 ${downloadResult.size}MB\n🔗 ${url}`,
+      });
 
       await ctx.react('✅');
+
+      await this.downloader['cleanup'](downloadResult.filePath);
     } catch (error) {
       logger.error('Twitter command error:', error);
       await ctx.reply('❌ Error al descargar el video.');
+    }
+  }
+
+  private async getPreviewImage(thumbnailUrl?: string): Promise<Buffer | null> {
+    if (!thumbnailUrl) return null;
+    try {
+      const response = await axios.get<ArrayBuffer>(thumbnailUrl, {
+        responseType: 'arraybuffer',
+        timeout: 10000,
+      });
+      return Buffer.from(response.data);
+    } catch {
+      return null;
     }
   }
 }

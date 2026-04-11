@@ -5,14 +5,19 @@ import { primeService } from '@/services/system/PrimeService.js';
 import { YouTubeDownloader } from '@/services/download/YouTubeDownloader.js';
 import { isRight } from '@/utils/either.js';
 import fs from 'fs';
+import axios from 'axios';
 
 export class YtMp4Command extends Command {
   name = 'ytmp4';
   description = 'Download YouTube video as MP4';
   category = CommandCategory.MEDIA;
   aliases = ['ytv', 'ytvideo', 'video'];
-  usage = '!ytmp4 <search or URL>';
-  examples = ['!ytmp4 tutorial android', '!ytmp4 https://youtu.be/dQw4w9WgXcQ'];
+  usage = '!ytmp4 <search or URL> [calidad]';
+  examples = [
+    '!ytmp4 tutorial android',
+    '!ytmp4 https://youtu.be/dQw4w9WgXcQ',
+    '!ytmp4 bad bunny 1080',
+  ];
   cooldown = 30000;
 
   private downloader: YouTubeDownloader;
@@ -26,13 +31,15 @@ export class YtMp4Command extends Command {
     if (!ctx.args.length) {
       await ctx.reply(
         `˚₊· ͟͟͞͞➳ *oops, necesito una búsqueda o enlace* ˚₊· ͟͟͞͞➳\n\n` +
-          `✿ *!ytmp4* <búsqueda o URL>\n` +
-          `✩ ejemplo: *!ytmp4 tutorial* ✩`,
+          `✿ *!ytmp4* <búsqueda o URL> [calidad]\n` +
+          `✩ ejemplo: *!ytmp4 tutorial* ✩\n` +
+          `✩ calidad: 360, 480, 720, 1080 (default: 720)`,
       );
       return;
     }
 
-    const query = ctx.args.join(' ');
+    const { quality, remainingArgs } = this.downloader.getQualityFromArgs(ctx.args);
+    const query = remainingArgs.join(' ') || ctx.args.join(' ');
 
     await ctx.react('🔍');
 
@@ -45,16 +52,23 @@ export class YtMp4Command extends Command {
         return;
       }
 
-      await ctx.reply(
-        `˚₊· ͟͟͞͞➳ *encontré esto* ˚₊· ͟͟͞͞➳\n` +
-          `✿ *título:* ${video.title}\n` +
-          `✩ *duración:* ${video.duration}\n\n` +
-          `✿ descargando el video, espera un momentito ✿`,
+      const thumbnailBuffer = await this.getPreviewImage(video.thumbnail);
+
+      await this.sendPreviewWithThumbnail(
+        ctx,
+        {
+          title: video.title,
+          url: video.url,
+          duration: video.duration,
+        },
+        thumbnailBuffer,
+        'descargando',
+        quality,
       );
 
       await ctx.react('⏳');
 
-      const result = await this.downloader.downloadVideo(video.videoId);
+      const result = await this.downloader.downloadVideo(video.videoId, quality);
 
       if (!isRight(result)) {
         await ctx.react('❌');
@@ -72,7 +86,8 @@ export class YtMp4Command extends Command {
         caption:
           `🎬 ${video.title}\n` +
           `📊 ${downloadSuccess.size}MB\n` +
-          `⚡ ${downloadSuccess.source}\n\n` +
+          `⚡ ${downloadSuccess.source}\n` +
+          `🔗 ${video.url}\n\n` +
           footer,
       });
 
@@ -84,6 +99,44 @@ export class YtMp4Command extends Command {
       await ctx.react('❌');
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
       await ctx.reply(`❌ Error: ${errorMessage}`);
+    }
+  }
+
+  private async getPreviewImage(thumbnailUrl: string): Promise<Buffer | null> {
+    try {
+      const response = await axios.get<ArrayBuffer>(thumbnailUrl, {
+        responseType: 'arraybuffer',
+        timeout: 10000,
+      });
+      return Buffer.from(response.data);
+    } catch {
+      return null;
+    }
+  }
+
+  private async sendPreviewWithThumbnail(
+    ctx: MessageContext,
+    info: { title: string; url: string; duration?: string },
+    thumbnail: Buffer | null,
+    status: string,
+    quality: string,
+  ): Promise<void> {
+    const caption =
+      `🎬 *YouTube*\n` +
+      `✿ ${info.title.substring(0, 60)}${info.title.length > 60 ? '...' : ''}\n` +
+      (info.duration ? `⏱️ ${info.duration}\n` : '') +
+      `📦 Calidad: ${quality}p\n` +
+      `⬇️ ${status}...\n` +
+      `🔗 ${info.url}`;
+
+    if (thumbnail) {
+      await ctx.sock.sendMessage(ctx.chat.jid, {
+        image: thumbnail,
+        caption,
+        mimetype: 'image/jpeg',
+      });
+    } else {
+      await ctx.reply(caption);
     }
   }
 }

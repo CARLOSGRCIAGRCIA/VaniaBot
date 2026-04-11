@@ -4,6 +4,7 @@ import { logError } from '@/utils/logger.js';
 import { YouTubeDownloader } from '@/services/download/YouTubeDownloader.js';
 import { isRight } from '@/utils/either.js';
 import fs from 'fs';
+import axios from 'axios';
 
 export class YtMp3Command extends Command {
   name = 'ytmp3';
@@ -44,11 +45,17 @@ export class YtMp3Command extends Command {
         return;
       }
 
-      await ctx.reply(
-        `˚₊· ͟͟͞͞➳ *encontré esto* ˚₊· ͟͟͞͞➳\n` +
-          `✿ *título:* ${video.title}\n` +
-          `✩ *duración:* ${video.duration}\n\n` +
-          `✿ descargando el audio, espera un momentito ✿`,
+      const thumbnailBuffer = await this.getPreviewImage(video.thumbnail);
+
+      await this.sendPreviewWithThumbnail(
+        ctx,
+        {
+          title: video.title,
+          url: video.url,
+          duration: video.duration,
+        },
+        thumbnailBuffer,
+        'descargando audio',
       );
 
       await ctx.react('⏳');
@@ -71,6 +78,7 @@ export class YtMp3Command extends Command {
         audio: fs.readFileSync(filePath),
         mimetype: 'audio/mpeg',
         fileName: `${sanitizeFilename(video.title)}.mp3`,
+        caption: `🎵 ${video.title}\n🔗 ${video.url}`,
       });
 
       await ctx.react('✅');
@@ -81,6 +89,42 @@ export class YtMp3Command extends Command {
       await ctx.react('❌');
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
       await ctx.reply(`❌ Error: ${errorMessage}`);
+    }
+  }
+
+  private async getPreviewImage(thumbnailUrl: string): Promise<Buffer | null> {
+    try {
+      const response = await axios.get<ArrayBuffer>(thumbnailUrl, {
+        responseType: 'arraybuffer',
+        timeout: 10000,
+      });
+      return Buffer.from(response.data);
+    } catch {
+      return null;
+    }
+  }
+
+  private async sendPreviewWithThumbnail(
+    ctx: MessageContext,
+    info: { title: string; url: string; duration?: string },
+    thumbnail: Buffer | null,
+    status: string,
+  ): Promise<void> {
+    const caption =
+      `🎵 *YouTube Audio*\n` +
+      `✿ ${info.title.substring(0, 60)}${info.title.length > 60 ? '...' : ''}\n` +
+      (info.duration ? `⏱️ ${info.duration}\n` : '') +
+      `⬇️ ${status}...\n` +
+      `🔗 ${info.url}`;
+
+    if (thumbnail) {
+      await ctx.sock.sendMessage(ctx.chat.jid, {
+        image: thumbnail,
+        caption,
+        mimetype: 'image/jpeg',
+      });
+    } else {
+      await ctx.reply(caption);
     }
   }
 }

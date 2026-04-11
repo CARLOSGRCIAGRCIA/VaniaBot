@@ -29,6 +29,7 @@ function detectPlatform(): PlatformConfig {
 
 export class YouTubeDownloader extends DownloadService {
   private platform: PlatformConfig;
+  private lastThumbnail: string | null = null;
 
   constructor() {
     super();
@@ -53,7 +54,15 @@ export class YouTubeDownloader extends DownloadService {
   }
 
   async searchVideo(query: string): Promise<YouTubeVideo | null> {
-    return await searchVideo(query);
+    const result = await searchVideo(query);
+    if (result) {
+      this.lastThumbnail = result.thumbnail;
+    }
+    return result;
+  }
+
+  getLastThumbnail(): string | null {
+    return this.lastThumbnail;
   }
 
   async downloadAudio(videoId: string): Promise<DownloadResult> {
@@ -149,10 +158,12 @@ export class YouTubeDownloader extends DownloadService {
     return this.tryDownloadMethodsWithPlatform(methods, outputPath, 'audio');
   }
 
-  async downloadVideo(videoId: string): Promise<DownloadResult> {
+  async downloadVideo(videoId: string, quality: string = '720'): Promise<DownloadResult> {
     const outputPath = this.generateOutputPath(videoId, 'mp4');
 
-    const qualityArg = this.platform.isTermux ? 'best[height<=480]/best' : 'best[height<=720]/best';
+    const qualityArg = this.platform.isTermux
+      ? 'best[height<=480]/best'
+      : `best[height<=${quality}]/best`;
 
     const methods = [
       {

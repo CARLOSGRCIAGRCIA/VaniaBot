@@ -7,6 +7,8 @@ export interface TikTokVideo {
   title: string;
   author: string;
   url: string;
+  thumbnailUrl?: string;
+  duration?: string;
 }
 
 export class TikTokDownloader extends DownloadService {
@@ -30,6 +32,8 @@ export class TikTokDownloader extends DownloadService {
         title: info.title ?? 'TikTok video',
         author: info.uploader ?? info.creator ?? 'unknown',
         url,
+        thumbnailUrl: info.thumbnail ?? undefined,
+        duration: info.duration_string ?? undefined,
       });
     } catch (error) {
       logError('TikTok getVideoInfo', error);
@@ -41,7 +45,7 @@ export class TikTokDownloader extends DownloadService {
     }
   }
 
-  async downloadVideo(url: string): Promise<DownloadResult> {
+  async downloadVideo(url: string, quality: string = '720'): Promise<DownloadResult> {
     const validation = this.validateUrl(url);
     if (validation._tag === 'Left') {
       return left(validation.left);
@@ -55,7 +59,7 @@ export class TikTokDownloader extends DownloadService {
         cmd: 'yt-dlp',
         args: [
           '-f',
-          'best',
+          `best[height<=${quality}]/best`,
           '--concurrent-fragments',
           '8',
           '--buffer-size',

@@ -5,6 +5,7 @@ import { primeService } from '@/services/system/PrimeService.js';
 import { FacebookDownloader } from '@/services/download/FacebookDownloader.js';
 import { isRight } from '@/utils/either.js';
 import fs from 'fs';
+import axios from 'axios';
 
 export class FacebookCommand extends Command {
   name = 'facebook';
@@ -50,17 +51,14 @@ export class FacebookCommand extends Command {
 
     try {
       const infoResult = await this.downloader.getVideoInfo(url);
+      const info = infoResult._tag === 'Right' ? infoResult.right : null;
 
-      if (isRight(infoResult)) {
-        const info = infoResult.right;
-        await ctx.reply(
-          `˚₊· ͟͟͞͞➳ *autor:* ${info.author} ˚₊· ͟͟͞͞➳\n` +
-            `✿ *título:* ${info.title.substring(0, 80)}\n\n` +
-            `✩ un momentito, estoy descargando ✩`,
-        );
-      } else {
-        await ctx.react('⬇️');
-      }
+      await ctx.reply(
+        `📺 *Facebook*\n` +
+          (info ? `✿ ${info.title.substring(0, 60)}\n✿ *autor:* ${info.author}\n` : '') +
+          `⬇️ descargando...\n` +
+          `🔗 ${url}`,
+      );
 
       await ctx.react('⏳');
 
@@ -80,9 +78,11 @@ export class FacebookCommand extends Command {
         video: fs.readFileSync(filePath),
         mimetype: 'video/mp4',
         caption:
-          (isRight(infoResult) ? `˚₊· ͟͟͞͞➳ ${infoResult.right.author}\n` : '') +
-          `✩ ${downloadSuccess.size}MB\n` +
-          `✿ ${downloadSuccess.source}\n\n` +
+          `📺 Facebook\n` +
+          (info ? `✿ ${info.title}\n✿ *autor:* ${info.author}\n` : '') +
+          `📊 ${downloadSuccess.size}MB\n` +
+          `⚡ ${downloadSuccess.source}\n` +
+          `🔗 ${url}\n\n` +
           footer,
       });
 
