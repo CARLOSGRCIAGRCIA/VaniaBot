@@ -184,35 +184,38 @@ export const structuredLogger = new MainLogger();
 
 const CONSOLE_LOG_ENABLED = process.env.CONSOLE_LOG !== 'false';
 
-const fileStream = IS_PRODUCTION
+const logStream = IS_PRODUCTION
   ? createWriteStream(join(process.cwd(), 'logs', 'vania.log'), { flags: 'a' })
-  : null;
+  : process.stdout;
 
 const fileLogger = IS_PRODUCTION
   ? pino(
       {
-        level: LOG_LEVEL,
         formatters: {
           level: label => ({ level: label }),
         },
         timestamp: pino.stdTimeFunctions.isoTime,
       },
-      fileStream || process.stdout,
+      logStream,
     )
   : null;
 
-const consoleLogger = pino({
-  level: LOG_LEVEL,
-  transport: {
-    target: 'pino-pretty',
-    options: {
-      colorize: true,
-      translateTime: 'HH:MM:ss',
-      ignore: 'pid,hostname',
-      minimumLevel: 'warn',
-    },
-  },
-});
+const consoleLogger = !IS_PRODUCTION
+  ? pino({
+      level: LOG_LEVEL,
+      transport: {
+        target: 'pino-pretty',
+        options: {
+          colorize: true,
+          translateTime: 'HH:MM:ss',
+          ignore: 'pid,hostname',
+          minimumLevel: 'warn',
+        },
+      },
+    })
+  : pino({
+      level: LOG_LEVEL,
+    });
 
 type PinoLogger = typeof fileLogger | typeof consoleLogger;
 function pinoLog(pinoInst: PinoLogger, level: string, args: unknown[]): void {
