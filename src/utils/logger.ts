@@ -213,9 +213,7 @@ const consoleLogger = !IS_PRODUCTION
         },
       },
     })
-  : pino({
-      level: LOG_LEVEL,
-    });
+  : pino();
 
 type PinoLogger = typeof fileLogger | typeof consoleLogger;
 function pinoLog(pinoInst: PinoLogger, level: string, args: unknown[]): void {
