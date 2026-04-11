@@ -966,10 +966,7 @@ flowchart LR
         OR[Orchestrator] --> SM[SubBot Manager]
         SM --> WA
     end
-```
 
-├── package.json
-└── tsconfig.json
 
 ````
 
