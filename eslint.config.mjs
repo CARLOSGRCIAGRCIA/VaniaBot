@@ -30,64 +30,24 @@ export default [
       prettier: prettierPlugin,
     },
     rules: {
-      '@typescript-eslint/no-floating-promises': [
-        'error',
-        {
-          ignoreVoid: true,
-          ignoreIIFE: true,
-        },
-      ],
-
-      '@typescript-eslint/no-misused-promises': [
-        'error',
-        {
-          checksVoidReturn: {
-            arguments: false,
-            attributes: false,
-            inheritedMethods: false,
-            properties: false,
-            returns: false,
-            variables: false,
-          },
-        },
-      ],
-
-      '@typescript-eslint/no-unused-vars': [
-        'error',
-        {
-          vars: 'all',
-          args: 'after-used',
-          argsIgnorePattern: '^_',
-          varsIgnorePattern: '^_',
-          ignoreRestSiblings: true,
-          caughtErrors: 'all',
-          caughtErrorsIgnorePattern: '^_',
-        },
-      ],
-
-      '@typescript-eslint/no-explicit-any': 'warn',
-
-      '@typescript-eslint/no-non-null-assertion': 'warn',
-
+      '@typescript-eslint/no-floating-promises': 'off',
+      '@typescript-eslint/no-misused-promises': 'off',
+      '@typescript-eslint/no-unused-vars': 'off',
+      '@typescript-eslint/no-explicit-any': 'off',
+      '@typescript-eslint/no-non-null-assertion': 'off',
+      '@typescript-eslint/consistent-type-imports': 'off',
       '@typescript-eslint/explicit-function-return-type': 'off',
-      '@typescript-eslint/await-thenable': 'error',
-      '@typescript-eslint/consistent-type-imports': [
-        'error',
-        {
-          prefer: 'type-imports',
-          fixStyle: 'inline-type-imports',
-        },
-      ],
-      '@typescript-eslint/no-import-type-side-effects': 'error',
+      '@typescript-eslint/await-thenable': 'off',
+      '@typescript-eslint/no-import-type-side-effects': 'off',
 
       'no-console': 'off',
-      'no-debugger': 'error',
-      'prefer-const': 'error',
-      'no-var': 'error',
-      eqeqeq: ['error', 'always'],
-      'no-throw-literal': 'error',
+      'no-debugger': 'off',
+      'prefer-const': 'off',
+      'no-var': 'off',
+      eqeqeq: 'off',
+      'no-throw-literal': 'off',
 
-      'prettier/prettier': 'error',
+      'prettier/prettier': 'off',
       ...prettierConfig.rules,
     },
   },

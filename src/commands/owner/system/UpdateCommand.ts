@@ -20,14 +20,14 @@ import { logger } from '@/utils/logger.js';
 const execAsync = promisify(exec);
 
 export class UpdateCommand extends Command {
-  name        = 'update';
+  name = 'update';
   description = 'Actualiza el bot desde git';
-  category    = CommandCategory.OWNER;
-  aliases     = ['actualizar', 'gitpull'];
-  usage       = '!update';
-  examples    = ['!update'];
-  permission  = PermissionLevel.OWNER;
-  contexts    = [CommandContext.BOTH];
+  category = CommandCategory.OWNER;
+  aliases = ['actualizar', 'gitpull'];
+  usage = '!update';
+  examples = ['!update'];
+  permission = PermissionLevel.OWNER;
+  contexts = [CommandContext.BOTH];
 
   async execute(ctx: MessageContext): Promise<void> {
     await ctx.react('📥');
@@ -52,10 +52,7 @@ export class UpdateCommand extends Command {
         return;
       }
 
-      await ctx.reply(
-        `˚₊· ͟͟͞͞➳ *update* ˚₊· ͟͟͞͞➳\n\n` +
-          `📡 ejecutando git pull...`,
-      );
+      await ctx.reply(`˚₊· ͟͟͞͞➳ *update* ˚₊· ͟͟͞͞➳\n\n` + `📡 ejecutando git pull...`);
 
       const { stdout: pull } = await execAsync('git pull origin main', { timeout: 60_000 });
 
@@ -69,17 +66,11 @@ export class UpdateCommand extends Command {
         return;
       }
 
-      await ctx.reply(
-        `˚₊· ͟͟͞͞➳ *update* ˚₊· ͟͟͞͞➳\n\n` +
-          `📦 instalando dependencias...`,
-      );
+      await ctx.reply(`˚₊· ͟͟͞͞➳ *update* ˚₊· ͟͟͞͞➳\n\n` + `📦 instalando dependencias...`);
 
       await execAsync('npm install', { timeout: 120_000 });
 
-      await ctx.reply(
-        `˚₊· ͟͟͞͞➳ *update* ˚₊· ͟͟͞͞➳\n\n` +
-          `🔨 compilando TypeScript...`,
-      );
+      await ctx.reply(`˚₊· ͟͟͞͞➳ *update* ˚₊· ͟͟͞͞➳\n\n` + `🔨 compilando TypeScript...`);
 
       await execAsync('npm run build', { timeout: 120_000 });
 
