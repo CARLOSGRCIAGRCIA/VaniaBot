@@ -53,6 +53,8 @@ import { CommandExecutionError } from '@/utils/errors.js';
 import type { IMiddleware } from '@/types/index.js';
 import type { BaileysEventMap } from '@whiskeysockets/baileys';
 import { AntiSpamService } from '@/services/system/AntiSpamService.js';
+import { runtimeStateRepository } from '@/repositories/RuntimeStateRepository.js';
+import { processedMessagesRepository } from '@/repositories/ProcessedMessagesRepository.js';
 
 interface MiddlewareConfig {
   middleware: IMiddleware;
@@ -694,7 +696,7 @@ export class SubBotManager extends EventEmitter {
 
     instance.on('groupUpdate', (update: GroupParticipantsUpdate) => {
       if (instance.sock) {
-        void this.handleGroupUpdate(update, instance.sock).catch(err =>
+        void this.handleGroupUpdate(update, instance.sock, subConfig.id).catch(err =>
           logError(`SubBotManager[${subConfig.id}].handleGroupUpdate`, err),
         );
       }
@@ -717,6 +719,19 @@ export class SubBotManager extends EventEmitter {
     if (!messageId) return;
 
     if (this.markAndCheckRecentMessage(subConfig.id, msg)) return;
+
+    const lastStartup = runtimeStateRepository.getLastStartupAt(subConfig.id);
+    if (lastStartup) {
+      const rawTimestamp = msg.messageTimestamp;
+      const msgTimestamp =
+        rawTimestamp !== undefined && rawTimestamp !== null ? Number(rawTimestamp) * 1000 : 0;
+      const startupTime = new Date(lastStartup).getTime();
+      if (msgTimestamp > 0 && msgTimestamp < startupTime) {
+        logger.debug(`[SubBot:${subConfig.id}] Skipping pre-startup message ${messageId}`);
+        processedMessagesRepository.markProcessed(messageId, subConfig.id);
+        return;
+      }
+    }
 
     const startTime = Date.now();
 
@@ -813,13 +828,17 @@ export class SubBotManager extends EventEmitter {
     }
   }
 
-  private async handleGroupUpdate(update: GroupParticipantsUpdate, sock: WASocket): Promise<void> {
+  private async handleGroupUpdate(
+    update: GroupParticipantsUpdate,
+    sock: WASocket,
+    botId: string,
+  ): Promise<void> {
     const { id: groupJid, participants, action } = update;
     if (!groupJid || !participants) return;
     try {
       cacheManager.invalidateGroupMetadata(groupJid);
       await serviceManager.groupService.getGroup(groupJid);
-      const isEnabled = await serviceManager.vaniaToggleService.isEnabled(groupJid);
+      const isEnabled = await serviceManager.vaniaToggleService.isEnabled(groupJid, botId);
       if (!isEnabled) return;
       if (action === 'add') {
         for (const participant of participants) {
@@ -831,7 +850,7 @@ export class SubBotManager extends EventEmitter {
       if (action === 'remove') {
         for (const participant of participants) {
           welcomeService
-            .handleParticipantLeft(sock, groupJid, participant)
+            .handleParticipantLeft(sock, groupJid, participant, botId)
             .catch(err => logError('SubBot.handleParticipantLeft', err));
         }
       }

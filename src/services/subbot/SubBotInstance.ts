@@ -30,6 +30,7 @@ import type { SubBotConfig } from '@/types/subbot.js';
 import { subBotDatabase } from './SubBotDatabase.js';
 import { useEncryptedMultiFileAuthState } from './EncryptedAuthState.js';
 import { logger, logError } from '@/utils/logger.js';
+import { runtimeStateRepository } from '@/repositories/RuntimeStateRepository.js';
 import { cacheManager } from '@/core/CacheManager.js';
 
 const SILENT_LOGGER = pino({ level: 'silent' });
@@ -468,6 +469,7 @@ export class SubBotInstance extends EventEmitter {
     });
 
     logger.info(`✅ SubBot[${this.config.id}] (${this.config.name}) operational 🌸`);
+    runtimeStateRepository.setStartupTimestamp(this.config.id);
     this.emit('status', 'connected');
 
     // 'ready' solo una vez por sesión vinculada.
