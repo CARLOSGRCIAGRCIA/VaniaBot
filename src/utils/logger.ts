@@ -182,27 +182,37 @@ class MainLogger {
 
 export const structuredLogger = new MainLogger();
 
+const CONSOLE_LOG_ENABLED = process.env.CONSOLE_LOG !== 'false';
+
+const fileStream = IS_PRODUCTION
+  ? createWriteStream(join(process.cwd(), 'logs', 'vania.log'), { flags: 'a' })
+  : null;
+
 const fileLogger = IS_PRODUCTION
   ? pino(
-      { level: LOG_LEVEL },
-      createWriteStream(join(process.cwd(), 'logs', 'vania.log'), { flags: 'a' }),
+      {
+        level: LOG_LEVEL,
+        formatters: {
+          level: label => ({ level: label }),
+        },
+        timestamp: pino.stdTimeFunctions.isoTime,
+      },
+      fileStream,
     )
   : null;
 
-const consoleLogger = !IS_PRODUCTION
-  ? pino({
-      level: LOG_LEVEL,
-      transport: {
-        target: 'pino-pretty',
-        options: {
-          colorize: true,
-          translateTime: 'HH:MM:ss',
-          ignore: 'pid,hostname',
-          minimumLevel: 'warn',
-        },
-      },
-    })
-  : null;
+const consoleLogger = pino({
+  level: LOG_LEVEL,
+  transport: {
+    target: 'pino-pretty',
+    options: {
+      colorize: true,
+      translateTime: 'HH:MM:ss',
+      ignore: 'pid,hostname',
+      minimumLevel: 'warn',
+    },
+  },
+});
 
 type PinoLogger = typeof fileLogger | typeof consoleLogger;
 function pinoLog(pinoInst: PinoLogger, level: string, args: unknown[]): void {
@@ -224,6 +234,9 @@ class AsyncLogger {
     for (const { level, args } of batch) {
       if (IS_PRODUCTION) {
         pinoLog(fileLogger, level, args);
+        if (CONSOLE_LOG_ENABLED) {
+          pinoLog(consoleLogger, level, args);
+        }
       } else {
         pinoLog(consoleLogger, level, args);
       }
