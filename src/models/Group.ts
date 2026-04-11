@@ -1,7 +1,19 @@
+export interface ILicense {
+  planType: 'permanent' | 'monthly';
+  paymentType: 'single' | 'subscription';
+  activatedAt: number;
+  expiresAt: number | null;
+  renewAt: number | null;
+  lastRenewAt: number | null;
+  autoRenew: boolean;
+  pricePaid: string;
+}
+
 export interface IGroup {
   jid: string;
   name: string;
   isActive: boolean;
+  license: ILicense;
   settings: {
     welcome: {
       enabled: boolean;
@@ -50,6 +62,7 @@ export class Group implements IGroup {
   jid: string;
   name: string;
   isActive: boolean;
+  license: ILicense;
   settings: IGroup['settings'];
   stats: IGroup['stats'];
   createdAt: number;
@@ -59,6 +72,17 @@ export class Group implements IGroup {
     this.jid = data.jid;
     this.name = data.name || 'Group';
     this.isActive = data.isActive !== undefined ? data.isActive : true;
+
+    this.license = data.license || {
+      planType: 'permanent',
+      paymentType: 'single',
+      activatedAt: Date.now(),
+      expiresAt: null,
+      renewAt: null,
+      lastRenewAt: null,
+      autoRenew: false,
+      pricePaid: '0',
+    };
 
     this.settings = {
       welcome: data.settings?.welcome || { enabled: true },
@@ -195,11 +219,50 @@ export class Group implements IGroup {
     this.updatedAt = Date.now();
   }
 
+  setLicense(planType: 'permanent' | 'monthly', pricePaid: string, months: number = 1): void {
+    const now = Date.now();
+    const monthMs = 30 * 24 * 60 * 60 * 1000;
+    this.license = {
+      planType,
+      paymentType: planType === 'permanent' ? 'single' : 'subscription',
+      activatedAt: now,
+      expiresAt: planType === 'monthly' ? now + months * monthMs : null,
+      renewAt: planType === 'monthly' ? now + months * monthMs : null,
+      lastRenewAt: null,
+      autoRenew: false,
+      pricePaid,
+    };
+    this.updatedAt = now;
+  }
+
+  renewLicense(months: number = 1): void {
+    if (this.license.planType !== 'monthly') return;
+    const now = Date.now();
+    const monthMs = 30 * 24 * 60 * 60 * 1000;
+    this.license.expiresAt = now + months * monthMs;
+    this.license.renewAt = now + months * monthMs;
+    this.license.lastRenewAt = now;
+    this.updatedAt = now;
+  }
+
+  isLicenseExpired(): boolean {
+    if (this.license.planType === 'permanent') return false;
+    if (!this.license.expiresAt) return true;
+    return Date.now() > this.license.expiresAt;
+  }
+
+  getDaysRemaining(): number {
+    if (this.license.planType === 'permanent') return -1;
+    if (!this.license.expiresAt) return 0;
+    return Math.max(0, Math.floor((this.license.expiresAt - Date.now()) / (24 * 60 * 60 * 1000)));
+  }
+
   toJSON(): IGroup {
     return {
       jid: this.jid,
       name: this.name,
       isActive: this.isActive,
+      license: this.license,
       settings: this.settings,
       stats: this.stats,
       createdAt: this.createdAt,
