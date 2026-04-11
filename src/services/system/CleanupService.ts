@@ -14,7 +14,6 @@ export class CleanupService {
 
     logger.info('🧹 Servicio de limpieza iniciado');
 
-    // void marks the floating promise as intentionally fire-and-forget
     setTimeout(
       () => {
         void this.cleanup().catch(error => {
@@ -41,7 +40,7 @@ export class CleanupService {
 
   private async cleanup(): Promise<void> {
     try {
-      logger.info('🧹 Ejecutando limpieza de usuarios inactivos...');
+      logger.info('🧹 Ejecutando limpieza...');
 
       const now = Date.now();
       const users = await serviceManager.userService.getAllUsers();
@@ -53,19 +52,26 @@ export class CleanupService {
         if (inactiveTime > this.INACTIVITY_THRESHOLD) {
           await serviceManager.db.delete('users', user.jid);
           removedCount++;
-          logger.debug(
-            `🗑️  Usuario inactivo eliminado: ${user.name} (${Math.floor(inactiveTime / (24 * 60 * 60 * 1000))} días)`,
-          );
+          logger.debug(`🗑️ Usuario inactivo eliminado: ${user.name}`);
         }
       }
 
+      try {
+        const licensesDisabled = await serviceManager.licenseService.disableExpiredLicenses();
+        if (licensesDisabled > 0) {
+          logger.info(`[Cleanup] ${licensesDisabled} licencia(s) vencida(s) deshabilitada(s)`);
+        }
+      } catch (licenseError) {
+        logError('[CleanupService] Error verificando licencias:', licenseError);
+      }
+
       if (removedCount > 0) {
-        logger.info(` Limpieza completada: ${removedCount} usuario(s) eliminado(s)`);
+        logger.info(`🧹 Limpieza completada: ${removedCount} usuario(s) eliminado(s)`);
       } else {
-        logger.info(' Limpieza completada: Sin usuarios para eliminar');
+        logger.info('🧹 Limpieza completada: Sin usuarios para eliminar');
       }
     } catch (error) {
-      logError('Error en limpieza de usuarios:', error);
+      logError('Error en limpieza:', error);
     }
   }
 
@@ -84,7 +90,7 @@ export class CleanupService {
       }
     }
 
-    logger.info(` Limpieza manual completada: ${removedCount} usuario(s) eliminado(s)`);
+    logger.info(`🧹 Limpieza manual completada: ${removedCount} usuario(s) eliminado(s)`);
     return removedCount;
   }
 
@@ -106,9 +112,9 @@ export class CleanupService {
   async getStats(): Promise<{ total: number; active: number; inactive: number; owners: number }> {
     const users = await serviceManager.userService.getAllUsers();
     const now = Date.now();
-    let activeCount = 0,
-      inactiveCount = 0,
-      ownerCount = 0;
+    let activeCount = 0;
+    let inactiveCount = 0;
+    let ownerCount = 0;
 
     for (const user of users) {
       if (user.isOwner) {
