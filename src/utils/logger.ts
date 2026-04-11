@@ -197,7 +197,7 @@ const fileLogger = IS_PRODUCTION
         },
         timestamp: pino.stdTimeFunctions.isoTime,
       },
-      fileStream,
+      fileStream || process.stdout,
     )
   : null;
 

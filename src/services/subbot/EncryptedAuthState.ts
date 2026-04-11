@@ -57,7 +57,6 @@ async function useEncryptedAuthState(sessionPath: string): Promise<AuthResult> {
   }
 
   const state: AuthenticationState = {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     creds: JSON.parse(credsContent) as any,
     keys: {
       get: async (type, ids) => {
@@ -73,7 +72,7 @@ async function useEncryptedAuthState(sessionPath: string): Promise<AuthResult> {
             }
           }
         }
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
         return result as any;
       },
       set: async data => {

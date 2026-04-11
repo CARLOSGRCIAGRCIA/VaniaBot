@@ -199,7 +199,6 @@ export class AuthManager {
     if (!this.currentSocket || !this.connectionEstablished) return false;
 
     try {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const socket = this.currentSocket as any;
       if (!socket.ws) return false;
       if (socket.ws.readyState === 0 || socket.ws.readyState === 3) return false;

@@ -683,7 +683,6 @@ export class UserService {
     });
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   normalizeInventory(inventory: any[]): InventoryItem[] {
     return inventory.map(item => ({
       itemId: item.itemId,

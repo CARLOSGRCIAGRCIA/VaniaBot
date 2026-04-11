@@ -100,7 +100,6 @@ export class SubBotInstance extends EventEmitter {
       // Solo intentar ping si el socket parece abierto — evitar errores en logs
       // durante transiciones de estado (prekey bundle, renegociación, etc.)
       try {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const ws = (this.sock as any).ws;
         if (ws?.readyState !== 1) return; // no intentar si no está OPEN
         await this.sock.sendPresenceUpdate('available', 'status@broadcast');
@@ -161,7 +160,6 @@ export class SubBotInstance extends EventEmitter {
       // Verificar múltiples condiciones para evitar falsos positivos
       if (!this.sock.user?.id) return false;
 
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const ws = (this.sock as any).ws;
       const readyState = ws?.readyState;
 
