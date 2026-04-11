@@ -130,7 +130,10 @@ const envSchema = z.object({
   DEEPAI_API_KEY: z.string().optional(),
 
   /** Log level: error | warn | info | debug */
-  LOG_LEVEL: z.enum(['error', 'warn', 'info', 'debug']).default('debug'),
+  LOG_LEVEL: z
+    .enum(['error', 'warn', 'info', 'debug'])
+    .transform(val => val?.trim())
+    .default('debug'),
 
   /** WebSocket connection timeout in milliseconds */
   CONNECT_TIMEOUT: z
