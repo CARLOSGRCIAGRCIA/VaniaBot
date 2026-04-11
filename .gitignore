@@ -10,5 +10,34 @@ subbot-sessions
 subbots.json
 coverage
 backups
+
 # WAL files
 data/wal/
+
+# Temp files
+data/temp/
+data/temp/downloads/*
+logs/
+storage/
+
+# Session backup files
+session_backup_*.json
+*.db-journal
+
+# Environment
+.env.local
+.env.production
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Testing
+coverage/
+*.tgz
+
+.vania-session
