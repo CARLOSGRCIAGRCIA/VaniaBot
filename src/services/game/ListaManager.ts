@@ -240,6 +240,7 @@ function removerJugador(lista: Lista, jid: string): boolean {
 
 export class ListaManager {
   private listas = new Map<string, Lista>();
+  private listasPorChat = new Map<string, string>();
   private cleanupInterval: NodeJS.Timeout;
   private listaTtlMs: number | null = null;
 
@@ -317,6 +318,7 @@ export class ListaManager {
     };
 
     this.listas.set(params.messageId, lista);
+    this.listasPorChat.set(params.chatJid, params.messageId);
     this.syncToPersistence(lista).catch(err =>
       logError('[LISTA] Error guardando en persistencia', err),
     );
@@ -327,15 +329,37 @@ export class ListaManager {
   }
 
   getLista(messageId: string): Lista | undefined {
-    const lista = this.listas.get(messageId);
+    let lista = this.listas.get(messageId);
+
+    if (!lista) {
+      const chatJidFromMap = this.listasPorChat.get(messageId);
+      if (chatJidFromMap) {
+        lista = this.listas.get(chatJidFromMap);
+      }
+    }
+
+    if (!lista) {
+      for (const [msgId, lst] of this.listas.entries()) {
+        if (lst.chatJid === messageId && lst.activa) {
+          lista = lst;
+          break;
+        }
+      }
+    }
+
     logger.debug(
       `[LISTA] getLista(${messageId}) → ${lista ? `encontrada (activa=${lista.activa})` : 'NO encontrada'}`,
     );
-    logger.debug(`[LISTA] Listas registradas: [${Array.from(this.listas.keys()).join(', ')}]`);
     return lista;
   }
 
   getListaByChat(chatJid: string): Lista | undefined {
+    const msgId = this.listasPorChat.get(chatJid);
+    if (msgId) {
+      const lista = this.listas.get(msgId);
+      if (lista && lista.activa) return lista;
+    }
+
     for (const lista of this.listas.values()) {
       if (lista.chatJid === chatJid && lista.activa) return lista;
     }
@@ -384,13 +408,26 @@ export class ListaManager {
       const texto = renderizarLista(lista);
       const menciones = getMenciones(lista);
 
-      const message: AnyMessageContent = {
-        text: texto,
-        mentions: menciones,
-        edit: { id: lista.messageId, remoteJid: lista.chatJid, fromMe: true },
-      };
+      try {
+        const message: AnyMessageContent = {
+          text: texto,
+          mentions: menciones,
+          edit: { id: lista.messageId, remoteJid: lista.chatJid, fromMe: true },
+        };
 
-      await sock.sendMessage(lista.chatJid, message);
+        await sock.sendMessage(lista.chatJid, message);
+      } catch (editError) {
+        logger.debug(`[LISTA] Edit failed, trying delete+send: ${editError}`);
+
+        try {
+          await sock.sendMessage(lista.chatJid, {
+            text: texto,
+            mentions: menciones,
+          });
+        } catch (sendError) {
+          logError('[LISTA SEND ERROR]', sendError);
+        }
+      }
     } catch (error) {
       logError('[LISTA EDITAR ERROR]', error);
     }
@@ -400,6 +437,7 @@ export class ListaManager {
     const lista = this.listas.get(messageId);
     if (lista) {
       lista.activa = false;
+      this.listasPorChat.delete(lista.chatJid);
       this.removeFromPersistence(messageId).catch(err =>
         logError('[LISTA] Error removiendo de persistencia', err),
       );
@@ -413,6 +451,7 @@ export class ListaManager {
     for (const [id, lista] of this.listas.entries()) {
       if (now - lista.creadoEn > ttl) {
         this.listas.delete(id);
+        this.listasPorChat.delete(lista.chatJid);
         this.removeFromPersistence(id).catch(err =>
           logError('[LISTA] Error removiendo expirada de persistencia', err),
         );

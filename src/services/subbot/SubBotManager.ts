@@ -920,9 +920,16 @@ export class SubBotManager extends EventEmitter {
     let slot: SubBotSlot | undefined;
 
     if (slotNumber) {
-      slot = subBotDatabase.getOwnerSlotById(ownerJid, slotNumber);
+      const found = subBotDatabase.getSlot(slotNumber);
+      if (found && found.ownerJid === ownerJid) {
+        slot = found;
+      }
     } else {
-      slot = subBotDatabase.getOwnerSlots(ownerJid).pop();
+      const configs = subBotDatabase.getOwnerSlots(ownerJid);
+      if (configs.length > 0) {
+        const config = configs[0];
+        slot = subBotDatabase.getOwnerSlotById(config.id) ?? undefined;
+      }
     }
 
     if (!slot || !slot.id) throw new Error('No tienes una subbot en ese slot.');
@@ -967,10 +974,16 @@ export class SubBotManager extends EventEmitter {
     let slot: SubBotSlot | undefined;
 
     if (slotNumber) {
-      slot = subBotDatabase.getOwnerSlotById(ownerJid, slotNumber);
+      const found = subBotDatabase.getSlot(slotNumber);
+      if (found && found.ownerJid === ownerJid) {
+        slot = found;
+      }
     } else {
-      const slots = subBotDatabase.getOwnerSlots(ownerJid);
-      slot = slots.find(s => s.status === 'disconnected') || slots[0];
+      const configs = subBotDatabase.getOwnerSlots(ownerJid);
+      if (configs.length > 0) {
+        const config = configs[0];
+        slot = subBotDatabase.getOwnerSlotById(config.id) ?? undefined;
+      }
     }
 
     if (!slot || !slot.id) throw new Error('No tienes una subbot para reconectar.');
@@ -1051,11 +1064,14 @@ export class SubBotManager extends EventEmitter {
 
   getStatus(ownerJid: string, slotNumber?: number): SubBotSlot | null {
     if (slotNumber) {
-      const slot = subBotDatabase.getOwnerSlotById(ownerJid, slotNumber);
-      return slot || null;
+      const slot = subBotDatabase.getSlot(slotNumber);
+      return slot && slot.ownerJid === ownerJid ? slot : null;
     }
-    const slots = subBotDatabase.getOwnerSlots(ownerJid);
-    return slots[0] || null;
+    const configs = subBotDatabase.getOwnerSlots(ownerJid);
+    if (configs.length > 0) {
+      return subBotDatabase.getOwnerSlotById(configs[0].id) ?? null;
+    }
+    return null;
   }
 
   getAllStatus(): SubBotSlot[] {
