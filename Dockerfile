@@ -67,6 +67,10 @@ USER vaniabot
 ENV NODE_ENV=production \
     AUTH_MODE=qr \
     FONTCONFIG_CACHE=/home/vaniabot/.cache/fontconfig \
+    DOCKER_MODE=true \
+    USE_REDIS=true \
+    REDIS_HOST=vania-redis \
+    REDIS_PORT=6379 \
     PATH="/app/node_modules/.bin:${PATH}"
 
 HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \

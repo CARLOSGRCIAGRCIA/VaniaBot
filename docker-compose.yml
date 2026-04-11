@@ -1,6 +1,18 @@
 name: vaniabot
 
 services:
+  vania-redis:
+    image: redis:7-alpine
+    container_name: vania-redis
+    restart: unless-stopped
+    networks:
+      - vania-network
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
   vaniabot:
     build:
       context: .
@@ -21,6 +33,17 @@ services:
       - NODE_ENV=production
       - TZ=America/Mexico_City
       - AUTH_MODE=${AUTH_MODE:-qr}
+      - DOCKER_MODE=true
+      - USE_REDIS=true
+      - REDIS_HOST=vania-redis
+      - REDIS_PORT=6379
+
+    depends_on:
+      vania-redis:
+        condition: service_healthy
+
+    networks:
+      - vania-network
 
     volumes:
       - vaniabot_session:/app/vaniasession
@@ -51,6 +74,10 @@ services:
 
     stop_signal: SIGTERM
     stop_grace_period: 15s
+
+networks:
+  vania-network:
+    external: true
 
 volumes:
   vaniabot_session:
