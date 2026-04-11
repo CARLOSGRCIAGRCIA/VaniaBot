@@ -1,0 +1,142 @@
+/**
+ * DatabaseSwitcher.ts
+ *
+ * Sistema dual SQLite/Redis para VaniaBot.
+ * - Docker: usa Redis + SQLite (para sesiones)
+ * - Normal: usa SQLite solo
+ *
+ * @author Carlos G
+ * @created 2026-04-11
+ */
+
+import { createClient, type RedisClientType } from 'redis';
+import { existsSync, readFileSync, writeFileSync, mkdirSync } from 'fs';
+import { join } from 'path';
+import { logger } from '@/utils/logger.js';
+
+export interface RedisConfig {
+  host: string;
+  port: number;
+  password?: string;
+  db?: number;
+}
+
+export interface SwitcherConfig {
+  useRedis: boolean;
+  redisUrl?: string;
+  redisHost?: string;
+  redisPort?: number;
+  dbPath?: string;
+}
+
+const DEFAULT_CONFIG: SwitcherConfig = {
+  useRedis: process.env.USE_REDIS === 'true',
+  redisUrl: process.env.REDIS_URL || 'redis://localhost:6379',
+  redisHost: process.env.REDIS_HOST || 'localhost',
+  redisPort: parseInt(process.env.REDIS_PORT || '6379'),
+  dbPath: process.env.DB_PATH || './storage/database/vania.db',
+};
+
+let redisClient: RedisClientType | null = null;
+let useRedis = false;
+let sqliteDb: any = null;
+
+export class DatabaseSwitcher {
+  private static instance: DatabaseSwitcher;
+  private config: SwitcherConfig;
+  private initialized = false;
+
+  private constructor(config: Partial<SwitcherConfig> = {}) {
+    this.config = { ...DEFAULT_CONFIG, ...config };
+  }
+
+  static getInstance(config?: Partial<SwitcherConfig>): DatabaseSwitcher {
+    if (!DatabaseSwitcher.instance) {
+      DatabaseSwitcher.instance = new DatabaseSwitcher(config);
+    }
+    return DatabaseSwitcher.instance;
+  }
+
+  async initialize(): Promise<void> {
+    if (this.initialized) return;
+
+    const isDocker = process.env.DOCKER_MODE === 'true' || existsSync('/.dockerenv');
+
+    if (isDocker && this.config.useRedis) {
+      await this.initializeRedis();
+    } else {
+      useRedis = false;
+      logger.info('[DatabaseSwitcher] Modo SQLite local');
+    }
+
+    this.initialized = true;
+  }
+
+  private async initializeRedis(): Promise<void> {
+    try {
+      let url = this.config.redisUrl;
+      if (!url && this.config.redisHost) {
+        url = `redis://${this.config.redisHost}:${this.config.redisPort || 6379}`;
+      }
+
+      if (!url) {
+        url = 'redis://localhost:6379';
+      }
+
+      logger.info(`[DatabaseSwitcher] Conectando a Redis: ${url}`);
+
+      redisClient = createClient({
+        url,
+        socket: {
+          reconnectStrategy: retries => {
+            if (retries > 3) {
+              logger.warn('[DatabaseSwitcher] Max reconnect attempts, falling back to SQLite');
+              return new Error('Max retries');
+            }
+            return Math.min(retries * 100, 3000);
+          },
+        },
+      });
+
+      redisClient.on('error', err => {
+        logger.error('[DatabaseSwitcher] Redis error:', err);
+      });
+
+      redisClient.on('connect', () => {
+        logger.info('[DatabaseSwitcher] ✅ Redis conectado');
+      });
+
+      await redisClient.connect();
+      useRedis = true;
+
+      logger.info('[DatabaseSwitcher] ✅ Modo Redis activo');
+    } catch (error) {
+      logger.warn('[DatabaseSwitcher] Redis no disponible, usando SQLite:', error);
+      useRedis = false;
+    }
+  }
+
+  isUsingRedis(): boolean {
+    return useRedis;
+  }
+
+  isRedisConnected(): boolean {
+    return redisClient?.isOpen ?? false;
+  }
+
+  getRedisClient(): RedisClientType | null {
+    return redisClient;
+  }
+
+  async close(): Promise<void> {
+    if (redisClient?.isOpen) {
+      await redisClient.quit();
+      redisClient = null;
+    }
+    this.initialized = false;
+  }
+}
+
+export const databaseSwitcher = DatabaseSwitcher.getInstance();
+
+export default databaseSwitcher;

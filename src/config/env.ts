@@ -247,6 +247,12 @@ const envSchema = z.object({
 
   /** Redis connection URL */
   REDIS_URL: z.string().default('redis://localhost:6379'),
+
+  /** Redis host (for Docker) */
+  REDIS_HOST: z.string().default('localhost'),
+
+  /** Redis port */
+  REDIS_PORT: z.string().default('6379'),
 });
 
 /**

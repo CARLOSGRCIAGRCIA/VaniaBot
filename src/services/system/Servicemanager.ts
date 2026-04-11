@@ -8,6 +8,7 @@ import { ModerationService } from '../moderation/ModerationService.js';
 import { ReportService } from './ReportService.js';
 import { VaniaToggleService } from './VaniaToggleService.js';
 import { PrimeService } from './PrimeService.js';
+import { licenseService } from './LicenseService.js';
 import { config } from '@/config/index.js';
 import { logger, logError } from '@/utils/logger.js';
 import { cleanupService } from './CleanupService.js';
@@ -26,6 +27,7 @@ export class ServiceManager {
   public reportService!: ReportService;
   public vaniaToggleService!: VaniaToggleService;
   public primeService!: PrimeService;
+  public licenseService = licenseService;
   public healthCheckService = healthCheckService;
   public autoRestartService = AutoRestartService.getInstance();
   public sessionBackupService = sessionBackupService;
@@ -59,6 +61,7 @@ export class ServiceManager {
       this.vaniaToggleService.setDatabase(this.db);
       this.primeService = PrimeService.getInstance();
       this.primeService.setGroupService(this.groupService);
+      licenseService.setGroupService(this.groupService);
 
       cleanupService.start();
 

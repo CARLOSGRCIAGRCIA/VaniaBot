@@ -14,6 +14,7 @@ export interface WelcomeConfig {
 export interface GoodbyeConfig {
   enabled: boolean;
   message?: string;
+  useProfilePic?: boolean;
 }
 
 interface WelcomeConfigExtended extends WelcomeConfig {
@@ -105,6 +106,11 @@ hola @user ♡
 
   async handleNewParticipant(sock: WASocket, groupJid: string, userJid: string): Promise<void> {
     try {
+      const isVaniaEnabled = await serviceManager.vaniaToggleService.isEnabled(groupJid, 'main');
+      if (!isVaniaEnabled) {
+        return;
+      }
+
       const group = await serviceManager.groupService.getGroup(groupJid);
       if (!group.welcome.enabled) {
         logger.info(`[Welcome] Bienvenida desactivada en ${groupJid} — omitiendo`);
@@ -155,8 +161,18 @@ hola @user ♡
     }
   }
 
-  async handleParticipantLeft(sock: WASocket, groupJid: string, userJid: string): Promise<void> {
+  async handleParticipantLeft(
+    sock: WASocket,
+    groupJid: string,
+    userJid: string,
+    botId: string = 'main',
+  ): Promise<void> {
     try {
+      const isVaniaEnabled = await serviceManager.vaniaToggleService.isEnabled(groupJid, botId);
+      if (!isVaniaEnabled) {
+        return;
+      }
+
       const group = await serviceManager.groupService.getGroup(groupJid);
       if (!group.goodbye.enabled) {
         logger.info(`[Goodbye] Despedida desactivada en ${groupJid} — omitiendo`);
@@ -178,15 +194,44 @@ hola @user ♡
         throw metadataError;
       }
 
+      const rawFact = await getRandomFact();
+      const formattedFact = formatFact(rawFact);
+
       const message = this.parseMessage(group.goodbye.message || this.DEFAULT_GOODBYE, {
         user: `@${userJid.split('@')[0]}`,
         group: metadata.subject,
         desc: metadata.desc || 'Sin descripción',
         count: metadata.participants.length.toString(),
-        fact: '',
+        fact: formattedFact,
       });
 
-      await sock.sendMessage(groupJid, { text: message, mentions: [userJid] });
+      const groupGoodbye = group.goodbye as GoodbyeConfig;
+      const useProfilePic = groupGoodbye.useProfilePic === true;
+
+      let profilePicBuffer: Buffer | null = null;
+      if (useProfilePic) {
+        try {
+          const profilePicUrl = await sock.profilePictureUrl(userJid, 'image');
+          if (profilePicUrl) {
+            const response = await fetch(profilePicUrl);
+            profilePicBuffer = Buffer.from(await response.arrayBuffer());
+          }
+        } catch {
+          if (existsSync(this.DEFAULT_PROFILE_PIC)) {
+            profilePicBuffer = readFileSync(this.DEFAULT_PROFILE_PIC);
+          }
+        }
+      }
+
+      if (profilePicBuffer) {
+        await sock.sendMessage(groupJid, {
+          image: profilePicBuffer,
+          caption: message,
+          mentions: [userJid],
+        });
+      } else {
+        await sock.sendMessage(groupJid, { text: message, mentions: [userJid] });
+      }
     } catch (error) {
       const errMsg = error instanceof Error ? error.message : String(error);
       if (errMsg.includes('forbidden') || errMsg.includes('not-authorized')) {

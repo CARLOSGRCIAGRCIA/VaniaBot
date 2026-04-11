@@ -117,6 +117,12 @@ export class MongoDatabase extends Database {
     return results as T[];
   }
 
+  async keys(collection: string): Promise<string[]> {
+    const coll = this.getCollection(collection);
+    const results = await coll.find({}).project({ _id: 1 }).toArray();
+    return results.map(doc => String(doc._id));
+  }
+
   async getPaginated<T>(
     collection: string,
     options: {

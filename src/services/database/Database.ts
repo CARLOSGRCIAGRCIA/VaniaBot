@@ -14,6 +14,7 @@ export interface IDatabase {
   update<T>(collection: string, key: string, updates: Partial<T>): Promise<void>;
 
   getAll<T>(collection: string): Promise<T[]>;
+  keys(collection: string): Promise<string[]>;
 
   getPaginated<T>(
     collection: string,
@@ -55,6 +56,7 @@ export abstract class Database implements IDatabase {
   abstract findOne<T>(collection: string, filter: Record<string, unknown>): Promise<T | null>;
   abstract update<T>(collection: string, key: string, updates: Partial<T>): Promise<void>;
   abstract getAll<T>(collection: string): Promise<T[]>;
+  abstract keys(collection: string): Promise<string[]>;
   abstract getPaginated<T>(
     collection: string,
     options?: {

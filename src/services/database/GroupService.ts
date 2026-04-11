@@ -72,6 +72,17 @@ export interface GroupSettings {
     enabled: boolean;
   };
 
+  license: {
+    planType: 'permanent' | 'monthly';
+    paymentType: 'single' | 'subscription';
+    activatedAt: number;
+    expiresAt: number | null;
+    renewAt: number | null;
+    lastRenewAt: number | null;
+    autoRenew: boolean;
+    pricePaid: string;
+  };
+
   autoMod: {
     enabled: boolean;
     deleteLinks: boolean;
@@ -119,6 +130,18 @@ export class GroupService {
     const existing = await this.db.get<GroupSettings>(this.COLLECTION, jid);
 
     if (existing) {
+      if (!existing.license) {
+        existing.license = {
+          planType: 'permanent',
+          paymentType: 'single',
+          activatedAt: Date.now(),
+          expiresAt: null,
+          renewAt: null,
+          lastRenewAt: null,
+          autoRenew: false,
+          pricePaid: '0',
+        };
+      }
       return existing;
     }
 
@@ -128,10 +151,12 @@ export class GroupService {
       isActive: true,
       onlyAdmin: false,
       welcome: {
-        enabled: false,
+        enabled: true,
+        message: '¡Bienvenido @user a @group! 🎉',
       },
       goodbye: {
-        enabled: false,
+        enabled: true,
+        message: '¡Adiós @user! 😢',
       },
       antiSpam: {
         enabled: true,
@@ -157,6 +182,16 @@ export class GroupService {
       nsfw: false,
       prime: {
         enabled: false,
+      },
+      license: {
+        planType: 'permanent',
+        paymentType: 'single',
+        activatedAt: Date.now(),
+        expiresAt: null,
+        renewAt: null,
+        lastRenewAt: null,
+        autoRenew: false,
+        pricePaid: '0',
       },
       autoMod: {
         enabled: false,

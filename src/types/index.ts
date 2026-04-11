@@ -58,6 +58,7 @@ export interface MessageContext {
   text: string;
   args: string[];
   command: string;
+  botId: string;
   sender: {
     jid: string;
     pushName: string;
