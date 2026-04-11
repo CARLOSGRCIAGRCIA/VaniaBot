@@ -107,7 +107,7 @@ describe('VaniaToggleMiddleware', () => {
     it('should check toggle status for non-toggle commands', async () => {
       mockCtx = createGroupCtx('help');
       await middleware.execute(mockCtx, mockNext);
-      expect(mockIsEnabled).toHaveBeenCalledWith('group@test.g.us');
+      expect(mockIsEnabled).toHaveBeenCalledWith('group@test.g.us', undefined);
       expect(mockNext).toHaveBeenCalled();
     });
 

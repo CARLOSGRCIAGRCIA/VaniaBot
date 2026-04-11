@@ -3,6 +3,9 @@ import { WelcomeService } from '../../src/services/system/WelcomeService.js';
 
 vi.mock('../../src/services/system/Servicemanager.js', () => ({
   serviceManager: {
+    vaniaToggleService: {
+      isEnabled: vi.fn().mockResolvedValue(true),
+    },
     groupService: {
       getGroup: vi.fn(),
       updateGroup: vi.fn(),
@@ -221,6 +224,7 @@ describe('WelcomeService', () => {
       const { serviceManager } = await import('../../src/services/system/Servicemanager.js');
       const { logger } = await import('../../src/utils/logger.js');
 
+      vi.mocked(serviceManager.vaniaToggleService.isEnabled).mockResolvedValue(true);
       vi.mocked(serviceManager.groupService.getGroup).mockResolvedValue({
         jid: 'group@test.com',
         welcome: { enabled: false },
@@ -247,6 +251,7 @@ describe('WelcomeService', () => {
       const { serviceManager } = await import('../../src/services/system/Servicemanager.js');
       const { logger } = await import('../../src/utils/logger.js');
 
+      vi.mocked(serviceManager.vaniaToggleService.isEnabled).mockResolvedValue(true);
       vi.mocked(serviceManager.groupService.getGroup).mockResolvedValue({
         jid: 'group@test.com',
         welcome: { enabled: false },
