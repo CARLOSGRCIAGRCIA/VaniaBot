@@ -540,6 +540,11 @@ export class JsonDatabase extends Database {
     return Object.values(this.data[collection]) as T[];
   }
 
+  async keys(collection: string): Promise<string[]> {
+    this.ensureCollection(collection);
+    return Object.keys(this.data[collection]);
+  }
+
   async getPaginated<T>(
     collection: string,
     options: {
