@@ -1,6 +1,9 @@
 import { WhatsAppClient } from './core/Client.js';
 import { logger, logError } from './utils/logger.js';
 import { panelServer } from './services/webhook/PanelServer.js';
+import { initializeDatabase } from './repositories/Database.js';
+import { subBotDatabase } from './services/subbot/SubBotDatabase.js';
+import { databaseSwitcher } from './services/system/DatabaseSwitcher.js';
 
 const originalConsoleError = console.error;
 console.error = function (...args: unknown[]) {
@@ -18,6 +21,17 @@ let client: WhatsAppClient;
 
 async function main(): Promise<void> {
   logger.info('Iniciando WhatsApp Bot...');
+
+  try {
+    logger.info('Inicializando sistema de base de datos...');
+    await databaseSwitcher.initialize();
+    await initializeDatabase();
+    await subBotDatabase.initialize();
+    logger.info('✅ Base de datos inicializada');
+  } catch (error) {
+    logger.warn('⚠️ Error inicializando base de datos, continuando sin ella:', error);
+  }
+
   client = new WhatsAppClient();
   global.client = client;
   await client.initialize();

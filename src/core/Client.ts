@@ -42,6 +42,8 @@ import { PermissionService } from '@/services/PermissionService.js';
 import { antiDeleteService } from '@/services/system/AntiDeleteService.js';
 import { antiCallService } from '@/services/system/AntiCallService.js';
 import { env } from '@/config/env.js';
+import { runtimeStateRepository } from '@/repositories/RuntimeStateRepository.js';
+import { processedMessagesRepository } from '@/repositories/ProcessedMessagesRepository.js';
 
 interface RateLimitResult {
   allowed: boolean;
@@ -258,6 +260,7 @@ export class WhatsAppClient {
     lastStatsLog: Date.now(),
   };
   private commandMetrics = new Map<string, { count: number; totalTime: number; errors: number }>();
+  private mainBotId: string | null = null;
 
   constructor() {
     this.authManager = new AuthManager();
@@ -395,6 +398,14 @@ export class WhatsAppClient {
         });
 
         this.handleMessageRealTime(msg);
+      }
+    });
+
+    this.sock.ev.on('connection.update', update => {
+      if (update.connection === 'open' && this.sock.user?.id) {
+        this.mainBotId = this.sock.user.id;
+        runtimeStateRepository.setStartupTimestamp(this.mainBotId);
+        logger.info(`[Client] Set startup timestamp for ${this.mainBotId}`);
       }
     });
 
@@ -542,6 +553,22 @@ export class WhatsAppClient {
     if (cacheManager.hasProcessedMessage(messageId)) {
       logger.debug(`❌ Message skipped: already processed ${messageId}`);
       return;
+    }
+
+    if (this.mainBotId) {
+      const lastStartup = runtimeStateRepository.getLastStartupAt(this.mainBotId);
+      if (lastStartup) {
+        const rawTimestamp = message.messageTimestamp;
+        const msgTimestamp =
+          rawTimestamp !== undefined && rawTimestamp !== null ? Number(rawTimestamp) * 1000 : 0;
+        const startupTime = new Date(lastStartup).getTime();
+        if (msgTimestamp > 0 && msgTimestamp < startupTime) {
+          logger.debug(`[MainBot] Skipping pre-startup message ${messageId}`);
+          processedMessagesRepository.markProcessed(messageId, this.mainBotId);
+          cacheManager.markMessageProcessed(messageId);
+          return;
+        }
+      }
     }
 
     const text = message.message?.conversation || message.message?.extendedTextMessage?.text || '';
@@ -740,7 +767,7 @@ export class WhatsAppClient {
       if (action === 'remove') {
         for (const participant of participants) {
           welcomeService
-            .handleParticipantLeft(this.sock, groupJid, participant)
+            .handleParticipantLeft(this.sock, groupJid, participant, 'main')
             .catch(err => logError('handleParticipantLeft', err));
         }
       }
