@@ -747,6 +747,11 @@ export class SubBotManager extends EventEmitter {
 
       const isVaniaToggleCommand = ['vaniaon', 'vaniaoff', 'vaniastatus'].includes(ctx.command);
 
+      if (isVaniaToggleCommand && !ctx.args[0]) {
+        logger.debug(`📤 SubBot[${subConfig.id}] skipping non-slot toggle command: ${ctx.command}`);
+        return;
+      }
+
       if (ctx.chat.isGroup && !isVaniaToggleCommand) {
         const isEnabled = await serviceManager.vaniaToggleService.isEnabled(
           ctx.chat.jid,

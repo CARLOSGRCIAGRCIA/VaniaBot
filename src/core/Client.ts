@@ -613,6 +613,17 @@ export class WhatsAppClient {
                   ctx.command,
                 );
 
+                if (isVaniaToggleCommand && ctx.args[0]) {
+                  const slotNum = parseInt(ctx.args[0]);
+                  if (!isNaN(slotNum) && slotNum > 0) {
+                    logger.debug(
+                      `📤 Main skipping slot-specific toggle command: ${ctx.command} ${slotNum}`,
+                    );
+                    cacheManager.markMessageProcessed(messageId);
+                    return;
+                  }
+                }
+
                 if (!isVaniaToggleCommand) {
                   try {
                     const isEnabled = await serviceManager.vaniaToggleService.isEnabled(
