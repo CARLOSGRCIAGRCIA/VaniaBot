@@ -617,7 +617,7 @@ export class WhatsAppClient {
                   try {
                     const isEnabled = await serviceManager.vaniaToggleService.isEnabled(
                       ctx.chat.jid,
-                      this.mainBotId ?? 'main',
+                      'main',
                     );
                     if (!isEnabled) {
                       cacheManager.markMessageProcessed(messageId);
