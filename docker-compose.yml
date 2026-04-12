@@ -47,6 +47,7 @@ services:
 
     volumes:
       - vaniabot_session:/app/vaniasession
+      - vaniabot_subbots:/app/data/subbot-sessions
       - vaniabot_temp:/app/data/temp
       - ./data/assets:/app/data/assets:ro
 
@@ -93,3 +94,8 @@ volumes:
     driver: local
     labels:
       description: 'Temporary files for media downloads'
+
+  vaniabot_subbots:
+    driver: local
+    labels:
+      description: 'SubBot WhatsApp session credentials'
