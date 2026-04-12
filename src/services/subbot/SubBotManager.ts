@@ -488,6 +488,8 @@ export class SubBotManager extends EventEmitter {
   }
 
   private async launchInstance(subConfig: SubBotConfig): Promise<void> {
+    const toggleBotId = `subbot${subConfig.slot}`;
+
     if (this.instances.has(subConfig.id)) {
       logger.debug(`🔄 SubBot[${subConfig.id}] deteniendo instancia anterior...`);
       await this.instances.get(subConfig.id)?.stop();
@@ -696,7 +698,7 @@ export class SubBotManager extends EventEmitter {
 
     instance.on('groupUpdate', (update: GroupParticipantsUpdate) => {
       if (instance.sock) {
-        void this.handleGroupUpdate(update, instance.sock, subConfig.id).catch(err =>
+        void this.handleGroupUpdate(update, instance.sock, toggleBotId).catch(err =>
           logError(`SubBotManager[${subConfig.id}].handleGroupUpdate`, err),
         );
       }
@@ -743,7 +745,8 @@ export class SubBotManager extends EventEmitter {
         return;
       }
 
-      const ctx = new MessageContext(sock, msg as proto.IWebMessageInfo, subConfig.id);
+      const toggleBotId = `subbot${subConfig.slot}`;
+      const ctx = new MessageContext(sock, msg as proto.IWebMessageInfo, toggleBotId);
 
       const isVaniaToggleCommand = ['vaniaon', 'vaniaoff', 'vaniastatus'].includes(ctx.command);
 
@@ -755,7 +758,7 @@ export class SubBotManager extends EventEmitter {
       if (ctx.chat.isGroup && !isVaniaToggleCommand) {
         const isEnabled = await serviceManager.vaniaToggleService.isEnabled(
           ctx.chat.jid,
-          subConfig.id,
+          toggleBotId,
         );
         if (!isEnabled) return;
       }
