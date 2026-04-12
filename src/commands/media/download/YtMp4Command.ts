@@ -31,9 +31,9 @@ export class YtMp4Command extends Command {
     if (!ctx.args.length) {
       await ctx.reply(
         `˚₊· ͟͟͞͞➳ *oops, necesito una búsqueda o enlace* ˚₊· ͟͟͞͞➳\n\n` +
-          `✿ *!ytmp4* <búsqueda o URL> [calidad]\n` +
-          `✩ ejemplo: *!ytmp4 tutorial* ✩\n` +
-          `✩ calidad: 360, 480, 720, 1080 (default: 720)`,
+        `✿ *!ytmp4* <búsqueda o URL> [calidad]\n` +
+        `✩ ejemplo: *!ytmp4 tutorial* ✩\n` +
+        `✩ calidad: 360, 480, 720, 1080 (default: 720)`,
       );
       return;
     }
@@ -60,9 +60,12 @@ export class YtMp4Command extends Command {
           title: video.title,
           url: video.url,
           duration: video.duration,
+          channel: video.channel,       
+          viewCount: video.viewCount,   
+          likeCount: video.likeCount,   
         },
         thumbnailBuffer,
-        'descargando',
+        'descargando video ♡',         
         quality,
       );
 
@@ -116,18 +119,46 @@ export class YtMp4Command extends Command {
 
   private async sendPreviewWithThumbnail(
     ctx: MessageContext,
-    info: { title: string; url: string; duration?: string },
+    info: {
+      title: string;
+      url: string;
+      duration?: string;
+      channel?: string;
+      viewCount?: number;
+      likeCount?: number;
+    },
     thumbnail: Buffer | null,
     status: string,
     quality: string,
   ): Promise<void> {
-    const caption =
-      `🎬 *YouTube*\n` +
-      `✿ ${info.title.substring(0, 60)}${info.title.length > 60 ? '...' : ''}\n` +
-      (info.duration ? `⏱️ ${info.duration}\n` : '') +
-      `📦 Calidad: ${quality}p\n` +
-      `⬇️ ${status}...\n` +
-      `🔗 ${info.url}`;
+    const formatCount = (n?: number): string => {
+      if (!n) return '—';
+      if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
+      if (n >= 1_000) return `${(n / 1_000).toFixed(1)}K`;
+      return n.toString();
+    };
+
+    const title =
+      info.title.length > 55
+        ? info.title.substring(0, 55) + '…'
+        : info.title;
+
+    const lines = [
+      `✦ ˚₊· 𝙔𝙤𝙪𝙏𝙪𝙗𝙚 𝙑𝙞𝙙𝙚𝙤 ·₊˚ ✦`,
+      ``,
+      `꒰ 🎀 ꒱ ${title}`,
+      ...(info.channel ? [`꒰ 🌸 ꒱ ${info.channel}`] : []),
+      ...(info.duration ? [`꒰ ⏳ ꒱ ${info.duration}`] : []),
+      `꒰ 🎞️ ꒱ ${quality}p`,
+      ``,
+      `꒰ 👁 ꒱ ${formatCount(info.viewCount)} vistas  ·  ꒰ 🤍 ꒱ ${formatCount(info.likeCount)} likes`,
+      ``,
+      `꒰ ✨ ꒱ ${status}...`,
+      ``,
+      `🔗 ${info.url}`,
+    ];
+
+    const caption = lines.join('\n');
 
     if (thumbnail) {
       await ctx.sock.sendMessage(ctx.chat.jid, {
