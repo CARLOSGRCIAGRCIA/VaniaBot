@@ -26,8 +26,8 @@ export class YtMp3Command extends Command {
     if (!ctx.args.length) {
       await ctx.reply(
         `˚₊· ͟͟͞͞➳ *oops, necesito una búsqueda o enlace* ˚₊· ͟͟͞͞➳\n\n` +
-          `✿ *!ytmp3* <búsqueda o URL>\n` +
-          `✩ ejemplo: *!ytmp3 bad bunny* ✩`,
+        `✿ *!ytmp3* <búsqueda o URL>\n` +
+        `✩ ejemplo: *!ytmp3 bad bunny* ✩`,
       );
       return;
     }
@@ -53,9 +53,12 @@ export class YtMp3Command extends Command {
           title: video.title,
           url: video.url,
           duration: video.duration,
+          channel: video.channel,       
+          viewCount: video.viewCount,   
+          likeCount: video.likeCount,   
         },
         thumbnailBuffer,
-        'descargando audio',
+        'descargando audio ♡',          
       );
 
       await ctx.react('⏳');
@@ -106,16 +109,44 @@ export class YtMp3Command extends Command {
 
   private async sendPreviewWithThumbnail(
     ctx: MessageContext,
-    info: { title: string; url: string; duration?: string },
+    info: {
+      title: string;
+      url: string;
+      duration?: string;
+      channel?: string;
+      viewCount?: number;
+      likeCount?: number;
+    },
     thumbnail: Buffer | null,
     status: string,
   ): Promise<void> {
-    const caption =
-      `🎵 *YouTube Audio*\n` +
-      `✿ ${info.title.substring(0, 60)}${info.title.length > 60 ? '...' : ''}\n` +
-      (info.duration ? `⏱️ ${info.duration}\n` : '') +
-      `⬇️ ${status}...\n` +
-      `🔗 ${info.url}`;
+    const formatCount = (n?: number): string => {
+      if (!n) return '—';
+      if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
+      if (n >= 1_000) return `${(n / 1_000).toFixed(1)}K`;
+      return n.toString();
+    };
+
+    const title =
+      info.title.length > 55
+        ? info.title.substring(0, 55) + '…'
+        : info.title;
+
+    const lines = [
+      `✦ ˚₊· 𝙔𝙤𝙪𝙏𝙪𝙗𝙚 𝘼𝙪𝙙𝙞𝙤 ·₊˚ ✦`,
+      ``,
+      `꒰ 🎀 ꒱ ${title}`,
+      ...(info.channel ? [`꒰ 🌸 ꒱ ${info.channel}`] : []),
+      ...(info.duration ? [`꒰ ⏳ ꒱ ${info.duration}`] : []),
+      ``,
+      `꒰ 👁 ꒱ ${formatCount(info.viewCount)} vistas  ·  ꒰ 🤍 ꒱ ${formatCount(info.likeCount)} likes`,
+      ``,
+      `꒰ ✨ ꒱ ${status}...`,
+      ``,
+      `🔗 ${info.url}`,
+    ];
+
+    const caption = lines.join('\n');
 
     if (thumbnail) {
       await ctx.sock.sendMessage(ctx.chat.jid, {

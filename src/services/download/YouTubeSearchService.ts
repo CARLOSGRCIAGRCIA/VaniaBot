@@ -10,6 +10,9 @@ export interface YouTubeVideo {
   duration: string;
   thumbnail: string;
   url: string;
+  channel?: string;       
+  viewCount?: number;     
+  likeCount?: number;     
 }
 
 async function searchWithYtDlp(query: string): Promise<YouTubeVideo | null> {
@@ -34,6 +37,9 @@ async function searchWithYtDlp(query: string): Promise<YouTubeVideo | null> {
       duration: formatDuration(data.duration ?? 0),
       thumbnail: data.thumbnail ?? `https://i.ytimg.com/vi/${data.id}/hqdefault.jpg`,
       url: `https://youtu.be/${data.id}`,
+      channel: data.uploader ?? data.channel ?? undefined,       
+      viewCount: data.view_count ?? undefined,                   
+      likeCount: data.like_count ?? undefined, 
     };
   } catch (error) {
     logError('yt-dlp search', error);
@@ -59,6 +65,9 @@ async function getVideoInfoWithYtDlp(urlOrId: string): Promise<YouTubeVideo | nu
       duration: formatDuration(data.duration ?? 0),
       thumbnail: data.thumbnail ?? `https://i.ytimg.com/vi/${data.id}/hqdefault.jpg`,
       url: `https://youtu.be/${data.id}`,
+      channel: data.uploader ?? data.channel ?? undefined,       
+      viewCount: data.view_count ?? undefined,                   
+      likeCount: data.like_count ?? undefined,
     };
   } catch (error) {
     logError('yt-dlp getVideoInfo', error);
