@@ -137,7 +137,6 @@ jobs:
             type=raw,value=${{ steps.pkg.outputs.major }}
             type=raw,value=${{ steps.pkg.outputs.minor }}
             type=raw,value=${{ steps.date.outputs.date }}
-            type=sha,prefix=main-
 
       - name: Build and push Docker image
         uses: docker/build-push-action@v5
