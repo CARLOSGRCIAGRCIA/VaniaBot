@@ -100,7 +100,21 @@ jobs:
 
       - name: Extract version from package.json
         id: pkg
-        run: echo "version=$(node -p "require('./package.json').version")" >> $GITHUB_OUTPUT
+        run: |
+          VERSION=$(node -p "require('./package.json').version")
+          MAJOR=$(echo $VERSION | cut -d. -f1)
+          MINOR=$(echo $VERSION | cut -d. -f1,2)
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "major=v$MAJOR" >> $GITHUB_OUTPUT
+          echo "minor=v$MINOR" >> $GITHUB_OUTPUT
+
+      - name: Get commit short SHA
+        id: sha
+        run: echo "sha=$(echo ${{ github.sha }} | cut -c1-7)" >> $GITHUB_OUTPUT
+
+      - name: Get commit date
+        id: date
+        run: echo "date=$(date +'%Y%m%d')" >> $GITHUB_OUTPUT
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -118,8 +132,11 @@ jobs:
         with:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
           tags: |
-            type=raw,value=lts-${{ steps.pkg.outputs.version }}
             type=raw,value=latest
+            type=raw,value=${{ steps.pkg.outputs.version }}
+            type=raw,value=${{ steps.pkg.outputs.major }}
+            type=raw,value=${{ steps.pkg.outputs.minor }}
+            type=raw,value=${{ steps.date.outputs.date }}
             type=sha,prefix=main-
 
       - name: Build and push Docker image
