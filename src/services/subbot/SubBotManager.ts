@@ -743,7 +743,7 @@ export class SubBotManager extends EventEmitter {
         return;
       }
 
-      const ctx = new MessageContext(sock, msg as proto.IWebMessageInfo);
+      const ctx = new MessageContext(sock, msg as proto.IWebMessageInfo, subConfig.id);
 
       const isVaniaToggleCommand = ['vaniaon', 'vaniaoff', 'vaniastatus'].includes(ctx.command);
 

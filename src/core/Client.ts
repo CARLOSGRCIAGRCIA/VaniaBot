@@ -602,7 +602,7 @@ export class WhatsAppClient {
             logger.debug(`📝 Creating MessageContext...`);
             try {
               // WAMessage and proto.IWebMessageInfo are the same shape in Baileys
-              const ctx = new MessageContext(this.sock, message as proto.IWebMessageInfo);
+              const ctx = new MessageContext(this.sock, message as proto.IWebMessageInfo, 'main');
 
               logger.debug(
                 `📋 MessageContext created: command="${ctx.command}", text="${ctx.text.slice(0, 50)}", isGroup=${ctx.chat.isGroup}`,
