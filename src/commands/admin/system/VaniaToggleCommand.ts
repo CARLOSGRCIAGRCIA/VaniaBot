@@ -15,27 +15,41 @@ export class VaniaOffCommand extends Command {
   aliases = ['vaniaoff', 'botoff', 'apagar'];
   cooldown = 3000;
   contexts = [CommandContext.GROUP];
-  usage = '!vaniaoff';
-  examples = ['!vaniaoff'];
+  usage = '!vaniaoff [slot]';
+  examples = ['!vaniaoff', '!vaniaoff 1', '!vaniaoff 2'];
   permissions = { user: [PermissionLevel.OWNER], bot: [] };
 
   async execute(ctx: MessageContext): Promise<void> {
     try {
-      const isEnabled = await serviceManager.vaniaToggleService.isEnabled(ctx.chat.jid, ctx.botId);
+      let targetBotId = ctx.botId;
+      let targetSlot: number | undefined;
+
+      if (ctx.args[0]) {
+        const slotNum = parseInt(ctx.args[0]);
+        if (!isNaN(slotNum) && slotNum > 0 && slotNum <= 50) {
+          targetSlot = slotNum;
+          targetBotId = `subbot${slotNum}`;
+        }
+      }
+
+      const isEnabled = await serviceManager.vaniaToggleService.isEnabled(
+        ctx.chat.jid,
+        targetBotId,
+      );
 
       if (!isEnabled) {
-        const botName = ctx.botId === 'main' ? 'Vania' : ctx.botId;
+        const botName = targetSlot ? `SubBot ${targetSlot}` : 'Vania';
         await ctx.reply(`🔴 *${botName} ya está desactivada* en este grupo.`);
         return;
       }
 
-      await serviceManager.vaniaToggleService.disable(ctx.chat.jid, ctx.sender.jid, ctx.botId);
+      await serviceManager.vaniaToggleService.disable(ctx.chat.jid, ctx.sender.jid, targetBotId);
 
-      const botName = ctx.botId === 'main' ? 'Vania' : ctx.botId;
+      const botName = targetSlot ? `SubBot ${targetSlot}` : 'Vania';
       await ctx.react('🔴');
       await ctx.reply(
         `˚₊· ͟͟͞͞➳ *${botName} está descansando* ˚₊· ͟͟͞͞➳\n\n` +
-          `No voy a responder hasta que me activen con *!vaniaon*.\n\n` +
+          `No voy a responder hasta que me activen con *!vaniaon${targetSlot ? ' ' + targetSlot : ''}*.\n\n` +
           `_Me apagó @${ctx.sender.pushName || 'admin'}_ ✿`,
       );
     } catch (error) {
@@ -52,23 +66,37 @@ export class VaniaOnCommand extends Command {
   aliases = ['vaniaon', 'boton', 'encender'];
   cooldown = 3000;
   contexts = [CommandContext.GROUP];
-  usage = '!vaniaon';
-  examples = ['!vaniaon'];
+  usage = '!vaniaon [slot]';
+  examples = ['!vaniaon', '!vaniaon 1', '!vaniaon 2'];
   permissions = { user: [PermissionLevel.OWNER], bot: [] };
 
   async execute(ctx: MessageContext): Promise<void> {
     try {
-      const isEnabled = await serviceManager.vaniaToggleService.isEnabled(ctx.chat.jid, ctx.botId);
+      let targetBotId = ctx.botId;
+      let targetSlot: number | undefined;
+
+      if (ctx.args[0]) {
+        const slotNum = parseInt(ctx.args[0]);
+        if (!isNaN(slotNum) && slotNum > 0 && slotNum <= 50) {
+          targetSlot = slotNum;
+          targetBotId = `subbot${slotNum}`;
+        }
+      }
+
+      const isEnabled = await serviceManager.vaniaToggleService.isEnabled(
+        ctx.chat.jid,
+        targetBotId,
+      );
 
       if (isEnabled) {
-        const botName = ctx.botId === 'main' ? 'Vania' : ctx.botId;
+        const botName = targetSlot ? `SubBot ${targetSlot}` : 'Vania';
         await ctx.reply(`🟢 *${botName} ya está activada* en este grupo.`);
         return;
       }
 
-      await serviceManager.vaniaToggleService.enable(ctx.chat.jid, ctx.sender.jid, ctx.botId);
+      await serviceManager.vaniaToggleService.enable(ctx.chat.jid, ctx.sender.jid, targetBotId);
 
-      const botName = ctx.botId === 'main' ? 'Vania' : ctx.botId;
+      const botName = targetSlot ? `SubBot ${targetSlot}` : 'Vania';
       await ctx.react('🟢');
       await ctx.reply(
         `˚₊· ͟͟͞͞➳ *${botName} ya está aquí* ˚₊· ͟͟͞͞➳\n\n` +

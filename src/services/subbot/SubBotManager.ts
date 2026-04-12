@@ -748,7 +748,10 @@ export class SubBotManager extends EventEmitter {
       const isVaniaToggleCommand = ['vaniaon', 'vaniaoff', 'vaniastatus'].includes(ctx.command);
 
       if (ctx.chat.isGroup && !isVaniaToggleCommand) {
-        const isEnabled = await serviceManager.vaniaToggleService.isEnabled(ctx.chat.jid);
+        const isEnabled = await serviceManager.vaniaToggleService.isEnabled(
+          ctx.chat.jid,
+          subConfig.id,
+        );
         if (!isEnabled) return;
       }
 
