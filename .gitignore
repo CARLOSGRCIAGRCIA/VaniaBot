@@ -41,3 +41,8 @@ coverage/
 *.tgz
 
 .vania-session
+data/runtime/bot-states
+redis-data/
+vaniasession/
+subbots/
+.vania-session

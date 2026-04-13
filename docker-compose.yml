@@ -17,9 +17,13 @@ services:
       retries: 3
 
   vaniabot:
-    image: ghcr.io/carlosgrciagrcia/vaniabot:v6.12.2
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: runner
     container_name: vaniabot
     restart: unless-stopped
+    user: '1000:1000'
 
     stdin_open: true
     tty: true
@@ -83,26 +87,14 @@ volumes:
   vaniabot_session:
     name: vaniabot_session
     driver: local
-    driver_opts:
-      type: none
-      o: bind
-      device: ./vaniasession
 
   vaniabot_subbots:
     name: vaniabot_subbots
     driver: local
-    driver_opts:
-      type: none
-      o: bind
-      device: ./subbots
 
   vaniabot_database:
     name: vaniabot_database
     driver: local
-    driver_opts:
-      type: none
-      o: bind
-      device: ./data
 
   vaniabot_temp:
     name: vaniabot_temp
@@ -111,7 +103,3 @@ volumes:
   vania-redis-data:
     name: vania-redis-data
     driver: local
-    driver_opts:
-      type: none
-      o: bind
-      device: ./redis-data

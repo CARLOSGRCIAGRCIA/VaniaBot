@@ -9,8 +9,12 @@ dist/
 
 vaniasession/
 .vania-session
+subbots/
+redis-data/
 
 data/temp/
+data/wal/
+data/backups/
 
 .env
 .env.*
