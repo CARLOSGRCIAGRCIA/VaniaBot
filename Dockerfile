@@ -59,6 +59,8 @@ COPY vania.ts ./
 COPY src/ ./src/
 COPY data/ ./data/
 
+COPY data/assets/ ./static/assets/
+
 RUN mkdir -p vaniasession data/temp logs \
  && chown -R vaniabot:vaniabot /app
 
@@ -71,6 +73,7 @@ ENV NODE_ENV=production \
     USE_REDIS=true \
     REDIS_HOST=vania-redis \
     REDIS_PORT=6379 \
+    ASSETS_DIR=/app/static/assets \
     PATH="/app/node_modules/.bin:${PATH}"
 
 HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \

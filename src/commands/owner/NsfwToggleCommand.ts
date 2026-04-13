@@ -17,6 +17,9 @@ export class NsfwToggleCommand extends Command {
   examples = ['!nsfw on', '!nsfw off', '!nsfw status'];
   cooldown = 5000;
   contexts = [CommandContext.BOTH];
+  permissions = {
+    user: [PermissionLevel.OWNER],
+  };
 
   async execute(ctx: MessageContext): Promise<void> {
     const action = ctx.args?.[0]?.toLowerCase();
