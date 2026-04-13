@@ -27,11 +27,13 @@ export enum CommandCategory {
   GROUP = 'group',
   MEDIA = 'media',
   GAME = 'game',
+  CREATIVE = 'creative',
   INFORMATION = 'information',
   ADMIN = 'admin',
   OWNER = 'owner',
   RPG = 'rpg',
   FREEFIRE = 'freefire',
+  ANIME = 'anime',
 }
 
 export enum PermissionLevel {
