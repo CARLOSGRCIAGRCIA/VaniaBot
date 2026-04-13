@@ -13,7 +13,6 @@
   <img src="https://img.shields.io/badge/WhatsApp-25D366?style=for-the-badge&logo=whatsapp&logoColor=white" alt="WhatsApp">
 </p>
 
-
 ---
 
 ## Tabla de Contenidos
@@ -335,16 +334,31 @@ npm start
 - Docker 20.10+
 - Docker Compose 2.0+
 
-#### Paso 1: Clonar y configurar
+#### Opción 1: Usar imagen pre-built (Recomendado)
 
 ```bash
-git clone https://github.com/CARLOSGRCIAGRCIA/VaniaBot.git
-cd vaniabot
+# Pull de GitHub Container Registry
+docker pull ghcr.io/carlosgrciagrcia/vaniabot:v6.12.2
+
+# O desde la página del paquete:
+# https://github.com/CARLOSGRCIAGRCIA/VaniaBot/pkgs/container/vaniabot
+```
+
+#### Paso 1: Crear estructura de directorios
+
+```bash
+# Crear carpetas para persistencia
+mkdir -p vaniasession subbots data temp redis-data
+```
+
+#### Paso 2: Configurar `.env`
+
+```bash
 cp .env.example .env
 nano .env
 ```
 
-#### Paso 2: Configurar `.env` (básico)
+#### Paso 3: Configurar `.env` (básico)
 
 ```env
 BOT_NAME=VaniaBot
@@ -357,7 +371,7 @@ NODE_ENV=production
 TZ=America/Mexico_City
 ```
 
-#### Paso 3: Configurar `.env` (con Redis)
+#### Paso 4: Configurar `.env` (con Redis)
 
 ```env
 # Configuración básica
@@ -410,32 +424,60 @@ docker run -d \
 
 #### Persistencia de datos
 
-| Volumen            | Descripción                          |
-| :----------------- | :----------------------------------- |
-| `vaniabot_session` | Credenciales de sesión WhatsApp      |
-| `vaniabot_storage` | Base de datos y archivos persistidos |
-| `vaniabot_redis`   | Cache y sessões de Redis (si usado)  |
+| Volumen             | Descripción                     | Ruta local       |
+| :------------------ | :------------------------------ | :--------------- |
+| `vaniabot_session`  | Credenciales de sesión WhatsApp | `./vaniasession` |
+| `vaniabot_subbots`  | Sesiones de SubBots             | `./subbots`      |
+| `vaniabot_database` | Base de datos SQLite            | `./data`         |
+| `vaniabot_temp`     | Archivos temporales             | (interno)        |
+| `vania-redis-data`  | Datos de Redis (cache)          | `./redis-data`   |
 
-#### Servicios Docker
+> **Nota**: Al usar `docker-compose`, los volúmenes se crean automáticamente si existen los directorios locales.
 
-```yaml
-# docker-compose.yml incluye:
-services:
-  vaniabot:
-    build: .
-    depends_on:
-      redis:
-        condition: service_healthy
-    environment:
-      - USE_REDIS=true
-      - REDIS_URL=redis://redis:6379
+#### Ejecutar con imagen pre-built
 
-  redis:
-    image: redis:7-alpine
-    volumes:
-      - vania-redis:/data
-    healthcheck:
-      test: ['CMD', 'redis-cli', 'ping']
+```bash
+# Iniciar el bot con la imagen de GitHub Container Registry
+docker-compose up -d
+
+# Ver logs
+docker-compose logs -f vaniabot
+
+# Ver logs solo del bot
+docker logs -f vaniabot
+
+# Detener
+docker-compose down
+
+# Reiniciar
+docker-compose restart
+```
+
+#### Construcción local (Opción 2)
+
+Si preferís construir la imagen localmente:
+
+```bash
+# Clonar el repositorio
+git clone https://github.com/CARLOSGRCIAGRCIA/VaniaBot.git
+cd vaniabot
+
+# Crear estructura de directorios
+mkdir -p vaniasession subbots data temp redis-data
+
+# Configurar .env
+cp .env.example .env
+nano .env
+
+# Construir imagen localmente
+docker build -t vaniabot:local .
+
+# Modificar docker-compose.yml para usar imagen local
+# Cambiar: image: ghcr.io/carlosgrciagrcia/vaniabot:v6.12.2
+# Por:     image: vaniabot:local
+
+# Iniciar
+docker-compose up -d
 ```
 
 ---
@@ -968,7 +1010,7 @@ flowchart LR
     end
 
 
-````
+```
 
 ---
 
@@ -996,7 +1038,7 @@ flowchart LR
 
 ```bash
 sudo apt install ffmpeg
-````
+```
 
 **macOS:**
 

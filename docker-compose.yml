@@ -7,6 +7,9 @@ services:
     restart: unless-stopped
     networks:
       - vania-network
+    volumes:
+      - vania-redis-data:/data
+    command: redis-server --appendonly yes
     healthcheck:
       test: ['CMD', 'redis-cli', 'ping']
       interval: 30s
@@ -14,13 +17,8 @@ services:
       retries: 3
 
   vaniabot:
-    build:
-      context: .
-      dockerfile: Dockerfile
-      target: runner
-
+    image: ghcr.io/carlosgrciagrcia/vaniabot:v6.12.2
     container_name: vaniabot
-
     restart: unless-stopped
 
     stdin_open: true
@@ -37,6 +35,7 @@ services:
       - USE_REDIS=true
       - REDIS_HOST=vania-redis
       - REDIS_PORT=6379
+      - SESSION_PATH=/app/vaniasession
 
     depends_on:
       vania-redis:
@@ -48,8 +47,8 @@ services:
     volumes:
       - vaniabot_session:/app/vaniasession
       - vaniabot_subbots:/app/data/subbot-sessions
+      - vaniabot_database:/app/data
       - vaniabot_temp:/app/data/temp
-      - ./data/assets:/app/data/assets:ro
 
     deploy:
       resources:
@@ -78,24 +77,41 @@ services:
 
 networks:
   vania-network:
-    external: true
+    driver: bridge
 
 volumes:
   vaniabot_session:
+    name: vaniabot_session
     driver: local
     driver_opts:
       type: none
       o: bind
       device: ./vaniasession
-    labels:
-      description: 'Baileys WhatsApp session credentials'
-
-  vaniabot_temp:
-    driver: local
-    labels:
-      description: 'Temporary files for media downloads'
 
   vaniabot_subbots:
+    name: vaniabot_subbots
     driver: local
-    labels:
-      description: 'SubBot WhatsApp session credentials'
+    driver_opts:
+      type: none
+      o: bind
+      device: ./subbots
+
+  vaniabot_database:
+    name: vaniabot_database
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: ./data
+
+  vaniabot_temp:
+    name: vaniabot_temp
+    driver: local
+
+  vania-redis-data:
+    name: vania-redis-data
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: ./redis-data
