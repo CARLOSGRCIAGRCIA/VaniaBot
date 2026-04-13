@@ -9,3 +9,8 @@ export { HoroscopoCommand } from './HoroscopoCommand.js';
 export { PeliculaCommand } from './PeliculaCommand.js';
 export { AnimeCommand } from './AnimeCommand.js';
 export { StickerRandomCommand } from './StickerRandomCommand.js';
+
+export { InsultCommand } from './InsultCommand.js';
+export { FlirtCommand } from './FlirtCommand.js';
+export { TruthCommand } from './TruthCommand.js';
+export { TTSCommand } from './TTSCommand.js';
