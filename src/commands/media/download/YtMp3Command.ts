@@ -26,8 +26,8 @@ export class YtMp3Command extends Command {
     if (!ctx.args.length) {
       await ctx.reply(
         `˚₊· ͟͟͞͞➳ *oops, necesito una búsqueda o enlace* ˚₊· ͟͟͞͞➳\n\n` +
-        `✿ *!ytmp3* <búsqueda o URL>\n` +
-        `✩ ejemplo: *!ytmp3 bad bunny* ✩`,
+          `✿ *!ytmp3* <búsqueda o URL>\n` +
+          `✩ ejemplo: *!ytmp3 bad bunny* ✩`,
       );
       return;
     }
@@ -53,12 +53,12 @@ export class YtMp3Command extends Command {
           title: video.title,
           url: video.url,
           duration: video.duration,
-          channel: video.channel,       
-          viewCount: video.viewCount,   
-          likeCount: video.likeCount,   
+          channel: video.channel,
+          viewCount: video.viewCount,
+          likeCount: video.likeCount,
         },
         thumbnailBuffer,
-        'descargando audio ♡',          
+        'descargando audio ♡',
       );
 
       await ctx.react('⏳');
@@ -127,10 +127,7 @@ export class YtMp3Command extends Command {
       return n.toString();
     };
 
-    const title =
-      info.title.length > 55
-        ? info.title.substring(0, 55) + '…'
-        : info.title;
+    const title = info.title.length > 55 ? info.title.substring(0, 55) + '…' : info.title;
 
     const lines = [
       `✦ ˚₊· 𝙔𝙤𝙪𝙏𝙪𝙗𝙚 𝘼𝙪𝙙𝙞𝙤 ·₊˚ ✦`,

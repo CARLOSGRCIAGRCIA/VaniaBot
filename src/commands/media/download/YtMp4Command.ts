@@ -31,9 +31,9 @@ export class YtMp4Command extends Command {
     if (!ctx.args.length) {
       await ctx.reply(
         `˚₊· ͟͟͞͞➳ *oops, necesito una búsqueda o enlace* ˚₊· ͟͟͞͞➳\n\n` +
-        `✿ *!ytmp4* <búsqueda o URL> [calidad]\n` +
-        `✩ ejemplo: *!ytmp4 tutorial* ✩\n` +
-        `✩ calidad: 360, 480, 720, 1080 (default: 720)`,
+          `✿ *!ytmp4* <búsqueda o URL> [calidad]\n` +
+          `✩ ejemplo: *!ytmp4 tutorial* ✩\n` +
+          `✩ calidad: 360, 480, 720, 1080 (default: 720)`,
       );
       return;
     }
@@ -60,12 +60,12 @@ export class YtMp4Command extends Command {
           title: video.title,
           url: video.url,
           duration: video.duration,
-          channel: video.channel,       
-          viewCount: video.viewCount,   
-          likeCount: video.likeCount,   
+          channel: video.channel,
+          viewCount: video.viewCount,
+          likeCount: video.likeCount,
         },
         thumbnailBuffer,
-        'descargando video ♡',         
+        'descargando video ♡',
         quality,
       );
 
@@ -138,10 +138,7 @@ export class YtMp4Command extends Command {
       return n.toString();
     };
 
-    const title =
-      info.title.length > 55
-        ? info.title.substring(0, 55) + '…'
-        : info.title;
+    const title = info.title.length > 55 ? info.title.substring(0, 55) + '…' : info.title;
 
     const lines = [
       `✦ ˚₊· 𝙔𝙤𝙪𝙏𝙪𝙗𝙚 𝙑𝙞𝙙𝙚𝙤 ·₊˚ ✦`,
