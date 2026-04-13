@@ -34,6 +34,7 @@ import { quizAnswerHandler } from '@/handlers/QuizAnswerHandler.js';
 import { handleMention } from '@/handlers/AiMentionHandler.js';
 import { handleAudioResponse } from '@/handlers/AudioResponseHandler.js';
 import type { IMiddleware } from '@/types/index.js';
+import { CommandCategory } from '@/types/index.js';
 import { EventEmitter } from 'events';
 import { welcomeService } from '@/services/system/WelcomeService.js';
 import { subBotManager } from '@/services/subbot/SubBotManager.js';
@@ -722,9 +723,24 @@ export class WhatsAppClient {
                 const cmdStartTime = Date.now();
 
                 if (command.enabled === false) {
-                  logger.debug(`⚠️ Command ${command.name} is disabled`);
-                  await ctx.reply('❌ Este comando está deshabilitado.').catch(() => {});
-                  return;
+                  const isNsfwCommand = command.category === CommandCategory.ANIME;
+                  if (isNsfwCommand) {
+                    const { NsfwToggleCommand } =
+                      await import('../commands/owner/NsfwToggleCommand.js');
+                    if (!NsfwToggleCommand.isEnabled()) {
+                      logger.debug(`⚠️ Command ${command.name} is NSFW and disabled`);
+                      await ctx
+                        .reply(
+                          '🔞 Los comandos NSFW están deshabilitados.\nUsa !nsfw on para habilitar.',
+                        )
+                        .catch(() => {});
+                      return;
+                    }
+                  } else {
+                    logger.debug(`⚠️ Command ${command.name} is disabled`);
+                    await ctx.reply('❌ Este comando está deshabilitado.').catch(() => {});
+                    return;
+                  }
                 }
 
                 try {

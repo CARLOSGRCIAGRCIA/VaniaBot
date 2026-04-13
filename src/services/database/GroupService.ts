@@ -151,15 +151,15 @@ export class GroupService {
       isActive: true,
       onlyAdmin: false,
       welcome: {
-        enabled: true,
+        enabled: false,
         message: '¡Bienvenido @user a @group! 🎉',
       },
       goodbye: {
-        enabled: true,
+        enabled: false,
         message: '¡Adiós @user! 😢',
       },
       antiSpam: {
-        enabled: true,
+        enabled: false,
         maxMessages: 10,
         timeWindow: 60,
       },
