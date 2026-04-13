@@ -159,7 +159,7 @@ export class GroupService {
         message: '¡Adiós @user! 😢',
       },
       antiSpam: {
-        enabled: false,
+        enabled: true,
         maxMessages: 10,
         timeWindow: 60,
       },
