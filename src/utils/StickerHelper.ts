@@ -5,39 +5,66 @@ import { logError } from '@/utils/logger.js';
 export class StickerHelper {
   private static buildExifBuffer(): Buffer {
     const json = {
-      'sticker-pack-id': `${Date.now()}-${Math.random().toString(36).slice(2)}`,
-      'sticker-pack-name': 'Bot',
-      'sticker-pack-publisher': 'Bot',
-      'android-app-store-link': '',
-      'ios-app-store-link': '',
+      'sticker-pack-id': `com.VaniaBot.${Date.now()}`,
+      'sticker-pack-name': 'VaniaBot Stickers',
+      'sticker-pack-publisher': 'VaniaBot',
+      'emojis': ['🌸'],
     };
-
-    const exifAttr = Buffer.from([
-      0x49, 0x49, 0x2a, 0x00, 0x08, 0x00, 0x00, 0x00, 0x01, 0x00, 0x41, 0x57, 0x07, 0x00,
-    ]);
     const jsonBuf = Buffer.from(JSON.stringify(json), 'utf-8');
-    const sizeBuf = Buffer.allocUnsafe(4);
-    sizeBuf.writeUInt32LE(jsonBuf.length, 0);
 
-    return Buffer.concat([exifAttr, sizeBuf, jsonBuf]);
+    const header = Buffer.from([
+      0x49, 0x49, 0x2a, 0x00, 0x08, 0x00, 0x00, 0x00,
+      0x01, 0x00, 0x41, 0x57, 0x07, 0x00,
+      0x00, 0x00, 0x00, 0x00,
+      0x00, 0x00, 0x00, 0x00,
+    ]);
+    header.writeUInt32LE(jsonBuf.length, 14);
+    return Buffer.concat([header, jsonBuf]);
   }
 
   private static injectExif(webp: Buffer, exif: Buffer): Buffer {
     if (webp.toString('ascii', 0, 4) !== 'RIFF' || webp.toString('ascii', 8, 12) !== 'WEBP') {
-      throw new Error('Buffer no es un WebP válido');
+      throw new Error('Buffer no es WebP válido');
     }
 
-    const exifPadded = exif.length % 2 === 0 ? exif : Buffer.concat([exif, Buffer.from([0x00])]);
+    const exifSizeBuf = Buffer.alloc(4);
+    exifSizeBuf.writeUInt32LE(exif.length, 0);
+    const padding = exif.length % 2 !== 0 ? Buffer.from([0x00]) : Buffer.alloc(0);
+    const exifChunk = Buffer.concat([Buffer.from('EXIF'), exifSizeBuf, exif, padding]);
 
-    const chunkHeader = Buffer.from('EXIF');
-    const chunkSize = Buffer.allocUnsafe(4);
-    chunkSize.writeUInt32LE(exif.length, 0);
-    const exifChunk = Buffer.concat([chunkHeader, chunkSize, exifPadded]);
+    const chunkType = webp.toString('ascii', 12, 16);
 
-    const newFileSize = Buffer.allocUnsafe(4);
-    newFileSize.writeUInt32LE(webp.length - 8 + exifChunk.length, 0);
+    if (chunkType === 'VP8X') {
+      const out = Buffer.from(webp);
+      out[20] |= 0x08;
+      const newSize = Buffer.alloc(4);
+      newSize.writeUInt32LE(out.length - 8 + exifChunk.length, 0);
+      newSize.copy(out, 4);
+      return Buffer.concat([out, exifChunk]);
+    }
 
-    return Buffer.concat([webp.slice(0, 4), newFileSize, webp.slice(8), exifChunk]);
+    const vp8xPayload = Buffer.from([
+      0x08, 0x00, 0x00, 0x00, 
+      0xff, 0x01, 0x00,       
+      0xff, 0x01, 0x00,      
+    ]);
+    const vp8xSizeBuf = Buffer.alloc(4);
+    vp8xSizeBuf.writeUInt32LE(10, 0);
+    const vp8xChunk = Buffer.concat([Buffer.from('VP8X'), vp8xSizeBuf, vp8xPayload]);
+
+    const imageData = webp.slice(12); // todo lo que va después de "RIFF????WEBP"
+    const totalPayload = 4 + vp8xChunk.length + imageData.length + exifChunk.length;
+    const riffSize = Buffer.alloc(4);
+    riffSize.writeUInt32LE(totalPayload, 0);
+
+    return Buffer.concat([
+      Buffer.from('RIFF'),
+      riffSize,
+      Buffer.from('WEBP'),
+      vp8xChunk,
+      imageData,
+      exifChunk,
+    ]);
   }
 
   static async imageToSticker(imageBuffer: Buffer): Promise<Buffer> {
