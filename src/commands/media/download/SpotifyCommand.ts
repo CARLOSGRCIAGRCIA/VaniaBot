@@ -1,161 +1,64 @@
-/**
- * @fileoverview SpotifyCommand.ts - Download music from Spotify
- *
- * Searches and downloads music from Spotify using dvyer-api.
- *
- * @module commands/media/download/SpotifyCommand
- */
-
 import { Command } from '../../Command.js';
-import { CommandCategory, CommandContext, type MessageContext } from '@/types/index.js';
-import { spotifyService } from '@/services/download/SpotifyService.js';
-import axios from 'axios';
-import fs from 'fs';
-import path from 'path';
-import os from 'os';
-
-const TMP_DIR = path.join(os.tmpdir(), 'vaniabot-spotify');
+import { deliriusService } from '@/services/external/DeliriusService.js';
+import { logError } from '@/utils/logger.js';
+import {
+  CommandCategory,
+  CommandContext,
+  PermissionLevel,
+  type MessageContext,
+} from '@/types/index.js';
 
 export class SpotifyCommand extends Command {
   name = 'spotify';
   description = 'Descarga música de Spotify';
   category = CommandCategory.MEDIA;
-  aliases = ['sp', 'spot', 'music'];
-  usage = '!sp <canción> o !sp <url de Spotify>';
-  examples = ['!sp believer imagine dragons', '!sp https://open.spotify.com/track/...'];
+  aliases = ['sp', 'spotdl'];
   cooldown = 60000;
   contexts = [CommandContext.BOTH];
-  mediaGroup = true;
-
-  private async ensureTmpDir(): Promise<void> {
-    if (!fs.existsSync(TMP_DIR)) {
-      fs.mkdirSync(TMP_DIR, { recursive: true });
-    }
-  }
-
-  private async downloadFile(url: string, filename: string): Promise<string | null> {
-    try {
-      await this.ensureTmpDir();
-      const tempPath = path.join(TMP_DIR, `${Date.now()}-${filename}.mp3`);
-
-      const response = await axios.get(url, {
-        responseType: 'arraybuffer',
-        timeout: 120000,
-        headers: {
-          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-        },
-      });
-
-      fs.writeFileSync(tempPath, Buffer.from(response.data));
-      return tempPath;
-    } catch {
-      return null;
-    }
-  }
+  usage = '!spotify <url>';
+  examples = ['!spotify https://open.spotify.com/track/...'];
+  permissions = { user: [PermissionLevel.USER], bot: [] };
 
   async execute(ctx: MessageContext): Promise<void> {
-    const input = ctx.args.join(' ').trim();
+    const url = ctx.args?.join(' ').trim();
 
-    if (!input) {
+    if (!url) {
       await ctx.reply(
-        `˚₊· ͟͟͞͞➳ *Spotify Downloader* ˚₊· ͟͟͞͞➳\n\n` +
-          `✿ *cómo usar:*\n` +
-          `  ﹒!sp <nombre de canción>\n` +
-          `  ﹒!sp <url de spotify>\n\n` +
-          `✩ *ejemplos:*\n` +
-          `  ﹒!sp believer imagine dragons\n` +
-          `  ﹒!sp https://open.spotify.com/track/...`,
+        '✍️ *Uso:* !spotify <url>\n_Ejemplo: !spotify https://open.spotify.com/track/..._',
       );
       return;
     }
 
-    await ctx.react('🔍');
-    await ctx.reply(`🔍 Buscando en Spotify: "${input}"...`);
+    if (!url.includes('spotify.com')) {
+      await ctx.reply('❌ Debes proporcionar una URL válida de Spotify');
+      return;
+    }
+
+    await ctx.react('🎵');
+    await ctx.reply('🎵 Buscando y descargando de Spotify...');
 
     try {
-      const result = await spotifyService.search(input, 5);
+      const data = (await deliriusService.getJson('download', 'spotifydl', { url })) as {
+        result?: string;
+        audio?: string;
+        download?: string;
+      };
 
-      if (result._tag === 'Left') {
-        await ctx.react('❌');
-        await ctx.reply(`❌ ${result.left.message}`);
-        return;
-      }
-
-      const searchData = result.right;
-      if (!searchData.results || searchData.results.length === 0) {
-        await ctx.react('❌');
-        await ctx.reply(`❌ No se encontraron resultados para: *${input}*`);
-        return;
-      }
-
-      const first = searchData.results[0];
-      let downloadUrl = searchData.download_url;
-
-      if (!downloadUrl) {
-        const dlResult = await spotifyService.getDownloadUrl(input);
-        if (dlResult._tag === 'Right') {
-          downloadUrl = dlResult.right.download_url;
-        }
-      }
-
-      const caption = `🎵 *${first.title}*\n👤 ${first.artist || 'Artista desconocido'}`;
+      const downloadUrl = data?.result || data?.audio || data?.download;
 
       if (downloadUrl) {
-        await ctx.react('⬇️');
-        await ctx.reply(`⬇️ Descargando: ${first.title}...`);
-
-        const filePath = await this.downloadFile(downloadUrl, first.title);
-
-        if (filePath && fs.existsSync(filePath)) {
-          const stat = fs.statSync(filePath);
-          if (stat.size < 60 * 1024 * 1024) {
-            await ctx.sock.sendMessage(
-              ctx.chat.jid,
-              {
-                audio: { url: filePath },
-                mimetype: 'audio/mpeg',
-                ptt: false,
-              },
-              { quoted: ctx.message },
-            );
-          } else {
-            await ctx.sock.sendMessage(
-              ctx.chat.jid,
-              {
-                document: { url: filePath },
-                mimetype: 'audio/mpeg',
-                fileName: `${first.title}.mp3`,
-                caption: caption,
-              },
-              { quoted: ctx.message },
-            );
-          }
-
-          fs.unlinkSync(filePath);
-          await ctx.react('✅');
-        } else {
-          await ctx.reply(`${caption}\n\n🔗 ${downloadUrl}`);
-        }
-      } else {
-        let text = `🎵 *Resultados para:* ${input}\n`;
-        text += `━━━━━━━━━━━━━━━━━━━━\n\n`;
-
-        searchData.results.slice(0, 5).forEach((track, i) => {
-          text += `🎵 *${i + 1}.* ${track.title}\n`;
-          text += `   👤 ${track.artist || 'Desconocido'}\n`;
-          if (track.album) text += `   💿 ${track.album}\n`;
-          text += '\n';
+        await ctx.sock.sendMessage(ctx.chat.jid, {
+          audio: { url: downloadUrl },
+          mimetype: 'audio/mpeg',
         });
-
-        text += `━━━━━━━━━━━━━━━━━━━━\n`;
-        text += `✦ Usa *!sp <nombre>* para descargar`;
-
-        await ctx.reply(text);
+        await ctx.react('✅');
+      } else {
+        await ctx.reply('❌ No pude descargar el audio. Intenta de nuevo.');
       }
     } catch (error) {
-      console.error('SpotifyCommand error:', error);
+      logError('[SpotifyCommand]', error);
       await ctx.react('❌');
-      await ctx.reply('❌ Error al buscar/descargar de Spotify');
+      await ctx.reply('❌ Error al descargar de Spotify. Intenta de nuevo.');
     }
   }
 }
