@@ -1,0 +1,32 @@
+import { Command } from '../../Command.js';
+import { CanvasBase } from './CanvasBase.js';
+import {
+  CommandCategory,
+  CommandContext,
+  PermissionLevel,
+  type MessageContext,
+} from '@/types/index.js';
+
+export class ChangeMyMindCommand extends Command {
+  name = 'changemymind';
+  description = 'Genera imagen "Change My Mind"';
+  category = CommandCategory.CREATIVE;
+  aliases = ['cmm'];
+  cooldown = 10000;
+  contexts = [CommandContext.BOTH];
+  usage = '!changemymind <texto>';
+  examples = ['!changemymind El cielo es azul'];
+  permissions = { user: [PermissionLevel.USER], bot: [] };
+
+  async execute(ctx: MessageContext): Promise<void> {
+    const text = ctx.args?.join(' ').trim();
+
+    if (!text) {
+      await ctx.reply('✍️ *Uso:* !changemymind <texto>\n_Ejemplo: !changemymind El cielo es azul_');
+      return;
+    }
+
+    await ctx.react('💭');
+    await new CanvasBase().sendImage(ctx, 'changemymind', { text: text.substring(0, 50) });
+  }
+}
