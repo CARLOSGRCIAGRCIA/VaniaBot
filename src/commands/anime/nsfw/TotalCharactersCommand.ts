@@ -18,6 +18,7 @@ export class TotalCharactersCommand extends Command {
   usage = '!totalcharacters';
   examples = ['!totalcharacters'];
   permissions = { user: [PermissionLevel.USER], bot: [] };
+  enabled = false;
 
   async execute(ctx: MessageContext): Promise<void> {
     await ctx.react('📋');

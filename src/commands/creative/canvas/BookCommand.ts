@@ -19,14 +19,14 @@ export class BookCommand extends Command {
   permissions = { user: [PermissionLevel.USER], bot: [] };
 
   async execute(ctx: MessageContext): Promise<void> {
-    const args = ctx.args || [];
-    if (args.length < 1) {
+    const text = ctx.args?.join(' ').trim();
+
+    if (!text) {
       await ctx.reply('✍️ *Uso:* !book <texto> [footer]\n_Ejemplo: !book "Mi historia"_');
       return;
     }
 
-    const text = args[0];
-    const footer = args.slice(1).join(' ') || 'Delirius Api';
+    const footer = ctx.args && ctx.args.length > 1 ? ctx.args.slice(1).join(' ') : 'Delirius Api';
 
     await ctx.react('📖');
     await new CanvasBase().sendImage(ctx, 'book', {

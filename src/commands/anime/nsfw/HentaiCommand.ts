@@ -18,6 +18,7 @@ export class HentaiCommand extends Command {
   usage = '!hentai';
   examples = ['!hentai'];
   permissions = { user: [PermissionLevel.USER], bot: [] };
+  enabled = false;
 
   async execute(ctx: MessageContext): Promise<void> {
     await ctx.react('🔞');

@@ -18,6 +18,7 @@ export class BoobsCommand extends Command {
   usage = '!boobs';
   examples = ['!boobs'];
   permissions = { user: [PermissionLevel.USER], bot: [] };
+  enabled = false;
 
   async execute(ctx: MessageContext): Promise<void> {
     await ctx.react('🔞');

@@ -18,6 +18,7 @@ export class PixivCommand extends Command {
   usage = '!pixiv <busqueda>';
   examples = ['!pixiv lisa'];
   permissions = { user: [PermissionLevel.USER], bot: [] };
+  enabled = false;
 
   async execute(ctx: MessageContext): Promise<void> {
     const query = ctx.args?.join(' ').trim();

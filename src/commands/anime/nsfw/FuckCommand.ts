@@ -18,6 +18,7 @@ export class FuckCommand extends Command {
   usage = '!fuck';
   examples = ['!fuck'];
   permissions = { user: [PermissionLevel.USER], bot: [] };
+  enabled = false;
 
   async execute(ctx: MessageContext): Promise<void> {
     await ctx.react('🔞');

@@ -1,6 +1,7 @@
 import { Command } from '../../Command.js';
 import { CanvasBase } from './CanvasBase.js';
 import { ImageHelper } from '@/utils/ImageHelper.js';
+import { StickerHelper } from '@/utils/StickerHelper.js';
 import {
   CommandCategory,
   CommandContext,
@@ -28,6 +29,17 @@ export class RipCommand extends Command {
       return;
     }
 
-    await new CanvasBase().sendImage(ctx, 'rip', { url: imageUrl });
+    try {
+      const canvasImageUrl = await new CanvasBase().getImageUrl('rip', { url: imageUrl });
+      const stickerBuffer = await StickerHelper.imageUrlToSticker(canvasImageUrl);
+
+      await ctx.sock.sendMessage(ctx.chat.jid, {
+        sticker: stickerBuffer,
+      });
+      await ctx.react('✅');
+    } catch (error) {
+      await ctx.react('❌');
+      await ctx.reply('❌ No pude generar el sticker. Intenta de nuevo.');
+    }
   }
 }

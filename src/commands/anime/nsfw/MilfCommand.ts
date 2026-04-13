@@ -17,6 +17,7 @@ export class MilfCommand extends Command {
   usage = '!milf';
   examples = ['!milf'];
   permissions = { user: [PermissionLevel.USER], bot: [] };
+  enabled = false;
 
   async execute(ctx: MessageContext): Promise<void> {
     await ctx.react('🔥');

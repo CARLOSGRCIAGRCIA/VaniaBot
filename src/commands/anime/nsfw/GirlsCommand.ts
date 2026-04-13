@@ -18,6 +18,7 @@ export class GirlsCommand extends Command {
   usage = '!girls';
   examples = ['!girls'];
   permissions = { user: [PermissionLevel.USER], bot: [] };
+  enabled = false;
 
   async execute(ctx: MessageContext): Promise<void> {
     await ctx.react('🔞');

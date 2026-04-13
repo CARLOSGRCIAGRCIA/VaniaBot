@@ -720,6 +720,13 @@ export class WhatsAppClient {
               await this.executeWithMiddlewares(ctx, async () => {
                 logger.debug(`🚀 Running command: ${command.name}`);
                 const cmdStartTime = Date.now();
+
+                if (command.enabled === false) {
+                  logger.debug(`⚠️ Command ${command.name} is disabled`);
+                  await ctx.reply('❌ Este comando está deshabilitado.').catch(() => {});
+                  return;
+                }
+
                 try {
                   await withTimeout(command.execute(ctx), COMMAND_TIMEOUT_MS, command.name);
                   this.stats.commandsExecuted++;

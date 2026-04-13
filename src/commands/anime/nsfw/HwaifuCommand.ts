@@ -17,6 +17,7 @@ export class HwaifuCommand extends Command {
   usage = '!hwaifu';
   examples = ['!hwaifu'];
   permissions = { user: [PermissionLevel.USER], bot: [] };
+  enabled = false;
 
   async execute(ctx: MessageContext): Promise<void> {
     await ctx.react('💖');

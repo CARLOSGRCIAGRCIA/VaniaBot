@@ -18,6 +18,7 @@ export class HitomiCommand extends Command {
   usage = '!hitomi <url>';
   examples = ['!hitomi https://hitomi.la/...'];
   permissions = { user: [PermissionLevel.USER], bot: [] };
+  enabled = false;
 
   async execute(ctx: MessageContext): Promise<void> {
     const url = ctx.args?.join(' ').trim();

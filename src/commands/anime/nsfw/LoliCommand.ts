@@ -17,6 +17,7 @@ export class LoliCommand extends Command {
   usage = '!loli';
   examples = ['!loli'];
   permissions = { user: [PermissionLevel.USER], bot: [] };
+  enabled = false;
 
   async execute(ctx: MessageContext): Promise<void> {
     await ctx.react('🍬');

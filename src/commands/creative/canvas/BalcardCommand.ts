@@ -1,6 +1,7 @@
 import { Command } from '../../Command.js';
 import { CanvasBase } from './CanvasBase.js';
 import { ImageHelper } from '@/utils/ImageHelper.js';
+import { serviceManager } from '@/services/system/Servicemanager.js';
 import {
   CommandCategory,
   CommandContext,
@@ -15,8 +16,8 @@ export class BalcardCommand extends Command {
   aliases = [];
   cooldown = 10000;
   contexts = [CommandContext.BOTH];
-  usage = '!balcard [background] [username] [discriminator] [money] [xp] [level]';
-  examples = ['!balcard #000000 usuario 0001 1000 500 5'];
+  usage = '!balcard [background]';
+  examples = ['!balcard', '!balcard #000000'];
   permissions = { user: [PermissionLevel.USER], bot: [] };
 
   async execute(ctx: MessageContext): Promise<void> {
@@ -28,13 +29,17 @@ export class BalcardCommand extends Command {
       return;
     }
 
+    const targetJid = ctx.sender.jid;
+    const userData = await serviceManager.userService.getUser(targetJid);
+
     const args = ctx.args || [];
     const background = args[0] || 'black';
-    const username = args[1] || ctx.sender.pushName || 'User';
-    const discriminator = args[2] || '0000';
-    const money = args[3] || '0';
-    const xp = args[4] || '0';
-    const level = args[5] || '1';
+
+    const username = userData.name || ctx.sender.pushName || 'User';
+    const discriminator = userData.name ? userData.name.slice(-4) : '0000';
+    const money = userData.money.toString();
+    const xp = userData.xp.toString();
+    const level = userData.level.toString();
 
     await new CanvasBase().sendImage(ctx, 'balcard', {
       url: imageUrl,

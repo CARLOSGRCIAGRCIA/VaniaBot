@@ -18,6 +18,7 @@ export class HentaitvCommand extends Command {
   usage = '!hentaitv <busqueda>';
   examples = ['!hentaitv lisa'];
   permissions = { user: [PermissionLevel.USER], bot: [] };
+  enabled = false;
 
   async execute(ctx: MessageContext): Promise<void> {
     const query = ctx.args?.join(' ').trim();

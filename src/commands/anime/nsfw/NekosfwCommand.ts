@@ -18,6 +18,7 @@ export class NekosfwCommand extends Command {
   usage = '!nekosfw';
   examples = ['!nekosfw'];
   permissions = { user: [PermissionLevel.USER], bot: [] };
+  enabled = false;
 
   async execute(ctx: MessageContext): Promise<void> {
     await ctx.react('🔞');

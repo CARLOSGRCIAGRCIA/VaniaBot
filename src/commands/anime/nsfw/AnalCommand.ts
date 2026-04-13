@@ -18,6 +18,7 @@ export class AnalCommand extends Command {
   usage = '!anal';
   examples = ['!anal'];
   permissions = { user: [PermissionLevel.USER], bot: [] };
+  enabled = false;
 
   async execute(ctx: MessageContext): Promise<void> {
     await ctx.react('🔞');

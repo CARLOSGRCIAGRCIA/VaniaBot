@@ -18,6 +18,7 @@ export class PussylickCommand extends Command {
   usage = '!pussylick';
   examples = ['!pussylick'];
   permissions = { user: [PermissionLevel.USER], bot: [] };
+  enabled = false;
 
   async execute(ctx: MessageContext): Promise<void> {
     await ctx.react('🔞');

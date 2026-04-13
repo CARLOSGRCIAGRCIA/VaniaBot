@@ -18,6 +18,7 @@ export class SoloCommand extends Command {
   usage = '!solo';
   examples = ['!solo'];
   permissions = { user: [PermissionLevel.USER], bot: [] };
+  enabled = false;
 
   async execute(ctx: MessageContext): Promise<void> {
     await ctx.react('🔞');

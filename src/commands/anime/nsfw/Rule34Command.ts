@@ -18,6 +18,7 @@ export class Rule34Command extends Command {
   usage = '!rule34 <busqueda>';
   examples = ['!rule34 anime'];
   permissions = { user: [PermissionLevel.USER], bot: [] };
+  enabled = false;
 
   async execute(ctx: MessageContext): Promise<void> {
     const query = ctx.args?.join(' ').trim();

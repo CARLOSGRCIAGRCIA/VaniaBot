@@ -18,6 +18,7 @@ export class BlowjobCommand extends Command {
   usage = '!blowjob';
   examples = ['!blowjob'];
   permissions = { user: [PermissionLevel.USER], bot: [] };
+  enabled = false;
 
   async execute(ctx: MessageContext): Promise<void> {
     await ctx.react('🔞');

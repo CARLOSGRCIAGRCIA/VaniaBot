@@ -18,6 +18,7 @@ export class CharacterlistCommand extends Command {
   usage = '!characterlist <nombre>';
   examples = ['!characterlist Naruto', '!characterlist One Piece'];
   permissions = { user: [PermissionLevel.USER], bot: [] };
+  enabled = false;
 
   async execute(ctx: MessageContext): Promise<void> {
     const query = ctx.args?.join(' ').trim();

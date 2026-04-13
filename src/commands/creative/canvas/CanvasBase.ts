@@ -3,6 +3,10 @@ import { logError } from '@/utils/logger.js';
 import type { MessageContext } from '@/types/index.js';
 
 export class CanvasBase {
+  public async getImageUrl(endpoint: string, params?: Record<string, string>): Promise<string> {
+    return canvasService.getImage(endpoint, params);
+  }
+
   public async sendImage(
     ctx: MessageContext,
     endpoint: string,

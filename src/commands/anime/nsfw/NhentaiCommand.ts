@@ -18,6 +18,7 @@ export class NhentaiCommand extends Command {
   usage = '!nhentai <codigo>';
   examples = ['!nhentai 123456'];
   permissions = { user: [PermissionLevel.USER], bot: [] };
+  enabled = false;
 
   async execute(ctx: MessageContext): Promise<void> {
     const query = ctx.args?.join(' ').trim();

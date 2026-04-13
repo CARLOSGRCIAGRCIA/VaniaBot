@@ -18,6 +18,7 @@ export class YuriCommand extends Command {
   usage = '!yuri';
   examples = ['!yuri'];
   permissions = { user: [PermissionLevel.USER], bot: [] };
+  enabled = false;
 
   async execute(ctx: MessageContext): Promise<void> {
     await ctx.react('🔞');

@@ -9,6 +9,7 @@ export interface ICommand {
   examples?: string[];
   cooldown?: number;
   parallelizable?: boolean;
+  enabled?: boolean;
   permissions?: {
     user?: PermissionLevel[];
     bot?: BotPermission[];

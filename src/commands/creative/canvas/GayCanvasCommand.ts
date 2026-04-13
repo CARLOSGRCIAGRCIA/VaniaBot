@@ -28,14 +28,12 @@ export class GayCommand extends Command {
       return;
     }
 
-    const targetJid = ctx.sender.jid;
-    const targetName = targetJid.split('@')[0];
-    const targetTag = `@${targetName}`;
+    const targetTag = ctx.sender.pushName || `@${ctx.sender.jid.split('@')[0]}`;
 
-    const base = targetJid
+    const base = ctx.sender.jid
       .toString()
       .split('')
-      .reduce((sum, char) => sum + char.charCodeAt(0), 0);
+      .reduce((sum: number, char: string) => sum + char.charCodeAt(0), 0);
     const percent = ((base % 101) + Math.floor(Math.random() * 7)) % 101;
 
     const messages = [

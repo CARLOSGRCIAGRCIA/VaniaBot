@@ -15,8 +15,8 @@ export class FriendshipCommand extends Command {
   aliases = [];
   cooldown = 10000;
   contexts = [CommandContext.BOTH];
-  usage = '!friendship [nombre1] [nombre2] [%] [texto]';
-  examples = ['!friendship Juan Maria', '!friendship Juan Maria 80 "Friends"'];
+  usage = '!friendship [@usuario]';
+  examples = ['!friendship', '!friendship @usuario'];
   permissions = { user: [PermissionLevel.USER], bot: [] };
 
   async execute(ctx: MessageContext): Promise<void> {
@@ -24,22 +24,38 @@ export class FriendshipCommand extends Command {
 
     const [image1, image2] = await ImageHelper.getTwoProfileImages(ctx);
 
-    const args = ctx.args || [];
-    const name1 = args[0] || 'User 1';
-    const name2 = args[1] || 'User 2';
-    const percentage = args[2] || '50';
-    const text = args[3] || 'Friends';
+    const mentionedJid = ctx.message.message?.extendedTextMessage?.contextInfo?.mentionedJid?.[0];
+
+    const name1 = ctx.sender.pushName || 'User 1';
+    const name2 = mentionedJid ? (await this.getPushName(mentionedJid, ctx)) || 'User 2' : 'User 2';
+
+    const base = (ctx.sender.jid + (mentionedJid || ''))
+      .split('')
+      .reduce((sum: number, char: string) => sum + char.charCodeAt(0), 0);
+    const percentage = ((base % 80) + 20).toString();
 
     const params: Record<string, string> = {
       name1: name1.substring(0, 15),
       name2: name2.substring(0, 15),
       percentage,
-      text,
+      text: 'Friends',
     };
 
     if (image1) params.image1 = image1;
     if (image2) params.image2 = image2;
 
     await new CanvasBase().sendImage(ctx, 'friendship', params);
+  }
+
+  private async getPushName(jid: string, ctx: MessageContext): Promise<string | null> {
+    try {
+      const contacts = await ctx.sock.onWhatsApp(jid);
+      const contact = contacts?.[0];
+      if (contact && 'pushName' in contact && contact.pushName) return contact.pushName as string;
+      const number = jid.split('@')[0];
+      return number;
+    } catch {
+      return null;
+    }
   }
 }

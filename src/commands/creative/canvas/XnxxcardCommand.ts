@@ -27,7 +27,9 @@ export class XnxxcardCommand extends Command {
     }
 
     const title = args.join(' ').substring(0, 30);
-    const username = ctx.sender.pushName || 'User';
+    const userTag = ctx.sender.pushName
+      ? `@${ctx.sender.pushName.replace(/\s+/g, '')}`
+      : `@${ctx.sender.jid.split('@')[0]}`;
 
     await ctx.react('🎬');
 
@@ -41,6 +43,10 @@ export class XnxxcardCommand extends Command {
       return;
     }
 
-    await new CanvasBase().sendImage(ctx, 'xnxxcard', { image: imageUrl, title, username });
+    await new CanvasBase().sendImage(ctx, 'xnxxcard', {
+      image: imageUrl,
+      title,
+      username: userTag,
+    });
   }
 }

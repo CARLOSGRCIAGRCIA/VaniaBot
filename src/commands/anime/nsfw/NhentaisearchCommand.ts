@@ -18,6 +18,7 @@ export class NhentaisearchCommand extends Command {
   usage = '!nhentaisearch <busqueda>';
   examples = ['!nhentaisearch lisa'];
   permissions = { user: [PermissionLevel.USER], bot: [] };
+  enabled = false;
 
   async execute(ctx: MessageContext): Promise<void> {
     const query = ctx.args?.join(' ').trim();
