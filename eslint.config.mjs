@@ -11,6 +11,7 @@ export default [
       'vaniasession/**',
       'data/temp/**',
       'logs/**',
+      'redis-data/**',
       '**/*.js',
     ],
   },

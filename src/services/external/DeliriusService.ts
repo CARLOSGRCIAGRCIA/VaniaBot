@@ -32,13 +32,22 @@ export class DeliriusService {
       const response = await fetch(`${CATEGORY_URLS[category]}/${endpoint}`, {
         headers: {
           'User-Agent': 'Mozilla/5.0',
-          Accept: 'application/json',
         },
         signal: controller.signal,
       });
 
       if (!response.ok) {
         throw new Error(`Delirius Error: ${response.status}`);
+      }
+
+      const contentType = response.headers.get('content-type') || '';
+
+      if (contentType.includes('image')) {
+        const blob = await response.blob();
+        const arrayBuffer = await blob.arrayBuffer();
+        const buffer = Buffer.from(arrayBuffer);
+        const base64 = buffer.toString('base64');
+        return `data:${contentType};base64,${base64}`;
       }
 
       const data = (await response.json()) as { result?: string; image?: string; url?: string };

@@ -90,6 +90,8 @@ export class PluginLoader {
       this.preloadCategories.add('subbot');
       this.preloadCategories.add('information');
       this.preloadCategories.add('creative');
+      this.preloadCategories.add('anime');
+      this.preloadCategories.add('ia');
     }
 
     try {
