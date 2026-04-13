@@ -131,6 +131,8 @@ export class HelpCommand extends Command {
     const categoryOrder = [
       CommandCategory.UTILITY,
       CommandCategory.FUN,
+      CommandCategory.ANIME,
+      CommandCategory.CREATIVE,
       CommandCategory.SUBBOT,
       CommandCategory.ECONOMY,
       CommandCategory.MODERATION,
@@ -146,6 +148,8 @@ export class HelpCommand extends Command {
     const categoryIcons: Record<CommandCategory, string> = {
       [CommandCategory.UTILITY]: '🔧',
       [CommandCategory.FUN]: '🎉',
+      [CommandCategory.ANIME]: '🐾',
+      [CommandCategory.CREATIVE]: '🎭',
       [CommandCategory.SUBBOT]: '🌸',
       [CommandCategory.ECONOMY]: '💰',
       [CommandCategory.MODERATION]: '🛡️',
@@ -161,6 +165,8 @@ export class HelpCommand extends Command {
     const categoryNames: Record<CommandCategory, string> = {
       [CommandCategory.UTILITY]: toSmallCaps('utilidad'),
       [CommandCategory.FUN]: toSmallCaps('diversión'),
+      [CommandCategory.ANIME]: toSmallCaps('anime'),
+      [CommandCategory.CREATIVE]: toSmallCaps('creativo'),
       [CommandCategory.SUBBOT]: toSmallCaps('subbots'),
       [CommandCategory.ECONOMY]: toSmallCaps('economía'),
       [CommandCategory.MODERATION]: toSmallCaps('moderación'),
