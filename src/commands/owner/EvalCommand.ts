@@ -1,6 +1,7 @@
 import { Command } from '../Command.js';
 import { CommandCategory, PermissionLevel } from '@/types/index.js';
 import type { MessageContext } from '@/types/index.js';
+import { checkPinVerification } from '@/utils/pinVerificationHelper.js';
 
 export class EvalCommand extends Command {
   name = 'eval';
@@ -15,6 +16,11 @@ export class EvalCommand extends Command {
 
   async execute(ctx: MessageContext): Promise<void> {
     const code = ctx.args.join(' ').trim();
+
+    const { requiresPin, canExecute } = await checkPinVerification(ctx, 'eval', code);
+    if (!canExecute) {
+      return;
+    }
 
     if (!code) {
       await ctx.reply(

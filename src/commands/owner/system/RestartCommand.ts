@@ -14,6 +14,7 @@ import {
   type MessageContext,
 } from '@/types/index.js';
 import { logger } from '@/utils/logger.js';
+import { checkPinVerification } from '@/utils/pinVerificationHelper.js';
 
 export class RestartCommand extends Command {
   name = 'restart';
@@ -26,6 +27,11 @@ export class RestartCommand extends Command {
   contexts = [CommandContext.BOTH];
 
   async execute(ctx: MessageContext): Promise<void> {
+    const { requiresPin, canExecute } = await checkPinVerification(ctx, 'restart', '');
+    if (!canExecute) {
+      return;
+    }
+
     await ctx.react('🔄');
     await ctx.reply(`🔄 *Reiniciando bot...*\n\nEspera un momento.`);
 

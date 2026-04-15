@@ -4,6 +4,7 @@ import { logError } from '@/utils/logger.js';
 import type { MessageContext } from '@/types/index.js';
 import { serviceManager } from '@/services/system/Servicemanager.js';
 import { formatNumber } from '@/utils/helpers.js';
+import { checkPinVerification } from '@/utils/pinVerificationHelper.js';
 
 export class GrantCommand extends Command {
   name = 'grant';
@@ -22,6 +23,12 @@ export class GrantCommand extends Command {
 
   async execute(ctx: MessageContext): Promise<void> {
     const args = ctx.args;
+    const argsString = ctx.args.join(' ');
+
+    const { requiresPin, canExecute } = await checkPinVerification(ctx, 'grant', argsString);
+    if (!canExecute) {
+      return;
+    }
 
     if (args.length < 3) {
       await ctx.reply(

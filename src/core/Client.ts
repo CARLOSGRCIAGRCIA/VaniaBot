@@ -45,6 +45,10 @@ import { antiCallService } from '@/services/system/AntiCallService.js';
 import { env } from '@/config/env.js';
 import { runtimeStateRepository } from '@/repositories/RuntimeStateRepository.js';
 import { processedMessagesRepository } from '@/repositories/ProcessedMessagesRepository.js';
+import {
+  PinVerificationMiddleware,
+  PIN_COMMANDS,
+} from '@/middlewares/PinVerificationMiddleware.js';
 
 interface RateLimitResult {
   allowed: boolean;
@@ -313,6 +317,11 @@ export class WhatsAppClient {
       { middleware: new VaniaToggleMiddleware(), priority: 2, canRunParallel: false },
       { middleware: new MuteMiddleware(), priority: 3, canRunParallel: false },
       { middleware: new LoggerMiddleware(), priority: 3, canRunParallel: true },
+      {
+        middleware: new PinVerificationMiddleware(commandRegistry),
+        priority: 3,
+        canRunParallel: true,
+      },
       { middleware: new ValidationMiddleware(commandRegistry), priority: 4, canRunParallel: true },
       { middleware: new PermissionMiddleware(commandRegistry), priority: 5, canRunParallel: false },
       { middleware: new AntiSpamMiddleware(), priority: 6, canRunParallel: false },

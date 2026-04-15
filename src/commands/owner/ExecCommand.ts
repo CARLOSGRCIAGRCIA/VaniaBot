@@ -3,6 +3,7 @@ import { CommandCategory, PermissionLevel } from '@/types/index.js';
 import type { MessageContext } from '@/types/index.js';
 import { exec } from 'child_process';
 import { promisify } from 'util';
+import { checkPinVerification } from '@/utils/pinVerificationHelper.js';
 
 const execAsync = promisify(exec);
 
@@ -19,6 +20,11 @@ export class ExecCommand extends Command {
 
   async execute(ctx: MessageContext): Promise<void> {
     const command = ctx.args.join(' ').trim();
+
+    const { requiresPin, canExecute } = await checkPinVerification(ctx, 'exec', command);
+    if (!canExecute) {
+      return;
+    }
 
     if (!command) {
       await ctx.reply(

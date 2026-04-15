@@ -3,6 +3,7 @@ import { CommandCategory, PermissionLevel } from '@/types/index.js';
 import { logError } from '@/utils/logger.js';
 import type { MessageContext } from '@/types/index.js';
 import { serviceManager } from '@/services/system/Servicemanager.js';
+import { checkPinVerification } from '@/utils/pinVerificationHelper.js';
 
 export class SetOwnerCommand extends Command {
   name = 'setowner';
@@ -17,6 +18,12 @@ export class SetOwnerCommand extends Command {
 
   async execute(ctx: MessageContext): Promise<void> {
     const args = ctx.args;
+    const argsString = ctx.args.join(' ');
+
+    const { requiresPin, canExecute } = await checkPinVerification(ctx, 'setowner', argsString);
+    if (!canExecute) {
+      return;
+    }
 
     if (args.length < 2) {
       await ctx.reply(
