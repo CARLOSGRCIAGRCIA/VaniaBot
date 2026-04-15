@@ -30,7 +30,7 @@ export { HandholdCommand } from './HandholdCommand.js';
 export { HappyCommand } from './HappyCommand.js';
 export { HighfiveCommand } from './HighfiveCommand.js';
 export { HugCommand } from './HugCommand.js';
-export { KickCommand } from './KickCommand.js';
+export { PatearCommand } from './PatearCommand.js';
 export { KillCommand } from './KillCommand.js';
 export { KissCommand } from './KissCommand.js';
 export { LayCommand } from './LayCommand.js';

@@ -8,27 +8,27 @@ import {
   type MessageContext,
 } from '@/types/index.js';
 
-export class KickCommand extends Command {
-  name = 'kick';
+export class PatearCommand extends Command {
+  name = 'patear';
   description = 'Muestra una imagen de anime pateando';
   category = CommandCategory.ANIME;
-  aliases = ['kick', 'patear'];
+  aliases = ['patear'];
   cooldown = 8000;
   contexts = [CommandContext.BOTH];
-  usage = '!kick';
-  examples = ['!kick'];
+  usage = '!patear';
+  examples = ['!patear'];
   permissions = { user: [PermissionLevel.USER], bot: [] };
 
   async execute(ctx: MessageContext): Promise<void> {
     await ctx.react('🦶');
     try {
-      const imageUrl = await deliriusService.getReactionsImage('kick');
+      const imageUrl = await deliriusService.getReactionsImage('patear');
       await ctx.sock.sendMessage(ctx.chat.jid, {
         image: { url: imageUrl },
       });
       await ctx.react('✅');
     } catch (error) {
-      logError('[KickCommand]', error);
+      logError('[PatearCommand]', error);
       await ctx.react('❌');
       await ctx.reply('❌ No pude obtener la imagen. Intenta de nuevo.');
     }
