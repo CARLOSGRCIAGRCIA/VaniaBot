@@ -56,7 +56,7 @@ export { HandholdCommand } from './delirius/HandholdCommand.js';
 export { HappyCommand } from './delirius/HappyCommand.js';
 export { HighfiveCommand } from './delirius/HighfiveCommand.js';
 export { HugCommand } from './delirius/HugCommand.js';
-export { KickCommand } from './delirius/PatearCommand.js';
+export { PatearCommand } from './delirius/PatearCommand.js';
 export { KillCommand } from './delirius/KillCommand.js';
 export { KissCommand } from './delirius/KissCommand.js';
 export { LayCommand } from './delirius/LayCommand.js';
