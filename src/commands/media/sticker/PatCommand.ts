@@ -3,7 +3,9 @@ import { CommandCategory, type MessageContext } from '@/types/index.js';
 import { StickerService } from '@/services/media/StickerService.js';
 import { ImageProcessor } from '@/utils/imageProcessor.js';
 import { primeService } from '@/services/system/PrimeService.js';
+import { findAssetFile } from '@/utils/assetHelper.js';
 import path from 'path';
+import fs from 'fs';
 
 export class PatCommand extends Command {
   name = 'pat';
@@ -32,8 +34,25 @@ export class PatCommand extends Command {
 
     try {
       const randomNum = Math.floor(Math.random() * 4) + 1;
-      const imagePath = path.join(process.cwd(), 'data', 'assets', `pat${randomNum}.jpg`);
-      const { width, height } = await ImageProcessor.loadImage(imagePath);
+      const filename = `pat${randomNum}.jpg`;
+      
+      const imageBuffer = findAssetFile(filename);
+      
+      if (!imageBuffer) {
+        await ctx.reply(`❌ No se encontró la imagen ${filename}`);
+        await ctx.react('❌');
+        return;
+      }
+
+      const tempPath = path.join(process.cwd(), 'temp', `pat_${Date.now()}_${randomNum}.jpg`);
+      
+      if (!fs.existsSync(path.join(process.cwd(), 'temp'))) {
+        fs.mkdirSync(path.join(process.cwd(), 'temp'), { recursive: true });
+      }
+      
+      fs.writeFileSync(tempPath, imageBuffer);
+      
+      const { width, height } = await ImageProcessor.loadImage(tempPath);
 
       const fontSize = 95;
       const textColor = '#FFFFFF';
@@ -50,7 +69,6 @@ export class PatCommand extends Command {
       lines.forEach((line, index) => {
         const currentY = startY + index * lineHeight;
         const escaped = this.escapeXml(line);
-        // Sombra en 4 direcciones + texto principal (estilo meme clásico)
         svgContent += `
           <text x="${x - shadowOffset}" y="${currentY}" font-family="Impact, Arial Black, sans-serif" font-size="${fontSize}" font-weight="bold" fill="${shadowColor}" text-anchor="middle">${escaped}</text>
           <text x="${x + shadowOffset}" y="${currentY}" font-family="Impact, Arial Black, sans-serif" font-size="${fontSize}" font-weight="bold" fill="${shadowColor}" text-anchor="middle">${escaped}</text>
@@ -61,7 +79,10 @@ export class PatCommand extends Command {
       });
       svgContent += `</svg>`;
 
-      const buffer = await ImageProcessor.compositeText(imagePath, svgContent, width, height);
+      const buffer = await ImageProcessor.compositeText(tempPath, svgContent, width, height);
+      
+      fs.unlinkSync(tempPath);
+      
       const stickerInfo = await primeService.formatStickerInfo(
         ctx.sock,
         ctx.chat.jid,

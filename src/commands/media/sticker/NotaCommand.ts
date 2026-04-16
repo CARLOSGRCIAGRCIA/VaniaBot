@@ -3,7 +3,9 @@ import { CommandCategory, type MessageContext } from '@/types/index.js';
 import { StickerService } from '@/services/media/StickerService.js';
 import { ImageProcessor } from '@/utils/imageProcessor.js';
 import { primeService } from '@/services/system/PrimeService.js';
+import { findAssetFile } from '@/utils/assetHelper.js';
 import path from 'path';
+import fs from 'fs';
 
 export class NotaCommand extends Command {
   name = 'nota';
@@ -31,8 +33,23 @@ export class NotaCommand extends Command {
     await ctx.react('⏳');
 
     try {
-      const imagePath = path.join(process.cwd(), 'data', 'assets', 'nota.jpg');
-      const { width, height } = await ImageProcessor.loadImage(imagePath);
+      const imageBuffer = findAssetFile('nota.jpg');
+      
+      if (!imageBuffer) {
+        await ctx.reply('❌ No se encontró la imagen de fondo para la nota.');
+        await ctx.react('❌');
+        return;
+      }
+
+      const tempPath = path.join(process.cwd(), 'temp', `nota_${Date.now()}.jpg`);
+      
+      if (!fs.existsSync(path.join(process.cwd(), 'temp'))) {
+        fs.mkdirSync(path.join(process.cwd(), 'temp'), { recursive: true });
+      }
+      
+      fs.writeFileSync(tempPath, imageBuffer);
+      
+      const { width, height } = await ImageProcessor.loadImage(tempPath);
 
       const fontSize = 99;
       const textColor = '#1a1a1a';
@@ -61,7 +78,10 @@ export class NotaCommand extends Command {
       });
       svgContent += `</svg>`;
 
-      const buffer = await ImageProcessor.compositeText(imagePath, svgContent, width, height);
+      const buffer = await ImageProcessor.compositeText(tempPath, svgContent, width, height);
+      
+      fs.unlinkSync(tempPath);
+      
       const stickerInfo = await primeService.formatStickerInfo(
         ctx.sock,
         ctx.chat.jid,
