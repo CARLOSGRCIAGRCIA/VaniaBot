@@ -66,6 +66,7 @@ export class TiktokCommand extends Command {
           title: info?.title ?? 'TikTok video',
           author: info?.author ?? 'unknown',
           url,
+          thumbnailUrl: info?.thumbnailUrl,
           duration: info?.duration,
         },
         thumbnailBuffer,
@@ -125,14 +126,20 @@ export class TiktokCommand extends Command {
 
   private async sendPreviewWithThumbnail(
     ctx: MessageContext,
-    info: { title: string; author: string; url: string; duration?: string },
+    info: {
+      title: string;
+      author: string;
+      url: string;
+      thumbnailUrl?: string;
+      duration?: string;
+    },
     thumbnail: Buffer | null,
     status: string,
     quality: string,
   ): Promise<void> {
     try {
       const card = await MediaCardService.generate({
-        thumbnail: info.url,
+        thumbnail: info.thumbnailUrl,
         title: info.title,
         duration: info.duration,
         platform: 'tiktok',

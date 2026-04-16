@@ -60,6 +60,7 @@ export class YtMp4Command extends Command {
         {
           title: video.title,
           url: video.url,
+          thumbnail: video.thumbnail,
           duration: video.duration,
           channel: video.channel,
           viewCount: video.viewCount,
@@ -123,6 +124,7 @@ export class YtMp4Command extends Command {
     info: {
       title: string;
       url: string;
+      thumbnail?: string;
       duration?: string;
       channel?: string;
       viewCount?: number;
@@ -141,7 +143,7 @@ export class YtMp4Command extends Command {
 
     try {
       const card = await MediaCardService.generate({
-        thumbnail: info.url,
+        thumbnail: info.thumbnail,
         title: info.title,
         duration: info.duration,
         views: formatCount(info.viewCount),

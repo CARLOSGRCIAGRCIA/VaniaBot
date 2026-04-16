@@ -48,9 +48,12 @@ export class TwitterCommand extends Command {
       const infoResult = await this.downloader.getVideoInfo(url);
       const info = infoResult._tag === 'Right' ? infoResult.right : null;
 
+      const thumbnailUrl = (info as { thumbnailUrl?: string })?.thumbnailUrl;
+      const thumbnailBuffer = await this.getPreviewImage(thumbnailUrl);
+
       try {
         const card = await MediaCardService.generate({
-          thumbnail: url,
+          thumbnail: thumbnailUrl,
           title: info?.title || 'Twitter/X video',
           platform: 'twitter',
           author: info?.author,
@@ -61,10 +64,6 @@ export class TwitterCommand extends Command {
           caption: `⬇️ descargando...`,
         });
       } catch {
-        const thumbnailBuffer = await this.getPreviewImage(
-          (info as { thumbnailUrl?: string })?.thumbnailUrl,
-        );
-
         const caption =
           `🐦 *Twitter/X*\n` +
           (info ? `✿ ${info.title.substring(0, 60)}\n` : '') +
@@ -82,7 +81,7 @@ export class TwitterCommand extends Command {
         }
       }
 
-      await ctx.react('⏬');
+      await ctx.react('⬇️');
 
       const result = await this.downloader.downloadVideo(url);
 

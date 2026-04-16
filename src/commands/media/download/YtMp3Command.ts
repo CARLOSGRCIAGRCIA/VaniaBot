@@ -57,6 +57,7 @@ export class YtMp3Command extends Command {
           channel: video.channel,
           viewCount: video.viewCount,
           likeCount: video.likeCount,
+          thumbnail: video.thumbnail,
         },
         thumbnailBuffer,
         'descargando audio ♡',
@@ -113,6 +114,7 @@ export class YtMp3Command extends Command {
     info: {
       title: string;
       url: string;
+      thumbnail?: string;
       duration?: string;
       channel?: string;
       viewCount?: number;
@@ -130,7 +132,7 @@ export class YtMp3Command extends Command {
 
     try {
       const card = await MediaCardService.generate({
-        thumbnail: info.url,
+        thumbnail: info.thumbnail,
         title: info.title,
         duration: info.duration,
         views: formatCount(info.viewCount),

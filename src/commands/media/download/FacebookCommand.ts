@@ -54,9 +54,12 @@ export class FacebookCommand extends Command {
       const infoResult = await this.downloader.getVideoInfo(url);
       const info = infoResult._tag === 'Right' ? infoResult.right : null;
 
+      const thumbnailUrl = (info as { thumbnailUrl?: string })?.thumbnailUrl;
+      const thumbnailBuffer = await this.getPreviewImage(thumbnailUrl);
+
       try {
         const card = await MediaCardService.generate({
-          thumbnail: url,
+          thumbnail: thumbnailUrl,
           title: info?.title || 'Facebook video',
           platform: 'facebook',
           author: info?.author,
@@ -68,12 +71,21 @@ export class FacebookCommand extends Command {
           caption: `⬇️ descargando...`,
         });
       } catch {
-        await ctx.reply(
+        const caption =
           `📺 *Facebook*\n` +
-            (info ? `✿ ${info.title.substring(0, 60)}\n✿ *autor:* ${info.author}\n` : '') +
-            `⬇️ descargando...\n` +
-            `🔗 ${url}`,
-        );
+          (info ? `✿ ${info.title.substring(0, 60)}\n✿ *autor:* ${info.author}\n` : '') +
+          `⬇️ descargando...\n` +
+          `🔗 ${url}`;
+
+        if (thumbnailBuffer) {
+          await ctx.sock.sendMessage(ctx.chat.jid, {
+            image: thumbnailBuffer,
+            caption,
+            mimetype: 'image/jpeg',
+          });
+        } else {
+          await ctx.reply(caption);
+        }
       }
 
       await ctx.react('⏳');
@@ -110,6 +122,19 @@ export class FacebookCommand extends Command {
       await ctx.react('❌');
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
       await ctx.reply(`❌ Error: ${errorMessage}`);
+    }
+  }
+
+  private async getPreviewImage(thumbnailUrl?: string): Promise<Buffer | null> {
+    if (!thumbnailUrl) return null;
+    try {
+      const response = await axios.get<ArrayBuffer>(thumbnailUrl, {
+        responseType: 'arraybuffer',
+        timeout: 10000,
+      });
+      return Buffer.from(response.data);
+    } catch {
+      return null;
     }
   }
 }
