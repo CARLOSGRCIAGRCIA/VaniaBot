@@ -54,7 +54,7 @@ export class FacebookCommand extends Command {
       const infoResult = await this.downloader.getVideoInfo(url);
       const info = infoResult._tag === 'Right' ? infoResult.right : null;
 
-      const thumbnailUrl = (info as { thumbnailUrl?: string })?.thumbnailUrl;
+      const thumbnailUrl = info?.thumbnailUrl;
       const thumbnailBuffer = await this.getPreviewImage(thumbnailUrl);
 
       try {

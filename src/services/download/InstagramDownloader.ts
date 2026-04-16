@@ -9,6 +9,7 @@ export interface InstagramMedia {
   author: string;
   url: string;
   type: 'video' | 'image' | 'unknown';
+  thumbnailUrl?: string;
 }
 
 export class InstagramDownloader extends DownloadService {
@@ -27,7 +28,7 @@ export class InstagramDownloader extends DownloadService {
       const match = files.find(f => f.startsWith(base));
       if (match) return `${dir}/${match}`;
     } catch {
-      // Ignorar errores de lectura
+      // Ignorar
     }
 
     return null;
@@ -58,6 +59,7 @@ export class InstagramDownloader extends DownloadService {
         author: info.uploader ?? info.channel ?? 'unknown',
         url,
         type,
+        thumbnailUrl: info.thumbnail ?? undefined,
       });
     } catch (error) {
       logError('Instagram getMediaInfo', error);

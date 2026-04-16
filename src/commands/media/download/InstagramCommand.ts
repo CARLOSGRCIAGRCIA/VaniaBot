@@ -55,10 +55,11 @@ export class InstagramCommand extends Command {
 
       const info = infoResult._tag === 'Right' ? infoResult.right : null;
       const isImage = info?.type === 'image';
+      const thumbnailUrl = info?.thumbnailUrl;
 
       try {
         const card = await MediaCardService.generate({
-          thumbnail: url,
+          thumbnail: thumbnailUrl,
           title: info?.title || 'Instagram post',
           platform: 'instagram',
           author: info?.author,
@@ -78,9 +79,7 @@ export class InstagramCommand extends Command {
           `⬇️ descargando...\n` +
           `🔗 ${url}`;
 
-        const thumbnailBuffer = await this.getPreviewImage(
-          (info as { thumbnailUrl?: string })?.thumbnailUrl,
-        );
+        const thumbnailBuffer = await this.getPreviewImage(thumbnailUrl);
 
         if (thumbnailBuffer) {
           await ctx.sock.sendMessage(ctx.chat.jid, {

@@ -28,7 +28,7 @@ export class Ytmp3v2Command extends Command {
     }
 
     await ctx.react('🎵');
-    await ctx.reply('🎵 Descargando audio de YouTube...');
+    await ctx.reply('> 𝙑𝙖𝙣𝙞𝙖𝘽𝙤𝙩 𝘿𝙚𝙨𝙘𝙖𝙧𝙜𝙖𝙨 💕');
 
     try {
       const data = (await deliriusService.getJson('download', 'ytmp3v2', { url })) as {

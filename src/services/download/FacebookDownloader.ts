@@ -7,6 +7,7 @@ export interface FacebookVideo {
   title: string;
   author: string;
   url: string;
+  thumbnailUrl?: string;
 }
 
 export class FacebookDownloader extends DownloadService {
@@ -35,6 +36,7 @@ export class FacebookDownloader extends DownloadService {
         title: info.title ?? 'Facebook video',
         author: info.uploader ?? info.channel ?? 'unknown',
         url,
+        thumbnailUrl: info.thumbnail ?? undefined,
       });
     } catch (error) {
       logError('Facebook getVideoInfo', error);
