@@ -1,9 +1,9 @@
 import type { WASocket } from '@whiskeysockets/baileys';
 import { serviceManager } from './Servicemanager.js';
 import { logger, logError } from '@/utils/logger.js';
-import { existsSync, readFileSync } from 'fs';
 import { circuitBreakerManager } from './CircuitBreakerService.js';
 import { cacheManager } from '@/core/CacheManager.js';
+import { findAssetFile } from '@/utils/assetHelper.js';
 
 export interface WelcomeConfig {
   enabled: boolean;
@@ -89,7 +89,7 @@ function formatFact(fact: string): string {
 }
 
 export class WelcomeService {
-  private readonly DEFAULT_PROFILE_PIC = './data/assets/logo.png';
+  private readonly DEFAULT_PROFILE_PIC = 'logo.png';
   private readonly DEFAULT_WELCOME = `
 ✧･ﾟ:*  𝙚𝙮, 𝙣𝙪𝙚𝙫𝙖 𝙘𝙖𝙧𝙖  *:･ﾟ✧
 hola @user ♡
@@ -103,6 +103,18 @@ hola @user ♡
 @count seguimos aquí
 ✧･ﾟ:*  𝙑𝙖𝙣𝙞𝙖𝘽𝙤𝙩  *:･ﾟ✧
   `.trim();
+
+  /**
+   * Obtiene el buffer de la imagen por defecto usando assetHelper
+   */
+  private getDefaultProfilePicBuffer(): Buffer | null {
+    try {
+      return findAssetFile(this.DEFAULT_PROFILE_PIC);
+    } catch (error) {
+      logError('[WelcomeService] Error loading default profile pic:', error);
+      return null;
+    }
+  }
 
   async handleNewParticipant(sock: WASocket, groupJid: string, userJid: string): Promise<void> {
     try {
@@ -141,9 +153,7 @@ hola @user ♡
             profilePicBuffer = Buffer.from(await response.arrayBuffer());
           }
         } catch (_err) {
-          if (existsSync(this.DEFAULT_PROFILE_PIC)) {
-            profilePicBuffer = readFileSync(this.DEFAULT_PROFILE_PIC);
-          }
+          profilePicBuffer = this.getDefaultProfilePicBuffer();
         }
       }
 
@@ -217,9 +227,7 @@ hola @user ♡
             profilePicBuffer = Buffer.from(await response.arrayBuffer());
           }
         } catch {
-          if (existsSync(this.DEFAULT_PROFILE_PIC)) {
-            profilePicBuffer = readFileSync(this.DEFAULT_PROFILE_PIC);
-          }
+          profilePicBuffer = this.getDefaultProfilePicBuffer();
         }
       }
 
@@ -303,9 +311,11 @@ hola @user ♡
   public getDefaultWelcome(): string {
     return this.DEFAULT_WELCOME;
   }
+  
   public getDefaultGoodbye(): string {
     return this.DEFAULT_GOODBYE;
   }
+  
   public getDefaultProfilePicPath(): string {
     return this.DEFAULT_PROFILE_PIC;
   }

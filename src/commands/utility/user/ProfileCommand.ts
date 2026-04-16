@@ -5,8 +5,7 @@ import type { MessageContext } from '@/types/index.js';
 import { serviceManager } from '@/services/system/Servicemanager.js';
 import { formatNumber, formatTime } from '@/utils/helpers.js';
 import type { User } from '@/services/database/UserService.js';
-import fs from 'fs';
-import path from 'path';
+import { findAssetFile } from '@/utils/assetHelper.js';
 
 interface LevelProgress {
   currentXP: number;
@@ -182,9 +181,9 @@ export class ProfileCommand extends Command {
     if (ProfileCommand.logoLoaded) return ProfileCommand.logoBuffer;
 
     try {
-      const logoPath = path.join(process.cwd(), 'data', 'assets', 'logo.png');
-      if (fs.existsSync(logoPath)) {
-        ProfileCommand.logoBuffer = fs.readFileSync(logoPath);
+      const logoBuffer = findAssetFile('logo.png');
+      if (logoBuffer) {
+        ProfileCommand.logoBuffer = logoBuffer;
         ProfileCommand.logoLoaded = true;
         return ProfileCommand.logoBuffer;
       }

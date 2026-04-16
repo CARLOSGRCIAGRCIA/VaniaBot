@@ -5,8 +5,7 @@ import { commandRegistry } from '@/core/CommandRegistry.js';
 import { serviceManager } from '@/services/system/Servicemanager.js';
 import { primeService } from '@/services/system/PrimeService.js';
 import { logError } from '@/utils/logger.js';
-import fs from 'fs';
-import path from 'path';
+import { findAssetFile, sendAssetImage } from '@/utils/assetHelper.js';
 import axios from 'axios';
 
 const charset: Record<string, string> = {
@@ -69,7 +68,7 @@ export class HelpCommand extends Command {
     if (!command) {
       await ctx.reply(
         `˚₊· ͟͟͞͞➳ *oops, "${commandName}" no está en mi lista* ˚₊· ͟͟͞͞➳\n\n` +
-          `✿ prueba con *!help* para ver lo que sé hacer ✩`,
+        `✿ prueba con *!help* para ver lo que sé hacer ✩`,
       );
       return;
     }
@@ -201,8 +200,6 @@ export class HelpCommand extends Command {
   }
 
   private async sendSimpleMenu(ctx: MessageContext, text: string, isPrime: boolean): Promise<void> {
-    const logoPath = path.join(process.cwd(), 'data', 'assets', 'logo.png');
-
     try {
       let imageBuffer: Buffer | null = null;
 
@@ -218,8 +215,8 @@ export class HelpCommand extends Command {
         }
       }
 
-      if (!imageBuffer && fs.existsSync(logoPath)) {
-        imageBuffer = fs.readFileSync(logoPath);
+      if (!imageBuffer) {
+        imageBuffer = findAssetFile('logo.png');
       }
 
       if (imageBuffer) {

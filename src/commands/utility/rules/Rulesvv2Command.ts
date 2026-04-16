@@ -1,8 +1,7 @@
 import { Command } from '../../Command.js';
 import { CommandCategory } from '@/types/index.js';
 import type { MessageContext } from '@/types/index.js';
-import fs from 'fs';
-import path from 'path';
+import { sendAssetImage } from '@/utils/assetHelper.js';
 
 export class RulesVV2Command extends Command {
   name = 'rules vv2';
@@ -13,10 +12,7 @@ export class RulesVV2Command extends Command {
   examples = ['!rules vv2'];
 
   async execute(ctx: MessageContext): Promise<void> {
-    const imagePath = path.join(process.cwd(), 'data', 'assets', 'vv2Rules.png');
-    const imageBuffer = fs.readFileSync(imagePath);
-
-    await ctx.sock.sendMessage(ctx.chat.jid, { image: imageBuffer }, { quoted: ctx.message });
+    await sendAssetImage(ctx, 'vv2Rules.png', 'No se encontró la imagen de reglas VV2.');
   }
 }
 

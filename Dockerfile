@@ -57,6 +57,7 @@ COPY --from=deps /app/node_modules ./node_modules
 COPY tsconfig.json ./
 COPY vania.ts ./
 COPY src/ ./src/
+
 COPY data/ ./data/
 
 COPY data/assets/ ./static/assets/
@@ -73,8 +74,9 @@ ENV NODE_ENV=production \
     USE_REDIS=true \
     REDIS_HOST=vania-redis \
     REDIS_PORT=6379 \
-    ASSETS_DIR=/app/static/assets \
     PATH="/app/node_modules/.bin:${PATH}"
+
+ENV ASSETS_DIR=/app/data/assets
 
 HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
     CMD pgrep -f "tsx vania.ts" > /dev/null || exit 1

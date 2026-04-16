@@ -59,6 +59,8 @@ COPY vania.ts ./
 COPY src/ ./src/
 COPY data/ ./data/
 
+COPY data/assets/ ./static/assets/
+
 RUN mkdir -p vaniasession data/temp logs \
  && chown -R vaniabot:vaniabot /app
 

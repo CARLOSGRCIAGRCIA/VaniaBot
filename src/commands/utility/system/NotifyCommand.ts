@@ -239,22 +239,35 @@ export class NotifyCommand extends Command {
       const quotedMsgInfo = this.getQuotedMessageInfo(ctx);
 
       if (type === 'text') {
-        const quotedText = ctx.quoted.conversation || ctx.quoted.extendedTextMessage?.text || '';
+        const originalMessage = quotedMsgInfo?.message;
 
-        let notificationText: string;
-        if (extraText && quotedText) {
-          notificationText = `${extraText}\n\n${quotedText}${footer}`;
-        } else if (quotedText) {
-          notificationText = `${quotedText}${footer}`;
-        } else {
-          notificationText = `${extraText}${footer}`;
+        if (!originalMessage) {
+          await ctx.react('❌');
+          await ctx.reply('❌ No se pudo obtener el mensaje referenciado.');
+          return;
         }
 
-        await ctx.sock.sendMessage(
-          ctx.chat.jid,
-          { text: notificationText, mentions: participants },
-          { quoted: ctx.message },
-        );
+        const newMessage = JSON.parse(JSON.stringify(originalMessage));
+
+        if (newMessage.conversation) {
+          newMessage.conversation = `${newMessage.conversation}${footer}`;
+        } else if (newMessage.extendedTextMessage) {
+          newMessage.extendedTextMessage.text = `${newMessage.extendedTextMessage.text}${footer}`;
+        }
+
+        if (participants.length > 0) {
+          if (!newMessage.extendedTextMessage) {
+            newMessage.extendedTextMessage = {};
+          }
+          newMessage.extendedTextMessage.contextInfo = {
+            ...newMessage.extendedTextMessage.contextInfo,
+            mentionedJid: participants,
+          };
+        }
+
+        await ctx.sock.relayMessage(ctx.chat.jid, newMessage, {
+          messageId: ctx.sock.generateMessageTag(),
+        });
         return;
       }
 
