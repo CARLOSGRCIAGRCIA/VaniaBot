@@ -31,6 +31,10 @@ vi.mock('fetch', () => ({
   default: vi.fn(),
 }));
 
+vi.mock('../../src/utils/assetHelper.js', () => ({
+  findAssetFile: vi.fn().mockReturnValue(Buffer.from('mock-image')),
+}));
+
 describe('WelcomeService', () => {
   let welcomeService: WelcomeService;
 
@@ -56,7 +60,7 @@ describe('WelcomeService', () => {
   describe('getDefaultProfilePicPath', () => {
     it('should return default profile pic path', () => {
       const path = welcomeService.getDefaultProfilePicPath();
-      expect(path).toBe('./data/assets/logo.png');
+      expect(path).toBe('logo.png');
     });
   });
 
@@ -161,6 +165,26 @@ describe('WelcomeService', () => {
     });
   });
 
+  describe('setWelcomeMessage', () => {
+    it('should update welcome message', async () => {
+      const { serviceManager } = await import('../../src/services/system/Servicemanager.js');
+      vi.mocked(serviceManager.groupService.getGroup).mockResolvedValue({
+        jid: 'group@test.com',
+        welcome: { enabled: true, message: 'Old welcome' },
+        goodbye: { enabled: false },
+      } as any);
+
+      await welcomeService.setWelcomeMessage('group@test.com', 'New welcome');
+
+      expect(serviceManager.groupService.updateGroup).toHaveBeenCalledWith(
+        'group@test.com',
+        expect.objectContaining({
+          welcome: expect.objectContaining({ message: 'New welcome' }),
+        }),
+      );
+    });
+  });
+
   describe('setGoodbyeMessage', () => {
     it('should update goodbye message', async () => {
       const { serviceManager } = await import('../../src/services/system/Servicemanager.js');
@@ -243,6 +267,31 @@ describe('WelcomeService', () => {
         '[Welcome] Bienvenida desactivada en group@test.com — omitiendo',
       );
       expect(mockSock.sendMessage).not.toHaveBeenCalled();
+    });
+
+    it('should send welcome message when enabled', async () => {
+      const { serviceManager } = await import('../../src/services/system/Servicemanager.js');
+      
+      vi.mocked(serviceManager.vaniaToggleService.isEnabled).mockResolvedValue(true);
+      vi.mocked(serviceManager.groupService.getGroup).mockResolvedValue({
+        jid: 'group@test.com',
+        welcome: { enabled: true, message: 'Welcome @user' },
+        goodbye: { enabled: false },
+      } as any);
+
+      const mockSock = {
+        groupMetadata: vi.fn().mockResolvedValue({
+          subject: 'Test Group',
+          desc: 'Test Description',
+          participants: [{ id: 'user@test.com' }],
+        }),
+        sendMessage: vi.fn().mockResolvedValue({}),
+        profilePictureUrl: vi.fn().mockRejectedValue(new Error('No pic')),
+      } as any;
+
+      await welcomeService.handleNewParticipant(mockSock, 'group@test.com', 'user@test.com');
+
+      expect(mockSock.sendMessage).toHaveBeenCalled();
     });
   });
 
