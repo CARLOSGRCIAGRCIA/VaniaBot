@@ -83,7 +83,6 @@ export class YtMp3Command extends Command {
         audio: fs.readFileSync(filePath),
         mimetype: 'audio/mpeg',
         fileName: `${sanitizeFilename(video.title)}.mp3`,
-        caption: `🎵 ${video.title}\n🔗 ${video.url}`,
       });
 
       await ctx.react('✅');
@@ -143,7 +142,7 @@ export class YtMp3Command extends Command {
 
       await ctx.sock.sendMessage(ctx.chat.jid, {
         image: card,
-        caption: `🎵 ${status}...`,
+        caption: `${status}`,
       });
     } catch {
       const title = info.title.length > 55 ? info.title.substring(0, 55) + '…' : info.title;

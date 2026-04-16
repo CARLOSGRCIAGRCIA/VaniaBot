@@ -148,7 +148,7 @@ export class YtMp4Command extends Command {
 
       await ctx.sock.sendMessage(ctx.chat.jid, {
         image: card,
-        caption: `🎬 ${status}...`,
+        caption: `${status}`,
       });
     } catch {
       const title = info.title.length > 55 ? info.title.substring(0, 55) + '…' : info.title;

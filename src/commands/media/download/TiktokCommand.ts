@@ -70,7 +70,7 @@ export class TiktokCommand extends Command {
           duration: info?.duration,
         },
         thumbnailBuffer,
-        '> 𝙑𝙖𝙣𝙞𝙖𝘽𝙤𝙩 𝘿𝙚𝙨𝙘𝙖𝙧𝙜𝙖𝙨 💕',
+        '\n> 𝙑𝙖𝙣𝙞𝙖𝘽𝙤𝙩 𝘿𝙚𝙨𝙘𝙖𝙧𝙜𝙖𝙨 💕',
         quality,
       );
 
@@ -144,16 +144,14 @@ export class TiktokCommand extends Command {
 
       await ctx.sock.sendMessage(ctx.chat.jid, {
         image: card,
-        caption: `⬇️ ${status}...`,
+        caption: `${status}`,
       });
     } catch {
       const caption =
         `🎬 *@${info.author}*\n` +
         `✿ ${info.title.substring(0, 60)}${info.title.length > 60 ? '...' : ''}\n` +
         (info.duration ? `⏱️ ${info.duration}\n` : '') +
-        `📦 Calidad: ${quality}p\n` +
-        `⬇️ ${status}...\n` +
-        `🔗 ${info.url}`;
+        `📦 Calidad: ${quality}p\n`;
 
       if (thumbnail) {
         await ctx.sock.sendMessage(ctx.chat.jid, {

@@ -30,8 +30,6 @@ export class SnackvideoCommand extends Command {
     }
 
     await ctx.react('🎬');
-    await ctx.reply('> 𝙑𝙖𝙣𝙞𝙖𝘽𝙤𝙩 𝘿𝙚𝙨𝙘𝙖𝙧𝙜𝙖𝙨 💕');
-
     try {
       const data = (await deliriusService.getJson('download', 'snackvideo', { url })) as {
         video?: string;

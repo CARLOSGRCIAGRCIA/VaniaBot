@@ -34,6 +34,14 @@ const PLATFORM_COLORS: Record<
   twitter: { bg: '#000000', accent: '#1D9BF0', text: '#FFFFFF', secondary: '#536471' },
 };
 
+const PLATFORM_LOGO_FILES: Record<Platform, string> = {
+  youtube: 'ytLogo.png',
+  tiktok: 'tiktokLogo.png',
+  instagram: 'instagramLogo.png',
+  facebook: 'facebookLogo.png',
+  twitter: 'xLogo.jpg',
+};
+
 export class MediaCardService {
   static async generate(opts: MediaCardOptions): Promise<Buffer> {
     switch (opts.platform) {
@@ -69,11 +77,22 @@ export class MediaCardService {
     }
   }
 
+  private static async loadLogoAsset(
+    filename: string,
+  ): Promise<Awaited<ReturnType<typeof loadImage>> | null> {
+    const buf = findAssetFile(filename);
+    if (!buf) return null;
+    try {
+      return await loadImage(buf);
+    } catch {
+      return null;
+    }
+  }
+
   private static wrapText(text: string, maxWidth: number, maxChars: number = 40): string[] {
     const words = text.split(' ');
     const lines: string[] = [];
     let current = '';
-
     for (const word of words) {
       const test = current ? `${current} ${word}` : word;
       if (test.length > maxChars) {
@@ -87,11 +106,9 @@ export class MediaCardService {
         current = test;
       }
     }
-
     if (current) {
-      lines.push(current.length > maxChars ? current.substring(0, maxChars - 1) + '…' : current);
+      lines.push(current.length > maxChars ? current.substring(0, maxChars - 1) + '...' : current);
     }
-
     return lines.slice(0, 2);
   }
 
@@ -129,12 +146,10 @@ export class MediaCardService {
     const metrics = ctx.measureText(duration);
     const w = metrics.width + 12;
     const h = 18;
-
     ctx.fillStyle = bgColor;
     ctx.beginPath();
     ctx.roundRect(x - w, y, w, h, 4);
     ctx.fill();
-
     ctx.fillStyle = textColor;
     ctx.fillText(duration, x - w + 6, y + 13);
   }
@@ -151,14 +166,11 @@ export class MediaCardService {
     ctx.arc(x + size / 2, y + size / 2, size / 2, 0, Math.PI * 2);
     ctx.closePath();
     ctx.clip();
-
     ctx.fillStyle = '#E5E5E5';
     ctx.fillRect(x, y, size, size);
-
     if (avatar) {
       ctx.drawImage(avatar, x, y, size, size);
     }
-
     ctx.restore();
   }
 
@@ -172,12 +184,10 @@ export class MediaCardService {
   ) {
     const imgRatio = img.width / img.height;
     const destRatio = destW / destH;
-
     let sx = 0,
       sy = 0,
       sw = img.width,
       sh = img.height;
-
     if (imgRatio > destRatio) {
       sw = img.height * destRatio;
       sx = (img.width - sw) / 2;
@@ -185,242 +195,65 @@ export class MediaCardService {
       sh = img.width / destRatio;
       sy = (img.height - sh) / 2;
     }
-
     ctx.drawImage(img, sx, sy, sw, sh, destX, destY, destW, destH);
   }
 
-  private static drawLogoYouTube(
-    ctx: ReturnType<ReturnType<typeof createCanvas>['getContext']>,
-    x: number,
-    y: number,
-    size: number,
-  ) {
-    ctx.save();
-    ctx.fillStyle = '#FF0000';
-    ctx.beginPath();
-    ctx.roundRect(x, y, size, size, size * 0.15);
-    ctx.fill();
-
-    ctx.fillStyle = '#FFFFFF';
-    ctx.beginPath();
-    const triSize = size * 0.4;
-    const centerX = x + size / 2 + triSize * 0.1;
-    const centerY = y + size / 2;
-    ctx.moveTo(centerX - triSize * 0.4, centerY - triSize * 0.35);
-    ctx.lineTo(centerX + triSize * 0.5, centerY);
-    ctx.lineTo(centerX - triSize * 0.4, centerY + triSize * 0.35);
-    ctx.closePath();
-    ctx.fill();
-    ctx.restore();
-  }
-
-  private static drawLogoTikTok(
-    ctx: ReturnType<ReturnType<typeof createCanvas>['getContext']>,
-    x: number,
-    y: number,
-    size: number,
-  ) {
-    ctx.save();
-
-    // Background con gradient cyan-magenta
-    const grad = ctx.createLinearGradient(x, y, x + size, y + size);
-    grad.addColorStop(0, '#69C9D0');
-    grad.addColorStop(1, '#EE1D52');
-    ctx.fillStyle = grad;
-    ctx.beginPath();
-    ctx.roundRect(x, y, size, size, size * 0.22);
-    ctx.fill();
-
-    // Notas musicales estilizadas
-    ctx.fillStyle = '#FFFFFF';
-    ctx.font = `bold ${size * 0.5}px sans-serif`;
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.fillText('♪', x + size / 2, y + size / 2);
-
-    ctx.restore();
-  }
-
-  private static drawLogoInstagram(
-    ctx: ReturnType<ReturnType<typeof createCanvas>['getContext']>,
-    x: number,
-    y: number,
-    size: number,
-  ) {
-    ctx.save();
-
-    // Fondo blanco
-    ctx.fillStyle = '#FFFFFF';
-    ctx.beginPath();
-    ctx.roundRect(x, y, size, size, size * 0.25);
-    ctx.fill();
-
-    // Icono de cámara en gradient
-    const grad = ctx.createLinearGradient(x, y, x + size, y + size);
-    grad.addColorStop(0, '#833AB4');
-    grad.addColorStop(0.3, '#C13584');
-    grad.addColorStop(0.6, '#E1306C');
-    grad.addColorStop(1, '#F77737');
-
-    ctx.strokeStyle = grad;
-    ctx.lineWidth = size * 0.1;
-    ctx.beginPath();
-    ctx.roundRect(x + size * 0.12, y + size * 0.12, size * 0.76, size * 0.76, size * 0.2);
-    ctx.stroke();
-
-    ctx.fillStyle = grad;
-    ctx.beginPath();
-    ctx.arc(x + size / 2, y + size / 2, size * 0.25, 0, Math.PI * 2);
-    ctx.fill();
-
-    ctx.fillStyle = '#FFFFFF';
-    ctx.beginPath();
-    ctx.arc(x + size * 0.75, y + size * 0.25, size * 0.07, 0, Math.PI * 2);
-    ctx.fill();
-
-    ctx.restore();
-  }
-
-  private static drawLogoFacebook(
-    ctx: ReturnType<ReturnType<typeof createCanvas>['getContext']>,
-    x: number,
-    y: number,
-    size: number,
-  ) {
-    ctx.save();
-    ctx.fillStyle = '#1877F2';
-    ctx.beginPath();
-    ctx.roundRect(x, y, size, size, size * 0.15);
-    ctx.fill();
-
-    ctx.fillStyle = '#FFFFFF';
-    ctx.font = `bold ${size * 0.65}px sans-serif`;
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.fillText('f', x + size / 2 + size * 0.05, y + size / 2);
-    ctx.restore();
-  }
-
-  private static drawLogoTwitter(
-    ctx: ReturnType<ReturnType<typeof createCanvas>['getContext']>,
-    x: number,
-    y: number,
-    size: number,
-  ) {
-    ctx.save();
-
-    // Fondo negro
-    ctx.fillStyle = '#000000';
-    ctx.beginPath();
-    ctx.roundRect(x, y, size, size, size * 0.22);
-    ctx.fill();
-
-    // X blanca estilizada
-    ctx.strokeStyle = '#FFFFFF';
-    ctx.lineWidth = size * 0.13;
-    ctx.lineCap = 'round';
-
-    const cx = x + size / 2;
-    const cy = y + size / 2;
-    const offset = size * 0.3;
-
-    // Línea 1: diagonal /
-    ctx.beginPath();
-    ctx.moveTo(cx - offset, cy - offset);
-    ctx.lineTo(cx + offset, cy + offset);
-    ctx.stroke();
-
-    // Línea 2: diagonal \
-    ctx.beginPath();
-    ctx.moveTo(cx + offset, cy - offset);
-    ctx.lineTo(cx - offset, cy + offset);
-    ctx.stroke();
-
-    ctx.restore();
-  }
-
-  private static drawLogoVaniaBot(
-    ctx: ReturnType<ReturnType<typeof createCanvas>['getContext']>,
-    x: number,
-    y: number,
-    size: number,
-  ) {
-    ctx.save();
-    ctx.fillStyle = '#7C3AED';
-    ctx.beginPath();
-    ctx.roundRect(x, y, size, size, size * 0.2);
-    ctx.fill();
-
-    ctx.fillStyle = '#FFFFFF';
-    ctx.font = `bold ${size * 0.55}px sans-serif`;
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.fillText('V', x + size / 2, y + size / 2);
-    ctx.restore();
-  }
-
-  private static drawPlatformAndVaniaLogos(
+  /**
+   * Draws a pill/badge containing the platform logo and the VaniaBot logo side
+   * by side. Both logos are rendered from real image assets so they look crisp.
+   *
+   * Sizes are larger than the old hand-drawn version so the logos are clearly
+   * legible at a glance.
+   */
+  private static async drawPlatformAndVaniaLogos(
     ctx: ReturnType<ReturnType<typeof createCanvas>['getContext']>,
     platform: Platform,
-    x: number,
+    /** right-edge X of the badge */
+    rightX: number,
+    /** top Y of the badge */
     y: number,
-    size: number,
-    vaniaLogo?: Awaited<ReturnType<typeof loadImage>> | null,
+    /** logo square size (each logo) */
+    logoSize: number,
+    vaniaLogo: Awaited<ReturnType<typeof loadImage>> | null,
+    platformLogo: Awaited<ReturnType<typeof loadImage>> | null,
   ) {
-    const logoSize = size * 0.65;
-    const gap = size * 0.08;
-    const totalWidth = logoSize * 2 + gap;
+    const gap = 6;
+    const padding = 6;
+    const radius = logoSize * 0.18;
+    const badgeW = padding * 2 + logoSize * 2 + gap;
+    const badgeH = padding * 2 + logoSize;
+    const badgeX = rightX - badgeW;
 
-    // Contenedor con fondo semi-transparente y borde
     ctx.save();
-
-    // Fondo del contenedor
-    ctx.fillStyle = 'rgba(0,0,0,0.6)';
+    ctx.fillStyle = 'rgba(0,0,0,0.65)';
+    ctx.strokeStyle = 'rgba(255,255,255,0.25)';
+    ctx.lineWidth = 1.5;
     ctx.beginPath();
-    ctx.roundRect(x, y, totalWidth, logoSize, logoSize * 0.15);
+    ctx.roundRect(badgeX, y, badgeW, badgeH, radius * 1.5);
     ctx.fill();
-
-    // Borde del contenedor
-    ctx.strokeStyle = 'rgba(255,255,255,0.3)';
-    ctx.lineWidth = 2;
     ctx.stroke();
-
     ctx.restore();
 
-    // Dibujar logos desde la izquierda del contenedor
-    switch (platform) {
-      case 'youtube':
-        this.drawLogoYouTube(ctx, x + 4, y + (logoSize - logoSize) / 2, logoSize);
-        break;
-      case 'tiktok':
-        this.drawLogoTikTok(ctx, x + 4, y + (logoSize - logoSize) / 2, logoSize);
-        break;
-      case 'instagram':
-        this.drawLogoInstagram(ctx, x + 4, y + (logoSize - logoSize) / 2, logoSize);
-        break;
-      case 'facebook':
-        this.drawLogoFacebook(ctx, x + 4, y + (logoSize - logoSize) / 2, logoSize);
-        break;
-      case 'twitter':
-        this.drawLogoTwitter(ctx, x + 4, y + (logoSize - logoSize) / 2, logoSize);
-        break;
-    }
+    const imgY = y + padding;
 
-    // Logo VaniaBot
-    if (vaniaLogo) {
-      const vaniaX = x + logoSize + gap + 4;
+    const platX = badgeX + padding;
+    if (platformLogo) {
       ctx.save();
       ctx.beginPath();
-      ctx.roundRect(vaniaX, y, logoSize - 8, logoSize, logoSize * 0.15);
+      ctx.roundRect(platX, imgY, logoSize, logoSize, radius);
       ctx.clip();
-      ctx.drawImage(vaniaLogo, vaniaX, y, logoSize - 8, logoSize);
+      ctx.drawImage(platformLogo, platX, imgY, logoSize, logoSize);
       ctx.restore();
+    }
 
-      ctx.strokeStyle = 'rgba(255,255,255,0.4)';
-      ctx.lineWidth = 2;
+    const vaniaX = platX + logoSize + gap;
+    if (vaniaLogo) {
+      ctx.save();
       ctx.beginPath();
-      ctx.roundRect(vaniaX, y, logoSize - 8, logoSize, logoSize * 0.15);
-      ctx.stroke();
+      ctx.roundRect(vaniaX, imgY, logoSize, logoSize, radius);
+      ctx.clip();
+      ctx.drawImage(vaniaLogo, vaniaX, imgY, logoSize, logoSize);
+      ctx.restore();
     }
   }
 
@@ -429,33 +262,24 @@ export class MediaCardService {
     const ctx = canvas.getContext('2d');
     const { bg, accent, text, secondary } = PLATFORM_COLORS.youtube;
 
-    const vaniaLogoBuffer = findAssetFile('logo.png');
-    let vaniaLogo = null;
-    if (vaniaLogoBuffer) {
-      vaniaLogo = await loadImage(vaniaLogoBuffer);
-    }
+    const [vaniaLogo, platformLogo] = await Promise.all([
+      this.loadLogoAsset('logo.png'),
+      this.loadLogoAsset(PLATFORM_LOGO_FILES.youtube),
+    ]);
 
     ctx.fillStyle = bg;
     ctx.fillRect(0, 0, WIDTH, HEIGHT);
 
-    // Barra superior roja YouTube
     ctx.fillStyle = accent;
     ctx.fillRect(0, 0, WIDTH, 8);
-
-    // Barra inferior roja
     ctx.fillRect(0, HEIGHT - 8, WIDTH, 8);
 
     const thumbH = 272;
     const thumb = await this.loadThumbnail(opts.thumbnail);
-
     ctx.fillStyle = '#E5E5E5';
     ctx.fillRect(0, 8, WIDTH, thumbH);
+    if (thumb) this.drawImageCover(ctx, thumb, 0, 8, WIDTH, thumbH);
 
-    if (thumb) {
-      this.drawImageCover(ctx, thumb, 0, 8, WIDTH, thumbH);
-    }
-
-    // Borde rojo alrededor del thumbnail
     ctx.strokeStyle = accent;
     ctx.lineWidth = 2;
     ctx.strokeRect(0, 8, WIDTH, thumbH);
@@ -469,7 +293,6 @@ export class MediaCardService {
     const avatarX = 16;
     const avatarY = infoY;
     const avatar = await this.loadThumbnail(opts.thumbnail);
-
     this.drawCircularAvatar(ctx, avatarX, avatarY, avatarSize, avatar);
 
     const textX = avatarX + avatarSize + 12;
@@ -478,9 +301,7 @@ export class MediaCardService {
     ctx.font = '500 14px sans-serif';
     ctx.fillStyle = text;
     const titleLines = this.wrapText(opts.title, WIDTH - textX - 20, 45);
-    titleLines.forEach((line, i) => {
-      ctx.fillText(line, textX, textY + i * 20);
-    });
+    titleLines.forEach((line, i) => ctx.fillText(line, textX, textY + i * 20));
     textY += titleLines.length * 20 + 4;
 
     if (opts.author) {
@@ -493,13 +314,20 @@ export class MediaCardService {
     const meta: string[] = [];
     if (opts.views) meta.push(`${opts.views} views`);
     meta.push('YouTube');
-
     ctx.font = '12px sans-serif';
     ctx.fillStyle = secondary;
     ctx.fillText(meta.join(' • '), textX, textY);
 
-    // Logos combinados
-    this.drawPlatformAndVaniaLogos(ctx, 'youtube', WIDTH - 76, HEIGHT - 52, 40, vaniaLogo);
+    const LOGO_SIZE = 48;
+    await this.drawPlatformAndVaniaLogos(
+      ctx,
+      'youtube',
+      WIDTH - 12,
+      HEIGHT - 8 - LOGO_SIZE - 8,
+      LOGO_SIZE,
+      vaniaLogo,
+      platformLogo,
+    );
 
     return canvas.toBuffer('image/jpeg', 92);
   }
@@ -507,18 +335,16 @@ export class MediaCardService {
   private static async generateTikTok(opts: MediaCardOptions): Promise<Buffer> {
     const canvas = createCanvas(WIDTH, HEIGHT);
     const ctx = canvas.getContext('2d');
-    const { bg, accent, text } = PLATFORM_COLORS.tiktok;
+    const { bg, text } = PLATFORM_COLORS.tiktok;
 
-    const vaniaLogoBuffer = findAssetFile('logo.png');
-    let vaniaLogo = null;
-    if (vaniaLogoBuffer) {
-      vaniaLogo = await loadImage(vaniaLogoBuffer);
-    }
+    const [vaniaLogo, platformLogo] = await Promise.all([
+      this.loadLogoAsset('logo.png'),
+      this.loadLogoAsset(PLATFORM_LOGO_FILES.tiktok),
+    ]);
 
     ctx.fillStyle = bg;
     ctx.fillRect(0, 0, WIDTH, HEIGHT);
 
-    // Gradient border top - TikTok style
     const topGrad = ctx.createLinearGradient(0, 0, WIDTH, 0);
     topGrad.addColorStop(0, '#69C9D0');
     topGrad.addColorStop(0.5, '#EE1D52');
@@ -528,17 +354,13 @@ export class MediaCardService {
 
     const thumbH = 270;
     const thumb = await this.loadThumbnail(opts.thumbnail);
-
     ctx.fillStyle = '#0a0a0a';
     ctx.fillRect(0, 6, WIDTH, thumbH);
 
     if (thumb) {
-      // Video thumbnail with cover aspect ratio
       ctx.save();
       this.drawImageCover(ctx, thumb, 0, 6, WIDTH, thumbH);
       ctx.restore();
-
-      // Gradient overlay bottom
       const grad = ctx.createLinearGradient(0, thumbH - 80, 0, thumbH + 6);
       grad.addColorStop(0, 'rgba(0,0,0,0)');
       grad.addColorStop(1, bg);
@@ -546,7 +368,6 @@ export class MediaCardService {
       ctx.fillRect(0, thumbH - 80, WIDTH, 86);
     }
 
-    // Duration badge - white with black text TikTok style
     if (opts.duration) {
       ctx.font = 'bold 13px sans-serif';
       const durW = ctx.measureText(opts.duration).width + 16;
@@ -559,8 +380,6 @@ export class MediaCardService {
     }
 
     const infoY = thumbH + 24;
-
-    // Username with @ symbol
     if (opts.author) {
       ctx.font = 'bold 18px sans-serif';
       ctx.fillStyle = text;
@@ -568,19 +387,14 @@ export class MediaCardService {
     }
 
     let metaY = infoY + 40;
-
-    // Caption/description
     if (opts.title) {
       ctx.font = '14px sans-serif';
       ctx.fillStyle = 'rgba(255,255,255,0.95)';
       const descLines = this.wrapText(opts.title, WIDTH - 32, 50);
-      descLines.forEach((line, i) => {
-        ctx.fillText(line, 16, metaY + i * 20);
-      });
+      descLines.forEach((line, i) => ctx.fillText(line, 16, metaY + i * 20));
       metaY += descLines.length * 20 + 8;
     }
 
-    // Music badge - TikTok style with music icon
     if (opts.music) {
       ctx.font = '14px sans-serif';
       ctx.fillStyle = '#69C9D0';
@@ -590,17 +404,13 @@ export class MediaCardService {
       metaY += 28;
     }
 
-    // Separator line
     ctx.fillStyle = 'rgba(255,255,255,0.1)';
     ctx.fillRect(16, HEIGHT - 52, WIDTH - 32, 1);
 
-    // Stats row - TikTok style horizontal
     const statsY = HEIGHT - 28;
     ctx.textAlign = 'left';
-
     let currentX = 16;
 
-    // Heart/Likes
     if (opts.likes) {
       ctx.font = 'bold 13px sans-serif';
       ctx.fillStyle = '#EE1D52';
@@ -610,8 +420,6 @@ export class MediaCardService {
       ctx.fillText(`${opts.likes}`, currentX, statsY);
       currentX += ctx.measureText(opts.likes).width + 24;
     }
-
-    // Comments
     if (opts.comments) {
       ctx.fillStyle = text;
       ctx.fillText('💬', currentX, statsY);
@@ -620,8 +428,6 @@ export class MediaCardService {
       ctx.fillText(opts.comments, currentX, statsY);
       currentX += ctx.measureText(opts.comments).width + 24;
     }
-
-    // Shares
     if (opts.shares) {
       ctx.fillStyle = text;
       ctx.fillText('↗', currentX, statsY);
@@ -630,11 +436,18 @@ export class MediaCardService {
       ctx.fillText(opts.shares, currentX, statsY);
     }
 
-    // Logos combinados
-    this.drawPlatformAndVaniaLogos(ctx, 'tiktok', WIDTH - 76, HEIGHT - 52, 40, vaniaLogo);
+    const LOGO_SIZE = 48;
+    await this.drawPlatformAndVaniaLogos(
+      ctx,
+      'tiktok',
+      WIDTH - 12,
+      HEIGHT - 8 - LOGO_SIZE - 8,
+      LOGO_SIZE,
+      vaniaLogo,
+      platformLogo,
+    );
 
     ctx.textAlign = 'left';
-
     return canvas.toBuffer('image/jpeg', 92);
   }
 
@@ -642,11 +455,10 @@ export class MediaCardService {
     const canvas = createCanvas(WIDTH, HEIGHT);
     const ctx = canvas.getContext('2d');
 
-    const vaniaLogoBuffer = findAssetFile('logo.png');
-    let vaniaLogo = null;
-    if (vaniaLogoBuffer) {
-      vaniaLogo = await loadImage(vaniaLogoBuffer);
-    }
+    const [vaniaLogo, platformLogo] = await Promise.all([
+      this.loadLogoAsset('logo.png'),
+      this.loadLogoAsset(PLATFORM_LOGO_FILES.instagram),
+    ]);
 
     const grad = ctx.createLinearGradient(0, 0, WIDTH, HEIGHT);
     grad.addColorStop(0, '#405DE6');
@@ -654,7 +466,6 @@ export class MediaCardService {
     grad.addColorStop(0.5, '#C13584');
     grad.addColorStop(0.75, '#E1306C');
     grad.addColorStop(1, '#F77737');
-
     ctx.fillStyle = grad;
     ctx.fillRect(0, 0, WIDTH, HEIGHT);
 
@@ -675,11 +486,8 @@ export class MediaCardService {
     ctx.clip();
     ctx.fillStyle = '#1a1a1a';
     ctx.fillRect(cardX, cardY, cardW, thumbH);
-
     const thumb = await this.loadThumbnail(opts.thumbnail);
-    if (thumb) {
-      this.drawImageCover(ctx, thumb, cardX, cardY, cardW, thumbH);
-    }
+    if (thumb) this.drawImageCover(ctx, thumb, cardX, cardY, cardW, thumbH);
     ctx.restore();
 
     if (opts.duration) {
@@ -698,7 +506,6 @@ export class MediaCardService {
     const avatarX = cardX + 12;
     const avatarY = infoY;
     const avatar = await this.loadThumbnail(opts.thumbnail);
-
     this.drawCircularAvatar(ctx, avatarX, avatarY, avatarSize, avatar);
 
     const textX = avatarX + avatarSize + 12;
@@ -713,24 +520,19 @@ export class MediaCardService {
       ctx.shadowBlur = 0;
       textY += 22;
     }
-
     if (opts.music) {
       ctx.font = '12px sans-serif';
       ctx.fillStyle = '#FFFFFF';
       ctx.fillText(`♪ ${opts.music}`, textX, textY);
       textY += 20;
     }
-
     if (opts.title) {
       ctx.font = '13px sans-serif';
       ctx.fillStyle = 'rgba(255,255,255,0.9)';
       const descLines = this.wrapText(opts.title, cardW - 40, 45);
-      descLines.forEach((line, i) => {
-        ctx.fillText(line, cardX + 12, textY + i * 18);
-      });
+      descLines.forEach((line, i) => ctx.fillText(line, cardX + 12, textY + i * 18));
       textY += descLines.length * 18 + 8;
     }
-
     if (opts.likes) {
       ctx.font = '12px sans-serif';
       ctx.fillStyle = '#FFFFFF';
@@ -740,14 +542,15 @@ export class MediaCardService {
     ctx.fillStyle = 'rgba(255,255,255,0.3)';
     ctx.fillRect(cardX + 12, HEIGHT - 36, cardW - 24, 1);
 
-    // Logos combinados
-    this.drawPlatformAndVaniaLogos(
+    const LOGO_SIZE = 48;
+    await this.drawPlatformAndVaniaLogos(
       ctx,
       'instagram',
-      cardX + cardW - 76,
-      HEIGHT - 52,
-      40,
+      cardX + cardW - 12,
+      HEIGHT - 8 - LOGO_SIZE - 8,
+      LOGO_SIZE,
       vaniaLogo,
+      platformLogo,
     );
 
     return canvas.toBuffer('image/jpeg', 92);
@@ -758,45 +561,34 @@ export class MediaCardService {
     const ctx = canvas.getContext('2d');
     const { bg, accent, text, secondary } = PLATFORM_COLORS.facebook;
 
-    const vaniaLogoBuffer = findAssetFile('logo.png');
-    let vaniaLogo = null;
-    if (vaniaLogoBuffer) {
-      vaniaLogo = await loadImage(vaniaLogoBuffer);
-    }
+    const [vaniaLogo, platformLogo] = await Promise.all([
+      this.loadLogoAsset('logo.png'),
+      this.loadLogoAsset(PLATFORM_LOGO_FILES.facebook),
+    ]);
 
     ctx.fillStyle = bg;
     ctx.fillRect(0, 0, WIDTH, HEIGHT);
 
-    const headerY = 0;
     const headerH = 56;
-
     ctx.fillStyle = '#F0F2F5';
-    ctx.fillRect(0, headerY, WIDTH, headerH);
+    ctx.fillRect(0, 0, WIDTH, headerH);
 
     const avatarSize = 40;
-    const avatarX = 16;
-    const avatarY = headerY + 8;
     const avatar = await this.loadThumbnail(opts.thumbnail);
+    this.drawCircularAvatar(ctx, 16, 8, avatarSize, avatar);
 
-    this.drawCircularAvatar(ctx, avatarX, avatarY, avatarSize, avatar);
-
-    const nameX = avatarX + avatarSize + 12;
-    let nameY = headerY + 20;
-
+    const nameX = 16 + avatarSize + 12;
     ctx.font = '600 14px sans-serif';
     ctx.fillStyle = text;
-    ctx.fillText(opts.author || 'Facebook Page', nameX, nameY);
-
+    ctx.fillText(opts.author || 'Facebook Page', nameX, 20);
     ctx.font = '12px sans-serif';
     ctx.fillStyle = secondary;
-    ctx.fillText('2 hours ago · 🌐', nameX, nameY + 18);
+    ctx.fillText('2 hours ago · 🌐', nameX, 38);
 
     const thumbY = headerH + 1;
     const thumbH = 260;
-
     ctx.fillStyle = '#E5E5E5';
     ctx.fillRect(0, thumbY, WIDTH, thumbH);
-
     const thumb = await this.loadThumbnail(opts.thumbnail);
     if (thumb) {
       ctx.save();
@@ -811,7 +603,6 @@ export class MediaCardService {
     ctx.beginPath();
     ctx.arc(WIDTH / 2, thumbY + thumbH / 2, 32, 0, Math.PI * 2);
     ctx.fill();
-
     ctx.fillStyle = '#FFFFFF';
     ctx.beginPath();
     ctx.moveTo(WIDTH / 2 - 8, thumbY + thumbH / 2 - 12);
@@ -831,7 +622,6 @@ export class MediaCardService {
       ctx.fillStyle = '#FFFFFF';
       ctx.fillText(hdText, WIDTH - hdW, thumbY + thumbH - 14);
     }
-
     if (opts.duration) {
       this.drawDurationBadge(
         ctx,
@@ -843,7 +633,6 @@ export class MediaCardService {
     }
 
     const infoY = thumbY + thumbH + 16;
-
     if (opts.views) {
       ctx.font = '13px sans-serif';
       ctx.fillStyle = secondary;
@@ -856,9 +645,7 @@ export class MediaCardService {
     const statsY = infoY + 36;
     ctx.font = '13px sans-serif';
     ctx.fillStyle = secondary;
-
     let currentX = 16;
-
     if (opts.likes) {
       ctx.fillText(`👍 ${opts.likes}`, currentX, statsY);
       currentX += ctx.measureText(`👍 ${opts.likes}`).width + 24;
@@ -876,10 +663,8 @@ export class MediaCardService {
 
     const actionsY = statsY + 40;
     const actionW = WIDTH / 3;
-
     ctx.font = '14px sans-serif';
     ctx.fillStyle = secondary;
-
     ctx.fillText('👍 Like', WIDTH / 2 - actionW * 1.5 + 20, actionsY);
     ctx.fillText('💬 Comment', WIDTH / 2 - 20, actionsY);
     ctx.fillText('↗ Share', WIDTH / 2 + actionW / 2 + 20, actionsY);
@@ -895,8 +680,16 @@ export class MediaCardService {
     ctx.lineTo(WIDTH / 2 + actionW / 2 + 20, actionsY + 4);
     ctx.stroke();
 
-    // Logos combinados
-    this.drawPlatformAndVaniaLogos(ctx, 'facebook', WIDTH - 76, HEIGHT - 52, 40, vaniaLogo);
+    const LOGO_SIZE = 48;
+    await this.drawPlatformAndVaniaLogos(
+      ctx,
+      'facebook',
+      WIDTH - 12,
+      HEIGHT - 8 - LOGO_SIZE - 8,
+      LOGO_SIZE,
+      vaniaLogo,
+      platformLogo,
+    );
 
     return canvas.toBuffer('image/jpeg', 92);
   }
@@ -904,23 +697,20 @@ export class MediaCardService {
   private static async generateTwitter(opts: MediaCardOptions): Promise<Buffer> {
     const canvas = createCanvas(WIDTH, HEIGHT);
     const ctx = canvas.getContext('2d');
-    const { bg, accent, text, secondary } = PLATFORM_COLORS.twitter;
+    const { bg, text, secondary } = PLATFORM_COLORS.twitter;
 
-    const vaniaLogoBuffer = findAssetFile('logo.png');
-    let vaniaLogo = null;
-    if (vaniaLogoBuffer) {
-      vaniaLogo = await loadImage(vaniaLogoBuffer);
-    }
+    const [vaniaLogo, platformLogo] = await Promise.all([
+      this.loadLogoAsset('logo.png'),
+      this.loadLogoAsset(PLATFORM_LOGO_FILES.twitter),
+    ]);
 
     ctx.fillStyle = bg;
     ctx.fillRect(0, 0, WIDTH, HEIGHT);
 
     const thumbH = 260;
     const thumb = await this.loadThumbnail(opts.thumbnail);
-
     ctx.fillStyle = '#1a1a1a';
     ctx.fillRect(0, 0, WIDTH, thumbH);
-
     if (thumb) {
       ctx.save();
       ctx.beginPath();
@@ -928,7 +718,6 @@ export class MediaCardService {
       ctx.clip();
       this.drawImageCover(ctx, thumb, 0, 0, WIDTH, thumbH);
       ctx.restore();
-
       const grad = ctx.createLinearGradient(0, thumbH - 60, 0, thumbH);
       grad.addColorStop(0, 'rgba(0,0,0,0)');
       grad.addColorStop(1, bg);
@@ -936,9 +725,7 @@ export class MediaCardService {
       ctx.fillRect(0, thumbH - 60, WIDTH, 60);
     }
 
-    if (opts.duration) {
-      this.drawDurationBadge(ctx, opts.duration, WIDTH - 12, thumbH - 24);
-    }
+    if (opts.duration) this.drawDurationBadge(ctx, opts.duration, WIDTH - 12, thumbH - 24);
 
     if (opts.author) {
       ctx.font = 'bold 14px sans-serif';
@@ -947,40 +734,32 @@ export class MediaCardService {
     }
 
     const titleY = thumbH + 52;
-
     if (opts.title) {
       ctx.font = 'bold 16px sans-serif';
       ctx.fillStyle = text;
       const titleLines = this.wrapText(opts.title, WIDTH - 32, 50);
-      titleLines.forEach((line, i) => {
-        ctx.fillText(line, 16, titleY + i * 22);
-      });
+      titleLines.forEach((line, i) => ctx.fillText(line, 16, titleY + i * 22));
     }
 
     const statsY = HEIGHT - 44;
-
     ctx.fillStyle = '#222222';
     ctx.fillRect(16, statsY, WIDTH - 32, 1);
 
     let currentX = 16;
-
     ctx.font = '13px sans-serif';
     ctx.fillStyle = secondary;
-
     if (opts.shares) {
       ctx.fillText('↺', currentX, statsY + 20);
       currentX += 16;
       ctx.fillText(opts.shares, currentX, statsY + 20);
       currentX += ctx.measureText(opts.shares).width + 28;
     }
-
     ctx.fillStyle = '#F91880';
     ctx.fillText('♥', currentX, statsY + 20);
     currentX += 16;
     ctx.fillStyle = secondary;
     ctx.fillText(opts.likes || '0', currentX, statsY + 20);
     currentX += ctx.measureText(opts.likes || '0').width + 28;
-
     ctx.fillStyle = '#AAB8C2';
     ctx.fillText('👁', currentX, statsY + 20);
     currentX += 18;
@@ -990,11 +769,18 @@ export class MediaCardService {
     ctx.font = '12px sans-serif';
     ctx.fillStyle = '#536471';
     const domain = 'x.com';
-    const domainW = ctx.measureText(domain).width;
-    ctx.fillText(domain, WIDTH - domainW - 56, statsY + 20);
+    ctx.fillText(domain, WIDTH - ctx.measureText(domain).width - 56, statsY + 20);
 
-    // Logos combinados
-    this.drawPlatformAndVaniaLogos(ctx, 'twitter', WIDTH - 76, HEIGHT - 52, 40, vaniaLogo);
+    const LOGO_SIZE = 48;
+    await this.drawPlatformAndVaniaLogos(
+      ctx,
+      'twitter',
+      WIDTH - 12,
+      HEIGHT - 8 - LOGO_SIZE - 8,
+      LOGO_SIZE,
+      vaniaLogo,
+      platformLogo,
+    );
 
     return canvas.toBuffer('image/jpeg', 92);
   }

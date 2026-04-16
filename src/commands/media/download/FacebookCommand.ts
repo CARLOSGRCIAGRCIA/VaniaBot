@@ -104,7 +104,7 @@ export class FacebookCommand extends Command {
       const footer = await primeService.formatFooter(ctx.sock, ctx.chat.jid, ctx.chat.isGroup);
       await ctx.sock.sendMessage(ctx.chat.jid, {
         video: fs.readFileSync(filePath),
-        mimetype: 'video/mp4'
+        mimetype: 'video/mp4',
       });
 
       await ctx.react('✅');
