@@ -61,7 +61,7 @@ export class TwitterCommand extends Command {
 
         await ctx.sock.sendMessage(ctx.chat.jid, {
           image: card,
-          caption: `⬇️ descargando...`,
+          caption: `> 𝙑𝙖𝙣𝙞𝙖𝘽𝙤𝙩 𝘿𝙚𝙨𝙘𝙖𝙧𝙜𝙖𝙨 💕`,
         });
       } catch {
         const caption =
@@ -96,7 +96,6 @@ export class TwitterCommand extends Command {
       await ctx.sock.sendMessage(ctx.chat.jid, {
         video: fileBuffer,
         mimetype: 'video/mp4',
-        caption: `🐦 Twitter/X\n📊 ${downloadResult.size}MB\n🔗 ${url}`,
       });
 
       await ctx.react('✅');

@@ -70,7 +70,7 @@ export class TiktokCommand extends Command {
           duration: info?.duration,
         },
         thumbnailBuffer,
-        'descargando',
+        '> 𝙑𝙖𝙣𝙞𝙖𝘽𝙤𝙩 𝘿𝙚𝙨𝙘𝙖𝙧𝙜𝙖𝙨 💕',
         quality,
       );
 
@@ -91,12 +91,6 @@ export class TiktokCommand extends Command {
       await ctx.sock.sendMessage(ctx.chat.jid, {
         video: fs.readFileSync(filePath),
         mimetype: 'video/mp4',
-        caption:
-          (info ? `🎵 @${info.author}\n` : '') +
-          `📊 ${downloadSuccess.size}MB\n` +
-          `⚡ ${downloadSuccess.source}\n` +
-          `🔗 ${url}\n\n` +
-          footer,
       });
 
       await ctx.react('✅');

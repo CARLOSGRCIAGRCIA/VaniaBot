@@ -68,7 +68,7 @@ export class FacebookCommand extends Command {
 
         await ctx.sock.sendMessage(ctx.chat.jid, {
           image: card,
-          caption: `⬇️ descargando...`,
+          caption: `> 𝙑𝙖𝙣𝙞𝙖𝘽𝙤𝙩 𝘿𝙚𝙨𝙘𝙖𝙧𝙜𝙖𝙨 💕`,
         });
       } catch {
         const caption =
@@ -104,14 +104,7 @@ export class FacebookCommand extends Command {
       const footer = await primeService.formatFooter(ctx.sock, ctx.chat.jid, ctx.chat.isGroup);
       await ctx.sock.sendMessage(ctx.chat.jid, {
         video: fs.readFileSync(filePath),
-        mimetype: 'video/mp4',
-        caption:
-          `📺 Facebook\n` +
-          (info ? `✿ ${info.title}\n✿ *autor:* ${info.author}\n` : '') +
-          `📊 ${downloadSuccess.size}MB\n` +
-          `⚡ ${downloadSuccess.source}\n` +
-          `🔗 ${url}\n\n` +
-          footer,
+        mimetype: 'video/mp4'
       });
 
       await ctx.react('✅');

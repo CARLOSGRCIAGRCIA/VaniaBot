@@ -67,7 +67,7 @@ export class YtMp4Command extends Command {
           likeCount: video.likeCount,
         },
         thumbnailBuffer,
-        'descargando video ♡',
+        '> 𝙑𝙖𝙣𝙞𝙖𝘽𝙤𝙩 𝘿𝙚𝙨𝙘𝙖𝙧𝙜𝙖𝙨 💕',
         quality,
       );
 
@@ -88,12 +88,6 @@ export class YtMp4Command extends Command {
       await ctx.sock.sendMessage(ctx.chat.jid, {
         video: fs.readFileSync(filePath),
         mimetype: 'video/mp4',
-        caption:
-          `🎬 ${video.title}\n` +
-          `📊 ${downloadSuccess.size}MB\n` +
-          `⚡ ${downloadSuccess.source}\n` +
-          `🔗 ${video.url}\n\n` +
-          footer,
       });
 
       await ctx.react('✅');

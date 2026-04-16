@@ -60,7 +60,7 @@ export class YtMp3Command extends Command {
           thumbnail: video.thumbnail,
         },
         thumbnailBuffer,
-        'descargando audio ♡',
+        '> 𝙑𝙖𝙣𝙞𝙖𝘽𝙤𝙩 𝘿𝙚𝙨𝙘𝙖𝙧𝙜𝙖𝙨 💕',
       );
 
       await ctx.react('⏳');

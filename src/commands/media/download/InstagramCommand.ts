@@ -69,7 +69,7 @@ export class InstagramCommand extends Command {
 
         await ctx.sock.sendMessage(ctx.chat.jid, {
           image: card,
-          caption: `⬇️ descargando...`,
+          caption: `> 𝙑𝙖𝙣𝙞𝙖𝘽𝙤𝙩 𝘿𝙚𝙨𝙘𝙖𝙧𝙜𝙖𝙨 💕`,
         });
       } catch {
         const caption =
@@ -106,25 +106,16 @@ export class InstagramCommand extends Command {
 
       const downloadSuccess = result.right;
 
-      const footer = await primeService.formatFooter(ctx.sock, ctx.chat.jid, ctx.chat.isGroup);
       const fileBuffer = fs.readFileSync(downloadSuccess.filePath);
-      const sendCaption =
-        (info ? `${isImage ? '🖼️' : '🎬'} @${info.author}\n` : '') +
-        `📊 ${downloadSuccess.size}MB\n` +
-        `⚡ ${downloadSuccess.source}\n` +
-        `🔗 ${url}\n\n` +
-        footer;
 
       if (isImage) {
         await ctx.sock.sendMessage(ctx.chat.jid, {
           image: fileBuffer,
-          caption: sendCaption,
         });
       } else {
         await ctx.sock.sendMessage(ctx.chat.jid, {
           video: fileBuffer,
           mimetype: 'video/mp4',
-          caption: sendCaption,
         });
       }
 
