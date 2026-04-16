@@ -68,7 +68,7 @@ export class HelpCommand extends Command {
     if (!command) {
       await ctx.reply(
         `˚₊· ͟͟͞͞➳ *oops, "${commandName}" no está en mi lista* ˚₊· ͟͟͞͞➳\n\n` +
-        `✿ prueba con *!help* para ver lo que sé hacer ✩`,
+          `✿ prueba con *!help* para ver lo que sé hacer ✩`,
       );
       return;
     }

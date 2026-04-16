@@ -1,6 +1,7 @@
 import { Command } from '../../Command.js';
 import { CommandCategory, CommandContext, type MessageContext } from '@/types/index.js';
 import { TwitterDownloader } from '@/services/download/TwitterDownloader.js';
+import { MediaCardService } from '@/services/creative/MediaCardService.js';
 import { logger } from '@/utils/logger.js';
 import { isRight } from '@/utils/either.js';
 import fs from 'fs';
@@ -47,24 +48,38 @@ export class TwitterCommand extends Command {
       const infoResult = await this.downloader.getVideoInfo(url);
       const info = infoResult._tag === 'Right' ? infoResult.right : null;
 
-      const thumbnailBuffer = await this.getPreviewImage(
-        (info as { thumbnailUrl?: string })?.thumbnailUrl,
-      );
-
-      const caption =
-        `🐦 *Twitter/X*\n` +
-        (info ? `✿ ${info.title.substring(0, 60)}\n` : '') +
-        `⬇️ descargando...\n` +
-        `🔗 ${url}`;
-
-      if (thumbnailBuffer) {
-        await ctx.sock.sendMessage(ctx.chat.jid, {
-          image: thumbnailBuffer,
-          caption,
-          mimetype: 'image/jpeg',
+      try {
+        const card = await MediaCardService.generate({
+          thumbnail: url,
+          title: info?.title || 'Twitter/X video',
+          platform: 'twitter',
+          author: info?.author,
         });
-      } else {
-        await ctx.reply(caption);
+
+        await ctx.sock.sendMessage(ctx.chat.jid, {
+          image: card,
+          caption: `⬇️ descargando...`,
+        });
+      } catch {
+        const thumbnailBuffer = await this.getPreviewImage(
+          (info as { thumbnailUrl?: string })?.thumbnailUrl,
+        );
+
+        const caption =
+          `🐦 *Twitter/X*\n` +
+          (info ? `✿ ${info.title.substring(0, 60)}\n` : '') +
+          `⬇️ descargando...\n` +
+          `🔗 ${url}`;
+
+        if (thumbnailBuffer) {
+          await ctx.sock.sendMessage(ctx.chat.jid, {
+            image: thumbnailBuffer,
+            caption,
+            mimetype: 'image/jpeg',
+          });
+        } else {
+          await ctx.reply(caption);
+        }
       }
 
       await ctx.react('⏬');

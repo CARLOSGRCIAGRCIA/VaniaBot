@@ -3,6 +3,7 @@ import { CommandCategory, type MessageContext } from '@/types/index.js';
 import { logError } from '@/utils/logger.js';
 import { primeService } from '@/services/system/PrimeService.js';
 import { FacebookDownloader } from '@/services/download/FacebookDownloader.js';
+import { MediaCardService } from '@/services/creative/MediaCardService.js';
 import { isRight } from '@/utils/either.js';
 import fs from 'fs';
 import axios from 'axios';
@@ -53,12 +54,27 @@ export class FacebookCommand extends Command {
       const infoResult = await this.downloader.getVideoInfo(url);
       const info = infoResult._tag === 'Right' ? infoResult.right : null;
 
-      await ctx.reply(
-        `📺 *Facebook*\n` +
-          (info ? `✿ ${info.title.substring(0, 60)}\n✿ *autor:* ${info.author}\n` : '') +
-          `⬇️ descargando...\n` +
-          `🔗 ${url}`,
-      );
+      try {
+        const card = await MediaCardService.generate({
+          thumbnail: url,
+          title: info?.title || 'Facebook video',
+          platform: 'facebook',
+          author: info?.author,
+          quality: 'HD',
+        });
+
+        await ctx.sock.sendMessage(ctx.chat.jid, {
+          image: card,
+          caption: `⬇️ descargando...`,
+        });
+      } catch {
+        await ctx.reply(
+          `📺 *Facebook*\n` +
+            (info ? `✿ ${info.title.substring(0, 60)}\n✿ *autor:* ${info.author}\n` : '') +
+            `⬇️ descargando...\n` +
+            `🔗 ${url}`,
+        );
+      }
 
       await ctx.react('⏳');
 

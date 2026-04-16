@@ -3,6 +3,7 @@ import { CommandCategory, type MessageContext } from '@/types/index.js';
 import { logError } from '@/utils/logger.js';
 import { primeService } from '@/services/system/PrimeService.js';
 import { InstagramDownloader } from '@/services/download/InstagramDownloader.js';
+import { MediaCardService } from '@/services/creative/MediaCardService.js';
 import { isRight } from '@/utils/either.js';
 import fs from 'fs';
 import axios from 'axios';
@@ -55,25 +56,41 @@ export class InstagramCommand extends Command {
       const info = infoResult._tag === 'Right' ? infoResult.right : null;
       const isImage = info?.type === 'image';
 
-      const thumbnailBuffer = await this.getPreviewImage(
-        (info as { thumbnailUrl?: string })?.thumbnailUrl,
-      );
-
-      const caption =
-        (info
-          ? `${isImage ? '🖼️' : '🎬'} *@${info.author}*\n` + `✿ ${info.title.substring(0, 60)}\n`
-          : '') +
-        `⬇️ descargando...\n` +
-        `🔗 ${url}`;
-
-      if (thumbnailBuffer) {
-        await ctx.sock.sendMessage(ctx.chat.jid, {
-          image: thumbnailBuffer,
-          caption,
-          mimetype: 'image/jpeg',
+      try {
+        const card = await MediaCardService.generate({
+          thumbnail: url,
+          title: info?.title || 'Instagram post',
+          platform: 'instagram',
+          author: info?.author,
+          duration: isImage ? undefined : '0:30',
+          music: 'Original Sound',
         });
-      } else {
-        await ctx.reply(caption);
+
+        await ctx.sock.sendMessage(ctx.chat.jid, {
+          image: card,
+          caption: `⬇️ descargando...`,
+        });
+      } catch {
+        const caption =
+          (info
+            ? `${isImage ? '🖼️' : '🎬'} *@${info.author}*\n` + `✿ ${info.title.substring(0, 60)}\n`
+            : '') +
+          `⬇️ descargando...\n` +
+          `🔗 ${url}`;
+
+        const thumbnailBuffer = await this.getPreviewImage(
+          (info as { thumbnailUrl?: string })?.thumbnailUrl,
+        );
+
+        if (thumbnailBuffer) {
+          await ctx.sock.sendMessage(ctx.chat.jid, {
+            image: thumbnailBuffer,
+            caption,
+            mimetype: 'image/jpeg',
+          });
+        } else {
+          await ctx.reply(caption);
+        }
       }
 
       await ctx.react('⏳');

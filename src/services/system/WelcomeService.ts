@@ -311,11 +311,11 @@ hola @user ♡
   public getDefaultWelcome(): string {
     return this.DEFAULT_WELCOME;
   }
-  
+
   public getDefaultGoodbye(): string {
     return this.DEFAULT_GOODBYE;
   }
-  
+
   public getDefaultProfilePicPath(): string {
     return this.DEFAULT_PROFILE_PIC;
   }

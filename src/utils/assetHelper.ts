@@ -44,18 +44,18 @@ export function findAssetFile(filename: string): Buffer | null {
  * @returns Promise<boolean> - true si se envió correctamente, false si falló
  */
 export async function sendAssetImage(
-  ctx: MessageContext, 
-  filename: string, 
-  errorMessage: string = '❌ No se encontró la imagen solicitada.'
+  ctx: MessageContext,
+  filename: string,
+  errorMessage: string = '❌ No se encontró la imagen solicitada.',
 ): Promise<boolean> {
   try {
     const imageBuffer = findAssetFile(filename);
-    
+
     if (!imageBuffer) {
       await ctx.reply(errorMessage);
       return false;
     }
-    
+
     await ctx.sock.sendMessage(ctx.chat.jid, { image: imageBuffer }, { quoted: ctx.message });
     return true;
   } catch (error) {

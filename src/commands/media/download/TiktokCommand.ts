@@ -3,6 +3,7 @@ import { CommandCategory, type MessageContext } from '@/types/index.js';
 import { logError } from '@/utils/logger.js';
 import { primeService } from '@/services/system/PrimeService.js';
 import { TikTokDownloader } from '@/services/download/TikTokDownloader.js';
+import { MediaCardService } from '@/services/creative/MediaCardService.js';
 import { isRight } from '@/utils/either.js';
 import fs from 'fs';
 import path from 'path';
@@ -129,22 +130,39 @@ export class TiktokCommand extends Command {
     status: string,
     quality: string,
   ): Promise<void> {
-    const caption =
-      `🎬 *@${info.author}*\n` +
-      `✿ ${info.title.substring(0, 60)}${info.title.length > 60 ? '...' : ''}\n` +
-      (info.duration ? `⏱️ ${info.duration}\n` : '') +
-      `📦 Calidad: ${quality}p\n` +
-      `⬇️ ${status}...\n` +
-      `🔗 ${info.url}`;
-
-    if (thumbnail) {
-      await ctx.sock.sendMessage(ctx.chat.jid, {
-        image: thumbnail,
-        caption,
-        mimetype: 'image/jpeg',
+    try {
+      const card = await MediaCardService.generate({
+        thumbnail: info.url,
+        title: info.title,
+        duration: info.duration,
+        platform: 'tiktok',
+        author: info.author,
+        quality: `${quality}p`,
+        music: 'Original Sound',
       });
-    } else {
-      await ctx.reply(caption);
+
+      await ctx.sock.sendMessage(ctx.chat.jid, {
+        image: card,
+        caption: `⬇️ ${status}...`,
+      });
+    } catch {
+      const caption =
+        `🎬 *@${info.author}*\n` +
+        `✿ ${info.title.substring(0, 60)}${info.title.length > 60 ? '...' : ''}\n` +
+        (info.duration ? `⏱️ ${info.duration}\n` : '') +
+        `📦 Calidad: ${quality}p\n` +
+        `⬇️ ${status}...\n` +
+        `🔗 ${info.url}`;
+
+      if (thumbnail) {
+        await ctx.sock.sendMessage(ctx.chat.jid, {
+          image: thumbnail,
+          caption,
+          mimetype: 'image/jpeg',
+        });
+      } else {
+        await ctx.reply(caption);
+      }
     }
   }
 }

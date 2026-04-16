@@ -2,6 +2,7 @@ import { Command } from '../../Command.js';
 import { CommandCategory, type MessageContext } from '@/types/index.js';
 import { logError } from '@/utils/logger.js';
 import { YouTubeDownloader } from '@/services/download/YouTubeDownloader.js';
+import { MediaCardService } from '@/services/creative/MediaCardService.js';
 import { isRight } from '@/utils/either.js';
 import fs from 'fs';
 import axios from 'axios';
@@ -127,32 +128,49 @@ export class YtMp3Command extends Command {
       return n.toString();
     };
 
-    const title = info.title.length > 55 ? info.title.substring(0, 55) + '…' : info.title;
-
-    const lines = [
-      `✦ ˚₊· 𝙔𝙤𝙪𝙏𝙪𝙗𝙚 𝘼𝙪𝙙𝙞𝙤 ·₊˚ ✦`,
-      ``,
-      `꒰ 🎀 ꒱ ${title}`,
-      ...(info.channel ? [`꒰ 🌸 ꒱ ${info.channel}`] : []),
-      ...(info.duration ? [`꒰ ⏳ ꒱ ${info.duration}`] : []),
-      ``,
-      `꒰ 👁 ꒱ ${formatCount(info.viewCount)} vistas  ·  ꒰ 🤍 ꒱ ${formatCount(info.likeCount)} likes`,
-      ``,
-      `꒰ ✨ ꒱ ${status}...`,
-      ``,
-      `🔗 ${info.url}`,
-    ];
-
-    const caption = lines.join('\n');
-
-    if (thumbnail) {
-      await ctx.sock.sendMessage(ctx.chat.jid, {
-        image: thumbnail,
-        caption,
-        mimetype: 'image/jpeg',
+    try {
+      const card = await MediaCardService.generate({
+        thumbnail: info.url,
+        title: info.title,
+        duration: info.duration,
+        views: formatCount(info.viewCount),
+        platform: 'youtube',
+        author: info.channel,
+        quality: 'AUDIO',
       });
-    } else {
-      await ctx.reply(caption);
+
+      await ctx.sock.sendMessage(ctx.chat.jid, {
+        image: card,
+        caption: `🎵 ${status}...`,
+      });
+    } catch {
+      const title = info.title.length > 55 ? info.title.substring(0, 55) + '…' : info.title;
+
+      const lines = [
+        `✦ ˚₊· 𝙔𝙤𝙪𝙏𝙪𝙗𝙚 𝘼𝙪𝙙𝙞𝙤 ·₊˚ ✦`,
+        ``,
+        `꒰ 🎀 ꒱ ${title}`,
+        ...(info.channel ? [`꒰ 🌸 ꒱ ${info.channel}`] : []),
+        ...(info.duration ? [`꒰ ⏳ ꒱ ${info.duration}`] : []),
+        ``,
+        `꒰ 👁 ꒱ ${formatCount(info.viewCount)} vistas  ·  ꒰ 🤍 ꒱ ${formatCount(info.likeCount)} likes`,
+        ``,
+        `꒰ ✨ ꒱ ${status}...`,
+        ``,
+        `🔗 ${info.url}`,
+      ];
+
+      const caption = lines.join('\n');
+
+      if (thumbnail) {
+        await ctx.sock.sendMessage(ctx.chat.jid, {
+          image: thumbnail,
+          caption,
+          mimetype: 'image/jpeg',
+        });
+      } else {
+        await ctx.reply(caption);
+      }
     }
   }
 }
