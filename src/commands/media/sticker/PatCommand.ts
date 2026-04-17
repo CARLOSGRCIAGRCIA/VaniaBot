@@ -35,9 +35,9 @@ export class PatCommand extends Command {
     try {
       const randomNum = Math.floor(Math.random() * 4) + 1;
       const filename = `pat${randomNum}.jpg`;
-      
+
       const imageBuffer = findAssetFile(filename);
-      
+
       if (!imageBuffer) {
         await ctx.reply(`❌ No se encontró la imagen ${filename}`);
         await ctx.react('❌');
@@ -45,13 +45,13 @@ export class PatCommand extends Command {
       }
 
       const tempPath = path.join(process.cwd(), 'temp', `pat_${Date.now()}_${randomNum}.jpg`);
-      
+
       if (!fs.existsSync(path.join(process.cwd(), 'temp'))) {
         fs.mkdirSync(path.join(process.cwd(), 'temp'), { recursive: true });
       }
-      
+
       fs.writeFileSync(tempPath, imageBuffer);
-      
+
       const { width, height } = await ImageProcessor.loadImage(tempPath);
 
       const fontSize = 95;
@@ -80,9 +80,9 @@ export class PatCommand extends Command {
       svgContent += `</svg>`;
 
       const buffer = await ImageProcessor.compositeText(tempPath, svgContent, width, height);
-      
+
       fs.unlinkSync(tempPath);
-      
+
       const stickerInfo = await primeService.formatStickerInfo(
         ctx.sock,
         ctx.chat.jid,

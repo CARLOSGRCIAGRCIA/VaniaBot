@@ -34,7 +34,7 @@ export class NotaCommand extends Command {
 
     try {
       const imageBuffer = findAssetFile('nota.jpg');
-      
+
       if (!imageBuffer) {
         await ctx.reply('❌ No se encontró la imagen de fondo para la nota.');
         await ctx.react('❌');
@@ -42,13 +42,13 @@ export class NotaCommand extends Command {
       }
 
       const tempPath = path.join(process.cwd(), 'temp', `nota_${Date.now()}.jpg`);
-      
+
       if (!fs.existsSync(path.join(process.cwd(), 'temp'))) {
         fs.mkdirSync(path.join(process.cwd(), 'temp'), { recursive: true });
       }
-      
+
       fs.writeFileSync(tempPath, imageBuffer);
-      
+
       const { width, height } = await ImageProcessor.loadImage(tempPath);
 
       const fontSize = 99;
@@ -79,9 +79,9 @@ export class NotaCommand extends Command {
       svgContent += `</svg>`;
 
       const buffer = await ImageProcessor.compositeText(tempPath, svgContent, width, height);
-      
+
       fs.unlinkSync(tempPath);
-      
+
       const stickerInfo = await primeService.formatStickerInfo(
         ctx.sock,
         ctx.chat.jid,
