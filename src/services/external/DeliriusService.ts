@@ -50,8 +50,17 @@ export class DeliriusService {
         return `data:${contentType};base64,${base64}`;
       }
 
-      const data = (await response.json()) as { result?: string; image?: string; url?: string };
+      const data = (await response.json()) as {
+        status?: boolean;
+        result?: string;
+        image?: string;
+        url?: string;
+        data?: { url?: string; image?: string; result?: string };
+      };
 
+      if (data.data?.url) return data.data.url;
+      if (data.data?.image) return data.data.image;
+      if (data.data?.result) return data.data.result;
       if (data.result) return data.result;
       if (data.image) return data.image;
       if (data.url) return data.url;
