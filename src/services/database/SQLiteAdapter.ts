@@ -1,6 +1,29 @@
 import { Database } from './Database.js';
 import { getDatabase } from '@/repositories/Database.js';
 
+const COLLECTION_KEY_COLUMN: Record<string, string> = {
+  users: 'jid',
+  groups: 'jid',
+  vania_toggle: 'key',
+  reports: 'id',
+  reminders: 'key',
+  polls: 'key',
+  listas: 'key',
+  mutes: 'id',
+  ai_sessions: 'id',
+  subbots: 'id',
+  subbot_slots: 'slot_number',
+  cooldowns: 'id',
+  locks: 'key',
+  jobs: 'id',
+  anticall_config: 'id',
+  anticall_blocked_users: 'id',
+  bot_runtime_state: 'bot_id',
+  health_events: 'id',
+  orchestrator_state: 'id',
+  processed_messages: 'message_id',
+};
+
 export class SQLiteAdapter extends Database {
   protected connected = true;
 
@@ -22,17 +45,25 @@ export class SQLiteAdapter extends Database {
     return collection;
   }
 
+  private getKeyColumn(collection: string): string {
+    return COLLECTION_KEY_COLUMN[collection] || 'id';
+  }
+
   async get<T>(collection: string, key: string): Promise<T | null> {
     const table = this.getTableName(collection);
-    const result = this.getDb().fetchOne<T>(`SELECT * FROM ${table} WHERE id = ?`, {
-      params: [key],
-    });
+    const keyCol = this.getKeyColumn(collection);
+    const result = this.getDb().fetchOne<T>(
+      `SELECT * FROM ${table} WHERE ${keyCol} = ?`,
+      { params: [key] },
+    );
     return result || null;
   }
 
   async set<T>(collection: string, key: string, value: T): Promise<void> {
     const table = this.getTableName(collection);
-    const row = value as Record<string, unknown>;
+    const keyCol = this.getKeyColumn(collection);
+    const row = { ...(value as Record<string, unknown>) };
+    row[keyCol] = key;
     row['updatedAt'] = Date.now();
 
     if (!row['createdAt']) {
@@ -47,20 +78,22 @@ export class SQLiteAdapter extends Database {
       return val;
     });
 
-    const sql = `INSERT OR REPLACE INTO ${table} (id, ${columns.join(', ')}) VALUES (?, ${placeholders})`;
-    this.getDb().query(sql, { params: [key, ...values] });
+    const sql = `INSERT OR REPLACE INTO ${table} (${columns.join(', ')}) VALUES (${placeholders})`;
+    this.getDb().query(sql, { params: values });
   }
 
   async delete(collection: string, key: string): Promise<boolean> {
     const table = this.getTableName(collection);
-    this.getDb().query(`DELETE FROM ${table} WHERE id = ?`, { params: [key] });
+    const keyCol = this.getKeyColumn(collection);
+    this.getDb().query(`DELETE FROM ${table} WHERE ${keyCol} = ?`, { params: [key] });
     return true;
   }
 
   async has(collection: string, key: string): Promise<boolean> {
     const table = this.getTableName(collection);
+    const keyCol = this.getKeyColumn(collection);
     const result = this.getDb().fetchOne<{ cnt: number }>(
-      `SELECT COUNT(*) as cnt FROM ${table} WHERE id = ?`,
+      `SELECT COUNT(*) as cnt FROM ${table} WHERE ${keyCol} = ?`,
       { params: [key] },
     );
     return (result?.cnt ?? 0) > 0;
@@ -68,9 +101,7 @@ export class SQLiteAdapter extends Database {
 
   async find<T>(collection: string, filter: Record<string, unknown>): Promise<T[]> {
     const table = this.getTableName(collection);
-    const conditions = Object.keys(filter)
-      .map(key => `${key} = ?`)
-      .join(' AND ');
+    const conditions = Object.keys(filter).map(key => `${key} = ?`).join(' AND ');
     const values = Object.values(filter).map(v => {
       if (typeof v === 'object') return JSON.stringify(v);
       return v;
@@ -80,9 +111,10 @@ export class SQLiteAdapter extends Database {
       return this.getDb().fetchAll<T>(`SELECT * FROM ${table}`);
     }
 
-    return this.getDb().fetchAll<T>(`SELECT * FROM ${table} WHERE ${conditions}`, {
-      params: values,
-    });
+    return this.getDb().fetchAll<T>(
+      `SELECT * FROM ${table} WHERE ${conditions}`,
+      { params: values },
+    );
   }
 
   async findOne<T>(collection: string, filter: Record<string, unknown>): Promise<T | null> {
@@ -92,6 +124,7 @@ export class SQLiteAdapter extends Database {
 
   async update<T>(collection: string, key: string, updates: Partial<T>): Promise<void> {
     const table = this.getTableName(collection);
+    const keyCol = this.getKeyColumn(collection);
     const updateData = updates as Record<string, unknown>;
 
     const setClauses = Object.keys(updateData)
@@ -103,7 +136,7 @@ export class SQLiteAdapter extends Database {
       return v;
     });
 
-    const sql = `UPDATE ${table} SET ${setClauses}, updatedAt = ? WHERE id = ?`;
+    const sql = `UPDATE ${table} SET ${setClauses}, updatedAt = ? WHERE ${keyCol} = ?`;
     this.getDb().query(sql, { params: [...values, Date.now(), key] });
   }
 
@@ -114,8 +147,9 @@ export class SQLiteAdapter extends Database {
 
   async keys(collection: string): Promise<string[]> {
     const table = this.getTableName(collection);
-    const results = this.getDb().fetchAll<{ id: string }>(`SELECT id FROM ${table}`);
-    return results.map(r => r.id);
+    const keyCol = this.getKeyColumn(collection);
+    const results = this.getDb().fetchAll<{ key: string }>(`SELECT ${keyCol} as key FROM ${table}`);
+    return results.map(r => r.key);
   }
 
   async getPaginated<T>(
@@ -129,9 +163,10 @@ export class SQLiteAdapter extends Database {
     },
   ): Promise<import('./Database.js').PaginatedResult<T>> {
     const table = this.getTableName(collection);
+    const keyCol = this.getKeyColumn(collection);
     const page = options?.page ?? 1;
     const limit = options?.limit ?? 20;
-    const sortBy = options?.sortBy || 'id';
+    const sortBy = options?.sortBy || keyCol;
     const sortOrder = options?.sortOrder || 'asc';
     const filter = options?.filter || {};
 
@@ -170,9 +205,7 @@ export class SQLiteAdapter extends Database {
       return result?.cnt ?? 0;
     }
 
-    const conditions = Object.keys(filter)
-      .map(key => `${key} = ?`)
-      .join(' AND ');
+    const conditions = Object.keys(filter).map(key => `${key} = ?`).join(' AND ');
     const values = Object.values(filter);
     const result = this.getDb().fetchOne<{ cnt: number }>(
       `SELECT COUNT(*) as cnt FROM ${table} WHERE ${conditions}`,
