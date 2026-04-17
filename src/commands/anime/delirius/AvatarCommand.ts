@@ -1,5 +1,6 @@
 import { Command } from '../../Command.js';
-import { DeliriusAnimeBase } from '../DeliriusAnimeBase.js';
+import { deliriusService } from '@/services/external/DeliriusService.js';
+import { logError } from '@/utils/logger.js';
 import {
   CommandCategory,
   CommandContext,
@@ -20,6 +21,16 @@ export class AvatarCommand extends Command {
 
   async execute(ctx: MessageContext): Promise<void> {
     await ctx.react('🎭');
-    await new DeliriusAnimeBase().sendImage(ctx, 'avatar');
+    try {
+      const imageUrl = await deliriusService.getAnimeImage('avatar/delirius?style=pixel-art');
+      await ctx.sock.sendMessage(ctx.chat.jid, {
+        image: { url: imageUrl },
+      });
+      await ctx.react('✅');
+    } catch (error) {
+      logError('[AvatarCommand]', error);
+      await ctx.react('❌');
+      await ctx.reply('❌ No pude obtener la imagen. Intenta de nuevo.');
+    }
   }
 }

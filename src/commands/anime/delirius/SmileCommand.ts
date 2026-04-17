@@ -24,7 +24,7 @@ export class SmileCommand extends Command {
     try {
       const imageUrl = await deliriusService.getReactionsImage('smile');
       await ctx.sock.sendMessage(ctx.chat.jid, {
-        image: { url: imageUrl },
+        video: { url: imageUrl },
       });
       await ctx.react('✅');
     } catch (error) {

@@ -24,7 +24,7 @@ export class LayCommand extends Command {
     try {
       const imageUrl = await deliriusService.getReactionsImage('lay');
       await ctx.sock.sendMessage(ctx.chat.jid, {
-        image: { url: imageUrl },
+        video: { url: imageUrl },
       });
       await ctx.react('✅');
     } catch (error) {

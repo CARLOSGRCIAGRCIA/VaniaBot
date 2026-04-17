@@ -22,9 +22,9 @@ export class PatearCommand extends Command {
   async execute(ctx: MessageContext): Promise<void> {
     await ctx.react('🦶');
     try {
-      const imageUrl = await deliriusService.getReactionsImage('patear');
+      const imageUrl = await deliriusService.getReactionsImage('kick');
       await ctx.sock.sendMessage(ctx.chat.jid, {
-        image: { url: imageUrl },
+        video: { url: imageUrl },
       });
       await ctx.react('✅');
     } catch (error) {
