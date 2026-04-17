@@ -48,6 +48,11 @@ function roundRect(
 
 async function safeLoadImage(src: string) {
   try {
+    if (src.startsWith('data:')) {
+      const base64Data = src.split(',')[1];
+      const buffer = Buffer.from(base64Data, 'base64');
+      return await loadImage(buffer);
+    }
     return await loadImage(src);
   } catch {
     return null;
