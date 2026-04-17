@@ -58,10 +58,34 @@ export class SQLiteAdapter extends Database {
   private parseJsonFields(obj: Record<string, unknown>): Record<string, unknown> {
     const result: Record<string, unknown> = {};
     for (const [key, value] of Object.entries(obj)) {
-      if (typeof value === 'string' && value.startsWith('[')) {
-        try {
-          result[key] = JSON.parse(value);
-        } catch {
+      if (!Object.prototype.hasOwnProperty.call(obj, key)) {
+        continue;
+      }
+      if (key === '__proto__' || key === 'constructor' || key === 'prototype') {
+        continue;
+      }
+      if (value === undefined) {
+        continue;
+      }
+      if (value === null) {
+        result[key] = null;
+        continue;
+      }
+      if (typeof value === 'string') {
+        const trimmed = value.trim();
+        if (trimmed.startsWith('[')) {
+          try {
+            result[key] = JSON.parse(value);
+          } catch {
+            result[key] = value;
+          }
+        } else if (trimmed.startsWith('{')) {
+          try {
+            result[key] = JSON.parse(value);
+          } catch {
+            result[key] = value;
+          }
+        } else {
           result[key] = value;
         }
       } else {
