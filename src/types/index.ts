@@ -89,7 +89,7 @@ export interface IMiddleware {
 }
 
 export interface DatabaseConfig {
-  type: 'json' | 'mongodb';
+  type: 'json' | 'mongodb' | 'sqlite';
   uri?: string;
   path?: string;
 }

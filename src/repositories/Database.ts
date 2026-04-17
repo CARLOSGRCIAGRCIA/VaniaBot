@@ -252,6 +252,117 @@ const MIGRATIONS: Migration[] = [
       CREATE INDEX IF NOT EXISTS idx_processed_messages_time ON processed_messages(processed_at);
     `,
   },
+  {
+    version: 15,
+    name: 'create_users_table',
+    up: `
+      CREATE TABLE IF NOT EXISTS users (
+        jid TEXT PRIMARY KEY,
+        name TEXT,
+        level INTEGER DEFAULT 1,
+        xp INTEGER DEFAULT 0,
+        money INTEGER DEFAULT 0,
+        bank INTEGER DEFAULT 0,
+        isOwner INTEGER DEFAULT 0,
+        isAdmin INTEGER DEFAULT 0,
+        isBanned INTEGER DEFAULT 0,
+        warnings INTEGER DEFAULT 0,
+        totalCommands INTEGER DEFAULT 0,
+        inventory TEXT DEFAULT '[]',
+        achievements TEXT DEFAULT '[]',
+        activeBuffs TEXT DEFAULT '[]',
+        stats TEXT DEFAULT '{"hp":100,"maxHp":100,"atk":10,"def":5}',
+        currentClass TEXT,
+        createdAt INTEGER,
+        updatedAt INTEGER
+      );
+      CREATE INDEX IF NOT EXISTS idx_users_level ON users(level);
+      CREATE INDEX IF NOT EXISTS idx_users_banned ON users(isBanned);
+    `,
+  },
+  {
+    version: 16,
+    name: 'create_groups_table',
+    up: `
+      CREATE TABLE IF NOT EXISTS groups (
+        jid TEXT PRIMARY KEY,
+        name TEXT DEFAULT 'Group',
+        isActive INTEGER DEFAULT 1,
+        onlyAdmin INTEGER DEFAULT 0,
+        welcome TEXT DEFAULT '{"enabled":false,"message":""}',
+        goodbye TEXT DEFAULT '{"enabled":false,"message":""}',
+        antiSpam TEXT DEFAULT '{"enabled":true,"maxMessages":10,"timeWindow":60}',
+        antiLink TEXT DEFAULT '{"enabled":false,"allowedDomains":[]}',
+        antiWords TEXT DEFAULT '{"enabled":false,"words":[]}',
+        levels TEXT DEFAULT '{"enabled":true,"announceOnLevelUp":true}',
+        economy TEXT DEFAULT '{"enabled":true}',
+        audios INTEGER DEFAULT 0,
+        nsfw INTEGER DEFAULT 0,
+        prime TEXT DEFAULT '{"enabled":false}',
+        license TEXT,
+        autoMod TEXT DEFAULT '{"enabled":false}',
+        stats TEXT DEFAULT '{"totalMessages":0,"totalCommands":0}',
+        createdAt INTEGER,
+        updatedAt INTEGER
+      );
+      CREATE INDEX IF NOT EXISTS idx_groups_active ON groups(isActive);
+    `,
+  },
+  {
+    version: 17,
+    name: 'create_vania_toggle_table',
+    up: `
+      CREATE TABLE IF NOT EXISTS vania_toggle (
+        key TEXT PRIMARY KEY,
+        chat_jid TEXT NOT NULL,
+        bot_id TEXT NOT NULL,
+        enabled INTEGER DEFAULT 0,
+        enabled_by TEXT,
+        enabled_at INTEGER,
+        disabled_by TEXT,
+        disabled_at INTEGER
+      );
+      CREATE INDEX IF NOT EXISTS idx_vania_toggle_chat ON vania_toggle(chat_jid);
+      CREATE INDEX IF NOT EXISTS idx_vania_toggle_bot ON vania_toggle(bot_id);
+    `,
+  },
+  {
+    version: 18,
+    name: 'create_reports_table',
+    up: `
+      CREATE TABLE IF NOT EXISTS reports (
+        id TEXT PRIMARY KEY,
+        type TEXT,
+        user_jid TEXT,
+        group_jid TEXT,
+        reason TEXT,
+        status TEXT DEFAULT 'pending',
+        created_at INTEGER,
+        resolved_at INTEGER,
+        resolved_by TEXT
+      );
+      CREATE INDEX IF NOT EXISTS idx_reports_status ON reports(status);
+      CREATE INDEX IF NOT EXISTS idx_reports_user ON reports(user_jid);
+    `,
+  },
+  {
+    version: 19,
+    name: 'create_persistence_tables',
+    up: `
+      CREATE TABLE IF NOT EXISTS reminders (
+        key TEXT PRIMARY KEY,
+        data TEXT
+      );
+      CREATE TABLE IF NOT EXISTS polls (
+        key TEXT PRIMARY KEY,
+        data TEXT
+      );
+      CREATE TABLE IF NOT EXISTS listas (
+        key TEXT PRIMARY KEY,
+        data TEXT
+      );
+    `,
+  },
 ];
 
 export interface QueryResult {
