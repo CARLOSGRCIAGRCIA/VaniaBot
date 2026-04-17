@@ -1,6 +1,7 @@
 import type { Database } from '../database/Database.js';
 import { JsonDatabase } from '../database/JsonDatabase.js';
 import { MongoDatabase } from '../database/MongoDatabase.js';
+import { SQLiteAdapter } from '../database/SQLiteAdapter.js';
 import { UserService } from '../database/UserService.js';
 import { GroupService } from '../database/GroupService.js';
 import { LevelService } from '../database/LevelService.js';
@@ -15,6 +16,7 @@ import { cleanupService } from './CleanupService.js';
 import { healthCheckService, AutoRestartService } from './HealthCheckService.js';
 import { sessionBackupService } from './SessionBackupService.js';
 import { persistenceService } from './PersistenceService.js';
+import { initializeDatabase } from '@/repositories/Database.js';
 
 export class ServiceManager {
   private static instance: ServiceManager;
@@ -84,7 +86,7 @@ export class ServiceManager {
 
     switch (dbType) {
       case 'json':
-        logger.info('Usando base de datos JSON');
+        logger.info('Usando base de datos JSON (legacy)');
         this.db = new JsonDatabase(config.database.path);
         break;
 
@@ -96,8 +98,16 @@ export class ServiceManager {
         this.db = new MongoDatabase(config.database.uri);
         break;
 
+      case 'sqlite':
+        logger.info('Usando base de datos SQLite');
+        await initializeDatabase();
+        this.db = new SQLiteAdapter();
+        break;
+
       default:
-        throw new Error(`Tipo de base de datos no soportado: ${dbType}`);
+        logger.warn(`Tipo de base de datos no reconocido: ${dbType}, usando SQLite por defecto`);
+        await initializeDatabase();
+        this.db = new SQLiteAdapter();
     }
 
     await this.db.connect();

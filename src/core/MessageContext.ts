@@ -14,7 +14,7 @@
 import type { WASocket, proto, AnyMessageContent } from '@whiskeysockets/baileys';
 import type { MessageContext as IMessageContext } from '@/types/index.js';
 import { config } from '@/config/index.js';
-import { PermissionService, getBotJid, normalizeJid } from '@/services/PermissionService.js';
+import { PermissionService, normalizeJid } from '@/services/PermissionService.js';
 import { cacheManager } from '@/core/CacheManager.js';
 
 /**
@@ -153,17 +153,8 @@ export class MessageContext implements IMessageContext {
       return;
     }
 
-    const botJid = getBotJid(this.sock);
-
-    const cached = cacheManager.getPermissions(this.chat.jid, botJid);
-    if (cached) {
-      this._botPermissions = { isAdmin: cached.isAdmin };
-      return;
-    }
-
     const perms = await PermissionService.getBotPermissions(this.sock, this.chat.jid);
     this._botPermissions = { isAdmin: perms.isAdmin };
-    cacheManager.setPermissions(this.chat.jid, botJid, perms);
   }
 
   get quoted(): proto.IMessage | undefined {

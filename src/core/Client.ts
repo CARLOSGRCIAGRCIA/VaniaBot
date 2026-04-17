@@ -29,6 +29,7 @@ import { serviceManager } from '@/services/system/Servicemanager.js';
 import { logger, logError } from '@/utils/logger.js';
 import { CommandExecutionError } from '@/utils/errors.js';
 import { cacheManager } from '@/core/CacheManager.js';
+import { getBotJid } from '@/services/permission/JidService.js';
 import { handleReaccion } from '@/handlers/ReaccionHandler.js';
 import { quizAnswerHandler } from '@/handlers/QuizAnswerHandler.js';
 import { handleMention } from '@/handlers/AiMentionHandler.js';
@@ -799,6 +800,17 @@ export class WhatsAppClient {
     try {
       cacheManager.invalidateGroupMetadata(groupJid);
       await serviceManager.groupService.getGroup(groupJid);
+
+      const botJid = getBotJid(this.sock);
+      const botPhone = botJid.split('@')[0];
+      const isBotAffected = participants.some(p => {
+        const pPhone = p.split('@')[0];
+        return pPhone === botPhone || p === botJid;
+      });
+
+      if (isBotAffected) {
+        cacheManager.invalidatePermissions(groupJid);
+      }
 
       if (action === 'add') {
         for (const participant of participants) {
