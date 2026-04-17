@@ -25,7 +25,7 @@ export class SoloCommand extends Command {
     try {
       const imageUrl = await deliriusService.getReactionsImage('solo');
       await ctx.sock.sendMessage(ctx.chat.jid, {
-        image: { url: imageUrl },
+        video: { url: imageUrl },
       });
       await ctx.react('✅');
     } catch (error) {
