@@ -1,5 +1,4 @@
 import { Command } from '../../Command.js';
-import { CanvasBase } from './CanvasBase.js';
 import { ImageHelper } from '@/utils/ImageHelper.js';
 import { serviceManager } from '@/services/system/Servicemanager.js';
 import {
@@ -8,6 +7,8 @@ import {
   PermissionLevel,
   type MessageContext,
 } from '@/types/index.js';
+import { ProfileCardService } from '@services/canvas/ProfileCardService.js';
+import { serviceManager as sm } from '@/services/system/Servicemanager.js';
 
 export class BalcardCommand extends Command {
   name = 'balcard';
@@ -16,39 +17,46 @@ export class BalcardCommand extends Command {
   aliases = [];
   cooldown = 10000;
   contexts = [CommandContext.BOTH];
-  usage = '!balcard [background]';
-  examples = ['!balcard', '!balcard #000000'];
+  usage = '!balcard [accentColor]';
+  examples = ['!balcard', '!balcard #FF6B6B'];
   permissions = { user: [PermissionLevel.USER], bot: [] };
 
   async execute(ctx: MessageContext): Promise<void> {
     await ctx.react('💳');
 
-    const imageUrl = await ImageHelper.getProfileImage(ctx);
-    if (!imageUrl) {
-      await ctx.reply('❌ No pude obtener la foto de perfil.');
-      return;
-    }
-
     const targetJid = ctx.sender.jid;
-    const userData = await serviceManager.userService.getUser(targetJid);
+
+    const [userData, progress] = await Promise.all([
+      serviceManager.userService.getUser(targetJid),
+      serviceManager.levelService.getLevelProgress(targetJid),
+    ]);
+
+    const avatarUrl = (await ImageHelper.getProfileImage(ctx)) ?? '';
 
     const args = ctx.args || [];
-    const background = args[0] || 'black';
+    const accentColor = args[0]?.startsWith('#') ? args[0] : undefined;
 
-    const username = userData.name || ctx.sender.pushName || 'User';
-    const discriminator = userData.name ? userData.name.slice(-4) : '0000';
-    const money = userData.money.toString();
-    const xp = userData.xp.toString();
-    const level = userData.level.toString();
+    const username = (userData.name || ctx.sender.pushName || 'User').substring(0, 20);
+    const discriminator = targetJid.split('@')[0].slice(-4);
 
-    await new CanvasBase().sendImage(ctx, 'balcard', {
-      url: imageUrl,
-      background,
-      username: username.substring(0, 20),
-      discriminator,
-      money,
-      xp,
-      level,
-    });
+    try {
+      const cardBuffer = await ProfileCardService.generate({
+        avatarUrl,
+        username,
+        discriminator,
+        money: userData.money,
+        xp: progress.currentXP,
+        level: userData.level,
+        levelProgress: progress.percentage,
+        accentColor,
+      });
+
+      await ctx.sock.sendMessage(ctx.chat.jid, {
+        image: cardBuffer,
+        caption: `💳 Balance card de *${username}*`,
+      });
+    } catch {
+      await ctx.reply('❌ No pude generar la tarjeta, intenta de nuevo.');
+    }
   }
 }
