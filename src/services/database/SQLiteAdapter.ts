@@ -1,10 +1,5 @@
-import type { IDatabase, PaginatedResult } from './Database.js';
 import { Database } from './Database.js';
 import { getDatabase } from '@/repositories/Database.js';
-
-interface DbRow {
-  [key: string]: unknown;
-}
 
 export class SQLiteAdapter extends Database {
   protected connected = true;
@@ -13,9 +8,7 @@ export class SQLiteAdapter extends Database {
     return getDatabase();
   }
 
-  async connect(): Promise<void> {
-    // No actual connection needed for SQLite, but we can verify the database is accessible
-  }
+  async connect(): Promise<void> {}
 
   async disconnect(): Promise<void> {
     this.getDb().forceSave();
@@ -26,33 +19,20 @@ export class SQLiteAdapter extends Database {
   }
 
   private getTableName(collection: string): string {
-    const tableMap: Record<string, string> = {
-      users: 'users',
-      groups: 'groups',
-      vania_toggle: 'vania_toggle',
-      reports: 'reports',
-      reminders: 'reminders',
-      polls: 'polls',
-      listas: 'listas',
-      cooldowns: 'cooldowns',
-      locks: 'locks',
-      jobs: 'jobs',
-    };
-    return tableMap[collection] || collection;
+    return collection;
   }
 
   async get<T>(collection: string, key: string): Promise<T | null> {
     const table = this.getTableName(collection);
-    const result = this.getDb().fetchOne<T>(`SELECT * FROM ${table} WHERE jid = ?`, {
+    const result = this.getDb().fetchOne<T>(`SELECT * FROM ${table} WHERE id = ?`, {
       params: [key],
     });
-    return result;
+    return result || null;
   }
 
   async set<T>(collection: string, key: string, value: T): Promise<void> {
     const table = this.getTableName(collection);
     const row = value as Record<string, unknown>;
-    row['jid'] = key;
     row['updatedAt'] = Date.now();
 
     if (!row['createdAt']) {
@@ -67,31 +47,20 @@ export class SQLiteAdapter extends Database {
       return val;
     });
 
-    const sql = `INSERT OR REPLACE INTO ${table} (${columns.join(', ')}) VALUES (${placeholders})`;
-    this.getDb().query(sql, { params: values });
+    const sql = `INSERT OR REPLACE INTO ${table} (id, ${columns.join(', ')}) VALUES (?, ${placeholders})`;
+    this.getDb().query(sql, { params: [key, ...values] });
   }
 
   async delete(collection: string, key: string): Promise<boolean> {
     const table = this.getTableName(collection);
-    const hasJidColumn =
-      this.getDb().fetchOne<{ name: string }>(`PRAGMA table_info(${table})`)?.name === 'jid';
-
-    if (hasJidColumn) {
-      this.getDb().query(`DELETE FROM ${table} WHERE jid = ?`, { params: [key] });
-    } else {
-      this.getDb().query(`DELETE FROM ${table} WHERE key = ?`, { params: [key] });
-    }
+    this.getDb().query(`DELETE FROM ${table} WHERE id = ?`, { params: [key] });
     return true;
   }
 
   async has(collection: string, key: string): Promise<boolean> {
     const table = this.getTableName(collection);
-    const hasJidColumn =
-      this.getDb().fetchOne<{ name: string }>(`PRAGMA table_info(${table})`)?.name === 'jid';
-
-    const column = hasJidColumn ? 'jid' : 'key';
     const result = this.getDb().fetchOne<{ cnt: number }>(
-      `SELECT COUNT(*) as cnt FROM ${table} WHERE ${column} = ?`,
+      `SELECT COUNT(*) as cnt FROM ${table} WHERE id = ?`,
       { params: [key] },
     );
     return (result?.cnt ?? 0) > 0;
@@ -126,13 +95,7 @@ export class SQLiteAdapter extends Database {
     const updateData = updates as Record<string, unknown>;
 
     const setClauses = Object.keys(updateData)
-      .map(key => {
-        const val = updateData[key];
-        if (typeof val === 'object') {
-          return `${key} = ?`;
-        }
-        return `${key} = ?`;
-      })
+      .map(key => `${key} = ?`)
       .join(', ');
 
     const values = Object.values(updateData).map(v => {
@@ -140,12 +103,7 @@ export class SQLiteAdapter extends Database {
       return v;
     });
 
-    const hasJidColumn =
-      this.getDb().fetchOne<{ name: string }>(`PRAGMA table_info(${table})`)?.name === 'jid';
-
-    const column = hasJidColumn ? 'jid' : 'key';
-
-    const sql = `UPDATE ${table} SET ${setClauses}, updatedAt = ? WHERE ${column} = ?`;
+    const sql = `UPDATE ${table} SET ${setClauses}, updatedAt = ? WHERE id = ?`;
     this.getDb().query(sql, { params: [...values, Date.now(), key] });
   }
 
@@ -156,13 +114,8 @@ export class SQLiteAdapter extends Database {
 
   async keys(collection: string): Promise<string[]> {
     const table = this.getTableName(collection);
-    const hasJidColumn =
-      this.getDb().fetchOne<{ name: string }>(`PRAGMA table_info(${table})`)?.name === 'jid';
-
-    const column = hasJidColumn ? 'jid' : 'key';
-
-    const results = this.getDb().fetchAll<{ id: string }>(`SELECT ${column} as id FROM ${table}`);
-    return results.map((r: { id: string }) => r.id);
+    const results = this.getDb().fetchAll<{ id: string }>(`SELECT id FROM ${table}`);
+    return results.map(r => r.id);
   }
 
   async getPaginated<T>(
@@ -174,11 +127,11 @@ export class SQLiteAdapter extends Database {
       sortOrder?: 'asc' | 'desc';
       filter?: Record<string, unknown>;
     },
-  ): Promise<PaginatedResult<T>> {
+  ): Promise<import('./Database.js').PaginatedResult<T>> {
     const table = this.getTableName(collection);
     const page = options?.page ?? 1;
     const limit = options?.limit ?? 20;
-    const sortBy = options?.sortBy || 'jid';
+    const sortBy = options?.sortBy || 'id';
     const sortOrder = options?.sortOrder || 'asc';
     const filter = options?.filter || {};
 

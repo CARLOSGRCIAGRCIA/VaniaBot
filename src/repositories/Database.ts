@@ -363,6 +363,42 @@ const MIGRATIONS: Migration[] = [
       );
     `,
   },
+  {
+    version: 20,
+    name: 'add_missing_tables_and_columns',
+    up: `
+      -- Agregar columna id a tablas que no la tienen si es necesario
+      -- Tabla mutes
+      CREATE TABLE IF NOT EXISTS mutes (
+        id TEXT PRIMARY KEY,
+        jid TEXT,
+        reason TEXT,
+        muted_by TEXT,
+        expires_at INTEGER,
+        created_at INTEGER,
+        updated_at INTEGER
+      );
+
+      -- Tabla ai_sessions
+      CREATE TABLE IF NOT EXISTS ai_sessions (
+        id TEXT PRIMARY KEY,
+        jid TEXT,
+        data TEXT,
+        updated_at INTEGER
+      );
+
+      -- Agregar columnas faltantes a users
+      ALTER TABLE users ADD COLUMN pets TEXT DEFAULT '[]';
+      ALTER TABLE users ADD COLUMN current_pet TEXT;
+      ALTER TABLE users ADD COLUMN premium INTEGER DEFAULT 0;
+      ALTER TABLE users ADD COLUMN premium_expires_at INTEGER;
+      ALTER TABLE users ADD COLUMN daily_streak INTEGER DEFAULT 0;
+      ALTER TABLE users ADD COLUMN last_daily TEXT;
+
+      -- Agregar columnas faltantes a groups
+      ALTER TABLE groups ADD COLUMN nsfw INTEGER DEFAULT 0;
+    `,
+  },
 ];
 
 export interface QueryResult {
