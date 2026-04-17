@@ -24,6 +24,12 @@ const COLLECTION_KEY_COLUMN: Record<string, string> = {
   processed_messages: 'message_id',
 };
 
+const TABLE_NAME_MAP: Record<string, string> = {
+  'system:reminders': 'reminders',
+  'system:polls': 'polls',
+  'game:listas': 'listas',
+};
+
 export class SQLiteAdapter extends Database {
   protected connected = true;
 
@@ -42,7 +48,7 @@ export class SQLiteAdapter extends Database {
   }
 
   private getTableName(collection: string): string {
-    return collection;
+    return TABLE_NAME_MAP[collection] || collection;
   }
 
   private getKeyColumn(collection: string): string {
