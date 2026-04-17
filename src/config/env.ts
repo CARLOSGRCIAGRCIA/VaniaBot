@@ -90,8 +90,8 @@ const envSchema = z.object({
   /** Phone number for pairing code authentication (include country code) */
   PHONE_NUMBER: z.string().default(''),
 
-  /** Database type: 'json' or 'mongodb' */
-  DB_TYPE: z.enum(['json', 'mongodb']).default('json'),
+  /** Database type: 'json', 'mongodb' or 'sqlite' */
+  DB_TYPE: z.enum(['json', 'mongodb', 'sqlite']).default('sqlite'),
 
   /** MongoDB connection URI (required if DB_TYPE=mongodb) */
   DB_URI: z.string().optional(),
