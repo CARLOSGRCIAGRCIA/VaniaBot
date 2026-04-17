@@ -74,6 +74,7 @@ export class SQLiteAdapter extends Database {
     const placeholders = columns.map(() => '?').join(', ');
     const values = columns.map(col => {
       const val = row[col];
+      if (val === undefined || val === null) return null;
       if (typeof val === 'object') return JSON.stringify(val);
       return val;
     });
@@ -103,6 +104,7 @@ export class SQLiteAdapter extends Database {
     const table = this.getTableName(collection);
     const conditions = Object.keys(filter).map(key => `${key} = ?`).join(' AND ');
     const values = Object.values(filter).map(v => {
+      if (v === undefined || v === null) return null;
       if (typeof v === 'object') return JSON.stringify(v);
       return v;
     });
@@ -132,6 +134,7 @@ export class SQLiteAdapter extends Database {
       .join(', ');
 
     const values = Object.values(updateData).map(v => {
+      if (v === undefined || v === null) return null;
       if (typeof v === 'object') return JSON.stringify(v);
       return v;
     });
@@ -170,22 +173,33 @@ export class SQLiteAdapter extends Database {
     const sortOrder = options?.sortOrder || 'asc';
     const filter = options?.filter || {};
 
-    const whereClauses = Object.keys(filter).map(key => `${key} = ?`);
+    const filterKeys = Object.keys(filter).filter(k => filter[k] !== undefined && filter[k] !== null);
+    const whereClauses = filterKeys.map(key => `${key} = ?`);
     const where = whereClauses.length > 0 ? `WHERE ${whereClauses.join(' AND ')}` : '';
-    const params = Object.values(filter);
+    const params = filterKeys.map(k => {
+      const v = filter[k];
+      if (typeof v === 'object') return JSON.stringify(v);
+      return v;
+    });
 
     const countResult = this.getDb().fetchOne<{ cnt: number }>(
-      `SELECT COUNT(*) as cnt FROM ${table} ${where}`,
-      { params },
+      where ? `SELECT COUNT(*) as cnt FROM ${table} ${where}` : `SELECT COUNT(*) as cnt FROM ${table}`,
+      where ? { params } : undefined,
     );
     const total = countResult?.cnt ?? 0;
 
     const offset = (page - 1) * limit;
     const order = sortOrder.toUpperCase() === 'ASC' ? 'ASC' : 'DESC';
-    const items = this.getDb().fetchAll<T>(
-      `SELECT * FROM ${table} ${where} ORDER BY ${sortBy} ${order} LIMIT ? OFFSET ?`,
-      { params: [...params, limit, offset] },
-    );
+    
+    const items = params.length > 0
+      ? this.getDb().fetchAll<T>(
+          `SELECT * FROM ${table} ${where} ORDER BY ${sortBy} ${order} LIMIT ? OFFSET ?`,
+          { params: [...params, limit, offset] },
+        )
+      : this.getDb().fetchAll<T>(
+          `SELECT * FROM ${table} ORDER BY ${sortBy} ${order} LIMIT ? OFFSET ?`,
+          { params: [limit, offset] },
+        );
 
     return {
       items,
@@ -200,13 +214,20 @@ export class SQLiteAdapter extends Database {
 
   async count(collection: string, filter?: Record<string, unknown>): Promise<number> {
     const table = this.getTableName(collection);
-    if (!filter || Object.keys(filter).length === 0) {
+    const filterObj = filter || {};
+    const filterKeys = Object.keys(filterObj).filter(k => filterObj[k] !== undefined && filterObj[k] !== null);
+    
+    if (filterKeys.length === 0) {
       const result = this.getDb().fetchOne<{ cnt: number }>(`SELECT COUNT(*) as cnt FROM ${table}`);
       return result?.cnt ?? 0;
     }
 
-    const conditions = Object.keys(filter).map(key => `${key} = ?`).join(' AND ');
-    const values = Object.values(filter);
+    const conditions = filterKeys.map(key => `${key} = ?`).join(' AND ');
+    const values = filterKeys.map(k => {
+      const v = filterObj[k];
+      if (typeof v === 'object') return JSON.stringify(v);
+      return v;
+    });
     const result = this.getDb().fetchOne<{ cnt: number }>(
       `SELECT COUNT(*) as cnt FROM ${table} WHERE ${conditions}`,
       { params: values },
