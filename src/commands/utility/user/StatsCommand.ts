@@ -3,7 +3,7 @@ import { CommandCategory, PermissionLevel } from '@/types/index.js';
 import type { MessageContext } from '@/types/index.js';
 import { cacheManager } from '@/core/CacheManager.js';
 import { serviceManager } from '@/services/system/Servicemanager.js';
-import { JsonDatabase } from '@/services/database/JsonDatabase.js';
+import { SQLiteAdapter } from '@/services/database/SQLiteAdapter.js';
 
 interface ClientStats {
   messagesReceived: number;
@@ -58,11 +58,10 @@ export class StatsCommand extends Command {
       size: 'N/A',
     };
 
-    if (serviceManager.db instanceof JsonDatabase) {
-      const stats = serviceManager.db.getCacheStats();
+    if (serviceManager.db instanceof SQLiteAdapter) {
       dbStats = {
-        hitRate: stats.hitRate,
-        size: stats.size,
+        hitRate: 'SQLite (N/A)',
+        size: 'Persistent',
       };
     }
 
