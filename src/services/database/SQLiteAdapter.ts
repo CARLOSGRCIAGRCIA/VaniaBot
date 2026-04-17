@@ -49,14 +49,31 @@ export class SQLiteAdapter extends Database {
     return COLLECTION_KEY_COLUMN[collection] || 'id';
   }
 
+  private parseJsonFields(obj: Record<string, unknown>): Record<string, unknown> {
+    const result: Record<string, unknown> = {};
+    for (const [key, value] of Object.entries(obj)) {
+      if (typeof value === 'string' && value.startsWith('[')) {
+        try {
+          result[key] = JSON.parse(value);
+        } catch {
+          result[key] = value;
+        }
+      } else {
+        result[key] = value;
+      }
+    }
+    return result;
+  }
+
   async get<T>(collection: string, key: string): Promise<T | null> {
     const table = this.getTableName(collection);
     const keyCol = this.getKeyColumn(collection);
-    const result = this.getDb().fetchOne<T>(
+    const result = this.getDb().fetchOne<Record<string, unknown>>(
       `SELECT * FROM ${table} WHERE ${keyCol} = ?`,
       { params: [key] },
     );
-    return result || null;
+    if (!result) return null;
+    return this.parseJsonFields(result) as T;
   }
 
   async set<T>(collection: string, key: string, value: T): Promise<void> {
@@ -102,21 +119,23 @@ export class SQLiteAdapter extends Database {
 
   async find<T>(collection: string, filter: Record<string, unknown>): Promise<T[]> {
     const table = this.getTableName(collection);
-    const conditions = Object.keys(filter).map(key => `${key} = ?`).join(' AND ');
-    const values = Object.values(filter).map(v => {
-      if (v === undefined || v === null) return null;
+    const filterKeys = Object.keys(filter).filter(k => filter[k] !== undefined && filter[k] !== null);
+    const conditions = filterKeys.map(key => `${key} = ?`).join(' AND ');
+    const values = filterKeys.map(k => {
+      const v = filter[k];
       if (typeof v === 'object') return JSON.stringify(v);
       return v;
     });
 
     if (!conditions) {
-      return this.getDb().fetchAll<T>(`SELECT * FROM ${table}`);
+      return this.getAll<T>(collection);
     }
 
-    return this.getDb().fetchAll<T>(
+    const results = this.getDb().fetchAll<Record<string, unknown>>(
       `SELECT * FROM ${table} WHERE ${conditions}`,
       { params: values },
     );
+    return results.map(r => this.parseJsonFields(r) as T);
   }
 
   async findOne<T>(collection: string, filter: Record<string, unknown>): Promise<T | null> {
@@ -145,7 +164,8 @@ export class SQLiteAdapter extends Database {
 
   async getAll<T>(collection: string): Promise<T[]> {
     const table = this.getTableName(collection);
-    return this.getDb().fetchAll<T>(`SELECT * FROM ${table}`);
+    const results = this.getDb().fetchAll<Record<string, unknown>>(`SELECT * FROM ${table}`);
+    return results.map(r => this.parseJsonFields(r) as T);
   }
 
   async keys(collection: string): Promise<string[]> {
@@ -191,15 +211,17 @@ export class SQLiteAdapter extends Database {
     const offset = (page - 1) * limit;
     const order = sortOrder.toUpperCase() === 'ASC' ? 'ASC' : 'DESC';
     
-    const items = params.length > 0
-      ? this.getDb().fetchAll<T>(
+    const rawItems = params.length > 0
+      ? this.getDb().fetchAll<Record<string, unknown>>(
           `SELECT * FROM ${table} ${where} ORDER BY ${sortBy} ${order} LIMIT ? OFFSET ?`,
           { params: [...params, limit, offset] },
         )
-      : this.getDb().fetchAll<T>(
+      : this.getDb().fetchAll<Record<string, unknown>>(
           `SELECT * FROM ${table} ORDER BY ${sortBy} ${order} LIMIT ? OFFSET ?`,
           { params: [limit, offset] },
         );
+
+    const items = rawItems.map(r => this.parseJsonFields(r) as T);
 
     return {
       items,
