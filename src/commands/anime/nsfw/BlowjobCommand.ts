@@ -26,6 +26,7 @@ export class BlowjobCommand extends Command {
       const imageUrl = await deliriusService.getReactionsImage('blowjob');
       await ctx.sock.sendMessage(ctx.chat.jid, {
         video: { url: imageUrl },
+        gifPlayback: true,
       });
       await ctx.react('✅');
     } catch (error) {

@@ -26,6 +26,7 @@ export class NekoNsfwCommand extends Command {
       const imageUrl = await deliriusService.getReactionsImage('nekonsfw');
       await ctx.sock.sendMessage(ctx.chat.jid, {
         video: { url: imageUrl },
+        gifPlayback: true,
       });
       await ctx.react('✅');
     } catch (error) {
