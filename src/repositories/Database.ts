@@ -259,22 +259,33 @@ const MIGRATIONS: Migration[] = [
       CREATE TABLE IF NOT EXISTS users (
         jid TEXT PRIMARY KEY,
         name TEXT,
+        isOwner INTEGER DEFAULT 0,
+        isAdmin INTEGER DEFAULT 0,
+        isBanned INTEGER DEFAULT 0,
         level INTEGER DEFAULT 1,
         xp INTEGER DEFAULT 0,
         money INTEGER DEFAULT 0,
         bank INTEGER DEFAULT 0,
-        isOwner INTEGER DEFAULT 0,
-        isAdmin INTEGER DEFAULT 0,
-        isBanned INTEGER DEFAULT 0,
-        warnings INTEGER DEFAULT 0,
+        lastDaily INTEGER,
+        lastWeekly INTEGER,
+        lastMonthly INTEGER,
+        weeklyStreak INTEGER DEFAULT 0,
         totalCommands INTEGER DEFAULT 0,
+        warnings INTEGER DEFAULT 0,
         inventory TEXT DEFAULT '[]',
         achievements TEXT DEFAULT '[]',
-        activeBuffs TEXT DEFAULT '[]',
-        stats TEXT DEFAULT '{"hp":100,"maxHp":100,"atk":10,"def":5}',
-        currentClass TEXT,
         createdAt INTEGER,
-        updatedAt INTEGER
+        updatedAt INTEGER,
+        currentClass TEXT,
+        stats TEXT DEFAULT '{"hp":100,"maxHp":100,"energy":100,"maxEnergy":100,"stamina":100,"maxStamina":100,"atk":10,"def":5,"str":10,"int":10,"agi":10,"vit":10,"luck":10,"critChance":5,"dodgeChance":5}',
+        pets TEXT DEFAULT '[]',
+        activeQuests TEXT DEFAULT '[]',
+        completedQuests TEXT DEFAULT '[]',
+        activeBuffs TEXT DEFAULT '[]',
+        premium INTEGER DEFAULT 0,
+        premium_expires_at INTEGER,
+        daily_streak INTEGER DEFAULT 0,
+        last_daily TEXT
       );
       CREATE INDEX IF NOT EXISTS idx_users_level ON users(level);
       CREATE INDEX IF NOT EXISTS idx_users_banned ON users(isBanned);
@@ -367,7 +378,6 @@ const MIGRATIONS: Migration[] = [
     version: 20,
     name: 'add_missing_tables_and_columns',
     up: `
-      -- Agregar columna id a tablas que no la tienen si es necesario
       -- Tabla mutes
       CREATE TABLE IF NOT EXISTS mutes (
         id TEXT PRIMARY KEY,
@@ -386,14 +396,6 @@ const MIGRATIONS: Migration[] = [
         data TEXT,
         updated_at INTEGER
       );
-
-      -- Agregar columnas faltantes a users
-      ALTER TABLE users ADD COLUMN pets TEXT DEFAULT '[]';
-      ALTER TABLE users ADD COLUMN current_pet TEXT;
-      ALTER TABLE users ADD COLUMN premium INTEGER DEFAULT 0;
-      ALTER TABLE users ADD COLUMN premium_expires_at INTEGER;
-      ALTER TABLE users ADD COLUMN daily_streak INTEGER DEFAULT 0;
-      ALTER TABLE users ADD COLUMN last_daily TEXT;
     `,
   },
 ];
