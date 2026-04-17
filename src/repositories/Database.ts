@@ -331,7 +331,9 @@ const MIGRATIONS: Migration[] = [
         enabledBy TEXT,
         enabledAt INTEGER,
         disabledBy TEXT,
-        disabledAt INTEGER
+        disabledAt INTEGER,
+        createdAt INTEGER,
+        updatedAt INTEGER
       );
       CREATE INDEX IF NOT EXISTS idx_vania_toggle_chat ON vania_toggle(chatJid);
       CREATE INDEX IF NOT EXISTS idx_vania_toggle_bot ON vania_toggle(botId);
