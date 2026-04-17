@@ -394,9 +394,6 @@ const MIGRATIONS: Migration[] = [
       ALTER TABLE users ADD COLUMN premium_expires_at INTEGER;
       ALTER TABLE users ADD COLUMN daily_streak INTEGER DEFAULT 0;
       ALTER TABLE users ADD COLUMN last_daily TEXT;
-
-      -- Agregar columnas faltantes a groups
-      ALTER TABLE groups ADD COLUMN nsfw INTEGER DEFAULT 0;
     `,
   },
 ];
