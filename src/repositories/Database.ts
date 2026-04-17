@@ -325,16 +325,16 @@ const MIGRATIONS: Migration[] = [
     up: `
       CREATE TABLE IF NOT EXISTS vania_toggle (
         key TEXT PRIMARY KEY,
-        chat_jid TEXT NOT NULL,
-        bot_id TEXT NOT NULL,
+        chatJid TEXT NOT NULL,
+        botId TEXT NOT NULL,
         enabled INTEGER DEFAULT 0,
-        enabled_by TEXT,
-        enabled_at INTEGER,
-        disabled_by TEXT,
-        disabled_at INTEGER
+        enabledBy TEXT,
+        enabledAt INTEGER,
+        disabledBy TEXT,
+        disabledAt INTEGER
       );
-      CREATE INDEX IF NOT EXISTS idx_vania_toggle_chat ON vania_toggle(chat_jid);
-      CREATE INDEX IF NOT EXISTS idx_vania_toggle_bot ON vania_toggle(bot_id);
+      CREATE INDEX IF NOT EXISTS idx_vania_toggle_chat ON vania_toggle(chatJid);
+      CREATE INDEX IF NOT EXISTS idx_vania_toggle_bot ON vania_toggle(botId);
     `,
   },
   {
