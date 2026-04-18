@@ -1,6 +1,15 @@
 import { Database } from './Database.js';
 import { getDatabase } from '@/repositories/Database.js';
 
+const TABLE_NAME_MAP: Record<string, string> = {
+  'system:reminders': 'reminders',
+  'system:polls': 'polls',
+  'game:listas': 'listas',
+  'bans': 'bans',
+  'mutes': 'mutes',
+  'moderation_logs': 'moderation_logs',
+};
+
 const COLLECTION_KEY_COLUMN: Record<string, string> = {
   users: 'jid',
   groups: 'jid',
@@ -9,7 +18,9 @@ const COLLECTION_KEY_COLUMN: Record<string, string> = {
   reminders: 'key',
   polls: 'key',
   listas: 'key',
+  bans: 'id',
   mutes: 'id',
+  moderation_logs: 'id',
   ai_sessions: 'id',
   subbots: 'id',
   subbot_slots: 'slot_number',
@@ -22,12 +33,6 @@ const COLLECTION_KEY_COLUMN: Record<string, string> = {
   health_events: 'id',
   orchestrator_state: 'id',
   processed_messages: 'message_id',
-};
-
-const TABLE_NAME_MAP: Record<string, string> = {
-  'system:reminders': 'reminders',
-  'system:polls': 'polls',
-  'game:listas': 'listas',
 };
 
 export class SQLiteAdapter extends Database {

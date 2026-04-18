@@ -391,6 +391,32 @@ const MIGRATIONS: Migration[] = [
         updated_at INTEGER
       );
 
+      -- Tabla bans
+      CREATE TABLE IF NOT EXISTS bans (
+        id TEXT PRIMARY KEY,
+        jid TEXT,
+        user_name TEXT,
+        banned_by TEXT,
+        reason TEXT,
+        timestamp INTEGER,
+        created_at INTEGER,
+        updated_at INTEGER
+      );
+
+      -- Tabla moderation_logs
+      CREATE TABLE IF NOT EXISTS moderation_logs (
+        id TEXT PRIMARY KEY,
+        user_id TEXT,
+        user_name TEXT,
+        action TEXT,
+        reason TEXT,
+        moderator TEXT,
+        timestamp INTEGER,
+        group_id TEXT,
+        created_at INTEGER,
+        updated_at INTEGER
+      );
+
       -- Tabla ai_sessions
       CREATE TABLE IF NOT EXISTS ai_sessions (
         id TEXT PRIMARY KEY,
