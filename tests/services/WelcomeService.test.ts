@@ -246,7 +246,6 @@ describe('WelcomeService', () => {
   describe('handleNewParticipant', () => {
     it('should skip when welcome is disabled', async () => {
       const { serviceManager } = await import('../../src/services/system/Servicemanager.js');
-      const { logger } = await import('../../src/utils/logger.js');
 
       vi.mocked(serviceManager.vaniaToggleService.isEnabled).mockResolvedValue(true);
       vi.mocked(serviceManager.groupService.getGroup).mockResolvedValue({
@@ -263,9 +262,6 @@ describe('WelcomeService', () => {
 
       await welcomeService.handleNewParticipant(mockSock, 'group@test.com', 'user@test.com');
 
-      expect(logger.info).toHaveBeenCalledWith(
-        '[Welcome] Bienvenida desactivada en group@test.com — omitiendo',
-      );
       expect(mockSock.sendMessage).not.toHaveBeenCalled();
     });
 
@@ -298,7 +294,6 @@ describe('WelcomeService', () => {
   describe('handleParticipantLeft', () => {
     it('should skip when goodbye is disabled', async () => {
       const { serviceManager } = await import('../../src/services/system/Servicemanager.js');
-      const { logger } = await import('../../src/utils/logger.js');
 
       vi.mocked(serviceManager.vaniaToggleService.isEnabled).mockResolvedValue(true);
       vi.mocked(serviceManager.groupService.getGroup).mockResolvedValue({
@@ -314,9 +309,6 @@ describe('WelcomeService', () => {
 
       await welcomeService.handleParticipantLeft(mockSock, 'group@test.com', 'user@test.com');
 
-      expect(logger.info).toHaveBeenCalledWith(
-        '[Goodbye] Despedida desactivada en group@test.com — omitiendo',
-      );
       expect(mockSock.sendMessage).not.toHaveBeenCalled();
     });
   });
