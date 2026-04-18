@@ -111,6 +111,15 @@ export class SQLiteAdapter extends Database {
     return this.parseJsonFields(result) as T;
   }
 
+  private getTableColumns(table: string): string[] {
+    try {
+      const result = this.getDb().fetchAll<{ name: string }>(`PRAGMA table_info(${table})`);
+      return result.map(col => col.name);
+    } catch {
+      return [];
+    }
+  }
+
   async set<T>(collection: string, key: string, value: T): Promise<void> {
     const table = this.getTableName(collection);
     const keyCol = this.getKeyColumn(collection);
@@ -122,10 +131,20 @@ export class SQLiteAdapter extends Database {
       row['createdAt'] = Date.now();
     }
 
-    const columns = Object.keys(row);
+    const existingColumns = this.getTableColumns(table);
+    const filteredRow: Record<string, unknown> = {};
+    for (const [col, val] of Object.entries(row)) {
+      if (existingColumns.includes(col)) {
+        filteredRow[col] = val;
+      }
+    }
+
+    const columns = Object.keys(filteredRow);
+    if (columns.length === 0) return;
+
     const placeholders = columns.map(() => '?').join(', ');
     const values = columns.map(col => {
-      const val = row[col];
+      const val = filteredRow[col];
       if (val === undefined || val === null) return null;
       if (typeof val === 'object') return JSON.stringify(val);
       return val;

@@ -435,6 +435,23 @@ const MIGRATIONS: Migration[] = [
       );
     `,
   },
+  {
+    version: 22,
+    name: 'fix_persistence_tables_columns',
+    up: `
+      ALTER TABLE reminders ADD COLUMN id TEXT;
+      ALTER TABLE reminders ADD COLUMN createdAt INTEGER;
+      ALTER TABLE reminders ADD COLUMN updatedAt INTEGER;
+      
+      ALTER TABLE polls ADD COLUMN id TEXT;
+      ALTER TABLE polls ADD COLUMN createdAt INTEGER;
+      ALTER TABLE polls ADD COLUMN updatedAt INTEGER;
+      
+      ALTER TABLE listas ADD COLUMN id TEXT;
+      ALTER TABLE listas ADD COLUMN createdAt INTEGER;
+      ALTER TABLE listas ADD COLUMN updatedAt INTEGER;
+    `,
+  },
 ];
 
 export interface QueryResult {
