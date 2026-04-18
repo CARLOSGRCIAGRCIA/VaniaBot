@@ -1,6 +1,6 @@
 {
   "name": "vaniabot",
-  "version": "6.12.18",
+  "version": "6.12.19",
   "main": "dist/index.js",
   "type": "module",
   "scripts": {
