@@ -68,7 +68,7 @@ export class MiddlewareCacheManager {
 
     this.userMuted = new MiddlewareCache({
       maxSize: 500,
-      ttlMs: 10 * 1000,
+      ttlMs: 24 * 60 * 60 * 1000,
     });
 
     this.userPermissions = new MiddlewareCache({

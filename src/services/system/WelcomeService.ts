@@ -118,23 +118,13 @@ hola @user ♡
 
   async handleNewParticipant(sock: WASocket, groupJid: string, userJid: string): Promise<void> {
     try {
-      logger.info(`[Welcome] Nuevo participante en ${groupJid}: ${userJid}`);
-
       const isVaniaEnabled = await serviceManager.vaniaToggleService.isEnabled(groupJid, 'main');
-      if (!isVaniaEnabled) {
-        logger.info(`[Welcome] Vania no activada en ${groupJid} — omitiendo`);
-        return;
-      }
+      if (!isVaniaEnabled) return;
 
       const group = await serviceManager.groupService.getGroup(groupJid);
-      if (!group.welcome.enabled) {
-        logger.info(`[Welcome] Bienvenida desactivada en ${groupJid} — omitiendo`);
-        return;
-      }
+      if (!group.welcome.enabled) return;
 
-      logger.info(`[Welcome] Obteniendo metadata para ${groupJid}`);
       const metadata = await sock.groupMetadata(groupJid);
-      logger.info(`[Welcome] Metadata obtenida, participantes: ${metadata.participants.length}`);
       const rawFact = await getRandomFact();
       const formattedFact = formatFact(rawFact);
 
@@ -157,7 +147,7 @@ hola @user ♡
             const response = await fetch(profilePicUrl);
             profilePicBuffer = Buffer.from(await response.arrayBuffer());
           }
-        } catch (_err) {
+        } catch {
           profilePicBuffer = this.getDefaultProfilePicBuffer();
         }
       }
@@ -183,32 +173,19 @@ hola @user ♡
     botId: string = 'main',
   ): Promise<void> {
     try {
-      logger.info(`[Goodbye] Usuario salió de ${groupJid}: ${userJid}`);
-
       const isVaniaEnabled = await serviceManager.vaniaToggleService.isEnabled(groupJid, botId);
-      if (!isVaniaEnabled) {
-        logger.info(`[Goodbye] Vania no activada en ${groupJid} — omitiendo`);
-        return;
-      }
+      if (!isVaniaEnabled) return;
 
       const group = await serviceManager.groupService.getGroup(groupJid);
-      if (!group.goodbye.enabled) {
-        logger.info(`[Goodbye] Despedida desactivada en ${groupJid} — omitiendo`);
-        return;
-      }
+      if (!group.goodbye.enabled) return;
 
       let metadata;
       try {
-        logger.info(`[Goodbye] Obteniendo metadata para ${groupJid}`);
         metadata = await sock.groupMetadata(groupJid);
-        logger.info(`[Goodbye] Metadata obtenida, participantes: ${metadata.participants.length}`);
       } catch (metadataError) {
         const errMsg =
           metadataError instanceof Error ? metadataError.message : String(metadataError);
         if (errMsg.includes('forbidden') || errMsg.includes('not-authorized')) {
-          logger.warn(
-            `[Goodbye] Sin acceso al grupo ${groupJid} — el bot pudo haber sido eliminado`,
-          );
           return;
         }
         throw metadataError;

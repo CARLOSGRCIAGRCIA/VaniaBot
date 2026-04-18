@@ -54,15 +54,6 @@ export class KickCommand extends Command {
     await ctx.react('⏳');
 
     try {
-      await serviceManager.moderationService.logAction({
-        userId: mentionedJid,
-        userName: targetUser.name,
-        action: 'kick',
-        reason,
-        moderator: ctx.sender.pushName || 'Unknown',
-        timestamp: Date.now(),
-      });
-
       await ctx.sock.groupParticipantsUpdate(ctx.chat.jid, [mentionedJid], 'remove');
 
       await ctx.reply(

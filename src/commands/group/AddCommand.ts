@@ -1,14 +1,13 @@
 import { Command } from '../Command.js';
 import { CommandCategory, CommandContext } from '@/types/index.js';
 import type { MessageContext } from '@/types/index.js';
-import { getBotJid } from '@/services/PermissionService.js';
 
 export class AddCommand extends Command {
   name = 'add';
-  description = 'Añadir un usuario directamente al grupo';
+  description = 'Agregar usuario directamente al grupo';
   category = CommandCategory.GROUP;
   aliases = ['agregar', 'añadir'];
-  usage = '!add <número>';
+  usage = '!add <numero>';
   examples = ['!add 5219514639799'];
   cooldown = 30_000;
   contexts = [CommandContext.GROUP];
@@ -17,77 +16,60 @@ export class AddCommand extends Command {
     const number = ctx.args[0]?.replace(/[^0-9]/g, '');
 
     if (!number) {
-      await ctx.reply(
-        `˚₊· ͟͟͞͞➳ *necesito un número* ˚₊· ͟͟͞͞➳\n\n` +
-          `✿ *!add* <número>\n` +
-          `✩ ejemplo: *!add 5219514639799* ✩`,
-      );
+      await ctx.reply('* Usage:\n!add <numero>\nEjemplo: !add 5219514639799*');
       return;
     }
 
-    const targetJid = `${number}@s.whatsapp.net`;
-
     try {
-      const groupMeta = await ctx.sock.groupMetadata(ctx.chat.jid);
-      const botJid = getBotJid(ctx.sock);
-      const botIsAdmin = groupMeta.participants.find(
-        p => p.id === botJid || p.id.includes(botJid.split('@')[0]),
-      )?.admin;
+      await ctx.loadBotPermissions();
 
-      if (!botIsAdmin) {
-        await ctx.reply(
-          `˚₊· ͟͟͞͞➳ *ups* ˚₊· ͟͟͞͞➳\n\n` +
-            `❌ Necesito ser administrador para añadir usuarios directamente.`,
-        );
+      if (!ctx.chat.isBotAdmin) {
+        await ctx.reply('*Error*\nNecesito ser admin para agregar usuarios.');
         return;
       }
 
-      const existsResult = await ctx.sock.onWhatsApp(targetJid);
+      const groupMeta = await ctx.sock.groupMetadata(ctx.chat.jid);
+
+      const existsResult = await ctx.sock.onWhatsApp(number + '@s.whatsapp.net');
       const exists = existsResult?.[0];
       if (!exists || !exists.exists) {
-        await ctx.reply(
-          `˚₊· ͟͟͞͞➳ *ups* ˚₊· ͟͟͞͞➳\n\n` + `❌ El número *${number}* no existe en WhatsApp.`,
-        );
+        await ctx.reply(`*Error*\nEl numero ${number} no existe en WhatsApp.`);
         return;
       }
 
       const participants = groupMeta.participants.map(p => p.id);
-      if (participants.includes(targetJid)) {
-        await ctx.reply(`˚₊· ͟͟͞͞➳ *ya está* ˚₊· ͟͟͞͞➳\n\n` + `⚠️ El usuario ya está en el grupo.`);
+      const isAlreadyInGroup = participants.some(p => {
+        const pPhone = p.replace(/[^0-9]/g, '');
+        return pPhone === number || p.includes(number);
+      });
+      if (isAlreadyInGroup) {
+        await ctx.reply(`*Error*\nEl usuario ${number} ya esta en el grupo.`);
         return;
       }
 
-      await ctx.sock.groupParticipantsUpdate(ctx.chat.jid, [targetJid], 'add');
+      await ctx.sock.groupParticipantsUpdate(ctx.chat.jid, [exists.jid], 'add');
 
-      await ctx.reply(
-        `˚₊· ͟͟͞͞➳ *añadido* ˚₊· ͟͟͞͞➳\n\n` + `✅ *${number}* añadido exitosamente al grupo.`,
-      );
+      await ctx.reply(`*Listo*\n${number} agregado exitosamente.`);
     } catch (error: unknown) {
       const errorMessage = error instanceof Error ? error.message : String(error);
+      console.error('[AddCommand] Error:', error);
 
       if (errorMessage.includes('403')) {
-        await ctx.reply(
-          `˚₊· ͟͟͞͞➳ *privacidad* ˚₊· ͟͟͞͞➳\n\n` +
-            `🔒 El usuario tiene su privacidad configurada para no ser añadido.`,
-        );
+        await ctx.reply('*Error*\nEl usuario tiene privacidad configurada para no ser agregado.');
         return;
       }
 
       if (errorMessage.includes('408')) {
-        await ctx.reply(`˚₊· ͟͟͞͞➳ *timeout* ˚₊· ͟͟͞͞➳\n\n` + `⏱️ El usuario no respondió a tiempo.`);
+        await ctx.reply('*Error*\nTimeout. El usuario no respondio a tiempo.');
         return;
       }
 
-      if (errorMessage.includes('409')) {
-        await ctx.reply(`˚₊· ͟͟͞͞➳ *ya está* ˚₊· ͟͟͞͞➳\n\n` + `🚫 El usuario ya está en el grupo.`);
+      if (errorMessage.includes('409') || errorMessage.includes('bad-request')) {
+        await ctx.reply('*Error*\nNo pude agregar al usuario. Puede que haya sido eliminado recientemente.');
         return;
       }
 
-      console.error('[AddCommand] Error:', error);
-      await ctx.reply(
-        `˚₊· ͟͟͞͞➳ *ups* ˚₊· ͟͟͞͞➳\n\n` +
-          `❌ No pude añadir al usuario. Puede que bloquee mensajes de desconocidos.`,
-      );
+      await ctx.reply('*Error*\nNo pude agregar al usuario.');
     }
   }
 }

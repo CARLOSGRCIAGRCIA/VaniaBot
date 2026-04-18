@@ -10,7 +10,6 @@
  * @instagram carlos.gxv
  * @created 2026-03-16
  */
-
 import type { WASocket, WAMessage, proto, BaileysEventMap } from '@whiskeysockets/baileys';
 import { commandRegistry } from './CommandRegistry.js';
 import { pluginLoader } from './PluginLoader.js';
@@ -46,6 +45,7 @@ import { antiCallService } from '@/services/system/AntiCallService.js';
 import { env } from '@/config/env.js';
 import { runtimeStateRepository } from '@/repositories/RuntimeStateRepository.js';
 import { processedMessagesRepository } from '@/repositories/ProcessedMessagesRepository.js';
+import { middlewareCache } from '@/middlewares/MiddlewareCache.js';
 import {
   PinVerificationMiddleware,
   PIN_COMMANDS,
@@ -79,11 +79,9 @@ class RealTimeAntiSpam {
     if (this.bannedUsers.has(userJid)) {
       return { allowed: false, reason: '⛔ Bloqueado temporalmente por spam', waitTime: 300000 };
     }
-
     const now = Date.now();
     const userMsgs = this.userMessages.get(userJid) ?? [];
     const recentMessages = userMsgs.filter(time => now - time < 60000);
-
     if (recentMessages.length >= this.MAX_MESSAGES_PER_MINUTE) {
       this.banUser(userJid);
       return {
@@ -92,12 +90,10 @@ class RealTimeAntiSpam {
         waitTime: 300000,
       };
     }
-
     const lastSecondMessages = recentMessages.filter(time => now - time < 1000);
     if (lastSecondMessages.length >= this.MAX_MESSAGES_PER_SECOND) {
       return { allowed: false, reason: '⚠️ Estás escribiendo muy rápido', waitTime: 2000 };
     }
-
     recentMessages.push(now);
     this.userMessages.set(userJid, recentMessages);
     return { allowed: true };
@@ -138,13 +134,11 @@ async function withTimeout<T>(
   commandName: string,
 ): Promise<T> {
   let timeoutId: ReturnType<typeof setTimeout> | undefined;
-
   const timeoutPromise = new Promise<never>((_resolve, reject) => {
     timeoutId = setTimeout(() => {
       reject(new Error(`Command ${commandName} timed out after ${timeoutMs}ms`));
     }, timeoutMs);
   });
-
   try {
     return await Promise.race([promise, timeoutPromise]);
   } finally {
@@ -174,13 +168,11 @@ class RealTimeMessageProcessor extends EventEmitter {
     parallel = false,
   ): Promise<boolean> {
     if (this.processing.has(messageId)) return false;
-
     if (parallel) {
       this.parallelQueue.push({ id: messageId, handler, parallel: true });
     } else {
       this.sequentialQueue.push({ id: messageId, handler, parallel: false });
     }
-
     this.processParallelQueue().catch(err => this.emit('error', messageId, err));
     this.processSequentialQueue().catch(err => this.emit('error', messageId, err));
     return true;
@@ -188,13 +180,10 @@ class RealTimeMessageProcessor extends EventEmitter {
 
   private async processParallelQueue(): Promise<void> {
     if (this.activeParallel >= this.maxParallel || this.parallelQueue.length === 0) return;
-
     const item = this.parallelQueue.shift();
     if (!item) return;
-
     this.activeParallel++;
     this.processing.add(item.id);
-
     try {
       await item.handler();
       this.emit('processed', item.id);
@@ -210,7 +199,6 @@ class RealTimeMessageProcessor extends EventEmitter {
   private async processSequentialQueue(): Promise<void> {
     if (this.isProcessingSequential || this.sequentialQueue.length === 0) return;
     this.isProcessingSequential = true;
-
     while (this.sequentialQueue.length > 0) {
       const item = this.sequentialQueue.shift();
       if (!item) break;
@@ -224,7 +212,6 @@ class RealTimeMessageProcessor extends EventEmitter {
         this.processing.delete(item.id);
       }
     }
-
     this.isProcessingSequential = false;
   }
 
@@ -281,18 +268,14 @@ export class WhatsAppClient {
 
   async initialize(): Promise<void> {
     const startTime = Date.now();
-
     await Promise.all([
       serviceManager.initialize(),
       pluginLoader.loadCommands().then(commands => {
-        logger.debug(`🔄 Registering ${commands.length} commands...`);
         for (const cmd of commands) {
           if (cmd?.name) {
-            logger.debug(`📝 Registering command: ${cmd.name}`);
             commandRegistry.register(cmd);
           }
         }
-        logger.info(`✅ Registered commands: ${commandRegistry.size}`);
       }),
     ]);
 
@@ -328,12 +311,10 @@ export class WhatsAppClient {
       { middleware: new AntiSpamMiddleware(), priority: 6, canRunParallel: false },
       { middleware: new CooldownMiddleware(commandRegistry), priority: 7, canRunParallel: false },
     );
-
     this.middlewares.sort((a, b) => a.priority - b.priority);
 
     this.authManager.setOnSocketRecreate(async oldSock => {
       logger.info('🔄 Recreating socket...');
-
       if (oldSock) {
         try {
           await Promise.race([
@@ -342,12 +323,10 @@ export class WhatsAppClient {
           ]);
         } catch {}
       }
-
       const newSock = await this.authManager.createSocket();
       this.sock = newSock;
       subBotManager.setMainSocket(newSock);
       this.registerSocketListeners();
-
       logger.info('✅ Socket recreated successfully');
       return newSock;
     });
@@ -358,19 +337,15 @@ export class WhatsAppClient {
     this.registerSocketListeners();
     this.antiSpam.startCleanup();
     this.startMaintenance();
-
     await this.warmup();
-
     this.isReady = true;
     logger.info('🚀 Bot ready for instant response');
   }
 
   private async warmup(): Promise<void> {
     logger.info('🔥 Warming up cache...');
-
     try {
       const cachedGroups = Array.from(cacheManager['groupMetadataCache'].keys()).slice(0, 10);
-
       for (const groupJid of cachedGroups) {
         try {
           const metadata = cacheManager.getGroupMetadata(groupJid);
@@ -379,7 +354,6 @@ export class WhatsAppClient {
           }
         } catch {}
       }
-
       logger.debug(`🔥 Warmup complete: ${cachedGroups.length} groups cached`);
     } catch (error) {
       logger.debug('Warmup skipped:', error);
@@ -388,26 +362,14 @@ export class WhatsAppClient {
 
   private registerSocketListeners(): void {
     this.sock.ev.on('messages.upsert', ({ messages, type }) => {
-      logger.debug(`📥 Messages upsert: type=${type}, count=${messages.length}`);
-      if (type !== 'notify') {
-        logger.debug('Ignoring non-notify message');
-        return;
-      }
-
+      if (type !== 'notify') return;
       for (const msg of messages) {
-        logger.debug(`📨 Processing msg: from=${msg.key.remoteJid}, fromMe=${msg.key.fromMe}`);
-
         if (msg.message?.reactionMessage) {
           handleReaccion(this.sock, msg).catch(err => logError('handleReaccion', err));
           continue;
         }
-
         handleAudioResponse(this.sock, msg).catch(err => logError('handleAudioResponse', err));
-
-        antiDeleteService.storeMessage(this.sock, msg).catch(err => {
-          logger.debug('Error storing message for anti-delete:', err);
-        });
-
+        antiDeleteService.storeMessage(this.sock, msg).catch(() => {});
         this.handleMessageRealTime(msg);
       }
     });
@@ -441,21 +403,17 @@ export class WhatsAppClient {
 
   private async handleIncomingCalls(calls: BaileysEventMap['call']): Promise<void> {
     if (!antiCallService.isEnabled()) return;
-
     for (const call of calls) {
       const callId = call.id;
       const caller = call.from;
       const isVideo = call.isVideo;
       const isGroup = call.isGroup;
-
       if (antiCallService.shouldBlock(caller)) continue;
-
       try {
         logger.info(
           `Rejecting call ${callId} from ${caller} (video: ${isVideo}, group: ${isGroup})`,
         );
         await this.sock.rejectCall(callId, caller);
-
         const callerName = caller.split('@')[0];
         const ownerMsg =
           `📵 *LLAMADA RECHAZADA*\n\n` +
@@ -463,7 +421,6 @@ export class WhatsAppClient {
           `🎥 Tipo: ${isVideo ? 'Video' : 'Voz'}\n` +
           `👥 Grupo: ${isGroup ? 'Sí' : 'No'}\n` +
           `🕐 Hora: ${new Date().toLocaleString()}`;
-
         try {
           await this.sock.sendMessage(env.OWNER_JID, {
             text: ownerMsg,
@@ -482,37 +439,29 @@ export class WhatsAppClient {
     try {
       const botJid = this.sock.user?.id || '';
       const botNumber = botJid.split(':')[0];
-
       const keys = 'keys' in update ? update.keys : [];
-
       for (const key of keys) {
         const messageId = key.id;
         if (!messageId) continue;
-
         const deletedBy = key.participant || key.remoteJid || '';
         if (deletedBy.includes(botNumber)) continue;
-
         const original = antiDeleteService.getMessage(messageId);
         if (!original) continue;
-
         const notification = antiDeleteService.formatDeletedMessageNotification(
           deletedBy,
           original,
           this.sock,
         );
-
         try {
           await this.sock.sendMessage(env.OWNER_JID, {
             text: notification,
             mentions: [deletedBy, original.sender],
           });
-
           if (original.mediaBuffer && original.mediaType) {
             const mediaOptions: Record<string, unknown> = {
               caption: `📎 *Medio eliminado:* ${original.mediaType}\nDe: @${original.sender.split('@')[0]}`,
               mentions: [original.sender],
             };
-
             if (original.mediaType === 'image') {
               await this.sock.sendMessage(env.OWNER_JID, {
                 image: original.mediaBuffer,
@@ -540,7 +489,6 @@ export class WhatsAppClient {
         } catch (err) {
           logger.debug('Error sending anti-delete notification:', err);
         }
-
         antiDeleteService.deleteMessage(messageId);
       }
     } catch (err) {
@@ -549,22 +497,10 @@ export class WhatsAppClient {
   }
 
   private handleMessageRealTime(message: WAMessage): void {
-    logger.debug(`🔔 handleMessageRealTime: id=${message.key.id}, fromMe=${message.key.fromMe}`);
-
-    if (!message?.message || message.key.fromMe) {
-      logger.debug('❌ Message skipped: no message or fromMe');
-      return;
-    }
-
+    if (!message?.message || message.key.fromMe) return;
     const messageId = message.key.id;
-    if (!messageId) {
-      logger.debug('❌ Message skipped: no messageId');
-      return;
-    }
-    if (cacheManager.hasProcessedMessage(messageId)) {
-      logger.debug(`❌ Message skipped: already processed ${messageId}`);
-      return;
-    }
+    if (!messageId) return;
+    if (cacheManager.hasProcessedMessage(messageId)) return;
 
     if (this.mainBotId) {
       const lastStartup = runtimeStateRepository.getLastStartupAt(this.mainBotId);
@@ -574,7 +510,6 @@ export class WhatsAppClient {
           rawTimestamp !== undefined && rawTimestamp !== null ? Number(rawTimestamp) * 1000 : 0;
         const startupTime = new Date(lastStartup).getTime();
         if (msgTimestamp > 0 && msgTimestamp < startupTime) {
-          logger.debug(`[MainBot] Skipping pre-startup message ${messageId}`);
           processedMessagesRepository.markProcessed(messageId, this.mainBotId);
           cacheManager.markMessageProcessed(messageId);
           return;
@@ -591,50 +526,50 @@ export class WhatsAppClient {
       : text.startsWith('.') || text.startsWith('!')
         ? text.slice(1).toLowerCase()
         : null;
-
     let isParallelizable = false;
     if (isCommand && fullCommandName) {
       const cmd = commandRegistry.get(fullCommandName) || commandRegistry.get(commandName);
       isParallelizable = cmd?.parallelizable || false;
     }
-
     this.stats.messagesReceived++;
-    logger.debug(`✅ Message received: ${messageId}`);
-
     queueMicrotask(() => {
       void (async () => {
         const startTime = Date.now();
-
-        logger.debug(`🔄 Processing message ${messageId}...`);
-
         await this.messageProcessor.process(
           messageId,
           async () => {
-            logger.debug(`📝 Creating MessageContext...`);
             try {
-              // WAMessage and proto.IWebMessageInfo are the same shape in Baileys
               const ctx = new MessageContext(this.sock, message as proto.IWebMessageInfo, 'main');
 
-              logger.debug(
-                `📋 MessageContext created: command="${ctx.command}", text="${ctx.text.slice(0, 50)}", isGroup=${ctx.chat.isGroup}`,
-              );
+              if (ctx.chat.isGroup) {
+                await ctx.loadBotPermissions();
+
+                const muteCacheKey = `${ctx.chat.jid}:${ctx.sender.jid}`;
+                const mutedCached = middlewareCache.userMuted.get<{ value: boolean }>(muteCacheKey);
+                if (mutedCached?.value === true) {
+                  if (ctx.chat.isBotAdmin) {
+                    try {
+                      await ctx.sock.sendMessage(ctx.chat.jid, { delete: ctx.message.key });
+                    } catch (err) {
+                      logError('[MUTE] Error eliminando mensaje normal', err);
+                    }
+                  }
+                  cacheManager.markMessageProcessed(messageId);
+                  return;
+                }
+              }
 
               if (ctx.chat.isGroup) {
                 const isVaniaToggleCommand = ['vaniaon', 'vaniaoff', 'vaniastatus'].includes(
                   ctx.command,
                 );
-
                 if (isVaniaToggleCommand && ctx.args[0]) {
                   const slotNum = parseInt(ctx.args[0]);
                   if (!isNaN(slotNum) && slotNum > 0) {
-                    logger.debug(
-                      `📤 Main skipping slot-specific toggle command: ${ctx.command} ${slotNum}`,
-                    );
                     cacheManager.markMessageProcessed(messageId);
                     return;
                   }
                 }
-
                 if (!isVaniaToggleCommand) {
                   try {
                     const isEnabled = await serviceManager.vaniaToggleService.isEnabled(
@@ -655,23 +590,16 @@ export class WhatsAppClient {
                   cacheManager.markMessageProcessed(messageId);
                   return;
                 }
-
                 const botJid = this.sock.user?.id ?? '';
                 await handleMention(ctx, botJid);
-
                 cacheManager.markMessageProcessed(messageId);
                 return;
               }
 
               if (!ctx.command) {
-                logger.info(
-                  `❌ No command detected, text: "${ctx.text}", prefix: "${config.prefix}"`,
-                );
                 cacheManager.markMessageProcessed(messageId);
                 return;
               }
-
-              logger.debug(`✅ Command detected: ${ctx.command}`);
 
               const rateLimit = this.antiSpam.checkRateLimit(ctx.sender.jid);
               if (!rateLimit.allowed) {
@@ -689,7 +617,6 @@ export class WhatsAppClient {
                     .catch(() => {});
                   return;
                 }
-
                 const groupRateLimit = rateLimitService.checkGroupRateLimit(ctx.chat.jid);
                 if (!groupRateLimit.allowed) {
                   this.stats.spamBlocked++;
@@ -701,14 +628,9 @@ export class WhatsAppClient {
               }
 
               const fullCommand = ctx.args.length > 0 ? `${ctx.command} ${ctx.args[0]}` : null;
-
-              logger.debug(`🔍 Looking for command: "${ctx.command}" or "${fullCommand}"`);
-
               const command =
                 (fullCommand ? commandRegistry.get(fullCommand) : null) ??
                 commandRegistry.get(ctx.command);
-
-              logger.debug(`📦 Command found: ${command?.name || 'NULL'}`);
 
               if (!command) {
                 logger.warn(`❌ Command not found in registry: ${ctx.command}`);
@@ -716,10 +638,10 @@ export class WhatsAppClient {
                 return;
               }
 
-              logger.debug(`✅ Executing command: ${command.name}`);
               if (fullCommand && commandRegistry.get(fullCommand)) {
                 ctx.args.shift();
               }
+
               if (command.permissions?.user || command.permissions?.bot) {
                 if (ctx.chat.isGroup) {
                   await Promise.all([ctx.loadSenderPermissions(), ctx.loadBotPermissions()]);
@@ -729,16 +651,13 @@ export class WhatsAppClient {
               }
 
               await this.executeWithMiddlewares(ctx, async () => {
-                logger.debug(`🚀 Running command: ${command.name}`);
                 const cmdStartTime = Date.now();
-
                 if (command.enabled === false) {
                   const isNsfwCommand = command.category === CommandCategory.ANIME;
                   if (isNsfwCommand) {
                     const { NsfwToggleCommand } =
                       await import('../commands/owner/NsfwToggleCommand.js');
                     if (!NsfwToggleCommand.isEnabled()) {
-                      logger.debug(`⚠️ Command ${command.name} is NSFW and disabled`);
                       await ctx
                         .reply(
                           '🔞 Los comandos NSFW están deshabilitados.\nUsa !nsfw on para habilitar.',
@@ -747,17 +666,14 @@ export class WhatsAppClient {
                       return;
                     }
                   } else {
-                    logger.debug(`⚠️ Command ${command.name} is disabled`);
                     await ctx.reply('❌ Este comando está deshabilitado.').catch(() => {});
                     return;
                   }
                 }
-
                 try {
                   await withTimeout(command.execute(ctx), COMMAND_TIMEOUT_MS, command.name);
                   this.stats.commandsExecuted++;
                   this.trackCommandMetric(command.name, Date.now() - cmdStartTime, false);
-                  logger.debug(`✅ Command executed successfully: ${command.name}`);
                 } catch (error) {
                   this.stats.errorsCount++;
                   this.trackCommandMetric(command.name, Date.now() - cmdStartTime, true);
@@ -774,7 +690,6 @@ export class WhatsAppClient {
               });
 
               cacheManager.markMessageProcessed(messageId);
-
               const processingTime = Date.now() - startTime;
               this.stats.totalProcessingTime += processingTime;
               if (processingTime > 500) logger.warn(`⚠️ ${ctx.command}: ${processingTime}ms`);
@@ -784,7 +699,6 @@ export class WhatsAppClient {
           },
           isParallelizable,
         );
-
         if (Date.now() - this.stats.lastStatsLog > 300000) {
           this.logStats();
           this.stats.lastStatsLog = Date.now();
@@ -796,22 +710,18 @@ export class WhatsAppClient {
   private async handleGroupUpdate(update: GroupParticipantsUpdate): Promise<void> {
     const { id: groupJid, participants, action } = update;
     if (!groupJid || !participants) return;
-
     try {
       cacheManager.invalidateGroupMetadata(groupJid);
       await serviceManager.groupService.getGroup(groupJid);
-
       const botJid = getBotJid(this.sock);
       const botPhone = botJid.split('@')[0];
       const isBotAffected = participants.some(p => {
         const pPhone = p.split('@')[0];
         return pPhone === botPhone || p === botJid;
       });
-
       if (isBotAffected) {
         cacheManager.invalidatePermissions(groupJid);
       }
-
       if (action === 'add') {
         for (const participant of participants) {
           welcomeService
@@ -819,7 +729,6 @@ export class WhatsAppClient {
             .catch(err => logError('handleNewParticipant', err));
         }
       }
-
       if (action === 'remove') {
         for (const participant of participants) {
           welcomeService
@@ -837,19 +746,15 @@ export class WhatsAppClient {
     handler: () => Promise<void>,
   ): Promise<void> {
     let index = 0;
-
     const next = async (): Promise<void> => {
       const parallelBatch: IMiddleware[] = [];
-
       while (index < this.middlewares.length && this.middlewares[index].canRunParallel) {
         parallelBatch.push(this.middlewares[index].middleware);
         index++;
       }
-
       if (parallelBatch.length > 0) {
         await Promise.all(parallelBatch.map(mw => mw.execute(ctx, async () => {})));
       }
-
       if (index < this.middlewares.length) {
         const config = this.middlewares[index++];
         try {
@@ -862,7 +767,6 @@ export class WhatsAppClient {
         await handler();
       }
     };
-
     await next();
   }
 
@@ -903,12 +807,10 @@ export class WhatsAppClient {
       const admins = await PermissionService.getGroupAdmins(ctx.sock, ctx.chat.jid);
       const botJid = ctx.sock.user?.id;
       const adminJids = admins.filter(admin => admin !== botJid);
-
       if (adminJids.length === 0) {
         logger.debug(`[MUTE] No hay admins para notificar en ${ctx.chat.jid}`);
         return;
       }
-
       const muteInfo = await serviceManager.moderationService.getMuteInfo(
         ctx.chat.jid,
         ctx.sender.jid,
@@ -918,7 +820,6 @@ export class WhatsAppClient {
         ctx.sender.jid,
       );
       const timeText = this.formatTimeRemaining(timeRemaining);
-
       for (const adminJid of adminJids) {
         try {
           await ctx.sock.sendMessage(adminJid, {
@@ -972,26 +873,20 @@ export class WhatsAppClient {
 
   async shutdown(): Promise<void> {
     this.isReady = false;
-
     try {
       await this.authManager.shutdown();
     } catch {}
-
     if (this.maintenanceTimer) {
       clearInterval(this.maintenanceTimer);
       this.maintenanceTimer = null;
     }
-
     this.antiSpam.stop();
-
     const antiSpamMw = this.middlewares.find(m => m.middleware instanceof AntiSpamMiddleware);
     if (antiSpamMw) {
       (antiSpamMw.middleware as AntiSpamMiddleware).stop();
     }
-
     rateLimitService.stop();
     cacheManager.stop();
-
     await subBotManager.shutdown();
     await serviceManager.shutdown();
     this.logStats();

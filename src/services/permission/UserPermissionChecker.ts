@@ -3,7 +3,6 @@ import { config } from '@/config/index.js';
 import { normalizeJid, extractPhone, isLidJid } from './JidService.js';
 import { GroupMetadataCache } from './GroupMetadataCache.js';
 import { LidResolver } from './LidResolver.js';
-import { logger } from '@/utils/logger.js';
 
 export interface UserPermissions {
   isOwner: boolean;
@@ -21,11 +20,7 @@ export class UserPermissionChecker {
       const ownerPhone = extractPhone(normalizedOwner);
       if (normalizedJid === normalizedOwner) return true;
       if (phoneNumber === ownerPhone) return true;
-      if (
-        isLidJid(normalizedJid) &&
-        isLidJid(normalizedOwner) &&
-        normalizedJid === normalizedOwner
-      ) {
+      if (isLidJid(normalizedJid) && isLidJid(normalizedOwner) && normalizedJid === normalizedOwner) {
         return true;
       }
     }
@@ -62,15 +57,12 @@ export class UserPermissionChecker {
     for (const p of participants) {
       if (isLidJid(p.id)) {
         const resolvedPhone = await LidResolver.resolve(sock, p.id);
-        logger.debug(`[FIND] ${p.id} → resolved: ${resolvedPhone}`);
         if (resolvedPhone === phoneNumber) return p;
       } else {
         const pPhone = extractPhone(p.id);
-        logger.debug(`[FIND] ${p.id} → phone: ${pPhone}`);
         if (pPhone === phoneNumber) return p;
       }
     }
-    logger.debug(`[FIND] Not found for: ${phoneNumber}`);
     return null;
   }
 
@@ -79,6 +71,8 @@ export class UserPermissionChecker {
     groupJid: string | undefined,
     userJid: string,
   ): Promise<UserPermissions> {
+    const userNormalized = normalizeJid(userJid);
+
     const isOwner = this.isOwner(userJid);
 
     if (!groupJid) {
@@ -90,7 +84,9 @@ export class UserPermissionChecker {
     }
 
     const metadata = await GroupMetadataCache.fetch(sock, groupJid);
-    if (!metadata) return { isOwner: false, isAdmin: false, isSuperAdmin: false };
+    if (!metadata) {
+      return { isOwner: false, isAdmin: false, isSuperAdmin: false };
+    }
 
     let participant: GroupParticipant | undefined | null;
 
@@ -104,11 +100,15 @@ export class UserPermissionChecker {
       );
     }
 
-    if (!participant) return { isOwner: false, isAdmin: false, isSuperAdmin: false };
+    if (!participant) {
+      return { isOwner: false, isAdmin: false, isSuperAdmin: false };
+    }
+
+    const isAdmin = participant.admin === 'admin' || participant.admin === 'superadmin';
 
     return {
       isOwner: false,
-      isAdmin: participant.admin === 'admin' || participant.admin === 'superadmin',
+      isAdmin,
       isSuperAdmin: participant.admin === 'superadmin',
     };
   }

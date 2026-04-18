@@ -377,18 +377,24 @@ const MIGRATIONS: Migration[] = [
     `,
   },
   {
-    version: 20,
-    name: 'add_missing_tables_and_columns',
+    version: 21,
+    name: 'fix_mutes_table',
     up: `
-      -- Tabla mutes
+      DROP TABLE IF EXISTS mutes;
       CREATE TABLE IF NOT EXISTS mutes (
         id TEXT PRIMARY KEY,
         jid TEXT,
+        userId TEXT,
+        userName TEXT,
         reason TEXT,
-        muted_by TEXT,
-        expires_at INTEGER,
-        created_at INTEGER,
-        updated_at INTEGER
+        mutedBy TEXT,
+        timestamp INTEGER,
+        duration INTEGER,
+        expiresAt INTEGER,
+        groupId TEXT,
+        updatedAt INTEGER,
+        createdAt INTEGER,
+        created_at INTEGER
       );
 
       -- Tabla bans
@@ -404,17 +410,20 @@ const MIGRATIONS: Migration[] = [
       );
 
       -- Tabla moderation_logs
+      DROP TABLE IF EXISTS moderation_logs;
       CREATE TABLE IF NOT EXISTS moderation_logs (
         id TEXT PRIMARY KEY,
-        user_id TEXT,
-        user_name TEXT,
+        userId TEXT,
+        userName TEXT,
         action TEXT,
         reason TEXT,
         moderator TEXT,
         timestamp INTEGER,
-        group_id TEXT,
-        created_at INTEGER,
-        updated_at INTEGER
+        duration INTEGER,
+        expiresAt INTEGER,
+        groupId TEXT,
+        createdAt INTEGER,
+        updatedAt INTEGER
       );
 
       -- Tabla ai_sessions
@@ -639,6 +648,15 @@ class DatabaseManager {
   isInitialized(): boolean {
     return this._initialized;
   }
+
+  isSQLite(): boolean {
+    return true;
+  }
+
+  getDb(): SqlJsDatabase {
+    if (!this.db) throw new Error('Database not initialized');
+    return this.db;
+  }
 }
 
 let _dbManager: DatabaseManager;
@@ -662,3 +680,44 @@ export function getDbManager(): DatabaseManager | undefined {
 export { DatabaseManager };
 
 export default DatabaseManager;
+
+const FIX_MIGRATION = `
+  ALTER TABLE mutes ADD COLUMN userId TEXT;
+  ALTER TABLE bans ADD COLUMN userId TEXT;
+  ALTER TABLE bans ADD COLUMN user_id TEXT;
+  ALTER TABLE bans ADD COLUMN group_id TEXT;
+  ALTER TABLE moderation_logs ADD COLUMN userId TEXT;
+  ALTER TABLE moderation_logs ADD COLUMN group_id TEXT;
+`;
+
+function applyFixMigration(db: DatabaseManager): void {
+  if (db.isSQLite()) {
+    const sqlDb = db.getDb();
+    try {
+      sqlDb.exec(`
+        ALTER TABLE mutes ADD COLUMN userId TEXT;
+      `);
+    } catch {
+    }
+    try {
+      sqlDb.exec(`ALTER TABLE bans ADD COLUMN userId TEXT;`);
+    } catch {
+    }
+    try {
+      sqlDb.exec(`ALTER TABLE bans ADD COLUMN user_id TEXT;`);
+    } catch {
+    }
+    try {
+      sqlDb.exec(`ALTER TABLE bans ADD COLUMN group_id TEXT;`);
+    } catch {
+    }
+    try {
+      sqlDb.exec(`ALTER TABLE moderation_logs ADD COLUMN userId TEXT;`);
+    } catch {
+    }
+    try {
+      sqlDb.exec(`ALTER TABLE moderation_logs ADD COLUMN group_id TEXT;`);
+    } catch {
+    }
+  }
+}

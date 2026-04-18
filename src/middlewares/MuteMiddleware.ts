@@ -1,9 +1,9 @@
 import { Middleware } from './Middleware.js';
 import type { MessageContext } from '@/types/index.js';
-import { serviceManager } from '@/services/system/Servicemanager.js';
-import { logError, logger } from '@/utils/logger.js';
-import { PermissionService } from '@/services/PermissionService.js';
+import { logError } from '@/utils/logger.js';
 import { middlewareCache } from './MiddlewareCache.js';
+import { PermissionService } from '@/services/PermissionService.js';
+import { serviceManager } from '@/services/system/Servicemanager.js';
 
 export class MuteMiddleware extends Middleware {
   name = 'mute';
@@ -14,28 +14,18 @@ export class MuteMiddleware extends Middleware {
       return;
     }
 
+    await ctx.loadBotPermissions();
+
     const cacheKey = `${ctx.chat.jid}:${ctx.sender.jid}`;
-    let cached = middlewareCache.userMuted.get<{ value: boolean }>(cacheKey);
+    const cached = middlewareCache.userMuted.get<{ value: boolean }>(cacheKey);
 
     try {
-      if (cached === undefined) {
-        const isMuted = await serviceManager.moderationService.isMuted(
-          ctx.chat.jid,
-          ctx.sender.jid,
-        );
-        cached = { value: isMuted };
-        middlewareCache.userMuted.set(cacheKey, cached);
-      }
-
-      if (cached.value) {
-        await ctx.loadBotPermissions();
-
+      if (cached?.value === true) {
         if (ctx.chat.isBotAdmin) {
           try {
             await ctx.sock.sendMessage(ctx.chat.jid, {
               delete: ctx.message.key,
             });
-            logger.info(`[MUTE] Mensaje eliminado: ${ctx.message.key.id}`);
           } catch (error) {
             logError('[MUTE] Error al eliminar mensaje', error);
           }
@@ -58,7 +48,6 @@ export class MuteMiddleware extends Middleware {
       const adminJids = admins.filter(admin => admin !== botJid);
 
       if (adminJids.length === 0) {
-        logger.debug(`[MUTE] No hay admins para notificar en ${ctx.chat.jid}`);
         return;
       }
 
@@ -84,8 +73,7 @@ export class MuteMiddleware extends Middleware {
               `💬 Mensaje: ${ctx.text.slice(0, 100)}${ctx.text.length > 100 ? '...' : ''}\n\n` +
               `⚠️ El bot necesita ser admin para eliminar automáticamente los mensajes muteados.`,
           });
-        } catch (error) {
-          logger.debug(`[MUTE] Error notificando admin ${adminJid}:`, error);
+        } catch {
         }
       }
     } catch (error) {

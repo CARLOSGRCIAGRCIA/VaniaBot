@@ -69,15 +69,6 @@ export class DemoteCommand extends Command {
 
       await ctx.sock.groupParticipantsUpdate(ctx.chat.jid, [mentionedJid], 'demote');
 
-      await serviceManager.moderationService.logAction({
-        userId: mentionedJid,
-        userName: targetUser.name,
-        action: 'warn',
-        reason: 'Demoted from admin',
-        moderator: ctx.sender.pushName || 'Unknown',
-        timestamp: Date.now(),
-      });
-
       await ctx.reply(
         `˚₊· ͟͟͞͞➳ *bajó de rango* ˚₊· ͟͟͞͞➳\n\n` +
           `✩ *quién:* ${targetUser.name}\n` +

@@ -1,5 +1,4 @@
 import type { WASocket } from '@whiskeysockets/baileys';
-import { logger } from '@/utils/logger.js';
 import { extractPhone } from './JidService.js';
 
 interface LidPhoneCache {
@@ -23,15 +22,13 @@ export class LidResolver {
       if (!onWhatsApp) return null;
 
       const result = await onWhatsApp.call(sock, lidJid);
-      logger.debug(`[LID RESOLVE] ${lidJid} →`, JSON.stringify(result));
 
       if (result && result[0]?.jid) {
         const phone = extractPhone(result[0].jid);
         this.lidPhoneCache.set(lidJid, phone);
         return phone;
       }
-    } catch (err) {
-      logger.debug(`[LID RESOLVE ERROR] ${lidJid}:`, err);
+    } catch {
     }
     return null;
   }

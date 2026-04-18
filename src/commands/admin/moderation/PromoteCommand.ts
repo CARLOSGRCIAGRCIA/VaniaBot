@@ -64,15 +64,6 @@ export class PromoteCommand extends Command {
 
       await ctx.sock.groupParticipantsUpdate(ctx.chat.jid, [mentionedJid], 'promote');
 
-      await serviceManager.moderationService.logAction({
-        userId: mentionedJid,
-        userName: targetUser.name,
-        action: 'warn',
-        reason: 'Promoted to admin',
-        moderator: ctx.sender.pushName || 'Unknown',
-        timestamp: Date.now(),
-      });
-
       await ctx.reply(
         `˚₊· ͟͟͞͞➳ *subió de rango* ˚₊· ͟͟͞͞➳\n\n` +
           `✩ *quién:* ${targetUser.name}\n` +

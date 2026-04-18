@@ -54,21 +54,6 @@ export class BanCommand extends Command {
     await ctx.react('⏳');
 
     try {
-      const isBanned = await serviceManager.moderationService.isBanned(ctx.chat.jid, mentionedJid);
-
-      if (isBanned) {
-        await ctx.reply('⚠️ This user is already banned');
-        return;
-      }
-
-      await serviceManager.moderationService.banUser(
-        ctx.chat.jid,
-        mentionedJid,
-        targetUser.name,
-        ctx.sender.pushName || 'Unknown',
-        reason,
-      );
-
       await ctx.sock.groupParticipantsUpdate(ctx.chat.jid, [mentionedJid], 'remove');
 
       await ctx.reply(

@@ -3,11 +3,13 @@ import {
   CommandCategory,
   CommandContext,
   PermissionLevel,
+  BotPermission,
   type MessageContext,
 } from '@/types/index.js';
 import { logError } from '@/utils/logger.js';
 import { serviceManager } from '@/services/system/Servicemanager.js';
 import { getTargetUser, getErrorMessage } from '@/utils/moderationUtils.js';
+import { middlewareCache } from '@/middlewares/MiddlewareCache.js';
 
 export class MuteCommand extends Command {
   name = 'mute';
@@ -19,6 +21,7 @@ export class MuteCommand extends Command {
   contexts = [CommandContext.GROUP];
   permissions = {
     user: [PermissionLevel.ADMIN],
+    bot: [BotPermission.ADMIN],
   };
 
   async execute(ctx: MessageContext): Promise<void> {
@@ -90,6 +93,9 @@ export class MuteCommand extends Command {
         reason,
         duration,
       );
+
+      const cacheKey = `${ctx.chat.jid}:${mentionedJid}`;
+      middlewareCache.userMuted.set(cacheKey, { value: true });
 
       const durationText = this.formatDuration(duration);
 
