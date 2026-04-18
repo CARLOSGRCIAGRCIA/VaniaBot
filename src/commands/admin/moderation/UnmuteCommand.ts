@@ -34,9 +34,9 @@ export class UnmuteCommand extends Command {
 
     await ctx.react('⏳');
 
-try {
+    try {
       const targetUser = await serviceManager.userService.getUser(mentionedJid);
-      
+
       const muteKey = `${ctx.chat.jid}:${mentionedJid}`;
       const wasMuted = middlewareCache.userMuted.get(muteKey);
 
@@ -51,8 +51,8 @@ try {
 
       await ctx.reply(
         `*Silence quitado*\n\n` +
-        `- Usuario: ${targetUser.name}\n` +
-        `- Por: ${ctx.sender.pushName}`,
+          `- Usuario: ${targetUser.name}\n` +
+          `- Por: ${ctx.sender.pushName}`,
       );
 
       await ctx.react('🔊');

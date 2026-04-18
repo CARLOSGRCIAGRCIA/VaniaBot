@@ -20,7 +20,11 @@ export class UserPermissionChecker {
       const ownerPhone = extractPhone(normalizedOwner);
       if (normalizedJid === normalizedOwner) return true;
       if (phoneNumber === ownerPhone) return true;
-      if (isLidJid(normalizedJid) && isLidJid(normalizedOwner) && normalizedJid === normalizedOwner) {
+      if (
+        isLidJid(normalizedJid) &&
+        isLidJid(normalizedOwner) &&
+        normalizedJid === normalizedOwner
+      ) {
         return true;
       }
     }

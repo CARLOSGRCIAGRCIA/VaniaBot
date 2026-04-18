@@ -5,9 +5,9 @@ const TABLE_NAME_MAP: Record<string, string> = {
   'system:reminders': 'reminders',
   'system:polls': 'polls',
   'game:listas': 'listas',
-  'bans': 'bans',
-  'mutes': 'mutes',
-  'moderation_logs': 'moderation_logs',
+  bans: 'bans',
+  mutes: 'mutes',
+  moderation_logs: 'moderation_logs',
 };
 
 const COLLECTION_KEY_COLUMN: Record<string, string> = {
@@ -154,7 +154,9 @@ export class SQLiteAdapter extends Database {
 
   async find<T>(collection: string, filter: Record<string, unknown>): Promise<T[]> {
     const table = this.getTableName(collection);
-    const filterKeys = Object.keys(filter).filter(k => filter[k] !== undefined && filter[k] !== null);
+    const filterKeys = Object.keys(filter).filter(
+      k => filter[k] !== undefined && filter[k] !== null,
+    );
     const conditions = filterKeys.map(key => `${key} = ?`).join(' AND ');
     const values = filterKeys.map(k => {
       const v = filter[k];
@@ -228,7 +230,9 @@ export class SQLiteAdapter extends Database {
     const sortOrder = options?.sortOrder || 'asc';
     const filter = options?.filter || {};
 
-    const filterKeys = Object.keys(filter).filter(k => filter[k] !== undefined && filter[k] !== null);
+    const filterKeys = Object.keys(filter).filter(
+      k => filter[k] !== undefined && filter[k] !== null,
+    );
     const whereClauses = filterKeys.map(key => `${key} = ?`);
     const where = whereClauses.length > 0 ? `WHERE ${whereClauses.join(' AND ')}` : '';
     const params = filterKeys.map(k => {
@@ -238,23 +242,26 @@ export class SQLiteAdapter extends Database {
     });
 
     const countResult = this.getDb().fetchOne<{ cnt: number }>(
-      where ? `SELECT COUNT(*) as cnt FROM ${table} ${where}` : `SELECT COUNT(*) as cnt FROM ${table}`,
+      where
+        ? `SELECT COUNT(*) as cnt FROM ${table} ${where}`
+        : `SELECT COUNT(*) as cnt FROM ${table}`,
       where ? { params } : undefined,
     );
     const total = countResult?.cnt ?? 0;
 
     const offset = (page - 1) * limit;
     const order = sortOrder.toUpperCase() === 'ASC' ? 'ASC' : 'DESC';
-    
-    const rawItems = params.length > 0
-      ? this.getDb().fetchAll<Record<string, unknown>>(
-          `SELECT * FROM ${table} ${where} ORDER BY ${sortBy} ${order} LIMIT ? OFFSET ?`,
-          { params: [...params, limit, offset] },
-        )
-      : this.getDb().fetchAll<Record<string, unknown>>(
-          `SELECT * FROM ${table} ORDER BY ${sortBy} ${order} LIMIT ? OFFSET ?`,
-          { params: [limit, offset] },
-        );
+
+    const rawItems =
+      params.length > 0
+        ? this.getDb().fetchAll<Record<string, unknown>>(
+            `SELECT * FROM ${table} ${where} ORDER BY ${sortBy} ${order} LIMIT ? OFFSET ?`,
+            { params: [...params, limit, offset] },
+          )
+        : this.getDb().fetchAll<Record<string, unknown>>(
+            `SELECT * FROM ${table} ORDER BY ${sortBy} ${order} LIMIT ? OFFSET ?`,
+            { params: [limit, offset] },
+          );
 
     const items = rawItems.map(r => this.parseJsonFields(r) as T);
 
@@ -272,8 +279,10 @@ export class SQLiteAdapter extends Database {
   async count(collection: string, filter?: Record<string, unknown>): Promise<number> {
     const table = this.getTableName(collection);
     const filterObj = filter || {};
-    const filterKeys = Object.keys(filterObj).filter(k => filterObj[k] !== undefined && filterObj[k] !== null);
-    
+    const filterKeys = Object.keys(filterObj).filter(
+      k => filterObj[k] !== undefined && filterObj[k] !== null,
+    );
+
     if (filterKeys.length === 0) {
       const result = this.getDb().fetchOne<{ cnt: number }>(`SELECT COUNT(*) as cnt FROM ${table}`);
       return result?.cnt ?? 0;

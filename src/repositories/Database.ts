@@ -697,27 +697,21 @@ function applyFixMigration(db: DatabaseManager): void {
       sqlDb.exec(`
         ALTER TABLE mutes ADD COLUMN userId TEXT;
       `);
-    } catch {
-    }
+    } catch {}
     try {
       sqlDb.exec(`ALTER TABLE bans ADD COLUMN userId TEXT;`);
-    } catch {
-    }
+    } catch {}
     try {
       sqlDb.exec(`ALTER TABLE bans ADD COLUMN user_id TEXT;`);
-    } catch {
-    }
+    } catch {}
     try {
       sqlDb.exec(`ALTER TABLE bans ADD COLUMN group_id TEXT;`);
-    } catch {
-    }
+    } catch {}
     try {
       sqlDb.exec(`ALTER TABLE moderation_logs ADD COLUMN userId TEXT;`);
-    } catch {
-    }
+    } catch {}
     try {
       sqlDb.exec(`ALTER TABLE moderation_logs ADD COLUMN group_id TEXT;`);
-    } catch {
-    }
+    } catch {}
   }
 }

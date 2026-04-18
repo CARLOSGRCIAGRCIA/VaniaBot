@@ -28,8 +28,7 @@ export class LidResolver {
         this.lidPhoneCache.set(lidJid, phone);
         return phone;
       }
-    } catch {
-    }
+    } catch {}
     return null;
   }
 

@@ -73,8 +73,7 @@ export class MuteMiddleware extends Middleware {
               `💬 Mensaje: ${ctx.text.slice(0, 100)}${ctx.text.length > 100 ? '...' : ''}\n\n` +
               `⚠️ El bot necesita ser admin para eliminar automáticamente los mensajes muteados.`,
           });
-        } catch {
-        }
+        } catch {}
       }
     } catch (error) {
       logError('[MUTE] Error notifyAdmins', error);

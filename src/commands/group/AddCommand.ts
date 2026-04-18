@@ -65,7 +65,9 @@ export class AddCommand extends Command {
       }
 
       if (errorMessage.includes('409') || errorMessage.includes('bad-request')) {
-        await ctx.reply('*Error*\nNo pude agregar al usuario. Puede que haya sido eliminado recientemente.');
+        await ctx.reply(
+          '*Error*\nNo pude agregar al usuario. Puede que haya sido eliminado recientemente.',
+        );
         return;
       }
 
