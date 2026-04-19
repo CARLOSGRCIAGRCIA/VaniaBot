@@ -1,1130 +1,318 @@
-<div align="center">
-  <img src="https://capsule-render.vercel.app/api?type=waving&color=gradient&customColorList=2,3,4,12,24&height=200&section=header&text=VaniaBot&fontSize=70&fontAlignY=35&desc=Tu%20Asistente%20Inteligente%20de%20WhatsApp&descAlignY=55&animation=twinkling" width="100%"/>
-</div>
+# VaniaBot
 
-<p align="center">
-  <img src="https://img.shields.io/github/stars/CARLOSGRCIAGRCIA/vaniabot?style=for-the-badge&logo=github&color=FFD700" alt="GitHub stars">
-  <img src="https://img.shields.io/github/forks/CARLOSGRCIAGRCIA/vaniabot?style=for-the-badge&logo=github&color=58A6FF" alt="GitHub forks">
-  <img src="https://img.shields.io/github/issues/CARLOSGRCIAGRCIA/vaniabot?style=for-the-badge&logo=github&color=FF6B9D" alt="GitHub issues">
-  <img src="https://img.shields.io/github/license/CARLOSGRCIAGRCIA/vaniabot?style=for-the-badge&color=2DD4BF" alt="License">
-  <img src="https://img.shields.io/badge/TypeScript-007ACC?style=for-the-badge&logo=typescript&logoColor=white" alt="TypeScript">
-  <img src="https://img.shields.io/badge/Node.js-43853D?style=for-the-badge&logo=node.js&logoColor=white" alt="Node.js">
-  <img src="https://img.shields.io/badge/Docker-2496ED?style=for-the-badge&logo=docker&logoColor=white" alt="Docker">
-  <img src="https://img.shields.io/badge/WhatsApp-25D366?style=for-the-badge&logo=whatsapp&logoColor=white" alt="WhatsApp">
-</p>
+A production-grade WhatsApp automation system built with TypeScript — featuring 200+ commands, 80+ integrated services, and a resilient multi-instance architecture designed to stay online under real-world failure conditions.
+
+[![TypeScript](https://img.shields.io/badge/TypeScript-5-007ACC?style=flat-square&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
+[![Node.js](https://img.shields.io/badge/Node.js-20+-43853D?style=flat-square&logo=node.js&logoColor=white)](https://nodejs.org/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-2DD4BF?style=flat-square)](LICENSE)
 
 ---
 
-## Tabla de Contenidos
+## Why this project exists (and what makes it interesting)
 
-- [Análisis del Proyecto](#-análisis-del-proyecto)
-- [Características](#-características)
-- [Dependencias del Sistema](#️-dependencias-del-sistema)
-- [Instalación](#-instalación)
-  - [VPS / Servidor Dedicado (Linux)](#vps--servidor-dedicado-linux)
-  - [Computadora Personal](#computadora-personal-windowsmacoslinux)
-  - [Docker](#docker)
-  - [Termux (Android)](#termux-android)
-- [Configuración](#-configuración)
-- [Comandos](#-comandos)
-- [Estructura del Proyecto](#-estructura-del-proyecto)
-- [FAQ / Solución de Problemas](#-faq--solución-de-problemas)
-- [Licencia](#-licencia)
+Most WhatsApp bots are a `switch/case` on a message string. VaniaBot started the same way — and became unmaintainable at around 20 commands. This project is the result of rethinking the entire architecture to be modular, resilient, and scalable without rewriting core logic every time something breaks or a new feature is added.
+
+The interesting engineering problems I solved here:
+
+- **How do you manage 50 concurrent WhatsApp sessions** without memory leaks or session corruption?
+- **What happens when your AI provider goes down** mid-conversation? How do you fail gracefully without the user noticing?
+- **How do you build a command system** where adding a new command never touches existing logic?
+
+The sections below explain each of these in detail.
 
 ---
 
-## Análisis del Proyecto
+## Architecture
 
-### Información General
+### Core Design: Middleware Pipeline + Command Registry
 
-| Atributo              | Valor               |
-| :-------------------- | :------------------ |
-| **Nombre**            | VaniaBot            |
-| **Versión**           | **6.0.0**           |
-| **Licencia**          | MIT                 |
-| **Idioma principal**  | TypeScript          |
-| **Runtime**           | Node.js 20+         |
-| **Librería WhatsApp** | Baileys v7          |
-| **SubBots**           | Hasta 50 instancias |
-| **Licencias**         | Sistema integrado   |
-
-### Arquitectura
-
-VaniaBot es un bot de WhatsApp **multifuncional** construido con TypeScript y Baileys, utilizando una arquitectura moderna con **Orchestrator** para gestión de SubBots.
+Instead of a monolithic message handler, every incoming message passes through a sequential middleware chain before reaching a command. This keeps cross-cutting concerns (auth, rate limiting, logging, anti-spam) completely decoupled from business logic.
 
 ```mermaid
-graph TB
-    subgraph Core["VaniaBot Core"]
-        C[Client] --> CR[CommandRegistry]
-        C --> MP[MessageProcessor]
-        MP --> MW[Middlewares]
-        C --> AM[AuthManager]
-    end
-
-    subgraph Services["Servicios"]
-        AI[AI Service] --> Groq[Groq SDK]
-        MOD[Moderation] --> MSG[Messages]
-        ECO[Economy] --> DB[(SQLite)]
-        GM[Game Manager] --> Lista[Listas]
-    end
-
-    subgraph SubBots["SubBot System"]
-        OR[Orchestrator] --> SM[SubBotManager]
-        SM --> SI[SubBot Instances]
-        SM --> DB
-        OR --> JS[JobWorker]
-        OR --> BW[BackupWorker]
-        OR --> CW[CleanupWorker]
-    end
-
-    subgraph License["License System"]
-        LS[LicenseService] --> GM
-        LS --> DB
-    end
-
-    MP --> MW
-    MW --> Services
+flowchart TD
+    MSG([Incoming Message]) --> S1[Session validation]
+    S1 --> S2[Rate limiter]
+    S2 --> S3[Anti-spam filter]
+    S3 --> S4[Permission check]
+    S4 --> S5[Context builder]
+    S5 --> CR{Command Registry\nlookup}
+    CR -->|found| CMD[Command Handler]
+    CR -->|not found| IGN([Ignore])
+    CMD --> SVC[Service Layer]
 ```
 
-```
-┌─────────────────────────────────────────────────────────────────────────┐
-│                        VaniaBot Core                          │
-├─────────────┬─────────────┬─────────────┬─────────────────────────┤
-│   AI/Chat   │ Moderación │  Economía  │       Juegos              │
-│  - Groq     │  - Ban    │  - Daily   │  - Coinflip             │
-│  - LLaMA 3  │  - Kick    │  - Work   │  - Slots               │
-│  - Whisper   │  - Mute    │  - Shop   │  - Quiz                │
-│             │  - Warn    │  - Bank   │  - Listas             │
-│             │  - AntiSpam│  - Casino │  - FreeFire           │
-├─────────────┼─────────────┼─────────────┼─────────────────────────┤
-│   Media     │ Utilities │  Owner     │       SubBots            │
-│  - Stickers  │ - Translate│ - Broadcast│ - Multi-device         │
-│  - YouTube  │ - Currency │ - Stats    │ - SQLite persistence   │
-│  - TikTok   │ - QR Code  │ - Grant    │ - Encrypted sessions   │
-│  - Instagram│ - Poll    │ - License │ - Health monitoring  │
-│            │                     │          │ - Auto-reconnect     │
-├─────────────┼─────────────┼─────────────┼─────────────────────────┤
-│   Poesía    │  Grupos   │  Fun      │   Sistema            │
-│  - Poemas   │ - Welcome │ - Anime   │  - Rate limiting    │
-│  - Haikus   │ - Goodbye │ - Chistes│  - Anti-spam        │
-│  - Frases   │ - Antilink│ - True/False│  - Anti-call        │
-│  - Dedicat.│ - Add     │ - Random  │  - Cache (Redis)     │
-└─────────────┴─────────────┴─────────────┴─────────────────────────┘
-```
-
-### Tecnologías Usadas
-
-| Categoría     | Tecnología                    |
-| :------------ | :---------------------------- |
-| Runtime       | Node.js 20+                   |
-| Lenguaje      | TypeScript 5                  |
-| WhatsApp      | Baileys v7                    |
-| IA            | Groq SDK (LLaMA 3, Whisper)   |
-| Base de datos | SQLite / JSON / MongoDB       |
-| Cache         | Redis / In-Memory             |
-| SubBots       | hasta 50 instancias paralelas |
-| Logging       | Pino                          |
-| Testing       | Vitest                        |
+**The key benefit:** adding a new command means creating one file. Nothing else changes. The registry discovers and registers it automatically at startup.
 
 ---
 
-## Características
+### Resilience: AI Fallback Chain
 
-| Módulo         | Descripción                                                                |
-| :------------- | :------------------------------------------------------------------------- |
-| **AI**         | Chat contextual con Groq (LLaMA 3), transcripción de audio.                |
-| **Moderación** | Ban, kick, mute, warn, anti-spam, anti-link, anti-fake, anti-arab.         |
-| **Economía**   | Recompensas diarias/semanales, trabajo, tienda, banco, casino, niveles XP. |
-| **Juegos**     | Coinflip, slots, quizzes con dificultad adaptativa, listas, FreeFire.      |
-| **Stickers**   | Crear stickers de imágenes, videos, GIFs.                                  |
-| **Descargas**  | YouTube audio/video, TikTok, Instagram, Facebook, Spotify, Pinterest.      |
-| **Poesía**     | Poemas, haikus, sonetos, dedicatorias, frases cortas generados por IA.     |
-| **Utilidades** | Traductor, conversor de moneda, QR, encuestas, recordatorios.              |
-| **SubBots**    | Hasta 50 instancias paralelas con gestión avanzada.                        |
-| **Licencias**  | Sistema de licencias para grupos (monthly/permanent).                      |
-
----
-
-## Dependencias del Sistema
-
-### Requisitos Mínimos
-
-| Dependencia | Versión mínima | Descripción                  |
-| :---------- | :------------- | :--------------------------- |
-| **Node.js** | 20+            | Runtime de JavaScript        |
-| **Git**     | -              | Para clonar el repositorio   |
-| **FFmpeg**  | -              | Procesamiento de audio/video |
-| **Python**  | 3.8+           | Para yt-dlp                  |
-
-### Dependencias de Node.js (Principales)
-
-```json
-{
-  "@whiskeysockets/baileys": "^7.0.0",
-  "groq-sdk": "^0.55.0",
-  "axios": "^1.7.0",
-  "pino": "^9.5.0",
-  "ioredis": "^5.4.0",
-  "better-sqlite3": "^11.0.0",
-  "sharp": "^0.33.0",
-  "yt-search": "^2.13.1",
-  "zod": "^3.24.1"
-}
-```
-
----
-
-## Instalación
-
-### VPS / Servidor Dedicado (Linux)
-
-#### Requisitos del servidor
-
-- **RAM**: Mínimo 1GB (recomendado 2GB)
-- **CPU**: 1 núcleo
-- **Almacenamiento**: 5GB mínimo
-- **SO**: Ubuntu 20.04+ / Debian 11+ / CentOS 8+
-
-#### Paso 1: Actualizar sistema e instalar dependencias
-
-```bash
-# Ubuntu/Debian
-sudo apt update && sudo apt upgrade -y
-sudo apt install -y git ffmpeg python3 python3-pip build-essential libgbm-dev
-
-# Instalar Node.js 18
-curl -fsSL https://deb.nodesource.com/setup_18.x | sudo -E bash -
-sudo apt install -y nodejs
-```
-
-#### Paso 2: Instalar yt-dlp
-
-```bash
-pip3 install yt-dlp
-```
-
-#### Paso 3: Clonar el repositorio
-
-```bash
-git clone https://github.com/CARLOSGRCIAGRCIA/vaniabot.git
-cd vaniabot
-```
-
-#### Paso 4: Instalar dependencias
-
-```bash
-npm install
-```
-
-#### Paso 5: Configurar variables de entorno
-
-```bash
-cp .env.example .env
-nano .env
-```
-
-#### Paso 6: Iniciar el bot
-
-```bash
-# Opción 1: QR Code
-npm start
-
-# Opción 2: Código de pareo
-npm run code
-
-# Opción 3: Desarrollo (con reinicio automático)
-npm run dev
-```
-
-#### Paso 7: Mantener el bot 24/7 con PM2
-
-```bash
-# Instalar PM2
-sudo npm install -g pm2
-
-# Iniciar con PM2
-pm2 start vania.ts --interpreter tsx --name vaniabot
-
-# Guardar configuración
-pm2 save
-
-# Iniciar al arranque del sistema
-pm2 startup
-# (seguir las instrucciones del comando)
-```
-
----
-
-### Computadora Personal (Windows/macOS/Linux)
-
-<details>
-<summary><b>Windows</b></summary>
-
-1. **Instalar Node.js**: Descargar de [nodejs.org](https://nodejs.org/) (versión LTS)
-2. **Instalar FFmpeg**:
-   - Descargar de [ffmpeg.org](https://ffmpeg.org/download.html)
-   - Extraer y agregar al PATH de Windows
-3. **Instalar Git**: Descargar de [git-scm.com](https://git-scm.com/)
-4. **Instalar Python**: Descargar de [python.org](https://www.python.org/)
-5. **Abrir terminal y ejecutar**:
-
-```bash
-git clone https://github.com/CARLOSGRCIAGRCIA/vaniabot.git
-cd vaniabot
-npm install
-copy .env.example .env
-notepad .env
-npm start
-```
-
-</details>
-
-<details>
-<summary><b>macOS</b></summary>
-
-```bash
-# Instalar Homebrew (si no tienes)
-/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
-
-# Instalar dependencias
-brew install git node ffmpeg python
-
-# Instalar yt-dlp
-pip3 install yt-dlp
-
-# Clonar y ejecutar
-git clone https://github.com/CARLOSGRCIAGRCIA/vaniabot.git
-cd vaniabot
-npm install
-cp .env.example .env
-nano .env
-npm start
-```
-
-</details>
-
-<details>
-<summary><b>Linux (Escritorio)</b></summary>
-
-```bash
-# Instalar dependencias del sistema
-sudo apt update
-sudo apt install -y git nodejs npm ffmpeg python3 python3-pip
-
-# Instalar yt-dlp
-pip3 install yt-dlp
-
-# Clonar y ejecutar
-git clone https://github.com/CARLOSGRCIAGRCIA/vaniabot.git
-cd vaniabot
-npm install
-cp .env.example .env
-nano .env
-npm start
-```
-
-</details>
-
----
-
-### Docker
-
-#### Requisitos
-
-- Docker 20.10+
-- Docker Compose 2.0+
-
-#### Opción 1: Usar imagen pre-built (Recomendado)
-
-```bash
-# Pull de GitHub Container Registry
-docker pull ghcr.io/carlosgrciagrcia/vaniabot:v6.12.2
-
-# O desde la página del paquete:
-# https://github.com/CARLOSGRCIAGRCIA/VaniaBot/pkgs/container/vaniabot
-```
-
-#### Paso 1: Crear estructura de directorios
-
-```bash
-# Crear carpetas para persistencia
-mkdir -p vaniasession subbots data temp redis-data
-```
-
-#### Paso 2: Configurar `.env`
-
-```bash
-cp .env.example .env
-nano .env
-```
-
-#### Paso 3: Configurar `.env` (básico)
-
-```env
-BOT_NAME=VaniaBot
-BOT_PREFIX=.
-OWNERS=tu_numero@lid
-USE_PAIRING_CODE=true
-PHONE_NUMBER=+1234567890
-GROQ_API_KEY=tu_api_key
-NODE_ENV=production
-TZ=America/Mexico_City
-```
-
-#### Paso 4: Configurar `.env` (con Redis)
-
-```env
-# Configuración básica
-BOT_NAME=VaniaBot
-BOT_PREFIX=.
-OWNERS=tu_numero@lid
-USE_PAIRING_CODE=true
-PHONE_NUMBER=+1234567890
-GROQ_API_KEY=tu_api_key
-NODE_ENV=production
-TZ=America/Mexico_City
-
-# Redis (requiere docker-compose con Redis)
-USE_REDIS=true
-REDIS_URL=redis://redis:6379
-CONSOLE_LOG=true
-```
-
-#### Paso 4: Ejecutar con Docker Compose
-
-```bash
-# Basic (sin Redis)
-docker-compose up -d
-
-# Con Redis (recomendado para producción)
-docker-compose -f docker-compose.yml up -d
-
-# Ver logs
-docker-compose logs -f vaniabot
-
-# Detener
-docker-compose down
-
-# Reiniciar
-docker-compose restart
-```
-
-#### Construcción con Dockerfile.production
-
-```bash
-# Usar Dockerfile.production con yt-dlp y sharp instalados
-docker build -f Dockerfile.production -t vaniabot:latest .
-docker run -d \
-  --name vaniabot \
-  --env-file .env \
-  -v vaniabot_session:/app/vaniasession \
-  -v vaniabot_storage:/app/storage \
-  vaniabot:latest
-```
-
-#### Persistencia de datos
-
-| Volumen             | Descripción                     | Ruta local       |
-| :------------------ | :------------------------------ | :--------------- |
-| `vaniabot_session`  | Credenciales de sesión WhatsApp | `./vaniasession` |
-| `vaniabot_subbots`  | Sesiones de SubBots             | `./subbots`      |
-| `vaniabot_database` | Base de datos SQLite            | `./data`         |
-| `vaniabot_temp`     | Archivos temporales             | (interno)        |
-| `vania-redis-data`  | Datos de Redis (cache)          | `./redis-data`   |
-
-> **Nota**: Al usar `docker-compose`, los volúmenes se crean automáticamente si existen los directorios locales.
-
-#### Ejecutar con imagen pre-built
-
-```bash
-# Iniciar el bot con la imagen de GitHub Container Registry
-docker-compose up -d
-
-# Ver logs
-docker-compose logs -f vaniabot
-
-# Ver logs solo del bot
-docker logs -f vaniabot
-
-# Detener
-docker-compose down
-
-# Reiniciar
-docker-compose restart
-```
-
-#### Construcción local (Opción 2)
-
-Si preferís construir la imagen localmente:
-
-```bash
-# Clonar el repositorio
-git clone https://github.com/CARLOSGRCIAGRCIA/VaniaBot.git
-cd vaniabot
-
-# Crear estructura de directorios
-mkdir -p vaniasession subbots data temp redis-data
-
-# Configurar .env
-cp .env.example .env
-nano .env
-
-# Construir imagen localmente
-docker build -t vaniabot:local .
-
-# Modificar docker-compose.yml para usar imagen local
-# Cambiar: image: ghcr.io/carlosgrciagrcia/vaniabot:v6.12.2
-# Por:     image: vaniabot:local
-
-# Iniciar
-docker-compose up -d
-```
-
----
-
-### Termux (Android)
-
-#### Requisitos
-
-- Termux instalado (de F-Droid o GitHub)
-- Android 7.0+
-- Al menos 500MB de almacenamiento libre
-
-#### Paso 1: Actualizar repositorios
-
-```bash
-pkg update && pkg upgrade -y
-```
-
-#### Paso 2: Instalar dependencias del sistema
-
-```bash
-pkg install -y git nodejs ffmpeg python libwebp imagemagick bc jq
-```
-
-#### Paso 3: Instalar yt-dlp
-
-```bash
-pip install yt-dlp
-```
-
-#### Paso 4: Clonar repositorio
-
-```bash
-git clone https://github.com/CARLOSGRCIAGRCIA/vaniabot.git
-cd vaniabot
-```
-
-#### Paso 5: Instalar dependencias Node.js
-
-```bash
-npm install
-```
-
-#### Paso 6: Configurar variables de entorno
-
-```bash
-cp .env.example .env
-nano .env
-```
-
-#### Paso 7: Iniciar el bot
-
-```bash
-# Con código QR
-npm start
-
-# O con código de pareo
-npm run code
-```
-
-#### Mantener el bot funcionando 24/7
-
-```bash
-# Activar wake lock (evita que Termux se duerma)
-termux-wake-lock
-
-# Iniciar el bot
-npm start
-```
-
-#### Mejor estabilidad con PM2
-
-```bash
-# Instalar PM2
-npm install -g pm2
-
-# Iniciar con PM2
-pm2 start vania.ts --interpreter tsx --name vaniabot
-
-# Guardar configuración
-pm2 save
-```
-
-<details>
-<summary><b>Solución de problemas en Termux</b></summary>
-
-```bash
-# Error de permisos
-termux-setup-storage
-
-# Error de iconv
-npm rebuild
-
-# Ver proceso activo
-ps
-
-# Matar proceso del bot
-pkill -f "tsx vania"
-
-# Ver logs
-pm2 logs vaniabot
-```
-
-</details>
-
----
-
-## 🔧 Configuración
-
-### Variables de Entorno
-
-| Variable                 | Descripción                                                                        | Requerido  | Valor por defecto |
-| :----------------------- | :--------------------------------------------------------------------------------- | :--------- | :---------------- |
-| `BOT_NAME`               | Nombre del bot                                                                     | No         | VaniaBot          |
-| `BOT_PREFIX`             | Prefijo de comandos                                                                | No         | .                 |
-| `OWNERS`                 | IDs de owners (separados por coma)                                                 | Sí         | -                 |
-| `SESSION_PATH`           | Ruta de almacenamiento de sesión WhatsApp                                          | No         | ./vaniasession    |
-| `USE_PAIRING_CODE`       | Usar código de pareamiento (true) o QR (false)                                     | No         | false             |
-| `PHONE_NUMBER`           | Número de teléfono para pareo (con código de país)                                 | Si pairing | -                 |
-| `DB_TYPE`                | Tipo de base de datos: `json` (local) o `sqlite`                                   | No         | json              |
-| `NODE_ENV`               | Entorno: `development` o `production`                                              | No         | development       |
-| `GROQ_API_KEY`           | **API Key de Groq** (obtener en [console.groq.com](https://console.groq.com/keys)) | **Sí**     | -                 |
-| `MAX_RECONNECT_ATTEMPTS` | Máximo de intentos de reconexión                                                   | No         | 10                |
-| `AUTO_RECONNECT`         | Habilitar reconexión automática                                                    | No         | true              |
-| `CACHE_ENABLED`          | Habilitar caché en memoria                                                         | No         | true              |
-| `ANTI_SPAM`              | Habilitar anti-spam (rate limiting)                                                | No         | true              |
-| `LOG_LEVEL`              | Nivel de logging: `error`, `warn`, `info`, `debug`                                 | No         | info              |
-| `MAX_MEDIA_SIZE`         | Tamaño máximo de archivos (50MB = 52428800)                                        | No         | 52428800          |
-
-### Variables de Docker/Producción
-
-| Variable                 | Descripci��n                                               | Valor por defecto      |
-| :----------------------- | :--------------------------------------------------------- | :--------------------- |
-| `USE_REDIS`              | Habilitar Redis para cache/persistencia (Docker)           | false                  |
-| `REDIS_URL`              | URL de conexión Redis                                      | redis://localhost:6379 |
-| `CONSOLE_LOG`            | Habilitar logs en stdout (Docker)                          | true                   |
-| `SESSION_ENCRYPTION_KEY` | Clave para encriptar sesiones de SubBots (32+32 hex chars) | -                      |
-
-### Obtener Groq API Key
-
-1. Ir a [console.groq.com](https://console.groq.com)
-2. Crear cuenta o iniciar sesión
-3. Ir a **API Keys**
-4. Crear nueva key
-5. Copiar a `.env`
-
-```env
-GROQ_API_KEY=gsk_tu_api_key_aqui
-```
-
-### Ejemplo `.env` completo para Docker
-
-```env
-# Básico
-BOT_NAME=VaniaBot
-BOT_PREFIX=.
-OWNERS=tu_numero@lid
-USE_PAIRING_CODE=true
-PHONE_NUMBER=+5215512345678
-GROQ_API_KEY=gsk_xxx
-
-# Docker/Producción
-NODE_ENV=production
-TZ=America/Mexico_City
-USE_REDIS=true
-REDIS_URL=redis://redis:6379
-CONSOLE_LOG=true
-```
-
----
-
-## Comandos Principales
-
-### Utilidades (18 comandos)
-
-| Comando                               | Descripción                    |
-| :------------------------------------ | :----------------------------- |
-| `.ping`                               | Latencia del bot               |
-| `.help [comando]`                     | Ayuda detallada                |
-| `.profile [@usuario]`                 | Ver perfil y estadísticas      |
-| `.level [@usuario]`                   | Nivel y experiencia            |
-| `.top [money/level/xp]`               | Ranking del grupo              |
-| `.inventory [@usuario]`               | Inventario                     |
-| `.achievements`                       | Logros obtenidos               |
-| `.calc <expresión>`                   | Calculadora                    |
-| `.moneda <cantidad> <de> <a>`         | Conversor de moneda            |
-| `.qr <texto>`                         | Generar código QR              |
-| `.recordatorio <tiempo> <msg>`        | Recordatorio (10m, 2h, 1d)     |
-| `.acortar <url>`                      | Acortar URL                    |
-| `.traducir <idioma> <texto>`          | Traductor simple               |
-| `.encuesta "pregunta" "op1" "op2"...` | Crear encuesta                 |
-| `.verplan`                            | Ver plan de licencia del grupo |
-| `.miplan`                             | Mis beneficios activos         |
-| `.renovar`                            | Renovar licencia               |
-
-### IA y Chat (3 comandos)
-
-| Comando         | Descripción                               |
-| :-------------- | :---------------------------------------- |
-| `.ai <mensaje>` | Chatear con Vania AI - mantiene historial |
-| `.aiclear`      | Limpiar historial de conversación         |
-| `.transcribe`   | Transcribir audio o nota de voz           |
-
-### Moderación (12 comandos)
-
-| Comando                             | Descripción                  |
-| :---------------------------------- | :--------------------------- |
-| `.ban @usuario [razón]`             | Banear usuario               |
-| `.unban @usuario`                   | Quitar ban                   |
-| `.kick @usuario [razón]`            | Expulsar                     |
-| `.mute @usuario <duración> [razón]` | Silenciar (10m, 1h)          |
-| `.unmute @usuario`                  | Quitar silencio              |
-| `.warn @usuario [razón]`            | Advertir (3 warns = kick)    |
-| `.demote @usuario`                  | Quitar admin                 |
-| `.promote @usuario`                 | Hacer admin                  |
-| `.all [mensaje]`                    | Mencionar a todos            |
-| `.welcome [on/off/set/test/reset]`  | Configurar bienvenida        |
-| `.goodbye [on/off/set/test/reset]`  | Configurar despedida         |
-| `.antispam [on/off]`                | Activar/desactivar anti-spam |
-
-### Economía (14 comandos)
-
-| Comando                    | Descripción                |
-| :------------------------- | :------------------------- |
-| `.daily`                   | Recompensa diaria          |
-| `.weekly`                  | Recompensa semanal         |
-| `.work`                    | Trabajar para ganar dinero |
-| `.shop`                    | Ver tienda                 |
-| `.buy <número>`            | Comprar artículo           |
-| `.pay @usuario <cantidad>` | Transferir dinero          |
-| `.balance`                 | Ver efectivo               |
-| `.bank`                    | Ver banco                  |
-| `.deposit <cantidad>`      | Depositar al banco         |
-| `.withdraw <cantidad>`     | Retirar del banco          |
-| `.crime`                   | Robar a otros usuarios     |
-| `.casino <apuesta>`        | Apostar en casino          |
-| `.heist <apuesta>`         | Robar el banco             |
-| `.lottery <apuesta>`       | Comprar lotería            |
-
-### Juegos (6 comandos)
-
-| Comando                            | Descripción                        |
-| :--------------------------------- | :--------------------------------- |
-| `.coinflip <cara/sello> <apuesta>` | Apostar cara o sello               |
-| `.slots <apuesta>`                 | Máquina tragamonedas               |
-| `.quiz [categoría]`                | Quiz educativo con IA              |
-| `.quiz stop`                       | Detener quiz actual                |
-| `.lista <hora> [liga]`             | Lista interactiva (CLK, VV2, etc.) |
-| `.freefire [inscripción]`          | Torneos y estadísticas FreeFire    |
-
-### Media y Stickers (16 comandos)
-
-| Comando                 | Descripción                          |
-| :---------------------- | :----------------------------------- |
-| `.sticker`              | Convertir imagen/video/GIF a sticker |
-| `.take <pack>/<author>` | Cambiar pack o autor del sticker     |
-| `.nota <texto>`         | Sticker de nota adhesiva             |
-| `.pat <texto>`          | Sticker meme de Patrick              |
-| `.qc <texto>`           | Sticker de cita con foto de perfil   |
-| `.ytmp3 <búsqueda/URL>` | Descargar audio de YouTube           |
-| `.ytmp4 <búsqueda/URL>` | Descargar video de YouTube           |
-| `.tiktok <URL>`         | Video de TikTok sin marca de agua    |
-| `.instagram <URL>`      | Post/Reel de Instagram               |
-| `.facebook <URL>`       | Video de Facebook                    |
-| `.toanime`              | Convertir imagen a estilo anime      |
-| `.togif`                | Convertir video a GIF                |
-| `.gitclone <url>`       | Descargar repositorio GitHub         |
-| `.githubsearch <query>` | Buscar en GitHub                     |
-| `.descuentos`           | Ofertas de Reddit                    |
-| `.apk <nombre>`         | Buscar APK                           |
-
-### Poesía (8 comandos)
-
-| Comando                | Descripción               |
-| :--------------------- | :------------------------ |
-| `.poema [tema]`        | Poema personalizado       |
-| `.haiku [tema]`        | Haikus                    |
-| `.frases [tema]`       | 5 frases creativas        |
-| `.piropo [for:x]`      | Piropos graciosos         |
-| `.dedicatoria [for:x]` | Dedicatoria personalizada |
-| `.historia [tema]`     | Historia corta            |
-| `.votar <ID>`          | Votar trabajo poético     |
-| `.poetop`              | Ranking de votos          |
-
-### SubBots (Avanzado) (10 comandos)
-
-| Comando                  | Descripción                    |
-| :----------------------- | :----------------------------- |
-| `.subbot crear <nombre>` | Crear nuevo SubBot             |
-| `.subbot eliminar <id>`  | Eliminar SubBot                |
-| `.subbot lista`          | Ver todos los SubBots          |
-| `.subbot usar <id>`      | Cambiar al SubBot especificado |
-| `.subbot iniciar <id>`   | Iniciar SubBot detenido        |
-| `.subbot detener <id>`   | Detener SubBot                 |
-| `.subbot estado <id>`    | Ver estado de SubBot           |
-| `.subbot restart <id>`   | Reiniciar SubBot               |
-| `.subbot backup`         | Respaldar todos los SubBots    |
-| `.subbot restore`        | Restaurar SubBots desde backup |
-
-### Licencias (4 comandos)
-
-| Comando                     | Descripción                         |
-| :-------------------------- | :---------------------------------- |
-| `.license [info]`           | Información de licencia del grupo   |
-| `.setplan <plan> <precio>`  | Configurar plan (monthly/permanent) |
-| `.verplan`                  | Ver plan actual del grupo           |
-| `.renovar <meses> <precio>` | Renovar licencia                    |
-
-### Owner (Solo owners del bot)
-
-| Comando                            | Descripción             |
-| :--------------------------------- | :---------------------- |
-| `.setowner add/remove @usuario`    | Gestionar owners        |
-| `.grant <recurso> @usuario <cant>` | Otorgar recursos        |
-| `.stats`                           | Estadísticas globales   |
-| `.autoadmin`                       | Auto-promover en grupos |
-| `.logs`                            | Ver logs del sistema    |
-| `.backup`                          | Crear backup            |
-
-### Moderación (11 comandos) - Requiere admin de grupo
-
-| Comando                             | Descripción                          |
-| :---------------------------------- | :----------------------------------- |
-| `.ban @usuario [razón]`             | Banear usuario                       |
-| `.unban @usuario`                   | Quitar ban                           |
-| `.kick @usuario [razón]`            | Expulsar                             |
-| `.mute @usuario <duración> [razón]` | Silenciar (10m, 1h)                  |
-| `.unmute @usuario`                  | Quitar silencio                      |
-| `.warn @usuario [razón]`            | Advertir - 3 warns = kick automático |
-| `.demote @usuario`                  | Quitar admin                         |
-| `.promote @usuario`                 | Hacer admin                          |
-| `.all [mensaje]`                    | Mencionar a todos                    |
-| `.welcome [on/off/set/test/reset]`  | Configurar mensaje de bienvenida     |
-| `.goodbye [on/off/set/test/reset]`  | Configurar mensaje de despedida      |
-
-### Economía (6 comandos)
-
-| Comando                    | Descripción                |
-| :------------------------- | :------------------------- |
-| `.daily`                   | Recompensa diaria          |
-| `.weekly`                  | Recompensa semanal         |
-| `.work`                    | Trabajar para ganar dinero |
-| `.shop`                    | Ver tienda                 |
-| `.buy <número>`            | Comprar artículo           |
-| `.pay @usuario <cantidad>` | Transferir dinero          |
-
-### Juegos (11 comandos)
-
-| Comando                            | Descripción                              |
-| :--------------------------------- | :--------------------------------------- |
-| `.coinflip <cara/sello> <apuesta>` | Apostar cara o sello                     |
-| `.slots <apuesta>`                 | Máquina tragamonedas                     |
-| `.quiz [categoría] [preguntas]`    | Quiz educativo con dificultad adaptativa |
-| `.quiz stop`                       | Detener quiz actual                      |
-| `.quizstats [@usuario]`            | Estadísticas de quiz                     |
-| `.quiztop [categoría]`             | Top del grupo                            |
-| `.clk [hora] [liga]`               | Lista interactiva CLK                    |
-| `.vv2 [hora]`                      | Lista VV2                                |
-| `.cuadrilatero [hora] [color]`     | Lista cuadrilátero                       |
-| `.trilatero [hora] [color]`        | Lista trilátero                          |
-| `.hexagonal [hora] [color]`        | Lista hexagonal                          |
-
-### Media y Stickers (17 comandos)
-
-| Comando                      | Descripción                                 |
-| :--------------------------- | :------------------------------------------ |
-| `.sticker`                   | Convertir imagen/video/GIF a sticker        |
-| `.take <pack>/<author>`      | Cambiar pack o autor del sticker            |
-| `.nota <texto>`              | Sticker de nota adhesiva                    |
-| `.pat <texto>`               | Sticker meme de Patrick                     |
-| `.qc <texto>`                | Sticker de cita con foto de perfil          |
-| `.ytmp3 <búsqueda o URL>`    | Descargar audio de YouTube                  |
-| `.ytmp4 <búsqueda o URL>`    | Descargar video de YouTube                  |
-| `.tiktok <URL>`              | Video de TikTok sin marca de agua           |
-| `.instagram <URL>`           | Reel o post de Instagram                    |
-| `.facebook <URL>`            | Video de Facebook                           |
-| `.descuentos [reddit/promo]` | Ofertas de Reddit y PromoDescuentos         |
-| `.gitclone <url>`            | Descargar repositorio GitHub como ZIP       |
-| `.githubsearch <query>`      | Buscar repositorios en GitHub               |
-| `.toanime`                   | Convertir imagen a estilo anime (responder) |
-| `.togif`                     | Convertir video a GIF (responder)           |
-| `.animelink`                 | Lista de páginas de anime                   |
-
-### Poesía (13 comandos)
-
-| Comando                          | Descripción                       |
-| :------------------------------- | :-------------------------------- |
-| `.poema [tema] [estilo] [for:x]` | Poema personalizado               |
-| `.frases [tema] [estilo]`        | 5 frases creativas                |
-| `.piropo [estilo] [for:x]`       | Frases graciosas generadas por IA |
-| `.dedicatoria [tema] [for:x]`    | Dedicatoria personalizada         |
-| `.haiku [tema] [estilo]`         | 3 haikus                          |
-| `.soneto [tema] [for:x]`         | Soneto clásico                    |
-| `.copla [tema] [estilo]`         | Coplas populares                  |
-| `.acrostico <NOMBRE> [tema]`     | Acróstico con nombre              |
-| `.carta [razón] [for:x]`         | Carta de amor                     |
-| `.historia [tema] [estilo]`      | Historia corta                    |
-| `.votar <ID>`                    | Votar trabajo poético             |
-| `.poetop [tipo]`                 | Ranking de votos                  |
-| `.poetstats`                     | Tus estadísticas poéticas         |
-
-### Gestión de Grupos (5 comandos)
-
-| Comando            | Descripción                            |
-| :----------------- | :------------------------------------- |
-| `.link`            | Obtener enlace de invitación del grupo |
-| `.invite <número>` | Enviar invitación al número            |
-| `.add <número>`    | Agregar usuario directamente al grupo  |
-| `.fantasmas`       | Ver lista de usuarios inactivos        |
-| `.kickfantasmas`   | Expulsar usuarios fantasmas            |
-
-### Interacciones (7 comandos)
-
-| Comando           | Alias      | Descripción                   |
-| :---------------- | :--------- | :---------------------------- |
-| `.hug <@usuario>` | `.abrazar` | Abrazar a alguien             |
-| `.cry`            | `.llorar`  | Llorar                        |
-| `.sleep`          | `.dormir`  | Dormir                        |
-| `.personalidad`   | -          | Análisis fake de personalidad |
-| `.formarpareja5`  | -          | Formar 5 parejas aleatorias   |
-| `.reirse`         | `.laugh`   | Reírse                        |
-
-### Owner (4 comandos) - Solo owners del bot
-
-| Comando                                      | Descripción                   |
-| :------------------------------------------- | :---------------------------- |
-| `.setowner add/remove @usuario`              | Conceder o revocar owner      |
-| `.grant <money/xp/item> @usuario <cantidad>` | Otorgar recursos              |
-| `.stats`                                     | Estadísticas globales del bot |
-| `.autoadmin`                                 | Auto-promover en grupos       |
-
----
-
-## Estructura del Proyecto
-
-```
-vaniabot/
-│
-├── src/
-│   ├── commands/              # Comandos organizados por dominio
-│   │   ├── admin/            # Welcome, Goodbye, Moderation
-│   │   ├── creative/         # Poesía IA
-│   │   ├── economy/          # Daily, Weekly, Work, Shop, Pay
-│   │   ├── fun/             # Chistes, Anime, Verdad/Reto
-│   │   ├── game/            # Coinflip, Slots, Listas, FreeFire
-│   │   ├── group/           # Link, Invite, Add
-│   │   ├── media/           # Descargas y Stickers
-│   │   ├── nsfw/           # Comandos adultos
-│   │   ├── owner/           # AutoAdmin, Grant, SetOwner
-│   │   └── utility/         # AI, Audio, Quiz, Herramientas
-│   │
-│   ├── core/                # Cliente, CommandRegistry, Auth, Cache
-│   ├── handlers/            # Manejadores de eventos
-│   ├── middlewares/         # AntiSpam, Cooldown, Permisos
-│   ├── models/              # User, Group
-│   │
-│   ├── orchestrator/        # Sistema de SubBots
-│   │   ├── Orchestrator.ts
-│   │   ├── HeartbeatService.ts
-│   │   ├── RecoveryService.ts
-│   │   └── WatchdogService.ts
-│   │
-│   ├── repositories/        # Capa de datos SQLite
-│   │   ├── Database.ts
-│   │   ├── SubBotRepository.ts
-│   │   ├── JobRepository.ts
-│   │   ├── RuntimeStateRepository.ts
-│   │   └── LicenseRepository.ts
-│   │
-│   ├── services/           # Lógica de negocio
-│   │   ├── audio/           # AudioService
-│   │   ├── creative/       # PoetryService
-│   │   ├── database/       # JsonDatabase, SQLite
-│   │   ├── download/       # YouTube, TikTok, Instagram
-│   │   ├── external/       # AIService (Groq)
-│   │   ├── game/           # ListaManager
-│   │   ├── subbot/         # SubBotManager
-│   │   ├── system/         # LicenseService, AntiCallService
-│   │   └── media/          # StickerService
-│   │
-│   ├── workers/            # Procesos en background
-│   │   ├── JobWorker.ts
-│   │   ├── BackupWorker.ts
-│   │   └── CleanupWorker.ts
-│   │
-│   ├── types/              # Tipos TypeScript
-│   └── utils/             # Helpers, Logger, QR, Encryption
-│
-├── vania.ts               # Bootstrapper principal
-├── index.ts              # Entry point
-├── storage/               # SQLite database
-├── data/                  # Base de datos y assets
-├── vaniasession/          # Sesión WhatsApp
-├── docker-compose.yml      # Docker con Redis
-├── Dockerfile.production   # Docker optimizado
-├── package.json
-└── tsconfig.json
-```
-
-### Flujo de Datos
+VaniaBot uses Groq (LLaMA 3) as its primary AI provider. The problem: external APIs fail. Instead of surfacing errors to users, I implemented a fallback chain with Circuit Breaker per provider.
 
 ```mermaid
 flowchart LR
-    subgraph Input
-        MSG[Mensaje] --> WA[WhatsApp Baileys]
+    REQ([AI Request]) --> CB1
+
+    subgraph CB1["Groq / LLaMA 3"]
+        direction TB
+        G1{Circuit\nBreaker} 
     end
 
-    WA --> MC[MessageContext]
-    MC --> MW[Middlewares]
-    MW --> CR[CommandRegistry]
-    CR --> CMD[Commands]
-
-    subgraph Services
-        CMD --> AI[AI Service]
-        CMD --> MOD[Moderation]
-        CMD --> ECO[Economy]
-        CMD --> GM[Game Manager]
+    subgraph CB2["Provider 2"]
+        direction TB
+        G2{Circuit\nBreaker}
     end
 
-    subgraph Persistencia
-        AI --> CACHE[(Redis Cache)]
-        MOD --> DB[(SQLite)]
-        ECO --> DB
-        GM --> DB
+    subgraph CB3["Provider 3"]
+        direction TB
+        G3{Circuit\nBreaker}
     end
 
-    subgraph SubBots
-        OR[Orchestrator] --> SM[SubBot Manager]
-        SM --> WA
-    end
+    CB1 -->|CLOSED - success| RES([Return response])
+    CB1 -->|OPEN - tripped| CB2
+    CB2 -->|CLOSED - success| RES
+    CB2 -->|OPEN - tripped| CB3
+    CB3 -->|CLOSED - success| RES
+    CB3 -->|ALL OPEN| DEG([Graceful degradation\ncached response])
+```
 
+Each Circuit Breaker tracks failure rate over a time window. After a threshold, it opens and stops sending requests to that provider — protecting against cascading failures and rate limit exhaustion. It probes half-open periodically to recover automatically.
 
+**Retry logic:** each attempt uses exponential backoff with jitter to avoid thundering herd when a provider recovers.
+
+---
+
+### Multi-Instance: SubBot Orchestrator
+
+The SubBot system allows running up to 50 parallel WhatsApp sessions from a single process, each with its own isolated state, session, and lifecycle.
+
+```mermaid
+graph TB
+    ORC[Orchestrator]
+
+    ORC --> SB1[SubBot 1\nsession + SQLite]
+    ORC --> SB2[SubBot 2\nsession + SQLite]
+    ORC --> SBN[SubBot N...\nsession + SQLite]
+
+    ORC --> HB[HeartbeatService\nmonitors health]
+    ORC --> RCV[RecoveryService\nauto-reconnect · session repair]
+
+    HB -->|instance down| RCV
+    RCV -->|reconnect with backoff| SB1
+    RCV -->|reconnect with backoff| SB2
+    RCV -->|reconnect with backoff| SBN
+```
+
+Each SubBot instance is independently recoverable. When `HeartbeatService` detects a dead instance, `RecoveryService` attempts reconnection with backoff before escalating to a full session reset. This keeps uptime high without manual intervention.
+
+**Session persistence:** encrypted SQLite per instance, with MongoDB as an optional backup layer.
+
+---
+
+### Data Flow
+
+```
+Message
+  │
+  ├── MessageProcessor builds MessageContext (normalized, type-safe)
+  │
+  ├── Middleware chain runs sequentially
+  │       ├── Rate limiter checks Redis (falls back to in-memory if Redis is down)
+  │       └── Permission layer queries SQLite
+  │
+  ├── CommandRegistry resolves handler
+  │
+  └── Handler calls Service layer
+          ├── AI Service → Fallback chain → Redis cache
+          ├── Economy Service → SQLite
+          ├── Media Service → External APIs
+          └── Game Service → SQLite
 ```
 
 ---
 
-## FAQ / Solución de Problemas
+## Tech Stack
 
-<details>
-<summary><b>El bot no responde a comandos</b></summary>
+| Layer | Technology | Why |
+|---|---|---|
+| Language | TypeScript 5 | Type safety across 60+ services |
+| Runtime | Node.js 20+ | |
+| WhatsApp | Baileys v7 | Low-level WA Web protocol |
+| AI | Groq SDK (LLaMA 3, Whisper) | Primary provider in fallback chain |
+| Primary DB | SQLite | Zero-config, per-instance isolation |
+| DB Backup | MongoDB | Optional redundancy layer |
+| Cache | Redis / in-memory fallback | Rate limiting, AI response cache |
+| Queue | Bull | Background job processing |
+| Logging | Pino | Structured, low-overhead logging |
+| Validation | Zod | Runtime schema validation |
+| Testing | Vitest | Unit + end-to-end |
+| Containers | Docker + Compose | Multi-stage builds |
 
-1. Asegúrate de estar en un grupo donde el bot sea **admin**.
-2. Verifica que el prefijo en `.env` coincida (por defecto `!`).
-3. Usa `.help` para ver comandos disponibles.
-</details>
+---
 
-<details>
-<summary><b>Error "Session not found"</b></summary>
+## Project Structure
 
-- Eliminar la carpeta `vaniasession/` y ejecutar nuevamente.
-- Escanear el QR nuevamente o usar código de pareo.
-</details>
-
-<details>
-<summary><b>Error de FFmpeg</b></summary>
-
-**Linux:**
-
-```bash
-sudo apt install ffmpeg
+```
+VaniaBot/
+├── src/
+│   ├── commands/           # One file per command, auto-registered
+│   │   ├── admin/
+│   │   ├── economy/
+│   │   ├── fun/
+│   │   ├── game/
+│   │   ├── media/
+│   │   └── utility/
+│   │
+│   ├── core/               # Client bootstrap + CommandRegistry
+│   ├── middlewares/        # Auth, rate limit, anti-spam, context
+│   ├── services/
+│   │   ├── ai/             # Fallback chain + Circuit Breaker
+│   │   ├── database/       # SQLite + MongoDB adapters
+│   │   ├── cache/          # Redis + in-memory fallback
+│   │   └── external/       # Third-party API wrappers
+│   │
+│   ├── orchestrator/       # SubBot lifecycle management
+│   │   ├── Orchestrator.ts
+│   │   ├── HeartbeatService.ts
+│   │   └── RecoveryService.ts
+│   │
+│   ├── workers/            # Bull queue workers
+│   ├── repositories/       # Data access layer
+│   ├── types/              # Shared TypeScript types
+│   └── utils/
+│
+├── vania.ts                # Bootstrapper
+├── index.ts                # Entry point
+├── docker-compose.yml
+└── package.json
 ```
 
-**macOS:**
+---
+
+## Getting Started
+
+### Requirements
+
+- Node.js 20+
+- A WhatsApp account for the bot
+- A [Groq API key](https://console.groq.com/keys) (free tier available)
+
+### Quick start (script)
 
 ```bash
-brew install ffmpeg
+curl -fsSL https://gist.githubusercontent.com/CARLOSGRCIAGRCIA/f94438ffa4dbdca2011771238def3532/raw/VaniaBot.sh | bash -s <version>
 ```
 
-**Windows:** Descargar de [ffmpeg.org](https://ffmpeg.org/download.html) y agregar al PATH.
+Installs Node.js, FFmpeg, clones the repo, installs dependencies, and starts the bot with a pairing code. You'll need to create a `.env` file with your credentials (see Configuration below).
 
-</details>
-
-<details>
-<summary><b>Error de descarga de YouTube</b></summary>
+### Docker (recommended for production)
 
 ```bash
-pip install --upgrade yt-dlp
-```
+# Create required directories
+mkdir -p vaniasession subbots data temp
 
-</details>
+# Configure environment
+cp .env.example .env
+nano .env
 
-<details>
-<summary><b>El bot se desconecta frecuentemente</b></summary>
-
-1. Aumentar `MAX_RECONNECT_ATTEMPTS` en `.env`.
-2. Verificar conexión a internet.
-3. En Docker, asegurar que el contenedor tenga suficientes recursos.
-</details>
-
-<details>
-<summary><b>Error "Cannot find module" en Docker</b></summary>
-
-```bash
-docker-compose down
-docker-compose build --no-cache
+# Start
 docker-compose up -d
+
+# Logs
+docker-compose logs -f
 ```
 
+### Local development
+
+```bash
+git clone https://github.com/CARLOSGRCIAGRCIA/VaniaBot.git
+cd VaniaBot
+npm install
+cp .env.example .env
+npm run dev    # hot-reload
+```
+
+---
+
+## Configuration
+
+### Required
+
+| Variable | Description | Example |
+|---|---|---|
+| `OWNERS` | Your WhatsApp number (LID format) | `5215512345678@c.us` |
+| `GROQ_API_KEY` | Groq API key | `gsk_...` |
+
+### Optional
+
+| Variable | Description | Default |
+|---|---|---|
+| `BOT_NAME` | Bot display name | `VaniaBot` |
+| `BOT_PREFIX` | Command prefix | `.` |
+| `DB_TYPE` | `sqlite` or `mongodb` | `sqlite` |
+| `MONGODB_URI` | MongoDB connection string | — |
+| `USE_REDIS` | Enable Redis cache | `false` |
+| `REDIS_URL` | Redis connection string | `redis://localhost:6379` |
+| `NODE_ENV` | `development` / `production` | `development` |
+| `TZ` | Timezone | `America/Mexico_City` |
+
+---
+
+## Commands overview
+
+VaniaBot has 90+ commands across these domains. Full reference available in the [wiki](../../wiki).
+
+| Domain | Examples |
+|---|---|
+| AI & Chat | `.ai`, `.transcribe`, `.aiclear` |
+| Moderation | `.ban`, `.kick`, `.mute`, `.warn`, `.antispam` |
+| Economy | `.daily`, `.work`, `.shop`, `.casino`, `.balance` |
+| Games | `.coinflip`, `.slots`, `.quiz` |
+| Media | `.sticker`, `.ytmp3`, `.ytmp4`, `.tiktok`, `.instagram` |
+| Utilities | `.translate`, `.currency`, `.qr`, `.poll` |
+| SubBots | `.subbot create`, `.subbot list`, `.subbot start` |
+
+---
+
+## Troubleshooting
+
+<details>
+<summary>Bot doesn't respond to commands</summary>
+
+1. Make sure the bot is an **admin** in the group.
+2. Check the prefix in `.env` matches what you're using (default: `.`).
+3. Run `.help` to confirm the bot is alive.
 </details>
 
 <details>
-<summary><b>¿Cómo hacer backup de la sesión?</b></summary>
-Simplemente copiar la carpeta `vaniasession/`. Para restaurar, colocar los archivos en la misma ubicación antes de iniciar.
+<summary>"Session not found" error</summary>
+
+Delete the `vaniasession/` folder and restart to re-scan the pairing QR.
 </details>
 
 <details>
-<summary><b>El bot no crea stickers</b></summary>
+<summary>Frequent disconnections</summary>
 
-1. Asegurarse que FFmpeg esté instalado.
-2. Confirmar que `sharp` se instaló correctamente.
-3. Ver logs para errores específicos.
+1. Check network stability.
+2. In Docker, ensure sufficient CPU/RAM allocation.
+3. Enabling Redis improves stability for rate limiting and cache.
 </details>
 
 <details>
-<summary><b>Error de MongoDB</b></summary>
+<summary>Using MongoDB instead of SQLite</summary>
 
-Si usas MongoDB, verificar:
-
-1. `DB_URI` es correcta.
-2. El servidor MongoDB está corriendo.
-3. Tienes acceso a la base de datos.
+```env
+DB_TYPE=mongodb
+MONGODB_URI=mongodb://localhost:27017/vaniabot
+```
 </details>
 
 ---
 
-## Licencia
+## License
 
-Distribuido bajo la licencia **MIT**. Ver [LICENSE](LICENSE) para más detalles.
+MIT — see [LICENSE](LICENSE) for details.
 
 ---
 
-<div align="center">
-  <h3>Redes Sociales del Creador</h3>
-  <p>
-    <a href="https://github.com/CARLOSGRCIAGRCIA">
-      <img src="https://img.shields.io/badge/GitHub-CARLOSGRCIAGRCIA-181717?style=for-the-badge&logo=github&logoColor=white" alt="GitHub">
-    </a>
-    <a href="https://tiktok.com/@carlos.grcia0">
-      <img src="https://img.shields.io/badge/TikTok-carlos.grcia0-000000?style=for-the-badge&logo=tiktok&logoColor=white" alt="TikTok">
-    </a>
-    <a href="https://instagram.com/carlos.gxv">
-      <img src="https://img.shields.io/badge/Instagram-carlos.gxv-E4405F?style=for-the-badge&logo=instagram&logoColor=white" alt="Instagram">
-    </a>
-  </p>
-  <p>
-    Reportar problemas: <a href="https://github.com/CARLOSGRCIAGRCIA/vaniabot/issues"><b>Abrir un issue</b></a>
-  </p>
-  <br>
-  <img src="https://capsule-render.vercel.app/api?type=waving&color=gradient&customColorList=2,3,4,12,24&height=100&section=footer" width="100%"/>
-</div>
+Built by [Carlos Garcia](https://github.com/CARLOSGRCIAGRCIA)
