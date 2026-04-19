@@ -113,32 +113,34 @@ Each SubBot instance is independently recoverable. When `HeartbeatService` detec
 
 ```mermaid
 flowchart TD
-    Message[Message] --> Processor[MessageProcessor]
-    Processor --> |builds MessageContext<br/>normalized, type-safe| Middleware[Middleware chain]
+    Message["Message"] --> MessageProcessor["MessageProcessor"]
+    MessageProcessor --> |"builds MessageContext<br/>(normalized, type-safe)"| MiddlewareStart
 
-    subgraph Middleware [Middleware chain runs sequentially]
-        direction LR
-        RateLimiter[Rate limiter] --> Permission[Permission layer]
+    subgraph MiddlewareChain ["Middleware chain (sequential)"]
+        MiddlewareStart[" "] --> RateLimiter["Rate limiter"]
+        RateLimiter --> Permission["Permission layer"]
     end
 
-    Middleware --> CommandRegistry[CommandRegistry]
-    CommandRegistry --> |resolves handler| Handler[Handler]
+    RateLimiter -.-> Redis["Redis"]
+    RateLimiter -.-> |"fallback if Redis down"| InMemory["in-memory"]
+    Permission -.-> SQLite1["SQLite"]
 
-    Handler --> ServiceLayer[Service layer]
+    MiddlewareChain --> CommandRegistry["CommandRegistry"]
+    CommandRegistry --> |"resolves handler"| Handler["Handler"]
 
-    subgraph ServiceLayer [Service layer calls]
-        AI[AI Service] --> AIFallback[Fallback chain] --> RedisCache[Redis cache]
-        Economy[Economy Service] --> SQLite1[SQLite]
-        Media[Media Service] --> External[External APIs]
-        Game[Game Service] --> SQLite2[SQLite]
+    Handler --> ServiceLayerStart
+
+    subgraph Services ["Service layer"]
+        ServiceLayerStart[" "] --> AI["AI Service"]
+        ServiceLayerStart --> Economy["Economy Service"]
+        ServiceLayerStart --> Media["Media Service"]
+        ServiceLayerStart --> Game["Game Service"]
+
+        AI --> Fallback["Fallback chain"] --> RedisCache["Redis cache"]
+        Economy --> SQLite2["SQLite"]
+        Media --> External["External APIs"]
+        Game --> SQLite3["SQLite"]
     end
-
-    RateLimiter -.-> Redis[Redis]
-    RateLimiter -.-> |fallback| Memory[in-memory]
-    Permission -.-> SQLiteDB[SQLite]
-
-    style RateLimiter fill:#f9f,stroke:#333,stroke-width:2px
-    style Permission fill:#bbf,stroke:#333,stroke-width:2px
 ```
 ---
 
