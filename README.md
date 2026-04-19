@@ -111,24 +111,35 @@ Each SubBot instance is independently recoverable. When `HeartbeatService` detec
 
 ### Data Flow
 
-```
-Message
-  │
-  ├── MessageProcessor builds MessageContext (normalized, type-safe)
-  │
-  ├── Middleware chain runs sequentially
-  │       ├── Rate limiter checks Redis (falls back to in-memory if Redis is down)
-  │       └── Permission layer queries SQLite
-  │
-  ├── CommandRegistry resolves handler
-  │
-  └── Handler calls Service layer
-          ├── AI Service → Fallback chain → Redis cache
-          ├── Economy Service → SQLite
-          ├── Media Service → External APIs
-          └── Game Service → SQLite
-```
+```mermaid
+flowchart TD
+    Message[Message] --> Processor[MessageProcessor]
+    Processor --> |builds MessageContext<br/>normalized, type-safe| Middleware[Middleware chain]
 
+    subgraph Middleware [Middleware chain runs sequentially]
+        direction LR
+        RateLimiter[Rate limiter] --> Permission[Permission layer]
+    end
+
+    Middleware --> CommandRegistry[CommandRegistry]
+    CommandRegistry --> |resolves handler| Handler[Handler]
+
+    Handler --> ServiceLayer[Service layer]
+
+    subgraph ServiceLayer [Service layer calls]
+        AI[AI Service] --> AIFallback[Fallback chain] --> RedisCache[Redis cache]
+        Economy[Economy Service] --> SQLite1[SQLite]
+        Media[Media Service] --> External[External APIs]
+        Game[Game Service] --> SQLite2[SQLite]
+    end
+
+    RateLimiter -.-> Redis[Redis]
+    RateLimiter -.-> |fallback| Memory[in-memory]
+    Permission -.-> SQLiteDB[SQLite]
+
+    style RateLimiter fill:#f9f,stroke:#333,stroke-width:2px
+    style Permission fill:#bbf,stroke:#333,stroke-width:2px
+```
 ---
 
 ## Tech Stack
