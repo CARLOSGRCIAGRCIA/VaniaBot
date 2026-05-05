@@ -56,7 +56,7 @@ RUN groupadd --system --gid 1001 vaniabot \
 COPY --from=deps /app/node_modules ./node_modules
 COPY tsconfig.json ./
 COPY src/ ./src/
-
+COPY panel/ ./panel/
 COPY data/ ./data/
 
 COPY data/assets/ ./static/assets/

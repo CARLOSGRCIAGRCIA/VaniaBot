@@ -1804,7 +1804,11 @@
       let counterAnimations = {};
 
       document.addEventListener('DOMContentLoaded', () => {
-        initCharts();
+        try {
+          initCharts();
+        } catch (err) {
+          console.warn('Charts failed to initialize (CDN may be blocked):', err);
+        }
         setupTabs();
         addLiveIndicator();
         loadAllData();
@@ -1980,21 +1984,23 @@
       }
 
       async function loadAllData() {
-        await Promise.all([
-          loadStats(),
-          loadMetrics(),
-          loadCommands(),
-          loadModeration(),
-          loadGroups(),
-          loadSlots(),
-          loadHealth(),
-          loadLogs(),
-        ]);
+        loadStats().catch(err => console.error('loadStats failed:', err));
+        loadMetrics().catch(err => console.error('loadMetrics failed:', err));
+        loadCommands().catch(err => console.error('loadCommands failed:', err));
+        loadModeration().catch(err => console.error('loadModeration failed:', err));
+        loadGroups().catch(err => console.error('loadGroups failed:', err));
+        loadSlots().catch(err => console.error('loadSlots failed:', err));
+        loadHealth().catch(err => console.error('loadHealth failed:', err));
+        loadLogs().catch(err => console.error('loadLogs failed:', err));
       }
 
       async function loadStats() {
         try {
           const res = await fetch(API_BASE + '/api/stats');
+          if (!res.ok) {
+            console.error('[panel] /api/stats failed:', res.status, res.statusText);
+            return;
+          }
           const data = await res.json();
 
           animateCounter('msgsPerMin', data.averages?.messages || 0);
@@ -2238,8 +2244,8 @@
           const data = await res.json();
 
           const slotsGrid = document.getElementById('slotsGrid');
-          if (data.details?.length > 0) {
-            slotsGrid.innerHTML = data.details
+          if (data.slots?.length > 0) {
+            slotsGrid.innerHTML = data.slots
               .map(
                 slot => `
             <div class="slot ${slot.status}">

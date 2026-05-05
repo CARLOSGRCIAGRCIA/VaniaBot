@@ -51,6 +51,9 @@ services:
       vania-redis:
         condition: service_healthy
 
+    ports:
+      - "3000:3000"
+
     networks:
       - vania-network
 
@@ -59,6 +62,7 @@ services:
       - vaniabot_subbots:/app/data/subbot-sessions
       - vaniabot_database:/app/data
       - vaniabot_temp:/app/data/temp
+      - ./panel:/app/panel:ro,Z
 
     deploy:
       resources:

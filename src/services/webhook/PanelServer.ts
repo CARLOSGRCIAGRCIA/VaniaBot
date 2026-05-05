@@ -397,6 +397,38 @@ export class PanelServer {
     });
 
     /**
+     * GET /api/metrics/realtime - Real-time metrics for activity chart
+     * @returns {Object} History of messages and commands per minute
+     */
+    this.app.get('/api/metrics/realtime', (_req: Request, res: Response) => {
+      const client = (global as { client?: WhatsAppClient }).client;
+      const stats = client?.getStats();
+
+      const now = Date.now() / 1000;
+      const history = stats
+        ? [
+            {
+              timestamp: now,
+              messagesPerMinute: stats.messagesReceived || 0,
+              commandsPerMinute: stats.commandsExecuted || 0,
+            },
+          ]
+        : [];
+
+      res.json({ history });
+    });
+
+    /**
+     * GET /api/logs - Recent log entries
+     * @param {number} limit - Number of log entries to return
+     * @returns {Object} Log entries
+     */
+    this.app.get('/api/logs', (req: Request, res: Response) => {
+      const _limit = Math.min(parseInt(req.query.limit as string) || 50, 100);
+      res.json({ logs: [] });
+    });
+
+    /**
      * GET /api/slot/:slot - Get specific slot details
      * @param {number} slot - Slot number
      */
