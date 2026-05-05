@@ -1,5 +1,5 @@
-import { createCanvas, loadImage, registerFont, Canvas, CanvasRenderingContext2D } from 'canvas';
-import * as path from 'path';
+import type { Canvas, CanvasRenderingContext2D } from 'canvas';
+import { createCanvas, loadImage } from 'canvas';
 
 export interface ProfileCardOptions {
   avatarUrl: string;

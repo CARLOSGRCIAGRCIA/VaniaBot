@@ -1,4 +1,4 @@
-import { Database } from './Database.js';
+import { Database, type PaginatedResult } from './Database.js';
 import { getDatabase } from '@/repositories/Database.js';
 
 const TABLE_NAME_MAP: Record<string, string> = {
@@ -240,7 +240,7 @@ export class SQLiteAdapter extends Database {
       sortOrder?: 'asc' | 'desc';
       filter?: Record<string, unknown>;
     },
-  ): Promise<import('./Database.js').PaginatedResult<T>> {
+  ): Promise<PaginatedResult<T>> {
     const table = this.getTableName(collection);
     const keyCol = this.getKeyColumn(collection);
     const page = options?.page ?? 1;

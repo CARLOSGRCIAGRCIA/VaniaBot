@@ -12,7 +12,7 @@
  * @created 2026-03-16
  */
 
-import { readdirSync, statSync } from 'fs';
+import { readdir, stat } from 'fs/promises';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
 import type { ICommand } from '@/types/index.js';
@@ -76,22 +76,13 @@ export class PluginLoader {
       this.preloadCategories.add(category);
     }
 
+    // Lazy loading: solo precargar categorías críticas que se usan al inicio
     if (preload.length === 0) {
-      this.preloadCategories.add('admin');
-      this.preloadCategories.add('owner');
-      this.preloadCategories.add('utility');
-      this.preloadCategories.add('economy');
-      this.preloadCategories.add('game');
-      this.preloadCategories.add('games');
-      this.preloadCategories.add('group');
-      this.preloadCategories.add('media');
-      this.preloadCategories.add('fun');
-      this.preloadCategories.add('rpg');
-      this.preloadCategories.add('subbot');
-      this.preloadCategories.add('information');
-      this.preloadCategories.add('creative');
-      this.preloadCategories.add('anime');
-      this.preloadCategories.add('ia');
+      this.preloadCategories.add('admin'); // Comandos de administración
+      this.preloadCategories.add('owner'); // Comandos del dueño
+      this.preloadCategories.add('utility'); // Comandos utilitarios básicos
+      this.preloadCategories.add('creative'); // Comandos creativos (canvas)
+      // El resto se carga bajo demanda (lazy loading)
     }
 
     try {
@@ -117,13 +108,13 @@ export class PluginLoader {
     commands: ICommand[],
     parentCategory?: string,
   ): Promise<void> {
-    const files = readdirSync(dir);
+    const files = await readdir(dir);
 
     for (const file of files) {
       const filePath = join(dir, file);
-      const stat = statSync(filePath);
+      const fileStat = await stat(filePath);
 
-      if (stat.isDirectory()) {
+      if (fileStat.isDirectory()) {
         const currentCategory = parentCategory || file;
         await this.loadFromDirectory(filePath, commands, currentCategory);
       } else if (file.endsWith('Command.ts') || file.endsWith('Command.js')) {
@@ -141,15 +132,23 @@ export class PluginLoader {
             logError('PluginLoader.loadFromDirectory', error);
           }
         } else {
-          this.commandFiles.set(file.replace(/\.(ts|js)$/, ''), filePath);
+          try {
+            const loaded = await this.loadCommandFile(filePath);
+            for (const cmd of loaded) {
+              this.commandFiles.set(cmd.name, filePath);
+            }
+          } catch {
+            const fileName = file.replace(/\.(ts|js)$/, '');
+            this.commandFiles.set(fileName, filePath);
+          }
         }
       }
     }
   }
 
-  private scanDirectory(dir: string): void {
+  private async scanDirectory(dir: string): Promise<void> {
     try {
-      const files = readdirSync(dir);
+      const files = await readdir(dir);
       for (const file of files) {
         if (file.endsWith('Command.ts') || file.endsWith('Command.js')) {
           const commandName = file.replace(/\.(ts|js)$/, '');
@@ -173,17 +172,16 @@ export class PluginLoader {
       return cached;
     }
 
-    if (this.commandFiles.has(name)) {
+    const filePath = this.commandFiles.get(name);
+    if (filePath) {
       try {
-        const filePath = this.commandFiles.get(name);
-        if (!filePath) return null;
-
         const loaded = await this.loadCommandFile(filePath);
 
         if (loaded.length > 0) {
           const cmd = loaded[0];
-          this.loadedCommands.set(name, cmd);
-          this.lazyCache.set(name, cmd);
+          this.loadedCommands.set(cmd.name, cmd);
+          this.lazyCache.set(cmd.name, cmd);
+          this.commandFiles.delete(name);
           return cmd;
         }
       } catch (error) {
@@ -217,7 +215,7 @@ export class PluginLoader {
     return results;
   }
 
-  private extractCommands(module: Record<string, unknown>, _filename: string): ICommand[] {
+  private extractCommands(module: Record<string, unknown>, __filename: string): ICommand[] {
     const results: ICommand[] = [];
 
     for (const [, value] of Object.entries(module)) {

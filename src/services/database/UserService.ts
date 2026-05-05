@@ -683,10 +683,10 @@ export class UserService {
     });
   }
 
-  normalizeInventory(inventory: any[]): InventoryItem[] {
+  normalizeInventory(inventory: Partial<InventoryItem>[]): InventoryItem[] {
     return inventory.map(item => ({
-      itemId: item.itemId,
-      name: item.name,
+      itemId: item.itemId || '',
+      name: item.name || '',
       type: item.type || 'material',
       rarity: item.rarity || 'common',
       quantity: item.quantity || 1,

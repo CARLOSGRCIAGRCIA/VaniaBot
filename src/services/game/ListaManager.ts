@@ -339,7 +339,7 @@ export class ListaManager {
     }
 
     if (!lista) {
-      for (const [msgId, lst] of this.listas.entries()) {
+      for (const [_msgId, lst] of this.listas.entries()) {
         if (lst.chatJid === messageId && lst.activa) {
           lista = lst;
           break;

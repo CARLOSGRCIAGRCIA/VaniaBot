@@ -1,5 +1,4 @@
-import type { WASocket } from '@whiskeysockets/baileys';
-import type { GroupService, GroupSettings } from '@/services/database/GroupService.js';
+import type { GroupService } from '@/services/database/GroupService.js';
 import { logger } from '@/utils/logger.js';
 
 export type PlanType = 'permanent' | 'monthly';
@@ -57,7 +56,7 @@ export class LicenseService {
     months: number = 1,
   ): Promise<boolean> {
     try {
-      const group = await this.groupService.getGroup(groupJid);
+      const _group = await this.groupService.getGroup(groupJid);
       const now = Date.now();
       const monthMs = 30 * 24 * 60 * 60 * 1000;
 

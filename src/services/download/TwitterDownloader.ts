@@ -1,4 +1,5 @@
-import { Either, left, right } from '@/utils/either.js';
+import type { Either } from '@/utils/either.js';
+import { left, right } from '@/utils/either.js';
 import { DownloadService, type DownloadResult } from './DownloadService.js';
 import { logError } from '@/utils/logger.js';
 import { NetworkError } from '@/utils/errors.js';

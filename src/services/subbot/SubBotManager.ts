@@ -121,46 +121,48 @@ export class SubBotManager extends EventEmitter {
   private startHealthCheck(): void {
     if (this.healthCheckInterval) return;
 
-    this.healthCheckInterval = setInterval(async () => {
-      logger.debug('🔍 SubBotManager: ejecutando health check...');
+    this.healthCheckInterval = setInterval(() => {
+      void (async () => {
+        logger.debug('🔍 SubBotManager: ejecutando health check...');
 
-      const activeSlots = subBotDatabase.getActiveSlots();
+        const activeSlots = subBotDatabase.getActiveSlots();
 
-      for (const slot of activeSlots) {
-        if (!slot.id) continue;
+        for (const slot of activeSlots) {
+          if (!slot.id) continue;
 
-        const instance = this.instances.get(slot.id);
-        const runtimeState = this.runtimeStates.get(slot.id);
+          const instance = this.instances.get(slot.id);
+          const runtimeState = this.runtimeStates.get(slot.id);
 
-        if (!instance) {
-          logger.warn(`⚠️ SubBot[${slot.id}] sin instancia, reactivando...`);
-          const subConfig = subBotDatabase.get(slot.id);
-          if (subConfig) {
-            try {
-              await this.launchInstance(subConfig);
-            } catch (error) {
-              logError(`HealthCheck reactivate ${slot.id}`, error);
+          if (!instance) {
+            logger.warn(`⚠️ SubBot[${slot.id}] sin instancia, reactivando...`);
+            const subConfig = subBotDatabase.get(slot.id);
+            if (subConfig) {
+              try {
+                await this.launchInstance(subConfig);
+              } catch (error) {
+                logError(`HealthCheck reactivate ${slot.id}`, error);
+              }
+            }
+            continue;
+          }
+
+          if (slot.status === 'linking') {
+            const staleTime = slot.requestedAt ? Date.now() - slot.requestedAt : 0;
+            if (staleTime > SUBBOT_CONFIG.BOT_CONNECTING_STALE_MS) {
+              logger.warn(`⚠️ SubBot[${slot.id}] linking stale, restarting...`);
+              await this.reconnectByOwner(slot.ownerJid || '');
             }
           }
-          continue;
-        }
 
-        if (slot.status === 'linking') {
-          const staleTime = slot.requestedAt ? Date.now() - slot.requestedAt : 0;
-          if (staleTime > SUBBOT_CONFIG.BOT_CONNECTING_STALE_MS) {
-            logger.warn(`⚠️ SubBot[${slot.id}] linking stale, restarting...`);
-            await this.reconnectByOwner(slot.ownerJid || '');
+          if (slot.status === 'pending' && runtimeState?.pairingPendingAt) {
+            const staleTime = Date.now() - runtimeState.pairingPendingAt;
+            if (staleTime > SUBBOT_CONFIG.BOT_PAIRING_STALE_MS) {
+              logger.warn(`⚠️ SubBot[${slot.id}] pairing stale, resetting...`);
+              await this.resetSlot(slot.slot);
+            }
           }
         }
-
-        if (slot.status === 'pending' && runtimeState?.pairingPendingAt) {
-          const staleTime = Date.now() - runtimeState.pairingPendingAt;
-          if (staleTime > SUBBOT_CONFIG.BOT_PAIRING_STALE_MS) {
-            logger.warn(`⚠️ SubBot[${slot.id}] pairing stale, resetting...`);
-            await this.resetSlot(slot.slot);
-          }
-        }
-      }
+      })();
     }, SUBBOT_CONFIG.HEALTH_CHECK_INTERVAL);
   }
 
@@ -516,177 +518,191 @@ export class SubBotManager extends EventEmitter {
 
     let pairingCodeTimeout: ReturnType<typeof setTimeout> | undefined;
 
-    instance.on('pairingCode', async (code: string) => {
-      if (pairingCodeTimeout) {
-        clearTimeout(pairingCodeTimeout);
-      }
+    instance.on('pairingCode', (code: string) => {
+      void (async () => {
+        if (pairingCodeTimeout) {
+          clearTimeout(pairingCodeTimeout);
+        }
 
-      if (!this.mainSock) return;
-      logger.info(`🔑 SubBot[${subConfig.id}] enviando código a ${subConfig.ownerJid}`);
+        if (!this.mainSock) return;
+        logger.info(`🔑 SubBot[${subConfig.id}] enviando código a ${subConfig.ownerJid}`);
 
-      runtimeState.pairingPendingAt = Date.now();
-      this.scheduleRuntimeStateWrite(runtimeState);
+        runtimeState.pairingPendingAt = Date.now();
+        this.scheduleRuntimeStateWrite(runtimeState);
 
-      try {
-        await this.mainSock.sendMessage(subConfig.ownerJid, {
-          text:
-            `╭━━━ 🌸 *VaniaBot* ━━━╮\n` +
-            `   *Vincular SubBot*\n` +
-            `\n` +
-            `💝 Tu SubBot está lista\n` +
-            `   para conectarse.\n` +
-            `\n` +
-            `*Código de vinculación*\n` +
-            `╭───────────────╮\n` +
-            `│    *${code}*    │\n` +
-            `╰───────────────╯\n` +
-            `\n` +
-            `✨ *Cómo vincularla*\n` +
-            `1️⃣ Abre *WhatsApp* en\n` +
-            `   el teléfono de la SubBot\n` +
-            `2️⃣ Ve a *Dispositivos vinculados*\n` +
-            `3️⃣ Toca *Vincular dispositivo*\n` +
-            `4️⃣ Ingresa el código de arriba\n` +
-            `\n` +
-            `⏳ El código expira\n` +
-            `   en *3 minutos*\n` +
-            `\n` +
-            `Número:\n` +
-            `   *+${subConfig.phoneNumber}*\n` +
-            `\n` +
-            `   Estaré esperando 💗\n` +
-            `╰━━━━━━━━━━━━━━━━━━━━╯`,
-        });
+        try {
+          await this.mainSock.sendMessage(subConfig.ownerJid, {
+            text:
+              `╭━━━ 🌸 *VaniaBot* ━━━╮\n` +
+              `   *Vincular SubBot*\n` +
+              `\n` +
+              `💝 Tu SubBot está lista\n` +
+              `   para conectarse.\n` +
+              `\n` +
+              `*Código de vinculación*\n` +
+              `╭───────────────╮\n` +
+              `│    *${code}*    │\n` +
+              `╰───────────────╯\n` +
+              `\n` +
+              `✨ *Cómo vincularla*\n` +
+              `1️⃣ Abre *WhatsApp* en\n` +
+              `   el teléfono de la SubBot\n` +
+              `2️⃣ Ve a *Dispositivos vinculados*\n` +
+              `3️⃣ Toca *Vincular dispositivo*\n` +
+              `4️⃣ Ingresa el código de arriba\n` +
+              `\n` +
+              `⏳ El código expira\n` +
+              `   en *3 minutos*\n` +
+              `\n` +
+              `Número:\n` +
+              `   *+${subConfig.phoneNumber}*\n` +
+              `\n` +
+              `   Estaré esperando 💗\n` +
+              `╰━━━━━━━━━━━━━━━━━━━━╯`,
+          });
 
-        pairingCodeTimeout = setTimeout(async () => {
-          const slot = subBotDatabase.getSlot(subConfig.slot);
-          if (slot && (slot.status === 'pending' || slot.status === 'linking') && this.mainSock) {
-            logger.warn(`⏰ SubBot[${subConfig.id}] código no utilizado, reenviando...`);
-            try {
-              await this.mainSock.sendMessage(subConfig.ownerJid, {
-                text:
-                  `╭━━━ 🌸 *VaniaBot* ━━━╮\n` +
-                  `   *Recordatorio SubBot*\n` +
-                  `\n` +
-                  `⏰ El código anterior\n` +
-                  `   quizás expiró.\n` +
-                  `\n` +
-                  `✨ Usa *.reconbot*\n` +
-                  `   para generar uno nuevo.\n` +
-                  `\n` +
-                  `   Estoy aquí 💗\n` +
-                  `╰━━━━━━━━━━━━━━━━━━━━╯`,
-              });
-            } catch {}
+          pairingCodeTimeout = setTimeout(() => {
+            void (async () => {
+              const slot = subBotDatabase.getSlot(subConfig.slot);
+              if (
+                slot &&
+                (slot.status === 'pending' || slot.status === 'linking') &&
+                this.mainSock
+              ) {
+                logger.warn(`⏰ SubBot[${subConfig.id}] código no utilizado, reenviando...`);
+                try {
+                  await this.mainSock.sendMessage(subConfig.ownerJid, {
+                    text:
+                      `╭━━━ 🌸 *VaniaBot* ━━━╮\n` +
+                      `   *Recordatorio SubBot*\n` +
+                      `\n` +
+                      `⏰ El código anterior\n` +
+                      `   quizás expiró.\n` +
+                      `\n` +
+                      `✨ Usa *.reconbot*\n` +
+                      `   para generar uno nuevo.\n` +
+                      `\n` +
+                      `   Estoy aquí 💗\n` +
+                      `╰━━━━━━━━━━━━━━━━━━━━╯`,
+                  });
+                } catch {}
+              }
+            })();
+          }, 180000);
+        } catch (e) {
+          logError(`SubBot[${subConfig.id}].sendPairingCode`, e);
+        }
+      })();
+    });
+
+    instance.on('ready', () => {
+      void (async () => {
+        if (pairingCodeTimeout) {
+          clearTimeout(pairingCodeTimeout);
+          pairingCodeTimeout = undefined;
+        }
+        if (!this.mainSock) return;
+        logger.info(`🎉 SubBot[${subConfig.id}] lista, notificando owner`);
+
+        if (!subConfig.ownerJid) {
+          logger.warn(`SubBot[${subConfig.id}] sin ownerJid, saltando notificación`);
+          return;
+        }
+
+        runtimeState.pairingPendingAt = undefined;
+        subBotDatabase.updateSlotStatus(subConfig.slot, 'connected');
+        this.scheduleRuntimeStateWrite(runtimeState);
+
+        try {
+          const groups = await Promise.race([
+            instance.sock?.groupFetchAllParticipating(),
+            new Promise<never>((_, reject) =>
+              setTimeout(() => reject(new Error('Timed Out')), 10000),
+            ),
+          ]);
+          if (groups) {
+            const groupIds = Object.keys(groups);
+            logger.debug(`🔥 SubBot[${subConfig.id}] precargando ${groupIds.length} grupos...`);
+            await Promise.allSettled(
+              groupIds.map(gid => serviceManager.groupService.getGroup(gid)),
+            );
+            logger.debug(`✅ SubBot[${subConfig.id}] grupos precargados`);
           }
-        }, 180000);
-      } catch (e) {
-        logError(`SubBot[${subConfig.id}].sendPairingCode`, e);
-      }
-    });
-
-    instance.on('ready', async () => {
-      if (pairingCodeTimeout) {
-        clearTimeout(pairingCodeTimeout);
-        pairingCodeTimeout = undefined;
-      }
-      if (!this.mainSock) return;
-      logger.info(`🎉 SubBot[${subConfig.id}] lista, notificando owner`);
-
-      if (!subConfig.ownerJid) {
-        logger.warn(`SubBot[${subConfig.id}] sin ownerJid, saltando notificación`);
-        return;
-      }
-
-      runtimeState.pairingPendingAt = undefined;
-      subBotDatabase.updateSlotStatus(subConfig.slot, 'connected');
-      this.scheduleRuntimeStateWrite(runtimeState);
-
-      try {
-        const groups = await Promise.race([
-          instance.sock?.groupFetchAllParticipating(),
-          new Promise<never>((_, reject) =>
-            setTimeout(() => reject(new Error('Timed Out')), 10000),
-          ),
-        ]);
-        if (groups) {
-          const groupIds = Object.keys(groups);
-          logger.debug(`🔥 SubBot[${subConfig.id}] precargando ${groupIds.length} grupos...`);
-          await Promise.allSettled(groupIds.map(gid => serviceManager.groupService.getGroup(gid)));
-          logger.debug(`✅ SubBot[${subConfig.id}] grupos precargados`);
+        } catch (e) {
+          logger.warn(
+            `⚠️ SubBot[${subConfig.id}] preloadGroups: ${e instanceof Error ? e.message : e}`,
+          );
         }
-      } catch (e) {
-        logger.warn(
-          `⚠️ SubBot[${subConfig.id}] preloadGroups: ${e instanceof Error ? e.message : e}`,
-        );
-      }
 
-      setTimeout(() => {
-        if (instance.sock) {
-          void this.applyConfiguredProfile(subConfig.id, instance.sock);
+        setTimeout(() => {
+          if (instance.sock) {
+            void this.applyConfiguredProfile(subConfig.id, instance.sock);
+          }
+        }, SUBBOT_CONFIG.PROFILE_APPLY_DELAY_MS);
+
+        try {
+          await this.mainSock.sendMessage(subConfig.ownerJid, {
+            text:
+              `╭━━━ 🌸 *VaniaBot* ━━━╮\n` +
+              `   🤖 *SubBot activada*\n` +
+              `\n` +
+              `💝 ¡Tu SubBot ya está\n` +
+              `   lista para usarse!\n` +
+              `\n` +
+              `🏷️ Nombre:\n` +
+              `   *${subConfig.name}*\n` +
+              `\n` +
+              `📁 Slot:\n` +
+              `   *${subConfig.slot}*\n` +
+              `\n` +
+              `Número:\n` +
+              `   *+${subConfig.phoneNumber}*\n` +
+              `\n` +
+              `Prefijo:\n` +
+              `   *${config.prefix}*\n` +
+              `\n` +
+              `   ¡Disfrútala! 💗\n` +
+              `╰━━━━━━━━━━━━━━━━━━━━╯`,
+          });
+        } catch (e) {
+          logError(`SubBot[${subConfig.id}].sendReady`, e);
         }
-      }, SUBBOT_CONFIG.PROFILE_APPLY_DELAY_MS);
-
-      try {
-        await this.mainSock.sendMessage(subConfig.ownerJid, {
-          text:
-            `╭━━━ 🌸 *VaniaBot* ━━━╮\n` +
-            `   🤖 *SubBot activada*\n` +
-            `\n` +
-            `💝 ¡Tu SubBot ya está\n` +
-            `   lista para usarse!\n` +
-            `\n` +
-            `🏷️ Nombre:\n` +
-            `   *${subConfig.name}*\n` +
-            `\n` +
-            `📁 Slot:\n` +
-            `   *${subConfig.slot}*\n` +
-            `\n` +
-            `Número:\n` +
-            `   *+${subConfig.phoneNumber}*\n` +
-            `\n` +
-            `Prefijo:\n` +
-            `   *${config.prefix}*\n` +
-            `\n` +
-            `   ¡Disfrútala! 💗\n` +
-            `╰━━━━━━━━━━━━━━━━━━━━╯`,
-        });
-      } catch (e) {
-        logError(`SubBot[${subConfig.id}].sendReady`, e);
-      }
+      })();
     });
 
-    instance.on('sessionInvalid', async () => {
-      if (!this.mainSock) return;
-      logger.warn(`⚠️ SubBot[${subConfig.id}] sesión inválida, notificando owner`);
+    instance.on('sessionInvalid', () => {
+      void (async () => {
+        if (!this.mainSock) return;
+        logger.warn(`⚠️ SubBot[${subConfig.id}] sesión inválida, notificando owner`);
 
-      subBotDatabase.updateSlotStatus(subConfig.slot, 'disconnected');
+        subBotDatabase.updateSlotStatus(subConfig.slot, 'disconnected');
 
-      try {
-        await this.mainSock.sendMessage(subConfig.ownerJid, {
-          text:
-            `╭━━━ 🌸 *VaniaBot* ━━━╮\n` +
-            `   *SubBot desconectada*\n` +
-            `\n` +
-            `Parece que tu SubBot\n` +
-            `   se ha desconectado.\n` +
-            `\n` +
-            `Probablemente la sesión\n` +
-            `   se cerró desde el\n` +
-            `   teléfono.\n` +
-            `\n` +
-            `Para volver a conectarla\n` +
-            `   usa:\n` +
-            `\n` +
-            `   *.reconbot*\n` +
-            `\n` +
-            `   Estoy aquí 💗\n` +
-            `╰━━━━━━━━━━━━━━━━━━━━╯`,
-        });
-      } catch {}
+        try {
+          await this.mainSock.sendMessage(subConfig.ownerJid, {
+            text:
+              `╭━━━ 🌸 *VaniaBot* ━━━╮\n` +
+              `   *SubBot desconectada*\n` +
+              `\n` +
+              `Parece que tu SubBot\n` +
+              `   se ha desconectado.\n` +
+              `\n` +
+              `Probablemente la sesión\n` +
+              `   se cerró desde el\n` +
+              `   teléfono.\n` +
+              `\n` +
+              `Para volver a conectarla\n` +
+              `   usa:\n` +
+              `\n` +
+              `   *.reconbot*\n` +
+              `\n` +
+              `   Estoy aquí 💗\n` +
+              `╰━━━━━━━━━━━━━━━━━━━━╯`,
+          });
+        } catch {}
+      })();
     });
 
-    instance.on('disconnected', async () => {
+    instance.on('disconnected', () => {
       subBotDatabase.updateSlotStatus(subConfig.slot, 'disconnected');
     });
 

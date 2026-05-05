@@ -1,5 +1,3 @@
-import { logError } from '@/utils/logger.js';
-
 const TIMEOUT_MS = 30000;
 
 export class TTSService {

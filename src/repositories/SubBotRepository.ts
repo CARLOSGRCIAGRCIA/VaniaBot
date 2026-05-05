@@ -121,12 +121,14 @@ export class SubBotRepository {
       },
     );
 
-    return this.findById(input.id)!;
+    const record = this.findById(input.id);
+    if (!record) throw new Error(`Failed to create subbot: ${input.id}`);
+    return record;
   }
 
   update(id: string, updates: UpdateSubBotInput): SubBotRecord | null {
     const sets: string[] = ['updated_at = ?'];
-    const params: any[] = [new Date().toISOString()];
+    const params: (string | number | null)[] = [new Date().toISOString()];
 
     if (updates.phone_number !== undefined) {
       sets.push('phone_number = ?');

@@ -7,7 +7,8 @@
  */
 
 import { File } from 'megajs';
-import { Either, left, right } from '@/utils/either.js';
+import type { Either } from '@/utils/either.js';
+import { left, right } from '@/utils/either.js';
 import { logger } from '@/utils/logger.js';
 import { NetworkError, ValidationError } from '@/utils/errors.js';
 import fs from 'fs';
@@ -69,37 +70,49 @@ export class MegaDownloader {
         this.ensureTmpDir();
 
         const file = File.fromURL(url);
-        void file.loadAttributes(async err => {
-          if (err) {
-            resolve(left(new ValidationError('Error al obtener info del archivo')));
-            return;
-          }
+        // eslint-disable-next-line @typescript-eslint/no-floating-promises
+        file.loadAttributes(err => {
+          void (async () => {
+            if (err) {
+              resolve(left(new ValidationError('Error al obtener info del archivo')));
+              return;
+            }
 
-          const name = file.name || 'mega-file.mp4';
-          const tempPath = path.join(TMP_DIR, `${Date.now()}-${name}`);
+            const name = file.name || 'mega-file.mp4';
+            const tempPath = path.join(TMP_DIR, `${Date.now()}-${name}`);
 
-          try {
-            const data = await file.downloadBuffer({});
-            fs.writeFileSync(tempPath, data);
+            try {
+              const data = await file.downloadBuffer({});
+              fs.writeFileSync(tempPath, data);
 
-            resolve(
-              right({
-                name,
-                size: data.length,
-                filePath: tempPath,
-              }),
-            );
-          } catch (downloadErr) {
-            logger.error('Mega download error:', downloadErr);
+              resolve(
+                right({
+                  name,
+                  size: data.length,
+                  filePath: tempPath,
+                }),
+              );
+            } catch (downloadErr) {
+              logger.error('Mega download error:', downloadErr);
+              resolve(
+                left(
+                  new NetworkError('Error al descargar archivo', {
+                    originalError:
+                      downloadErr instanceof Error ? downloadErr.message : String(downloadErr),
+                  }),
+                ),
+              );
+            }
+          })().catch(e => {
+            logger.error('Mega download unexpected error:', e);
             resolve(
               left(
-                new NetworkError('Error al descargar archivo', {
-                  originalError:
-                    downloadErr instanceof Error ? downloadErr.message : String(downloadErr),
+                new NetworkError('Error inesperado al descargar de Mega', {
+                  originalError: e instanceof Error ? e.message : String(e),
                 }),
               ),
             );
-          }
+          });
         });
       } catch (error) {
         logger.error('MegaDownloader.download error:', error);

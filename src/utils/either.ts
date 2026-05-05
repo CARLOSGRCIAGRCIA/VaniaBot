@@ -101,7 +101,7 @@ export { flatMap as andThen };
  */
 export function fromNullable<L>(leftValue: L) {
   return <R>(value: R | null | undefined): Either<L, R> => {
-    if (value == null) {
+    if (value === null || value === undefined) {
       return left(leftValue);
     }
     return right(value);
@@ -251,12 +251,12 @@ export function isVBotError(value: unknown): value is VBotError {
 /**
  * Unwrap the Right type from Either
  */
-export type RightType<T> = T extends Either<infer L, infer R> ? R : never;
+export type RightType<T> = T extends Either<infer _L, infer R> ? R : never;
 
 /**
  * Unwrap the Left type from Either
  */
-export type LeftType<T> = T extends Either<infer L, infer R> ? L : never;
+export type LeftType<T> = T extends Either<infer L, infer _R> ? L : never;
 
 /**
  * @deprecated Use Either<L, R> directly

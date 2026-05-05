@@ -96,17 +96,17 @@ export class SubBotInstance extends EventEmitter {
 
   private startPing(): void {
     if (this.pingInterval) return;
-    this.pingInterval = setInterval(async () => {
-      if (!this.sock || this.destroyed) return;
-      // Solo intentar ping si el socket parece abierto — evitar errores en logs
-      // durante transiciones de estado (prekey bundle, renegociación, etc.)
-      try {
-        const ws = (this.sock as any).ws;
-        if (ws?.readyState !== 1) return; // no intentar si no está OPEN
-        await this.sock.sendPresenceUpdate('available', 'status@broadcast');
-      } catch {
-        /* non-critical */
-      }
+    this.pingInterval = setInterval(() => {
+      void (async () => {
+        if (!this.sock || this.destroyed) return;
+        try {
+          const ws = (this.sock as unknown as { ws?: { readyState?: number } }).ws;
+          if (ws?.readyState !== 1) return;
+          await this.sock.sendPresenceUpdate('available', 'status@broadcast');
+        } catch {
+          /* non-critical */
+        }
+      })();
     }, PING_INTERVAL);
   }
 
@@ -161,7 +161,7 @@ export class SubBotInstance extends EventEmitter {
       // Verificar múltiples condiciones para evitar falsos positivos
       if (!this.sock.user?.id) return false;
 
-      const ws = (this.sock as any).ws;
+      const ws = (this.sock as unknown as { ws?: { readyState?: number } }).ws;
       const readyState = ws?.readyState;
 
       // readyState: 0=CONNECTING, 1=OPEN, 2=CLOSING, 3=CLOSED
@@ -234,13 +234,15 @@ export class SubBotInstance extends EventEmitter {
     );
     subBotDatabase.update(this.config.id, { status: 'connecting' });
 
-    setTimeout(async () => {
-      this.isReconnecting = false;
-      if (!this.destroyed) {
-        this.connectionEstablished = false;
-        await this.closeCurrentSocket(); // garantiza que no haya socket viejo antes de reconectar
-        void this.start();
-      }
+    setTimeout(() => {
+      void (async () => {
+        this.isReconnecting = false;
+        if (!this.destroyed) {
+          this.connectionEstablished = false;
+          await this.closeCurrentSocket();
+          void this.start();
+        }
+      })();
     }, delay);
   }
 

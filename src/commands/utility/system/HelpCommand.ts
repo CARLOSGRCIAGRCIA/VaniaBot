@@ -5,7 +5,7 @@ import { commandRegistry } from '@/core/CommandRegistry.js';
 import { serviceManager } from '@/services/system/Servicemanager.js';
 import { primeService } from '@/services/system/PrimeService.js';
 import { logError } from '@/utils/logger.js';
-import { findAssetFile, sendAssetImage } from '@/utils/assetHelper.js';
+import { findAssetFile } from '@/utils/assetHelper.js';
 import axios from 'axios';
 
 const charset: Record<string, string> = {

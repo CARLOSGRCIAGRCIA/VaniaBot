@@ -1,12 +1,62 @@
 import { Command } from '../../Command.js';
-import { CanvasBase } from './CanvasBase.js';
 import { ImageHelper } from '@/utils/ImageHelper.js';
+import { StickerHelper } from '@/utils/StickerHelper.js';
+import { findAssetFile } from '@/utils/assetHelper.js';
+import { canvasService } from '@/services/external/CanvasService.js';
 import {
   CommandCategory,
   CommandContext,
   PermissionLevel,
   type MessageContext,
 } from '@/types/index.js';
+
+let cachedDefaultImageUrl: string | null = null;
+
+async function uploadToTmpfiles(buffer: Buffer): Promise<string | null> {
+  try {
+    const boundary = `----FormBoundary${Date.now()}`;
+    const CRLF = '\r\n';
+
+    const header =
+      `--${boundary}${CRLF}` +
+      `Content-Disposition: form-data; name="file"; filename="profileDefault.png"${CRLF}` +
+      `Content-Type: image/png${CRLF}` +
+      `${CRLF}`;
+
+    const footer = `${CRLF}--${boundary}--${CRLF}`;
+
+    const body = Buffer.concat([
+      Buffer.from(header, 'utf-8'),
+      buffer,
+      Buffer.from(footer, 'utf-8'),
+    ]);
+
+    const response = await fetch('https://tmpfiles.org/api/v1/upload', {
+      method: 'POST',
+      headers: { 'Content-Type': `multipart/form-data; boundary=${boundary}` },
+      body,
+    });
+
+    if (!response.ok) return null;
+
+    const data = (await response.json()) as { data?: { url?: string } };
+    const pageUrl = data?.data?.url;
+    if (!pageUrl) return null;
+
+    return pageUrl.replace('tmpfiles.org/', 'tmpfiles.org/dl/');
+  } catch {
+    return null;
+  }
+}
+
+async function getDefaultImageUrl(): Promise<string | null> {
+  if (cachedDefaultImageUrl) return cachedDefaultImageUrl;
+  const buffer = findAssetFile('profileDefault.png');
+  if (!buffer) return null;
+  const url = await uploadToTmpfiles(buffer);
+  if (url) cachedDefaultImageUrl = url;
+  return url;
+}
 
 export class XnxxcardCommand extends Command {
   name = 'xnxxcard';
@@ -21,32 +71,71 @@ export class XnxxcardCommand extends Command {
 
   async execute(ctx: MessageContext): Promise<void> {
     const args = ctx.args || [];
+
     if (args.length < 1) {
       await ctx.reply('✍️ *Uso:* !xnxxcard <titulo>\n_Ejemplo: !xnxxcard Mi Video_');
       return;
     }
 
-    const title = args.join(' ').substring(0, 30);
-    const userTag = ctx.sender.pushName
-      ? `@${ctx.sender.pushName.replace(/\s+/g, '')}`
-      : `@${ctx.sender.jid.split('@')[0]}`;
+    const title = args
+      .filter(arg => !/^@\S+$/.test(arg))
+      .join(' ')
+      .trim()
+      .substring(0, 30);
 
-    await ctx.react('🎬');
-
-    let imageUrl = await ImageHelper.getImageOrProfile(ctx);
-    if (!imageUrl) {
-      imageUrl = await ImageHelper.getProfileImage(ctx);
-    }
-
-    if (!imageUrl) {
-      await ctx.reply('❌ No pude obtener la foto de perfil.');
+    if (!title) {
+      await ctx.reply('✍️ *Uso:* !xnxxcard <titulo>\n_Ejemplo: !xnxxcard Mi Video_');
       return;
     }
 
-    await new CanvasBase().sendImage(ctx, 'xnxxcard', {
-      image: imageUrl,
-      title,
-      username: userTag,
-    });
+    const mentioned = ctx.message.message?.extendedTextMessage?.contextInfo?.mentionedJid?.[0];
+    const targetJid = mentioned ?? ctx.sender.jid;
+
+    const userTag = mentioned
+      ? `@${mentioned.split('@')[0]}`
+      : ctx.sender.pushName
+        ? `@${ctx.sender.pushName.replace(/\s+/g, '')}`
+        : `@${ctx.sender.jid.split('@')[0]}`;
+
+    await ctx.react('🎬');
+
+    let imageUrl: string | null = null;
+
+    try {
+      const pic = await ctx.sock.profilePictureUrl(targetJid, 'image');
+      imageUrl = pic ?? null;
+    } catch (e) {
+      console.info(
+        '[XnxxcardCommand][execute] profilePictureUrl failed:',
+        e instanceof Error ? e.message : e,
+      );
+    }
+
+    if (!imageUrl) imageUrl = await ImageHelper.getImageOrProfile(ctx);
+    if (!imageUrl) imageUrl = await getDefaultImageUrl();
+
+    if (!imageUrl) {
+      await ctx.reply('❌ No pude obtener ninguna imagen para generar la tarjeta.');
+      return;
+    }
+
+    try {
+      const result = await canvasService.getResult('xnxxcard', {
+        image: imageUrl,
+        title,
+        username: userTag,
+      });
+
+      const imageBuffer =
+        result.type === 'url'
+          ? await StickerHelper.imageUrlToSticker(result.url)
+          : await StickerHelper.imageToSticker(result.buffer);
+
+      await ctx.sock.sendMessage(ctx.chat.jid, { sticker: imageBuffer });
+      await ctx.react('✅');
+    } catch (_error) {
+      await ctx.react('❌');
+      await ctx.reply('❌ No pude generar la tarjeta. Intenta de nuevo.');
+    }
   }
 }

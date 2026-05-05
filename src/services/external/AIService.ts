@@ -12,7 +12,8 @@
  * @created 2026-03-16
  */
 
-import { Either, left, right, fromNullable, map, flatMap, match } from '@/utils/either.js';
+import type { Either } from '@/utils/either.js';
+import { left, right } from '@/utils/either.js';
 import Groq from 'groq-sdk';
 import type { WASocket } from '@whiskeysockets/baileys';
 import { env } from '@/config/env.js';
@@ -28,14 +29,8 @@ import { logError, logger } from '@/utils/logger.js';
 import { createHash } from 'crypto';
 import fs from 'fs';
 import path from 'path';
-import {
-  VBotError,
-  ErrorCode,
-  ValidationError,
-  ServiceUnavailableError,
-  NetworkError,
-  TimeoutError,
-} from '@/utils/errors.js';
+import type { VBotError } from '@/utils/errors.js';
+import { ValidationError, ServiceUnavailableError, NetworkError } from '@/utils/errors.js';
 
 /**
  * Represents a single message in an AI conversation.

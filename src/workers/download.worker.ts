@@ -5,7 +5,8 @@ import { InstagramDownloader } from '../services/download/InstagramDownloader.js
 import { TwitterDownloader } from '../services/download/TwitterDownloader.js';
 import { FacebookDownloader } from '../services/download/FacebookDownloader.js';
 import { SpotifyDownloader } from '../services/download/SpotifyDownloader.js';
-import { Either, isRight, isLeft } from '../utils/either.js';
+import type { Either } from '../utils/either.js';
+import { isLeft } from '../utils/either.js';
 import { VBotError } from '../utils/errors.js';
 
 interface DownloadTask {
@@ -132,15 +133,17 @@ async function processDownload(task: DownloadTask): Promise<DownloadResult> {
   }
 }
 
-parentPort?.on('message', async (message: WorkerMessage) => {
-  if (message.type === 'download') {
-    const result = await processDownload(message.task);
-    parentPort?.postMessage({
-      id: message.task.id,
-      success: result.success,
-      result,
-    } as WorkerResponse);
-  }
+parentPort?.on('message', (message: WorkerMessage) => {
+  void (async () => {
+    if (message.type === 'download') {
+      const result = await processDownload(message.task);
+      parentPort?.postMessage({
+        id: message.task.id,
+        success: result.success,
+        result,
+      } as WorkerResponse);
+    }
+  })();
 });
 
 parentPort?.postMessage({ type: 'ready' });

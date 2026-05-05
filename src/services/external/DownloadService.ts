@@ -1,5 +1,3 @@
-import { logError } from '@/utils/logger.js';
-
 const BASE_URL = 'https://api.delirius.store/download';
 const TIMEOUT_MS = 60000;
 

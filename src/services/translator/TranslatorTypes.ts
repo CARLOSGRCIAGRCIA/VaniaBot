@@ -108,8 +108,8 @@ export const IDIOMAS: Record<string, { nombre: string; bandera: string; codigo: 
   latín: { nombre: 'Latín', bandera: '🏛️', codigo: 'la' },
 };
 
-import { Either } from '@/utils/either.js';
-import { ValidationError, NetworkError } from '@/utils/errors.js';
+import type { Either } from '@/utils/either.js';
+import type { ValidationError, NetworkError } from '@/utils/errors.js';
 
 export interface TraduccionSuccess {
   traduccion: string;

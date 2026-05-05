@@ -1,51 +1,69 @@
-import { logError } from '@/utils/logger.js';
-
 const BASE_URL = 'https://api.delirius.store/canvas';
 const TIMEOUT_MS = 30000;
 
+export type CanvasResult =
+  | { type: 'url'; url: string }
+  | { type: 'buffer'; buffer: Buffer; contentType: string };
+
 export class CanvasService {
-  async getImage(endpoint: string, params?: Record<string, string>): Promise<string> {
+  async getResult(endpoint: string, params?: Record<string, string>): Promise<CanvasResult> {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), TIMEOUT_MS);
 
     try {
       let url = `${BASE_URL}/${endpoint}`;
       if (params) {
-        const searchParams = new URLSearchParams(params);
-        url += `?${searchParams.toString()}`;
+        url += `?${new URLSearchParams(params).toString()}`;
       }
 
       const response = await fetch(url, {
-        headers: {
-          'User-Agent': 'Mozilla/5.0',
-        },
+        headers: { 'User-Agent': 'Mozilla/5.0' },
         signal: controller.signal,
       });
+
+      const contentType = response.headers.get('content-type') || '';
 
       if (!response.ok) {
         throw new Error(`Canvas Error: ${response.status}`);
       }
 
-      const contentType = response.headers.get('content-type') || '';
+      const arrayBuffer = await response.arrayBuffer();
+      const buffer = Buffer.from(arrayBuffer);
 
-      if (contentType.includes('image')) {
-        const blob = await response.blob();
-        const arrayBuffer = await blob.arrayBuffer();
-        const buffer = Buffer.from(arrayBuffer);
-        const base64 = buffer.toString('base64');
-        return `data:${contentType};base64,${base64}`;
+      if (
+        contentType.includes('image') ||
+        contentType.includes('video') ||
+        contentType.includes('webm') ||
+        contentType.includes('gif')
+      ) {
+        return { type: 'buffer', buffer, contentType };
       }
 
-      const data = (await response.json()) as { result?: string; image?: string; url?: string };
-
-      if (data.result) return data.result;
-      if (data.image) return data.image;
-      if (data.url) return data.url;
+      try {
+        const text = buffer.toString('utf-8');
+        const data = JSON.parse(text) as { result?: string; image?: string; url?: string };
+        const imageUrl = data.result ?? data.image ?? data.url;
+        if (imageUrl) return { type: 'url', url: imageUrl };
+      } catch {
+        return { type: 'buffer', buffer, contentType: contentType || 'application/octet-stream' };
+      }
 
       throw new Error('No image URL in response');
     } finally {
       clearTimeout(timeoutId);
     }
+  }
+
+  async getImage(endpoint: string, params?: Record<string, string>): Promise<string> {
+    const result = await this.getResult(endpoint, params);
+
+    if (result.type === 'url') return result.url;
+
+    if (result.contentType.includes('image') && !result.contentType.includes('gif')) {
+      return `data:${result.contentType};base64,${result.buffer.toString('base64')}`;
+    }
+
+    throw new Error(`Binary response (${result.contentType}) — use getResult() instead`);
   }
 }
 

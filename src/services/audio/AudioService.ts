@@ -4,7 +4,8 @@ import { exec } from 'child_process';
 import { logError, logger } from '@/utils/logger.js';
 import { promisify } from 'util';
 import { aiService } from '@/services/external/AIService.js';
-import { Either, right, left, isRight } from '@/utils/either.js';
+import type { Either } from '@/utils/either.js';
+import { right, left, isRight } from '@/utils/either.js';
 
 const execAsync = promisify(exec);
 const TEMP_DIR = './data/temp/audio';

@@ -8,7 +8,7 @@
  * @created 2026-04-07
  */
 
-import { logger, logError } from '@/utils/logger.js';
+import { logger } from '@/utils/logger.js';
 import { runtimeStateRepository } from '@/repositories/RuntimeStateRepository.js';
 
 export type BotHealthStatus =

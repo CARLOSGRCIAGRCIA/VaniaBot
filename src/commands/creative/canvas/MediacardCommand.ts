@@ -1,11 +1,6 @@
 import { Command } from '../../Command.js';
 import { MediaCardService, type MediaCardOptions } from '@/services/creative/MediaCardService.js';
-import {
-  CommandCategory,
-  CommandContext,
-  PermissionLevel,
-  type MessageContext,
-} from '@/types/index.js';
+import { CommandCategory, CommandContext, type MessageContext } from '@/types/index.js';
 
 const THUMBNAILS = {
   youtube: 'https://i.ytimg.com/vi/dQw4w9WgXcQ/maxresdefault.jpg',

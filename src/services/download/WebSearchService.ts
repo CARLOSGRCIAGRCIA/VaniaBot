@@ -10,7 +10,7 @@ import axios from 'axios';
 import { logger } from '@/utils/logger.js';
 import { left, right, type Either } from '@/utils/either.js';
 
-const DUCKDUCKGO_LITE = 'https://lite.duckduckgo.com/lite/';
+const _DUCKDUCKGO_LITE = 'https://lite.duckduckgo.com/lite/';
 const DEFAULT_LIMIT = 10;
 
 export interface SearchResult {

@@ -1,4 +1,5 @@
-import { Either, right, left } from '@/utils/either.js';
+import type { Either } from '@/utils/either.js';
+import { right, left } from '@/utils/either.js';
 import { questionGenerator } from './QuestionGenerator.js';
 import { answerValidator } from './AnswerValidator.js';
 import { difficultyEngine, QUESTION_TIMEOUT_SECS, HINT_OFFER_SECS } from './DifficultyEngine.js';
@@ -176,12 +177,12 @@ export class QuizService {
     const sessionEnded = session.currentIndex + 1 >= session.totalQuestions;
 
     if (!sessionEnded) {
-      setTimeout(async () => {
-        await this._nextQuestion(session, opts);
+      setTimeout(() => {
+        void this._nextQuestion(session, opts);
       }, 4000);
     } else {
-      setTimeout(async () => {
-        await this._endSession(session, opts.sendFn);
+      setTimeout(() => {
+        void this._endSession(session, opts.sendFn);
       }, 4000);
     }
 
@@ -236,59 +237,63 @@ export class QuizService {
     awardCoins: StartQuizOptions['awardCoins'],
     awardXP: StartQuizOptions['awardXP'],
   ): void {
-    session.hintTimer = setTimeout(async () => {
-      if (session.state !== QuizSessionState.WAITING_ANSWER) return;
-      if (!session.currentQuestion) return;
-      await sendFn(
-        session.groupId,
-        `💡 *Pista:* ${session.currentQuestion.hint}\n\n_Quedan ${QUESTION_TIMEOUT_SECS - HINT_OFFER_SECS}s..._`,
-      );
+    session.hintTimer = setTimeout(() => {
+      void (async () => {
+        if (session.state !== QuizSessionState.WAITING_ANSWER) return;
+        if (!session.currentQuestion) return;
+        await sendFn(
+          session.groupId,
+          `💡 *Pista:* ${session.currentQuestion.hint}\n\n_Quedan ${QUESTION_TIMEOUT_SECS - HINT_OFFER_SECS}s..._`,
+        );
+      })();
     }, HINT_OFFER_SECS * 1000);
 
-    session.timer = setTimeout(async () => {
-      if (session.state !== QuizSessionState.WAITING_ANSWER) return;
-      if (!session.currentQuestion) return;
+    session.timer = setTimeout(() => {
+      void (async () => {
+        if (session.state !== QuizSessionState.WAITING_ANSWER) return;
+        if (!session.currentQuestion) return;
 
-      session.questionLog.push({
-        question: session.currentQuestion.question,
-        answer: session.currentQuestion.answer,
-        noAnswer: true,
-      });
-
-      session.state = QuizSessionState.SHOWING_RESULT;
-
-      await sendFn(
-        session.groupId,
-        `⏰ *¡Tiempo!*\n\n` +
-          `La respuesta era: *${session.currentQuestion.answer}*\n\n` +
-          `📖 ${session.currentQuestion.explanation}`,
-      );
-
-      for (const player of session.players.values()) {
-        player.wrong++;
-        player.streak = 0;
-        await updateStats(player.jid, {
-          totalAnswered: 1,
-          currentStreak: 0,
+        session.questionLog.push({
+          question: session.currentQuestion.question,
+          answer: session.currentQuestion.answer,
+          noAnswer: true,
         });
-      }
 
-      const sessionEnded = session.currentIndex + 1 >= session.totalQuestions;
-      if (!sessionEnded) {
-        setTimeout(
-          () =>
-            this._nextQuestion(session, {
+        session.state = QuizSessionState.SHOWING_RESULT;
+
+        await sendFn(
+          session.groupId,
+          `⏰ *¡Tiempo!*\n\n` +
+            `La respuesta era: *${session.currentQuestion.answer}*\n\n` +
+            `📖 ${session.currentQuestion.explanation}`,
+        );
+
+        for (const player of session.players.values()) {
+          player.wrong++;
+          player.streak = 0;
+          await updateStats(player.jid, {
+            totalAnswered: 1,
+            currentStreak: 0,
+          });
+        }
+
+        const sessionEnded = session.currentIndex + 1 >= session.totalQuestions;
+        if (!sessionEnded) {
+          setTimeout(() => {
+            void this._nextQuestion(session, {
               getUserStats,
               updateStats,
               awardCoins,
               awardXP,
               sendFn,
-            }),
-          4000,
-        );
-      } else {
-        setTimeout(() => this._endSession(session, sendFn), 4000);
-      }
+            });
+          }, 4000);
+        } else {
+          setTimeout(() => {
+            void this._endSession(session, sendFn);
+          }, 4000);
+        }
+      })();
     }, QUESTION_TIMEOUT_SECS * 1000);
   }
 

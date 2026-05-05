@@ -2,7 +2,8 @@ import { itemRegistry } from './ItemRegistry.js';
 import { itemService } from './ItemService.js';
 import { serviceManager } from '../system/Servicemanager.js';
 import { gameStateService, type PersistedMarketOffer } from './GameStateService.js';
-import { Either, left, right } from '@/utils/either.js';
+import type { Either } from '@/utils/either.js';
+import { left, right } from '@/utils/either.js';
 import { logger } from '@/utils/logger.js';
 
 export interface TradeOffer {

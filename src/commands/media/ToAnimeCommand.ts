@@ -1,7 +1,7 @@
 import { Command } from '../Command.js';
 import { CommandCategory } from '@/types/index.js';
 import type { MessageContext } from '@/types/index.js';
-import { downloadMediaMessage, type proto, type WAMessage } from '@whiskeysockets/baileys';
+import { downloadMediaMessage, type proto } from '@whiskeysockets/baileys';
 import axios from 'axios';
 import { env } from '@/config/env.js';
 

@@ -34,7 +34,7 @@ export class Text1917Command extends Command {
       const base = new TextMakerBase();
       await base.sendImage(ctx, PAGE_URL, text);
       await ctx.react('✅');
-    } catch (error) {
+    } catch (_error) {
       await ctx.react('❌');
       await ctx.reply('❌ No pude generar la imagen. Intenta de nuevo.');
     }

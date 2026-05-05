@@ -31,6 +31,4 @@ export { PetgifCommand } from './PetgifCommand.js';
 export { BookCommand } from './BookCommand.js';
 export { JokeoverheadCommand } from './JokeoverheadCommand.js';
 export { SlapCanvasCommand } from './SlapCanvasCommand.js';
-export { AutorizoCommand } from './AutorizoCommand.js';
-export { NoautorizoCommand } from './NoautorizoCommand.js';
 export { MediacardCommand } from './MediacardCommand.js';

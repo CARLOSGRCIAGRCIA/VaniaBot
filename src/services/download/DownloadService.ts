@@ -1,7 +1,8 @@
 import fs from 'fs';
 import path from 'path';
 import { spawn } from 'child_process';
-import { Either, left, right } from '@/utils/either.js';
+import type { Either } from '@/utils/either.js';
+import { left, right } from '@/utils/either.js';
 import {
   VBotError,
   ErrorCode,

@@ -1,8 +1,6 @@
 import { Command } from '../../Command.js';
 import { downloadService } from '@/services/external/DownloadService.js';
 import { logError } from '@/utils/logger.js';
-import { isRight } from '@/utils/either.js';
-import { TikTokDownloader } from '@/services/download/TikTokDownloader.js';
 import {
   CommandCategory,
   CommandContext,

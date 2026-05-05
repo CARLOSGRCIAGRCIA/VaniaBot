@@ -1,9 +1,35 @@
 import { Command } from '../../Command.js';
 import { CommandCategory, type MessageContext } from '@/types/index.js';
-import { StickerService } from '@/services/media/StickerService.js';
+import { StickerHelper } from '@/utils/StickerHelper.js';
 import { ImageProcessor } from '@/utils/imageProcessor.js';
-import { primeService } from '@/services/system/PrimeService.js';
+import { contactsCache } from '@/utils/ContactsCache.js';
 import axios from 'axios';
+
+async function getContactName(ctx: MessageContext, jid: string): Promise<string> {
+  const cached = contactsCache.get(jid);
+  if (cached) return cached;
+
+  try {
+    const groupMeta = await ctx.sock.groupMetadata(ctx.chat.jid);
+    const targetBase = jid.split('@')[0].split(':')[0];
+
+    const participant = groupMeta.participants.find(p => {
+      const pBase = p.id.split('@')[0].split(':')[0];
+      return pBase === targetBase;
+    });
+
+    if (participant) {
+      const name = participant.notify || participant.name || participant.verifiedName;
+
+      if (name) {
+        contactsCache.set(participant.id, name);
+        return name;
+      }
+    }
+  } catch {}
+
+  return `@${jid.split('@')[0]}`;
+}
 
 export class QcCommand extends Command {
   name = 'qc';
@@ -13,14 +39,11 @@ export class QcCommand extends Command {
   usage = '!qc <text>';
   examples = ['!qc Hello World', '!qc @user Your text here'];
   cooldown = 5000;
-  private stickerService: StickerService;
-
-  constructor() {
-    super();
-    this.stickerService = new StickerService();
-  }
 
   async execute(ctx: MessageContext): Promise<void> {
+    const mentionedJid = ctx.message.message?.extendedTextMessage?.contextInfo?.mentionedJid?.[0];
+    const targetJid = mentionedJid || ctx.sender.jid;
+
     let text: string;
     if (ctx.args.length >= 1) {
       text = ctx.args.join(' ');
@@ -36,9 +59,7 @@ export class QcCommand extends Command {
       return;
     }
 
-    const mentionedJid = ctx.message.message?.extendedTextMessage?.contextInfo?.mentionedJid?.[0];
-    const targetJid = mentionedJid || ctx.sender.jid;
-    const cleanNumber = targetJid.split('@')[0];
+    const cleanNumber = targetJid.split('@')[0].split(':')[0];
     const mentionRegex = new RegExp(
       `@${cleanNumber.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\s*`,
       'g',
@@ -55,13 +76,14 @@ export class QcCommand extends Command {
     try {
       let pp = 'https://telegra.ph/file/24fa902ead26340f3df2c.png';
       try {
-        const profilePic = await ctx.sock.profilePictureUrl(targetJid, 'image');
-        if (profilePic) pp = profilePic;
-      } catch {
-        // Sin foto de perfil, usa el default
-      }
+        const pic = await ctx.sock.profilePictureUrl(targetJid, 'image');
+        if (pic) pp = pic;
+      } catch {}
 
-      const nombre = ctx.sender.pushName || 'User';
+      const nombre = mentionedJid
+        ? await getContactName(ctx, mentionedJid)
+        : ctx.sender.pushName || (await getContactName(ctx, ctx.sender.jid));
+
       let imageBuffer: Buffer | null = null;
 
       try {
@@ -69,7 +91,6 @@ export class QcCommand extends Command {
           type: 'quote',
           format: 'png',
           backgroundColor: '#000000',
-          // Pedir 512x512 directamente para evitar resize que corta la imagen
           width: 512,
           height: 512,
           scale: 2,
@@ -88,27 +109,16 @@ export class QcCommand extends Command {
           timeout: 8000,
         });
         imageBuffer = Buffer.from(res.data.result.image, 'base64');
-      } catch {
-        // API caída o timeout — usa fallback local
-      }
+      } catch {}
 
       if (!imageBuffer) {
         imageBuffer = await this.buildLocalQuoteImage(nombre, cleanText, pp);
       }
 
-      // contain: escala sin recortar, rellena con transparente si hace falta
       const resizedBuffer = await ImageProcessor.resizeContain(imageBuffer, 512, 512);
 
-      const stickerInfo = await primeService.formatStickerInfo(
-        ctx.sock,
-        ctx.chat.jid,
-        ctx.chat.isGroup,
-      );
-      const stiker = await this.stickerService.createSticker(resizedBuffer, {
-        pack: stickerInfo.pack,
-        author: stickerInfo.author,
-      });
-      await ctx.sock.sendMessage(ctx.chat.jid, { sticker: stiker });
+      const sticker = await StickerHelper.imageToSticker(resizedBuffer);
+      await ctx.sock.sendMessage(ctx.chat.jid, { sticker });
       await ctx.react('✅');
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : 'Unknown error';
@@ -117,10 +127,6 @@ export class QcCommand extends Command {
     }
   }
 
-  /**
-   * Quote card 512x512, avatar centrado arriba, texto centrado abajo.
-   * Layout diseñado para verse bien como sticker de WhatsApp.
-   */
   private async buildLocalQuoteImage(name: string, text: string, ppUrl: string): Promise<Buffer> {
     const W = 512;
     const H = 512;
@@ -131,9 +137,7 @@ export class QcCommand extends Command {
       const b64 = Buffer.from(resp.data as ArrayBuffer).toString('base64');
       const mime = (resp.headers['content-type'] as string) || 'image/jpeg';
       ppDataUri = `data:${mime};base64,${b64}`;
-    } catch {
-      // sin foto — usará inicial
-    }
+    } catch {}
 
     const eName = this.escapeXml(name);
     const eText = this.escapeXml(text);
@@ -183,28 +187,17 @@ export class QcCommand extends Command {
         </linearGradient>
       </defs>
       <rect width="${W}" height="${H}" fill="url(#bg)" rx="30"/>
-
-      <!-- Comillas decorativas -->
       <text x="20" y="78" font-family="Georgia,serif" font-size="96"
         fill="#7C3AED" opacity="0.3">"</text>
       <text x="${W - 38}" y="${H - 14}" font-family="Georgia,serif" font-size="96"
         fill="#7C3AED" opacity="0.3">"</text>
-
       ${avatarBlock}
-
-      <!-- Nombre -->
       <text x="${W / 2}" y="${NAME_Y}"
         font-family="Arial,sans-serif" font-size="26" font-weight="bold"
         fill="#C084FC" text-anchor="middle">${eName}</text>
-
-      <!-- Separador -->
       <line x1="80" y1="${SEP_Y}" x2="${W - 80}" y2="${SEP_Y}"
         stroke="#7C3AED" stroke-width="1.5" opacity="0.6"/>
-
-      <!-- Texto de la cita -->
       ${textRows}
-
-      <!-- Footer -->
       <text x="${W / 2}" y="${H - 16}"
         font-family="Arial,sans-serif" font-size="15"
         fill="#3a3a6a" text-anchor="middle">VaniaBot</text>

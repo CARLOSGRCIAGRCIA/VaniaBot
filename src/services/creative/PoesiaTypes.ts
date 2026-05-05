@@ -1,4 +1,4 @@
-import { Either, left, right } from '@/utils/either.js';
+import type { Either } from '@/utils/either.js';
 
 export enum ContenidoTipo {
   POEMA = 'poema',

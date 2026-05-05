@@ -1,4 +1,4 @@
-import { Either, isRight, isLeft, left, right } from '@/utils/either.js';
+import { isLeft, left, right } from '@/utils/either.js';
 import { aiService } from '@/services/external/AIService.js';
 import { ValidationError, NetworkError } from '@/utils/errors.js';
 import { resolverIdioma, type TraduccionOpts, type TraduccionResult } from './TranslatorTypes.js';

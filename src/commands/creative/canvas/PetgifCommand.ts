@@ -1,6 +1,7 @@
 import { Command } from '../../Command.js';
-import { CanvasBase } from './CanvasBase.js';
 import { ImageHelper } from '@/utils/ImageHelper.js';
+import { StickerHelper } from '@/utils/StickerHelper.js';
+import { canvasService } from '@/services/external/CanvasService.js';
 import {
   CommandCategory,
   CommandContext,
@@ -15,8 +16,8 @@ export class PetgifCommand extends Command {
   aliases = [];
   cooldown = 10000;
   contexts = [CommandContext.BOTH];
-  usage = '!petgif [resolucion] [retraso]';
-  examples = ['!petgif', '!petgif 512 100'];
+  usage = '!petgif [@usuario] [resolucion] [retraso]';
+  examples = ['!petgif', '!petgif @usuario', '!petgif 512 20'];
   permissions = { user: [PermissionLevel.USER], bot: [] };
 
   async execute(ctx: MessageContext): Promise<void> {
@@ -26,28 +27,57 @@ export class PetgifCommand extends Command {
 
     let imageUrl: string | null = null;
 
-    if (args[0] && args[0].startsWith('http')) {
-      imageUrl = args[0];
-    } else {
-      imageUrl = await ImageHelper.getImageOrProfile(ctx);
+    const mentioned = ctx.message.message?.extendedTextMessage?.contextInfo?.mentionedJid?.[0];
+
+    if (mentioned) {
+      try {
+        const pic = await ctx.sock.profilePictureUrl(mentioned, 'image');
+        imageUrl = pic ?? null;
+      } catch {
+        imageUrl = null;
+      }
     }
 
-    if (!imageUrl) {
-      imageUrl = await ImageHelper.getProfileImage(ctx);
+    if (!imageUrl && args[0]?.startsWith('http')) {
+      imageUrl = args[0];
     }
+
+    if (!imageUrl) imageUrl = await ImageHelper.getImageOrProfile(ctx);
+    if (!imageUrl) imageUrl = await ImageHelper.getProfileImage(ctx);
 
     if (!imageUrl) {
       await ctx.reply('❌ No pude obtener la foto de perfil.');
       return;
     }
 
-    const resolution = args[args.length - 2] || '512';
-    const delay = args[args.length - 1] || '100';
+    const numericArgs = args.filter(a => /^\d+$/.test(a));
+    const resolution = numericArgs[0] || '512';
+    const delay = numericArgs[1] || '20';
 
-    await new CanvasBase().sendImage(ctx, 'petgif', {
-      url: imageUrl,
-      resolution,
-      delay,
-    });
+    try {
+      const result = await canvasService.getResult('petgif', {
+        url: imageUrl,
+        resolution,
+        delay,
+      });
+
+      let gifBuffer: Buffer;
+
+      if (result.type === 'url') {
+        const { default: axios } = await import('axios');
+        const res = await axios.get(result.url, { responseType: 'arraybuffer', timeout: 30000 });
+        gifBuffer = Buffer.from(res.data);
+      } else {
+        gifBuffer = result.buffer;
+      }
+
+      const stickerBuffer = await StickerHelper.createSticker(gifBuffer);
+
+      await ctx.sock.sendMessage(ctx.chat.jid, { sticker: stickerBuffer });
+      await ctx.react('✅');
+    } catch (_error) {
+      await ctx.react('❌');
+      await ctx.reply('❌ No pude generar el petgif. Intenta de nuevo.');
+    }
   }
 }

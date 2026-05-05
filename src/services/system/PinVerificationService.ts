@@ -10,7 +10,7 @@ export interface PendingVerification {
 }
 
 const PIN_TTL_SECONDS = 60;
-const PIN_LENGTH = 6;
+const _PIN_LENGTH = 6;
 
 export class PinVerificationService {
   private static instance: PinVerificationService;

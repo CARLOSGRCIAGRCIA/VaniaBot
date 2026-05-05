@@ -261,25 +261,27 @@ export class PersistenceService {
     const delay = reminder.triggerAt - Date.now();
     if (delay <= 0) return;
 
-    const timer = setTimeout(async () => {
-      try {
-        if (this.sock) {
-          await this.sock.sendMessage(reminder.chatJid, {
-            text:
-              `⏰ *¡Recordatorio!*\n` +
-              `━━━━━━━━━━━━━━━━\n` +
-              `📝 ${reminder.message}\n` +
-              `━━━━━━━━━━━━━━━━\n` +
-              `👤 @${reminder.userJid.split('@')[0]}`,
-            mentions: [reminder.userJid],
-          });
+    const timer = setTimeout(() => {
+      void (async () => {
+        try {
+          if (this.sock) {
+            await this.sock.sendMessage(reminder.chatJid, {
+              text:
+                `⏰ *¡Recordatorio!*\n` +
+                `━━━━━━━━━━━━━━━━\n` +
+                `📝 ${reminder.message}\n` +
+                `━━━━━━━━━━━━━━━━\n` +
+                `👤 @${reminder.userJid.split('@')[0]}`,
+              mentions: [reminder.userJid],
+            });
+          }
+        } catch {
+          // Ignorar errores de envío
         }
-      } catch {
-        // Ignorar errores de envío
-      }
-      this.reminders.delete(reminder.id);
-      this.reminderTimers.delete(reminder.id);
-      void this.saveReminders();
+        this.reminders.delete(reminder.id);
+        this.reminderTimers.delete(reminder.id);
+        void this.saveReminders();
+      })();
     }, delay);
 
     this.reminderTimers.set(reminder.id, timer);
@@ -329,12 +331,14 @@ export class PersistenceService {
 
     if (poll.endsAt && poll.endsAt > Date.now()) {
       const delay = poll.endsAt - Date.now();
-      const timer = setTimeout(async () => {
-        const p = this.polls.get(chatJid);
-        if (p && !p.closed) {
-          p.closed = true;
-          void this.savePolls();
-        }
+      const timer = setTimeout(() => {
+        void (async () => {
+          const p = this.polls.get(chatJid);
+          if (p && !p.closed) {
+            p.closed = true;
+            void this.savePolls();
+          }
+        })();
       }, delay);
       this.pollTimers.set(chatJid, timer);
     }

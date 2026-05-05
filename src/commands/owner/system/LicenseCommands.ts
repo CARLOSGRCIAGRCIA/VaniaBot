@@ -1,12 +1,6 @@
 import { Command } from '../../Command.js';
-import {
-  CommandCategory,
-  CommandContext,
-  PermissionLevel,
-  type MessageContext,
-} from '@/types/index.js';
+import { CommandCategory, PermissionLevel, type MessageContext } from '@/types/index.js';
 import { licenseService } from '@/services/system/LicenseService.js';
-import { subBotRepository } from '@/repositories/SubBotRepository.js';
 
 export class SetPlanCommand extends Command {
   name = 'setplan';

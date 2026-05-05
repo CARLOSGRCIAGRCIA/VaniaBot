@@ -116,7 +116,7 @@ export class RecoveryService {
     return Math.min(delay, this.config.maxDelayMs);
   }
 
-  private async performRecovery(botId: string, attempt: number): Promise<void> {
+  private async performRecovery(botId: string, _attempt: number): Promise<void> {
     await new Promise(resolve => setTimeout(resolve, 1000));
     logger.debug(`[Recovery] Performing recovery action for ${botId}`);
   }
@@ -128,9 +128,9 @@ export class RecoveryService {
     }
 
     const delay = delayMs ?? this.config.baseDelayMs;
-    const timer = setTimeout(async () => {
+    const timer = setTimeout(() => {
       this.reconnectTimers.delete(botId);
-      await this.attemptRecovery(botId);
+      void this.attemptRecovery(botId);
     }, delay);
 
     this.reconnectTimers.set(botId, timer);

@@ -6,7 +6,6 @@ import { TikTokDownloader } from '@/services/download/TikTokDownloader.js';
 import { MediaCardService } from '@/services/creative/MediaCardService.js';
 import { isRight } from '@/utils/either.js';
 import fs from 'fs';
-import path from 'path';
 import axios from 'axios';
 
 export class TiktokCommand extends Command {
@@ -87,7 +86,7 @@ export class TiktokCommand extends Command {
       const downloadSuccess = result.right;
       const filePath = downloadSuccess.filePath;
 
-      const footer = await primeService.formatFooter(ctx.sock, ctx.chat.jid, ctx.chat.isGroup);
+      const _footer = await primeService.formatFooter(ctx.sock, ctx.chat.jid, ctx.chat.isGroup);
       await ctx.sock.sendMessage(ctx.chat.jid, {
         video: fs.readFileSync(filePath),
         mimetype: 'video/mp4',

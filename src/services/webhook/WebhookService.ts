@@ -219,37 +219,41 @@ export class WebhookService {
 
       const instance = subBotManager['instances']?.get(result.subConfig?.id || '');
       if (instance) {
-        instance.once('pairingCode', async (code: string) => {
-          status.status = 'ready';
-          status.pairingCode = code;
-          status.slot = freeSlot.slot;
-          status.subbotId = result.subConfig?.id;
+        instance.once('pairingCode', (code: string) => {
+          void (async () => {
+            status.status = 'ready';
+            status.pairingCode = code;
+            status.slot = freeSlot.slot;
+            status.subbotId = result.subConfig?.id;
 
-          logger.info(`Webhook: pairing code generated for ${requestToken}: ${code}`);
+            logger.info(`Webhook: pairing code generated for ${requestToken}: ${code}`);
 
-          if (callbackUrl) {
-            await this.sendCallback(callbackUrl, status);
-          }
+            if (callbackUrl) {
+              await this.sendCallback(callbackUrl, status);
+            }
+          })();
         });
       }
 
-      setTimeout(async () => {
-        if (status.status === 'pending') {
-          const subConfig = result.subConfig;
-          if (subConfig) {
-            const instance = subBotManager['instances']?.get(subConfig.id);
-            if (instance?.pairingCode) {
-              status.status = 'ready';
-              status.pairingCode = instance.pairingCode;
-              status.slot = freeSlot.slot;
-              status.subbotId = subConfig.id;
+      setTimeout(() => {
+        void (async () => {
+          if (status.status === 'pending') {
+            const subConfig = result.subConfig;
+            if (subConfig) {
+              const instance = subBotManager['instances']?.get(subConfig.id);
+              if (instance?.pairingCode) {
+                status.status = 'ready';
+                status.pairingCode = instance.pairingCode;
+                status.slot = freeSlot.slot;
+                status.subbotId = subConfig.id;
 
-              if (callbackUrl) {
-                await this.sendCallback(callbackUrl, status);
+                if (callbackUrl) {
+                  await this.sendCallback(callbackUrl, status);
+                }
               }
             }
           }
-        }
+        })();
       }, 10000);
 
       return {

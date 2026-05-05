@@ -27,7 +27,11 @@ export class RestartCommand extends Command {
   contexts = [CommandContext.BOTH];
 
   async execute(ctx: MessageContext): Promise<void> {
-    const { requiresPin, canExecute } = await checkPinVerification(ctx, 'restart', '');
+    const { requiresPin: _requiresPin, canExecute } = await checkPinVerification(
+      ctx,
+      'restart',
+      '',
+    );
     if (!canExecute) {
       return;
     }

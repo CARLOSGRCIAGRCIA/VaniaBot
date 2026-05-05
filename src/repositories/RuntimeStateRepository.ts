@@ -98,7 +98,9 @@ export class RuntimeStateRepository {
     );
 
     logger.debug(`[RuntimeStateRepository] Created state for bot: ${input.bot_id}`);
-    return this.findByBotId(input.bot_id)!;
+    const record = this.findByBotId(input.bot_id);
+    if (!record) throw new Error(`Failed to create runtime state for bot: ${input.bot_id}`);
+    return record;
   }
 
   findByBotId(botId: string): BotRuntimeStateRecord | null {
@@ -148,7 +150,7 @@ export class RuntimeStateRepository {
     );
   }
 
-  updateConnectionEvent(botId: string, eventType: 'connect' | 'disconnect'): void {
+  updateConnectionEvent(botId: string, _eventType: 'connect' | 'disconnect'): void {
     const now = new Date().toISOString();
     getDatabase().query(
       'UPDATE bot_runtime_state SET last_connection_event_at = ?, updated_at = ? WHERE bot_id = ?',
@@ -237,7 +239,7 @@ export class RuntimeStateRepository {
     );
   }
 
-  setQuarantined(botId: string, cooldownMs: number, reason: string): void {
+  setQuarantined(botId: string, cooldownMs: number, _reason: string): void {
     const now = new Date();
     const until = new Date(now.getTime() + cooldownMs).toISOString();
     getDatabase().query(
@@ -317,7 +319,9 @@ export class RuntimeStateRepository {
     const existing = this.findByBotId(input.bot_id);
     if (existing) {
       this.updateConnection(input.bot_id, input.is_connected ?? 0);
-      return this.findByBotId(input.bot_id)!;
+      const record = this.findByBotId(input.bot_id);
+      if (!record) throw new Error(`Failed to upsert runtime state for bot: ${input.bot_id}`);
+      return record;
     }
     return this.create(input);
   }

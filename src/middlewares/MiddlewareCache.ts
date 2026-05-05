@@ -6,12 +6,12 @@ interface MiddlewareCacheOptions {
 }
 
 export class MiddlewareCache {
-  private cache: LRUCache<string, any>;
+  private cache: LRUCache<string, {}>;
   private readonly ttlMs: number;
 
   constructor(options: MiddlewareCacheOptions) {
     this.ttlMs = options.ttlMs;
-    this.cache = new LRUCache<string, any>({
+    this.cache = new LRUCache<string, {}>({
       max: options.maxSize,
       ttl: options.ttlMs,
       updateAgeOnGet: true,
@@ -19,11 +19,11 @@ export class MiddlewareCache {
     });
   }
 
-  get<T>(key: string): T | undefined {
+  get<T extends {}>(key: string): T | undefined {
     return this.cache.get(key) as T | undefined;
   }
 
-  set<T>(key: string, value: T): void {
+  set<T extends {}>(key: string, value: T): void {
     this.cache.set(key, value);
   }
 

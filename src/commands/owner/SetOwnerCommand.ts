@@ -20,7 +20,11 @@ export class SetOwnerCommand extends Command {
     const args = ctx.args;
     const argsString = ctx.args.join(' ');
 
-    const { requiresPin, canExecute } = await checkPinVerification(ctx, 'setowner', argsString);
+    const { requiresPin: _requiresPin, canExecute } = await checkPinVerification(
+      ctx,
+      'setowner',
+      argsString,
+    );
     if (!canExecute) {
       return;
     }

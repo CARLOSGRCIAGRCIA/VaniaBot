@@ -17,7 +17,7 @@ export class EvalCommand extends Command {
   async execute(ctx: MessageContext): Promise<void> {
     const code = ctx.args.join(' ').trim();
 
-    const { requiresPin, canExecute } = await checkPinVerification(ctx, 'eval', code);
+    const { requiresPin: _requiresPin, canExecute } = await checkPinVerification(ctx, 'eval', code);
     if (!canExecute) {
       return;
     }

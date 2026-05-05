@@ -112,8 +112,8 @@ export class OrchestratorService {
   private startHealthCheck(): void {
     if (!this.config.enableWatchdog) return;
 
-    this.healthCheckInterval = setInterval(async () => {
-      await this.performHealthCheck();
+    this.healthCheckInterval = setInterval(() => {
+      void this.performHealthCheck();
     }, this.config.healthCheckIntervalMs);
   }
 
@@ -121,7 +121,7 @@ export class OrchestratorService {
     try {
       this.loadActiveBots();
 
-      const connectedBots = runtimeStateRepository.findConnected();
+      const _connectedBots = runtimeStateRepository.findConnected();
       const staleBots = runtimeStateRepository.findStaleHeartbeat(120000);
 
       for (const bot of staleBots) {

@@ -5,7 +5,7 @@ import {
   PermissionLevel,
   type MessageContext,
 } from '@/types/index.js';
-import { logError, logger } from '@/utils/logger.js';
+import { logError } from '@/utils/logger.js';
 import { serviceManager } from '@/services/system/Servicemanager.js';
 import { getTargetUser, getErrorMessage } from '@/utils/moderationUtils.js';
 import { middlewareCache } from '@/middlewares/MiddlewareCache.js';

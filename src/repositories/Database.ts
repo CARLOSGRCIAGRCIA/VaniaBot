@@ -530,7 +530,9 @@ class DatabaseManager {
 
       const result = this.db.exec('SELECT version FROM _migrations ORDER BY version');
       const appliedVersions =
-        result.length > 0 ? result[0].values.map((v: any) => v[0] as number) : [];
+        result.length > 0
+          ? result[0].values.map((v: (number | string | null | Uint8Array)[]) => v[0] as number)
+          : [];
 
       for (const migration of MIGRATIONS) {
         if (!appliedVersions.includes(migration.version)) {
@@ -698,7 +700,7 @@ export { DatabaseManager };
 
 export default DatabaseManager;
 
-const FIX_MIGRATION = `
+const _FIX_MIGRATION = `
   ALTER TABLE mutes ADD COLUMN userId TEXT;
   ALTER TABLE bans ADD COLUMN userId TEXT;
   ALTER TABLE bans ADD COLUMN user_id TEXT;
@@ -707,7 +709,7 @@ const FIX_MIGRATION = `
   ALTER TABLE moderation_logs ADD COLUMN group_id TEXT;
 `;
 
-function applyFixMigration(db: DatabaseManager): void {
+function _applyFixMigration(db: DatabaseManager): void {
   if (db.isSQLite()) {
     const sqlDb = db.getDb();
     try {

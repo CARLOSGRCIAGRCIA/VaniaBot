@@ -559,7 +559,7 @@ export class MediaCardService {
   private static async generateFacebook(opts: MediaCardOptions): Promise<Buffer> {
     const canvas = createCanvas(WIDTH, HEIGHT);
     const ctx = canvas.getContext('2d');
-    const { bg, accent, text, secondary } = PLATFORM_COLORS.facebook;
+    const { bg, accent: _accent, text, secondary } = PLATFORM_COLORS.facebook;
 
     const [vaniaLogo, platformLogo] = await Promise.all([
       this.loadLogoAsset('logo.png'),

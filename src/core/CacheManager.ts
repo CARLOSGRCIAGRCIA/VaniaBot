@@ -15,8 +15,6 @@ import { LRUCache } from 'lru-cache';
 import type { GroupMetadata, WASocket } from '@whiskeysockets/baileys';
 import type { UserPermissions, BotPermissions } from '@/services/PermissionService.js';
 
-// ─── Types ────────────────────────────────────────────────────────────────────
-
 export interface CacheEntry<T> {
   value: T;
   timestamp: number;
@@ -40,8 +38,6 @@ export interface CachedUser {
   money: number;
   [key: string]: unknown;
 }
-
-// ──────────────────────────────────────────────────────────────────────────────
 
 /**
  * Unified cache manager for all caching needs.
@@ -97,8 +93,6 @@ export class UnifiedCacheManager {
     );
   }
 
-  // ─── Permissions ────────────────────────────────────────────────────────────
-
   getPermissions(groupJid: string, userJid: string): PermissionData | null {
     const key = `${groupJid}:${userJid}`;
     const cached = this.permissionsCache.get(key);
@@ -126,8 +120,6 @@ export class UnifiedCacheManager {
       this.permissionsCache.clear();
     }
   }
-
-  // ─── Group Metadata ──────────────────────────────────────────────────────────
 
   getGroupMetadata(groupJid: string): GroupMetadata | null {
     const cached = this.groupMetadataCache.get(groupJid);
@@ -160,8 +152,6 @@ export class UnifiedCacheManager {
     this.invalidatePermissions(groupJid);
   }
 
-  // ─── Participants (Fast Cache) ───────────────────────────────────────────────
-
   getGroupParticipants(groupJid: string): string[] | null {
     const cached = this.participantsCache.get(groupJid);
     if (cached) {
@@ -175,8 +165,6 @@ export class UnifiedCacheManager {
   setGroupParticipants(groupJid: string, participants: string[]): void {
     this.participantsCache.set(groupJid, participants);
   }
-
-  // ─── Users ───────────────────────────────────────────────────────────────────
 
   getUser(jid: string): CachedUser | null {
     const cached = this.userCache.get(jid);
@@ -196,8 +184,6 @@ export class UnifiedCacheManager {
     this.userCache.delete(jid);
   }
 
-  // ─── Message dedup ───────────────────────────────────────────────────────────
-
   hasProcessedMessage(messageId: string): boolean {
     return this.messageIdCache.has(messageId);
   }
@@ -205,8 +191,6 @@ export class UnifiedCacheManager {
   markMessageProcessed(messageId: string): void {
     this.messageIdCache.add(messageId);
   }
-
-  // ─── Stats ───────────────────────────────────────────────────────────────────
 
   getStats() {
     const total = this.stats.hits + this.stats.misses;

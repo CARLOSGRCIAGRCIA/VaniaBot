@@ -1,5 +1,6 @@
 import axios from 'axios';
-import { Either, left, right } from '@/utils/either.js';
+import type { Either } from '@/utils/either.js';
+import { left, right } from '@/utils/either.js';
 import { NetworkError, ValidationError } from '@/utils/errors.js';
 import { logError } from '@/utils/logger.js';
 

@@ -6,7 +6,8 @@
  * @module services/download/MediafireDownloader
  */
 
-import { Either, left, right } from '@/utils/either.js';
+import type { Either } from '@/utils/either.js';
+import { left, right } from '@/utils/either.js';
 import { logger } from '@/utils/logger.js';
 import { NetworkError, ValidationError } from '@/utils/errors.js';
 import fs from 'fs';

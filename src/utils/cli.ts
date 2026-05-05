@@ -58,8 +58,9 @@ async function wait(ms: number): Promise<void> {
 async function playFrames(frames: string[], durationMs: number): Promise<void> {
   const delay = Math.floor(durationMs / frames.length);
   for (const frame of frames) {
+    // eslint-disable-next-line no-console
     console.clear();
-    console.log(frame);
+    console.info(frame);
     await wait(delay);
   }
 }
@@ -69,20 +70,21 @@ async function playLoadingBar(): Promise<void> {
     process.stdout.write('\r' + chalk.magentaBright(frame));
     await wait(350);
   }
-  console.log('\n');
+  console.info('\n');
 }
 
 export async function mostrarBannerVania(): Promise<void> {
+  // eslint-disable-next-line no-console
   console.clear();
-  console.log(chalk.bold.magentaBright('\n⟦ ✦ ACCESO CONCEDIDO | VANIA-BOT V.1 ✦ ⟧'));
-  console.log(chalk.gray('✦ 𝘾𝙖𝙣𝙖𝙡𝙞𝙯𝙖𝙣𝙙𝙤 𝙖𝙘𝙘𝙚𝙨𝙤 𝙖𝙡 𝙨𝙞𝙨𝙩𝙚𝙢𝙖...'));
+  console.info(chalk.bold.magentaBright('\n⟦ ✦ ACCESO CONCEDIDO | VANIA-BOT V.1 ✦ ⟧'));
+  console.info(chalk.gray('✦ 𝘾𝙖𝙣𝙖𝙡𝙞𝙯𝙖𝙣𝙙𝙤 𝙖𝙘𝙘𝙚𝙨𝙤 𝙖𝙡 𝙨𝙞𝙨𝙩𝙚𝙢𝙖...'));
 
   await wait(400);
   await playFrames(FRAMES_VANIA, 1500);
   await playLoadingBar();
 
-  console.log(chalk.hex('#FF1493')('☰✦☰═☰  𝙑𝘼𝙉𝙄𝘼-𝘽𝙊𝙏  ☰═☰✦☰'));
-  console.log(
+  console.info(chalk.hex('#FF1493')('☰✦☰═☰  𝙑𝘼𝙉𝙄𝘼-𝘽𝙊𝙏  ☰═☰✦☰'));
+  console.info(
     chalk.bold.hex('#FF69B4')(`
 ╔═══════════════════════════════════════════════════════════╗
 ║                                                           ║
@@ -100,9 +102,11 @@ export async function mostrarBannerVania(): Promise<void> {
   `),
   );
 
-  console.log(chalk.bold.hex('#FF1493')('\n✦═════════════════════════════════✦'));
-  console.log(chalk.bold.white('    SISTEMA CREADO POR: ') + chalk.bold.hex('#FFD700')('Carlos G'));
-  console.log(chalk.bold.hex('#FF1493')('✦═════════════════════════════════✦\n'));
+  console.info(chalk.bold.hex('#FF1493')('\n✦═════════════════════════════════✦'));
+  console.info(
+    chalk.bold.white('    SISTEMA CREADO POR: ') + chalk.bold.hex('#FFD700')('Carlos G'),
+  );
+  console.info(chalk.bold.hex('#FF1493')('✦═════════════════════════════════✦\n'));
 
   await wait(400);
 }
@@ -114,13 +118,13 @@ export async function seleccionarMetodoAuth(): Promise<'qr' | 'code'> {
       output: process.stdout,
     });
 
-    console.log(chalk.bold.cyan('\nSelecciona el método de autenticación:\n'));
-    console.log(
+    console.info(chalk.bold.cyan('\nSelecciona el método de autenticación:\n'));
+    console.info(
       chalk.white('  1) 📱 ') +
         chalk.bold.green('Código QR') +
         chalk.gray(' (Escanear con WhatsApp)'),
     );
-    console.log(
+    console.info(
       chalk.white('  2) 🔢 ') +
         chalk.bold.yellow('Código de Pareamiento') +
         chalk.gray(' (Vincular número)'),
@@ -131,13 +135,15 @@ export async function seleccionarMetodoAuth(): Promise<'qr' | 'code'> {
       const option = answer.trim();
 
       if (option === '1') {
-        console.log(chalk.green('\n✓ Método seleccionado: ') + chalk.bold('Código QR'));
+        console.info(chalk.green('\n✓ Método seleccionado: ') + chalk.bold('Código QR'));
         resolve('qr');
       } else if (option === '2') {
-        console.log(chalk.green('\n✓ Método seleccionado: ') + chalk.bold('Código de Pareamiento'));
+        console.info(
+          chalk.green('\n✓ Método seleccionado: ') + chalk.bold('Código de Pareamiento'),
+        );
         resolve('code');
       } else {
-        console.log(
+        console.info(
           chalk.red('\n❌ Opción inválida. ') + chalk.yellow('Usando Código QR por defecto.'),
         );
         resolve('qr');
@@ -152,21 +158,21 @@ export function mostrarAyuda(): void {
   const cy = chalk.cyan;
   const g = chalk.gray;
 
-  console.log(c('\n╔═══════════════════════════════════════════╗'));
-  console.log(c('║') + '    VANIABOT - COMANDOS DISPONIBLES    ' + c('║'));
-  console.log(c('╚═══════════════════════════════════════════╝\n'));
+  console.info(c('\n╔═══════════════════════════════════════════╗'));
+  console.info(c('║') + '    VANIABOT - COMANDOS DISPONIBLES    ' + c('║'));
+  console.info(c('╚═══════════════════════════════════════════╝\n'));
 
-  console.log(w('Inicio:'));
-  console.log(cy('  npm start') + g('        → Menú interactivo'));
-  console.log(cy('  npm start qr') + g('     → Usar código QR'));
-  console.log(cy('  npm start code') + g('   → Usar código de pareamiento'));
+  console.info(w('Inicio:'));
+  console.info(cy('  npm start') + g('        → Menú interactivo'));
+  console.info(cy('  npm start qr') + g('     → Usar código QR'));
+  console.info(cy('  npm start code') + g('   → Usar código de pareamiento'));
 
-  console.log(w('\nDesarrollo:'));
-  console.log(cy('  npm run dev') + g('      → Modo desarrollo (watch)'));
-  console.log(cy('  npm run build') + g('    → Compilar TypeScript'));
-  console.log(cy('  npm run lint') + g('     → Verificar código'));
+  console.info(w('\nDesarrollo:'));
+  console.info(cy('  npm run dev') + g('      → Modo desarrollo (watch)'));
+  console.info(cy('  npm run build') + g('    → Compilar TypeScript'));
+  console.info(cy('  npm run lint') + g('     → Verificar código'));
 
-  console.log(w('\nMantenimiento:'));
-  console.log(cy('  npm run clean') + g('    → Limpiar sesión y archivos'));
-  console.log();
+  console.info(w('\nMantenimiento:'));
+  console.info(cy('  npm run clean') + g('    → Limpiar sesión y archivos'));
+  console.info();
 }

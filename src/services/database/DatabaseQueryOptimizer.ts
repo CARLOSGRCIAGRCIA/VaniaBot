@@ -107,8 +107,8 @@ export class DatabaseQueryOptimizer {
 
       this.batchTimeouts.set(
         opts.batchKey,
-        setTimeout(async () => {
-          await this.flushBatch(opts.batchKey);
+        setTimeout(() => {
+          void this.flushBatch(opts.batchKey);
         }, opts.batchTimeout),
       );
     });

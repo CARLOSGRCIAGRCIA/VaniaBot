@@ -75,7 +75,7 @@ export class UserPermissionChecker {
     groupJid: string | undefined,
     userJid: string,
   ): Promise<UserPermissions> {
-    const userNormalized = normalizeJid(userJid);
+    const _userNormalized = normalizeJid(userJid);
 
     const isOwner = this.isOwner(userJid);
 

@@ -1,5 +1,3 @@
-import { logError } from '@/utils/logger.js';
-
 type DeliriusCategory =
   | 'anime'
   | 'nsfw'

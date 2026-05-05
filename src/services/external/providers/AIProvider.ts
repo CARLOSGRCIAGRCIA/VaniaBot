@@ -1,4 +1,4 @@
-import { Either, left, right } from '@/utils/either.js';
+import type { Either } from '@/utils/either.js';
 
 export interface AIMessage {
   role: 'user' | 'assistant' | 'system';

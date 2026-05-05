@@ -49,8 +49,6 @@ export class BanCommand extends Command {
       return;
     }
 
-    const reason = ctx.args.slice(1).join(' ') || 'No reason provided';
-
     await ctx.react('⏳');
 
     try {

@@ -8,7 +8,6 @@ import {
   type MessageContext,
 } from '@/types/index.js';
 import { ProfileCardService } from '@services/canvas/ProfileCardService.js';
-import { serviceManager as sm } from '@/services/system/Servicemanager.js';
 
 export class BalcardCommand extends Command {
   name = 'balcard';

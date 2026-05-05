@@ -1,7 +1,6 @@
 import { Command } from '../../Command.js';
 import { CommandCategory, type MessageContext } from '@/types/index.js';
 import { logError } from '@/utils/logger.js';
-import { primeService } from '@/services/system/PrimeService.js';
 import { InstagramDownloader } from '@/services/download/InstagramDownloader.js';
 import { MediaCardService } from '@/services/creative/MediaCardService.js';
 import { isRight } from '@/utils/either.js';

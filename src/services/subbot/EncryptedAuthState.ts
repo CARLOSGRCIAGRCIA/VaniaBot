@@ -1,7 +1,9 @@
 import {
   useMultiFileAuthState,
   type AuthenticationState,
+  type AuthenticationCreds,
   makeCacheableSignalKeyStore,
+  type SignalDataTypeMap,
 } from '@whiskeysockets/baileys';
 import pino from 'pino';
 import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync, unlinkSync } from 'fs';
@@ -57,10 +59,12 @@ async function useEncryptedAuthState(sessionPath: string): Promise<AuthResult> {
   }
 
   const state: AuthenticationState = {
-    creds: JSON.parse(credsContent) as any,
+    creds: JSON.parse(credsContent) as AuthenticationCreds,
     keys: {
-      get: async (type, ids) => {
-        const result: Record<string, unknown> = {};
+      get: async <T extends keyof SignalDataTypeMap>(type: T, ids: string[]) => {
+        const result: { [id: string]: SignalDataTypeMap[T] } = {} as {
+          [id: string]: SignalDataTypeMap[T];
+        };
         const keyData = keysData[type] || {};
 
         for (const id of ids) {
@@ -68,12 +72,12 @@ async function useEncryptedAuthState(sessionPath: string): Promise<AuthResult> {
             try {
               result[id] = JSON.parse(keyData[id]);
             } catch {
-              result[id] = keyData[id];
+              result[id] = keyData[id] as unknown as SignalDataTypeMap[T];
             }
           }
         }
 
-        return result as any;
+        return result;
       },
       set: async data => {
         for (const [type, pairs] of Object.entries(data)) {

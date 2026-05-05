@@ -2,29 +2,26 @@ import { Command } from '../Command.js';
 import { CommandCategory, CommandContext, type MessageContext } from '@/types/index.js';
 import { logError } from '@/utils/logger.js';
 import { downloadMediaMessage } from '@whiskeysockets/baileys';
-import { StickerService } from '@/services/media/StickerService.js';
+import { StickerHelper } from '@/utils/StickerHelper.js';
 import type { proto } from '@whiskeysockets/baileys';
 
 export class StickerCommand extends Command {
   name = 'sticker';
   description = 'Convert image/video to sticker';
   category = CommandCategory.MEDIA;
-  aliases = ['s', 'stiker'];
+  aliases = ['s'];
   usage = '!sticker <reply to image/video>';
   examples = ['!sticker', '!s'];
   contexts = [CommandContext.BOTH];
 
-  private stickerService: StickerService;
-
-  constructor() {
-    super();
-    this.stickerService = new StickerService();
-  }
-
   async execute(ctx: MessageContext): Promise<void> {
     const quotedMsg = ctx.message.message?.extendedTextMessage?.contextInfo?.quotedMessage;
+    const directMsg = ctx.message.message;
 
-    if (!quotedMsg) {
+    const hasQuotedMedia = quotedMsg?.imageMessage || quotedMsg?.videoMessage;
+    const hasDirectMedia = directMsg?.imageMessage || directMsg?.videoMessage;
+
+    if (!hasQuotedMedia && !hasDirectMedia) {
       await ctx.reply(
         `˚₊· ͟͟͞͞➳ *oops, necesito una imagen o video* ˚₊· ͟͟͞͞➳\n\n` +
           `✿ responde a una foto/video con *!sticker*\n` +
@@ -33,38 +30,22 @@ export class StickerCommand extends Command {
       return;
     }
 
-    const hasImage = quotedMsg.imageMessage;
-    const hasVideo = quotedMsg.videoMessage;
-
-    if (!hasImage && !hasVideo) {
-      await ctx.reply(
-        `˚₊· ͟͟͞͞➳ *responde a una imagen o video* ˚₊· ͟͟͞͞➳\n\n` +
-          `✿ *formatos permitidos:* JPG, PNG, WebP, MP4, GIF\n` +
-          `✩ *videos:* máximito 10 segundos ✩`,
-      );
-      return;
-    }
-
     await ctx.react('⏳');
 
     try {
-      const fakeMsg = { message: quotedMsg } as proto.IWebMessageInfo;
+      const targetMsg: proto.IWebMessageInfo = hasQuotedMedia
+        ? ({ message: quotedMsg } as proto.IWebMessageInfo)
+        : ctx.message;
 
-      const buffer = await downloadMediaMessage(fakeMsg, 'buffer', {});
+      const buffer = await downloadMediaMessage(targetMsg, 'buffer', {});
+      const stickerBuffer = await StickerHelper.createSticker(buffer as Buffer);
 
-      const stickerBuffer = await this.stickerService.createSticker(buffer, {
-        pack: '𝙑𝙖𝙣𝙞𝙖𝘽𝙤𝙩 💝',
-        author: '𝙑𝙖𝙣𝙞𝙖𝘽𝙤𝙩 💝 𝘾𝙖𝙧𝙡𝙤𝙨 𝙂',
-        categories: ['💝'],
-      });
-
-      await ctx.sock.sendMessage(ctx.chat.jid, {
-        sticker: stickerBuffer,
-      });
-
+      await ctx.sock.sendMessage(ctx.chat.jid, { sticker: stickerBuffer });
       await ctx.react('✅');
     } catch (error) {
       logError('[StickerCommand] Error', error);
+      await ctx.react('❌');
+      await ctx.reply('❌ No pude convertir el sticker, intenta de nuevo.');
     }
   }
 }

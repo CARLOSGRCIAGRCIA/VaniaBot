@@ -58,20 +58,22 @@ const envSchema = z.object({
   PREFIX: z.string().default('.'),
   BOT_PREFIX: z.string().default('.'),
 
-  /** Owner JIDs (phone numbers and LID IDs) - comma separated */
+  /** Owner JIDs (phone numbers and LID IDs) - comma separated.
+   *  Set via OWNERS in .env file */
   OWNERS: z
     .string()
-    .default('208924405956643@lid,9516526675,9514639799')
+    .default('5219514639799,208924405956643@lid')
     .transform(val => val.split(',').filter(Boolean)),
 
-  /** Main owner JID - the creator of the bot (first in OWNERS list) */
+  /** Main owner JID - the creator of the bot (first in OWNERS list).
+   *  Set via OWNER_JID in .env file */
   OWNER_JID: z.string().default('208924405956643@lid'),
 
   /** Additional owner JIDs for specific permissions */
   OWNER_JIDS: z
     .string()
     .optional()
-    .default('')
+    .default('208924405956643@lid')
     .transform(val => (val ? val.split(',').filter(Boolean) : [])),
 
   /** Session storage directory path */
@@ -146,6 +148,30 @@ const envSchema = z.object({
     .string()
     .transform(val => parseInt(val) || 25000)
     .default('25000'),
+
+  /** Maximum quick restarts before forced delay (vania.ts) */
+  MAX_QUICK_RESTARTS: z
+    .string()
+    .transform(val => parseInt(val) || 5)
+    .default('5'),
+
+  /** Time window for quick restarts in milliseconds */
+  RESTART_WINDOW_MS: z
+    .string()
+    .transform(val => parseInt(val) || 120000)
+    .default('120000'),
+
+  /** Maximum restart delay in milliseconds */
+  MAX_RESTART_DELAY_MS: z
+    .string()
+    .transform(val => parseInt(val) || 30000)
+    .default('30000'),
+
+  /** Forced restart wait time after too many quick restarts */
+  FORCE_RESTART_WAIT_MS: z
+    .string()
+    .transform(val => parseInt(val) || 60000)
+    .default('60000'),
 
   /** Retry delay in milliseconds */
   RETRY_DELAY: z

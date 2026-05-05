@@ -57,7 +57,7 @@ export class RuntimeCache {
     return false;
   }
 
-  async getBotState(botId: string): Promise<any | null> {
+  async getBotState(botId: string): Promise<Record<string, unknown> | null> {
     const json = await this.get(`bot:${botId}`);
     if (json) {
       try {
@@ -69,7 +69,7 @@ export class RuntimeCache {
     return null;
   }
 
-  async setBotState(botId: string, state: any): Promise<void> {
+  async setBotState(botId: string, state: Record<string, unknown>): Promise<void> {
     await this.set(`bot:${botId}`, JSON.stringify(state), 3600);
   }
 }

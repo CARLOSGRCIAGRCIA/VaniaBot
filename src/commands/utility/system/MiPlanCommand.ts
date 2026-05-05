@@ -1,10 +1,5 @@
 import { Command } from '../../Command.js';
-import {
-  CommandCategory,
-  CommandContext,
-  PermissionLevel,
-  type MessageContext,
-} from '@/types/index.js';
+import { CommandCategory, PermissionLevel, type MessageContext } from '@/types/index.js';
 import { licenseService } from '@/services/system/LicenseService.js';
 
 export class MiPlanCommand extends Command {

@@ -21,7 +21,11 @@ export class ExecCommand extends Command {
   async execute(ctx: MessageContext): Promise<void> {
     const command = ctx.args.join(' ').trim();
 
-    const { requiresPin, canExecute } = await checkPinVerification(ctx, 'exec', command);
+    const { requiresPin: _requiresPin, canExecute } = await checkPinVerification(
+      ctx,
+      'exec',
+      command,
+    );
     if (!canExecute) {
       return;
     }

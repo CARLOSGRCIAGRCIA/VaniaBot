@@ -55,7 +55,6 @@ RUN groupadd --system --gid 1001 vaniabot \
 
 COPY --from=deps /app/node_modules ./node_modules
 COPY tsconfig.json ./
-COPY vania.ts ./
 COPY src/ ./src/
 
 COPY data/ ./data/
@@ -67,18 +66,23 @@ RUN mkdir -p vaniasession data/temp logs \
 
 USER vaniabot
 
+# Build arguments for environment customization
+ARG USE_REDIS=false
+ARG REDIS_HOST=vania-redis
+ARG REDIS_PORT=6379
+
 ENV NODE_ENV=production \
     AUTH_MODE=qr \
     FONTCONFIG_CACHE=/home/vaniabot/.cache/fontconfig \
     DOCKER_MODE=true \
-    USE_REDIS=true \
-    REDIS_HOST=vania-redis \
-    REDIS_PORT=6379 \
+    USE_REDIS=${USE_REDIS} \
+    REDIS_HOST=${REDIS_HOST} \
+    REDIS_PORT=${REDIS_PORT} \
     PATH="/app/node_modules/.bin:${PATH}"
 
 ENV ASSETS_DIR=/app/data/assets
 
 HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
-    CMD pgrep -f "tsx vania.ts" > /dev/null || exit 1
+    CMD curl -f http://localhost:3000/api/health || exit 1
 
-CMD ["node_modules/.bin/tsx", "vania.ts", "qr"]
+CMD ["node_modules/.bin/tsx", "src/vania.ts", "qr"]

@@ -1,7 +1,8 @@
-import { Either, left, right, map, isRight } from '@/utils/either.js';
-import { DownloadService, type DownloadResult, type DownloadSuccess } from './DownloadService.js';
-import { logError, logger } from '@/utils/logger.js';
-import { ValidationError, NetworkError, NotFoundError } from '@/utils/errors.js';
+import type { Either } from '@/utils/either.js';
+import { left, right } from '@/utils/either.js';
+import { DownloadService, type DownloadResult } from './DownloadService.js';
+import { logError } from '@/utils/logger.js';
+import { NetworkError } from '@/utils/errors.js';
 
 export interface TikTokVideo {
   title: string;

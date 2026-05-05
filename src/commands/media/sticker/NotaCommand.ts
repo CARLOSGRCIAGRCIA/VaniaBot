@@ -1,8 +1,7 @@
 import { Command } from '../../Command.js';
 import { CommandCategory, type MessageContext } from '@/types/index.js';
-import { StickerService } from '@/services/media/StickerService.js';
+import { StickerHelper } from '@/utils/StickerHelper.js';
 import { ImageProcessor } from '@/utils/imageProcessor.js';
-import { primeService } from '@/services/system/PrimeService.js';
 import { findAssetFile } from '@/utils/assetHelper.js';
 import path from 'path';
 import fs from 'fs';
@@ -15,13 +14,6 @@ export class NotaCommand extends Command {
   usage = '!nota <text>';
   examples = ['!nota Hello World', '!nota Remember this'];
   cooldown = 5000;
-
-  private stickerService: StickerService;
-
-  constructor() {
-    super();
-    this.stickerService = new StickerService();
-  }
 
   async execute(ctx: MessageContext): Promise<void> {
     if (!ctx.args.length) {
@@ -82,18 +74,8 @@ export class NotaCommand extends Command {
 
       fs.unlinkSync(tempPath);
 
-      const stickerInfo = await primeService.formatStickerInfo(
-        ctx.sock,
-        ctx.chat.jid,
-        ctx.chat.isGroup,
-      );
-
-      const stiker = await this.stickerService.createSticker(buffer, {
-        pack: stickerInfo.pack,
-        author: stickerInfo.author,
-      });
-
-      await ctx.sock.sendMessage(ctx.chat.jid, { sticker: stiker });
+      const sticker = await StickerHelper.imageToSticker(buffer);
+      await ctx.sock.sendMessage(ctx.chat.jid, { sticker });
       await ctx.react('✅');
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : 'Unknown error';

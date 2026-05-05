@@ -84,7 +84,7 @@ export class YtMp4Command extends Command {
       const downloadSuccess = result.right;
       const filePath = downloadSuccess.filePath;
 
-      const footer = await primeService.formatFooter(ctx.sock, ctx.chat.jid, ctx.chat.isGroup);
+      const _footer = await primeService.formatFooter(ctx.sock, ctx.chat.jid, ctx.chat.isGroup);
       await ctx.sock.sendMessage(ctx.chat.jid, {
         video: fs.readFileSync(filePath),
         mimetype: 'video/mp4',

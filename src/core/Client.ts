@@ -1,15 +1,3 @@
-/**
- * Client.ts
- *
- * Main WhatsApp client that handles message processing, middleware execution,
- * and event management for the bot.
- *
- * @author **Carlos G** ⭐
- * @github CARLOSGRCIAGRCIA
- * @tiktok carlos.grcia0
- * @instagram carlos.gxv
- * @created 2026-03-16
- */
 import type { WASocket, WAMessage, proto, BaileysEventMap } from '@whiskeysockets/baileys';
 import { commandRegistry } from './CommandRegistry.js';
 import { pluginLoader } from './PluginLoader.js';
@@ -46,10 +34,8 @@ import { env } from '@/config/env.js';
 import { runtimeStateRepository } from '@/repositories/RuntimeStateRepository.js';
 import { processedMessagesRepository } from '@/repositories/ProcessedMessagesRepository.js';
 import { middlewareCache } from '@/middlewares/MiddlewareCache.js';
-import {
-  PinVerificationMiddleware,
-  PIN_COMMANDS,
-} from '@/middlewares/PinVerificationMiddleware.js';
+import { contactsCache } from '@/utils/ContactsCache.js';
+import { PinVerificationMiddleware } from '@/middlewares/PinVerificationMiddleware.js';
 
 interface RateLimitResult {
   allowed: boolean;
@@ -63,10 +49,6 @@ declare global {
   var client: WhatsAppClient | undefined;
 }
 
-/**
- * Real-time anti-spam system that tracks user message rates.
- * Bans users who exceed message limits.
- */
 class RealTimeAntiSpam {
   private userMessages = new Map<string, number[]>();
   private bannedUsers = new Set<string>();
@@ -231,10 +213,28 @@ interface MiddlewareConfig {
   canRunParallel: boolean;
 }
 
-/**
- * Main WhatsApp client class.
- * Handles initialization, message processing, middleware execution, and event listeners.
- */
+async function resolveProfilePicture(sock: WASocket, jid: string): Promise<string | null> {
+  const candidates: string[] = [jid];
+
+  if (jid.includes('@lid')) {
+    const phone = jid.split('@')[0].split(':')[0];
+    candidates.push(`${phone}@s.whatsapp.net`);
+  } else if (jid.includes(':')) {
+    const phone = jid.split(':')[0];
+    candidates.push(`${phone}@s.whatsapp.net`);
+    candidates.push(`${phone}@lid`);
+  }
+
+  for (const candidate of candidates) {
+    try {
+      const pic = await sock.profilePictureUrl(candidate, 'image');
+      if (pic) return pic;
+    } catch {}
+  }
+
+  return null;
+}
+
 export class WhatsAppClient {
   private sock!: WASocket;
   private readonly middlewares: MiddlewareConfig[] = [];
@@ -364,6 +364,14 @@ export class WhatsAppClient {
     this.sock.ev.on('messages.upsert', ({ messages, type }) => {
       if (type !== 'notify') return;
       for (const msg of messages) {
+        const senderJid = msg.key.participant ?? msg.key.remoteJid ?? '';
+        if (senderJid && msg.pushName) contactsCache.set(senderJid, msg.pushName);
+
+        const chatJid = msg.key.remoteJid ?? '';
+        if (chatJid.endsWith('@g.us')) {
+          contactsCache.warmGroup(this.sock, chatJid).catch(() => {});
+        }
+
         if (msg.message?.reactionMessage) {
           handleReaccion(this.sock, msg).catch(err => logError('handleReaccion', err));
           continue;
@@ -392,11 +400,11 @@ export class WhatsAppClient {
       }
     });
 
-    this.sock.ev.on('messages.delete', async update => {
+    this.sock.ev.on('messages.delete', update => {
       void this.handleMessageDeletion(update);
     });
 
-    this.sock.ev.on('call', async calls => {
+    this.sock.ev.on('call', calls => {
       void this.handleIncomingCalls(calls);
     });
   }
@@ -628,9 +636,17 @@ export class WhatsAppClient {
               }
 
               const fullCommand = ctx.args.length > 0 ? `${ctx.command} ${ctx.args[0]}` : null;
-              const command =
+              let command =
                 (fullCommand ? commandRegistry.get(fullCommand) : null) ??
                 commandRegistry.get(ctx.command);
+
+              if (!command) {
+                const lazyCmd = await pluginLoader.getCommand(ctx.command);
+                if (lazyCmd) {
+                  commandRegistry.register(lazyCmd);
+                  command = lazyCmd;
+                }
+              }
 
               if (!command) {
                 logger.warn(`❌ Command not found in registry: ${ctx.command}`);
@@ -807,10 +823,7 @@ export class WhatsAppClient {
       const admins = await PermissionService.getGroupAdmins(ctx.sock, ctx.chat.jid);
       const botJid = ctx.sock.user?.id;
       const adminJids = admins.filter(admin => admin !== botJid);
-      if (adminJids.length === 0) {
-        logger.debug(`[MUTE] No hay admins para notificar en ${ctx.chat.jid}`);
-        return;
-      }
+      if (adminJids.length === 0) return;
       const muteInfo = await serviceManager.moderationService.getMuteInfo(
         ctx.chat.jid,
         ctx.sender.jid,
@@ -917,3 +930,5 @@ export class WhatsAppClient {
     };
   }
 }
+
+export { resolveProfilePicture };

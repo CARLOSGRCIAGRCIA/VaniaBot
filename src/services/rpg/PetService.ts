@@ -1,5 +1,6 @@
 import { serviceManager } from '../system/Servicemanager.js';
-import { Either, left, right } from '@/utils/either.js';
+import type { Either } from '@/utils/either.js';
+import { left, right } from '@/utils/either.js';
 import type { User, Pet } from '../database/UserService.js';
 
 export interface PetData {

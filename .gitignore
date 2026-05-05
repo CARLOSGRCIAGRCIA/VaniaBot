@@ -35,7 +35,7 @@ session_backup_*.json
 # OS
 .DS_Store
 Thumbs.db
-
+.agents
 # Testing
 coverage/
 *.tgz

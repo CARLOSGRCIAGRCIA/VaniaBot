@@ -27,8 +27,10 @@ export const config: BotConfig = {
   /** Command prefix */
   prefix: env.BOT_PREFIX,
 
-  /** Array of owner JIDs (phone numbers and LID IDs) */
-  owners: env.OWNERS,
+  /** Array of owner JIDs (phone numbers and LID IDs) - unified from all sources */
+  owners: [env.OWNER_JID, ...env.OWNERS, ...(env.OWNER_JIDS || [])].filter((jid): jid is string =>
+    Boolean(jid?.trim()),
+  ),
 
   /** Additional owner JIDs */
   ownerJids: env.OWNER_JIDS || [],

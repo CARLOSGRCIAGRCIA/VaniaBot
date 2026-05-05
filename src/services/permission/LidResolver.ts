@@ -1,5 +1,6 @@
 import type { WASocket } from '@whiskeysockets/baileys';
 import { extractPhone } from './JidService.js';
+import { structuredLogger } from '@/utils/logger.js';
 
 interface LidPhoneCache {
   get(jid: string): string | undefined;
@@ -19,7 +20,10 @@ export class LidResolver {
       const onWhatsApp = (
         sock as unknown as { onWhatsApp?: (jid: string) => Promise<Array<{ jid?: string }>> }
       ).onWhatsApp;
-      if (!onWhatsApp) return null;
+      if (!onWhatsApp) {
+        structuredLogger.network.warn('[LidResolver] onWhatsApp no disponible', { lidJid });
+        return null;
+      }
 
       const result = await onWhatsApp.call(sock, lidJid);
 
@@ -28,7 +32,10 @@ export class LidResolver {
         this.lidPhoneCache.set(lidJid, phone);
         return phone;
       }
-    } catch {}
+      structuredLogger.network.warn('[LidResolver] No se encontró teléfono para LID', { lidJid });
+    } catch (error) {
+      structuredLogger.network.warn('[LidResolver] Error resolviendo LID', { lidJid, error });
+    }
     return null;
   }
 

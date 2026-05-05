@@ -24,7 +24,7 @@ export function findAssetFile(filename: string): Buffer | null {
   for (const imagePath of possiblePaths) {
     if (fs.existsSync(imagePath)) {
       try {
-        console.log(`Found asset: ${imagePath}`);
+        console.info(`Found asset: ${imagePath}`);
         return fs.readFileSync(imagePath);
       } catch (error) {
         console.error(`Error reading file ${imagePath}:`, error);

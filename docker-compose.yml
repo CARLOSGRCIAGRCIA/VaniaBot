@@ -4,17 +4,22 @@ services:
   vania-redis:
     image: redis:7-alpine
     container_name: vania-redis
-    restart: unless-stopped
+    restart: always
     networks:
       - vania-network
     volumes:
       - vania-redis-data:/data
-    command: redis-server --appendonly yes
+    command: >
+      redis-server
+      --appendonly yes
+      --maxmemory 256mb
+      --maxmemory-policy allkeys-lru
     healthcheck:
       test: ['CMD', 'redis-cli', 'ping']
-      interval: 30s
-      timeout: 10s
-      retries: 3
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
 
   vaniabot:
     build:
@@ -22,8 +27,8 @@ services:
       dockerfile: Dockerfile
       target: runner
     container_name: vaniabot
-    restart: unless-stopped
-    user: '1000:1000'
+    restart: always
+    user: '1001:1001'
 
     stdin_open: true
     tty: true
@@ -40,6 +45,7 @@ services:
       - REDIS_HOST=vania-redis
       - REDIS_PORT=6379
       - SESSION_PATH=/app/vaniasession
+      - NODE_OPTIONS=--max-old-space-size=512
 
     depends_on:
       vania-redis:
@@ -57,27 +63,27 @@ services:
     deploy:
       resources:
         limits:
-          memory: 1G
-          cpus: '1.5'
+          memory: 1.5G
+          cpus: '2.0'
         reservations:
-          memory: 256M
-          cpus: '0.5'
+          memory: 512M
+          cpus: '1.0'
 
     healthcheck:
-      test: ['CMD', 'pgrep', '-f', 'tsx vania.ts']
+      test: ['CMD', 'wget', '--quiet', '--tries=1', '--spider', 'http://localhost:3000/api/health']
       interval: 30s
       timeout: 10s
-      retries: 3
-      start_period: 60s
+      retries: 5
+      start_period: 90s
 
     logging:
       driver: json-file
       options:
-        max-size: '10m'
-        max-file: '5'
+        max-size: '20m'
+        max-file: '10'
 
     stop_signal: SIGTERM
-    stop_grace_period: 15s
+    stop_grace_period: 30s
 
 networks:
   vania-network:

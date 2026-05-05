@@ -2,12 +2,26 @@ import axios from 'axios';
 import { logError } from '@/utils/logger.js';
 import { StickerService } from '@/services/media/StickerService.js';
 
+const PACK_NAME = '𝙑𝙖𝙣𝙞𝙖𝘽𝙤𝙩';
+const PACK_AUTHOR = '𝙑𝙖𝙣𝙞𝙖𝘽𝙤𝙩';
+
 export class StickerHelper {
   private static service = new StickerService();
 
+  static async createSticker(buffer: Buffer): Promise<Buffer> {
+    try {
+      const raw = await this.service.createSticker(buffer);
+      return await this.service.addExif(raw, PACK_NAME, PACK_AUTHOR);
+    } catch (error) {
+      logError('[StickerHelper] Error creating sticker:', error);
+      throw error;
+    }
+  }
+
   static async imageToSticker(imageBuffer: Buffer): Promise<Buffer> {
     try {
-      return await this.service.imageToSticker(imageBuffer);
+      const raw = await this.service.imageToSticker(imageBuffer);
+      return await this.service.addExif(raw, PACK_NAME, PACK_AUTHOR);
     } catch (error) {
       logError('[StickerHelper] Error converting to sticker:', error);
       throw error;

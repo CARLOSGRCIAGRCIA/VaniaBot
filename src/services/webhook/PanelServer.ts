@@ -27,7 +27,6 @@ import { healthCheckService } from '@/services/system/HealthCheckService.js';
 import { cacheManager } from '@/core/CacheManager.js';
 import type { WhatsAppClient } from '@/core/Client.js';
 import { logger } from '@/utils/logger.js';
-import { isRight } from '@/utils/either.js';
 
 /**
  * Configuration interface for the Panel server.

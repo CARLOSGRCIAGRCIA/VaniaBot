@@ -106,7 +106,7 @@ export class SubBotDatabase {
           }
         }
       }
-    } catch (error) {
+    } catch (_error) {
       logger.warn('[SubBotDatabase] Failed to load slots, using defaults');
       for (let i = 1; i <= MAX_SLOTS_LIMIT; i++) {
         this.slotCache.set(i, {
@@ -218,7 +218,7 @@ export class SubBotDatabase {
 
     try {
       const sets: string[] = ['status = ?'];
-      const params: any[] = [status];
+      const params: unknown[] = [status];
 
       if (status === 'connected') {
         sets.push('connected_at = ?');

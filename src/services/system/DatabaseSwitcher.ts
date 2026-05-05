@@ -10,8 +10,7 @@
  */
 
 import { createClient, type RedisClientType } from 'redis';
-import { existsSync, readFileSync, writeFileSync, mkdirSync } from 'fs';
-import { join } from 'path';
+import { existsSync } from 'fs';
 import { logger } from '@/utils/logger.js';
 
 export interface RedisConfig {
@@ -39,7 +38,6 @@ const DEFAULT_CONFIG: SwitcherConfig = {
 
 let redisClient: RedisClientType | null = null;
 let useRedis = false;
-let sqliteDb: any = null;
 
 export class DatabaseSwitcher {
   private static instance: DatabaseSwitcher;

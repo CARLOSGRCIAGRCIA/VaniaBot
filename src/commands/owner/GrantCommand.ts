@@ -25,7 +25,11 @@ export class GrantCommand extends Command {
     const args = ctx.args;
     const argsString = ctx.args.join(' ');
 
-    const { requiresPin, canExecute } = await checkPinVerification(ctx, 'grant', argsString);
+    const { requiresPin: _requiresPin, canExecute } = await checkPinVerification(
+      ctx,
+      'grant',
+      argsString,
+    );
     if (!canExecute) {
       return;
     }

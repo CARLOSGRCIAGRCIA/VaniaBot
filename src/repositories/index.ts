@@ -36,9 +36,11 @@ export async function initAllRepositories(): Promise<void> {
 }
 
 const databaseManager = {
-  query: (sql: string, opts?: any) => getDatabase().query(sql, opts),
-  fetchOne: (sql: string, opts?: any) => getDatabase().fetchOne(sql, opts),
-  fetchAll: (sql: string, opts?: any) => getDatabase().fetchAll(sql, opts),
+  query: (sql: string, opts?: { params?: unknown[] }) => getDatabase().query(sql, opts),
+  fetchOne: <T = unknown>(sql: string, opts?: { params?: unknown[] }) =>
+    getDatabase().fetchOne<T>(sql, opts),
+  fetchAll: <T = unknown>(sql: string, opts?: { params?: unknown[] }) =>
+    getDatabase().fetchAll<T>(sql, opts),
   forceSave: () => getDatabase().forceSave(),
 };
 

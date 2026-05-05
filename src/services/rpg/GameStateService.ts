@@ -109,9 +109,9 @@ class GameStateService {
   private startAutoSave(): void {
     if (this.saveTimer) return;
 
-    this.saveTimer = setInterval(async () => {
+    this.saveTimer = setInterval(() => {
       if (this.isDirty) {
-        await this.saveState();
+        void this.saveState();
       }
     }, SAVE_INTERVAL);
   }

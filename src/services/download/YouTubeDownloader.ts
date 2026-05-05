@@ -1,7 +1,7 @@
 import fs from 'fs';
 import { spawnSync } from 'child_process';
-import { Either, left, right } from '@/utils/either.js';
-import { DownloadService, type DownloadResult, type DownloadSuccess } from './DownloadService.js';
+import { left, right } from '@/utils/either.js';
+import { DownloadService, type DownloadResult } from './DownloadService.js';
 import { searchVideo, type YouTubeVideo } from './YouTubeSearchService.js';
 import { ValidationError, NetworkError } from '@/utils/errors.js';
 
@@ -259,7 +259,7 @@ export class YouTubeDownloader extends DownloadService {
 
     for (const method of methods) {
       try {
-        console.log(`${tag} Trying ${method.name}...`);
+        console.info(`${tag} Trying ${method.name}...`);
 
         const result = spawnSync(method.cmd, method.args, {
           timeout: 180000,
@@ -289,7 +289,7 @@ export class YouTubeDownloader extends DownloadService {
             );
           }
 
-          console.log(`${tag} ${method.name} succeeded: ${sizeMB.toFixed(1)}MB`);
+          console.info(`${tag} ${method.name} succeeded: ${sizeMB.toFixed(1)}MB`);
 
           return right({
             filePath: resolvedPath,
@@ -300,7 +300,7 @@ export class YouTubeDownloader extends DownloadService {
       } catch (error) {
         const err = error as Error;
         lastError = new NetworkError(err.message, { method: method.name });
-        console.log(`${tag} ${method.name} failed: ${err.message}`);
+        console.warn(`${tag} ${method.name} failed: ${err.message}`);
         continue;
       }
     }

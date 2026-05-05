@@ -157,41 +157,45 @@ export class AuthManager {
   private startPing(): void {
     if (this.pingInterval) return;
 
-    this.pingInterval = setInterval(async () => {
-      if (!this.currentSocket || !this.connectionEstablished) return;
+    this.pingInterval = setInterval(() => {
+      void (async () => {
+        if (!this.currentSocket || !this.connectionEstablished) return;
 
-      try {
-        const pingStart = Date.now();
-        await this.currentSocket.sendPresenceUpdate('available', 'status@broadcast');
-        this.lastPingTime = Date.now();
-        const latency = this.lastPingTime - pingStart;
+        try {
+          const pingStart = Date.now();
+          await this.currentSocket.sendPresenceUpdate('available', 'status@broadcast');
+          this.lastPingTime = Date.now();
+          const latency = this.lastPingTime - pingStart;
 
-        if (latency > 10000) {
-          logger.warn(`⚠️ Ping alto: ${latency}ms - posible conexión lenta`);
+          if (latency > 10000) {
+            logger.warn(`⚠️ Ping alto: ${latency}ms - posible conexión lenta`);
+          }
+        } catch {
+          logger.warn('⚠️ Error en ping, podría haber conexión lenta');
         }
-      } catch {
-        logger.warn('⚠️ Error en ping, podría haber conexión lenta');
-      }
+      })();
     }, PING_INTERVAL_MS);
   }
 
   private startHealthCheck(): void {
     if (this.healthCheckInterval) return;
 
-    this.healthCheckInterval = setInterval(async () => {
-      if (!this.currentSocket || !this.connectionEstablished || this.isReconnecting) return;
+    this.healthCheckInterval = setInterval(() => {
+      void (async () => {
+        if (!this.currentSocket || !this.connectionEstablished || this.isReconnecting) return;
 
-      const isReallyConnected = this.isSocketReallyConnected();
-      this.lastHealthCheckTime = Date.now();
+        const isReallyConnected = this.isSocketReallyConnected();
+        this.lastHealthCheckTime = Date.now();
 
-      if (!isReallyConnected) {
-        logger.warn('⚠️ Health check: socket detectado como muerto, forzando reconexión...');
-        this.connectionEstablished = false;
-        this.scheduleReconnectInternal();
-        return;
-      }
+        if (!isReallyConnected) {
+          logger.warn('⚠️ Health check: socket detectado como muerto, forzando reconexión...');
+          this.connectionEstablished = false;
+          this.scheduleReconnectInternal();
+          return;
+        }
 
-      logger.debug('✅ Health check OK');
+        logger.debug('✅ Health check OK');
+      })();
     }, HEALTH_CHECK_INTERVAL_MS);
   }
 
@@ -199,7 +203,7 @@ export class AuthManager {
     if (!this.currentSocket || !this.connectionEstablished) return false;
 
     try {
-      const socket = this.currentSocket as any;
+      const socket = this.currentSocket as unknown as { ws?: { readyState: number } };
       if (!socket.ws) return false;
       if (socket.ws.readyState === 0 || socket.ws.readyState === 3) return false;
       if (!this.currentSocket.user?.id) return false;
@@ -280,9 +284,9 @@ export class AuthManager {
       saveCreds().catch(() => {});
     });
 
-    sock.ev.on('connection.update', update =>
-      this.handleConnection(sock, update).catch(err => logError('handleConnection', err)),
-    );
+    sock.ev.on('connection.update', update => {
+      void this.handleConnection(sock, update).catch(err => logError('handleConnection', err));
+    });
 
     this.currentSocket = sock;
     return sock;
@@ -523,17 +527,19 @@ export class AuthManager {
     );
     this.reconnectDelay = Math.min(this.reconnectDelay * 1.5, MAX_RECONNECT_DELAY);
 
-    setTimeout(async () => {
-      try {
-        const newSocket = await this.recreateSocket();
-        if (!newSocket) {
-          logger.error('❌ Falló recrear socket, reintentando...');
+    setTimeout(() => {
+      void (async () => {
+        try {
+          const newSocket = await this.recreateSocket();
+          if (!newSocket) {
+            logger.error('❌ Falló recrear socket, reintentando...');
+            this.scheduleReconnectInternal(statusCode);
+          }
+        } catch (error) {
+          logError('scheduleReconnectInternal', error);
           this.scheduleReconnectInternal(statusCode);
         }
-      } catch (error) {
-        logError('scheduleReconnectInternal', error);
-        this.scheduleReconnectInternal(statusCode);
-      }
+      })();
     }, delay);
   }
 

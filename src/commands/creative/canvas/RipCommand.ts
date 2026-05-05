@@ -37,7 +37,7 @@ export class RipCommand extends Command {
         sticker: stickerBuffer,
       });
       await ctx.react('✅');
-    } catch (error) {
+    } catch (_error) {
       await ctx.react('❌');
       await ctx.reply('❌ No pude generar el sticker. Intenta de nuevo.');
     }
