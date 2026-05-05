@@ -76,13 +76,11 @@ export class PluginLoader {
       this.preloadCategories.add(category);
     }
 
-    // Lazy loading: solo precargar categorías críticas que se usan al inicio
     if (preload.length === 0) {
-      this.preloadCategories.add('admin'); // Comandos de administración
-      this.preloadCategories.add('owner'); // Comandos del dueño
-      this.preloadCategories.add('utility'); // Comandos utilitarios básicos
-      this.preloadCategories.add('creative'); // Comandos creativos (canvas)
-      // El resto se carga bajo demanda (lazy loading)
+      this.preloadCategories.add('admin');
+      this.preloadCategories.add('owner');
+      this.preloadCategories.add('utility');
+      this.preloadCategories.add('creative');
     }
 
     try {
@@ -136,6 +134,9 @@ export class PluginLoader {
             const loaded = await this.loadCommandFile(filePath);
             for (const cmd of loaded) {
               this.commandFiles.set(cmd.name, filePath);
+              cmd.aliases?.forEach(alias => {
+                this.commandFiles.set(alias, filePath);
+              });
             }
           } catch {
             const fileName = file.replace(/\.(ts|js)$/, '');
@@ -181,6 +182,9 @@ export class PluginLoader {
           const cmd = loaded[0];
           this.loadedCommands.set(cmd.name, cmd);
           this.lazyCache.set(cmd.name, cmd);
+          cmd.aliases?.forEach(alias => {
+            this.lazyCache.set(alias, cmd);
+          });
           this.commandFiles.delete(name);
           return cmd;
         }

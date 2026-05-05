@@ -46,7 +46,8 @@ const CONFLICT_RECONNECT_DELAY = 20_000;
 // Health-check: intervalo entre revisiones y tiempo de confirmación antes
 // de reconectar (evita falsos positivos por prekey bundle / GC pause / RAM)
 const HEALTH_CHECK_INTERVAL = 10 * 60_000; // revisar cada 10 min
-const HEALTH_CHECK_CONFIRM_WAIT = 20_000; // esperar 20s antes de reconectar
+const HEALTH_CHECK_CONFIRM_WAIT = 60_000; // esperar 60s antes de reconectar
+const RECENT_DISCONNECT_COOLDOWN = 90_000; // no interferir con reconexión de Baileys
 const PING_INTERVAL = 30_000;
 
 const MAX_TRUE_LOGOUTS = 2;
@@ -80,6 +81,7 @@ export class SubBotInstance extends EventEmitter {
   private healthCheckTimer?: NodeJS.Timeout;
   private isReconnecting = false;
   private trueLogoutCount = 0;
+  private lastDisconnectTime = 0;
 
   /**
    * true = el owner ya recibió "SubBot activada".
@@ -160,6 +162,16 @@ export class SubBotInstance extends EventEmitter {
     try {
       // Verificar múltiples condiciones para evitar falsos positivos
       if (!this.sock.user?.id) return false;
+
+      // Si Baileys reportó una desconexión reciente, está manejándola internamente.
+      // No interferir durante el cooldown (prekey renegotiation, reconnects, etc.)
+      const timeSinceDisconnect = Date.now() - this.lastDisconnectTime;
+      if (this.lastDisconnectTime > 0 && timeSinceDisconnect < RECENT_DISCONNECT_COOLDOWN) {
+        logger.debug(
+          `SubBot[${this.config.id}] recent disconnect (${Math.round(timeSinceDisconnect / 1000)}s ago), Baileys handling`,
+        );
+        return true;
+      }
 
       const ws = (this.sock as unknown as { ws?: { readyState?: number } }).ws;
       const readyState = ws?.readyState;
@@ -358,6 +370,11 @@ export class SubBotInstance extends EventEmitter {
       );
     }
 
+    // Track disconnect time for health check cooldown
+    if (connection === 'close') {
+      this.lastDisconnectTime = Date.now();
+    }
+
     // ── 440 Conflict ──────────────────────────────────────────────────────────
     // WA detectó dos conexiones del mismo número.
     // FIX: cerrar socket AHORA y esperar antes de reconectar.
@@ -460,6 +477,7 @@ export class SubBotInstance extends EventEmitter {
     this.trueLogoutCount = 0;
     this.connectionEstablished = true;
     this.pairingCodeRequested = false;
+    this.lastDisconnectTime = 0;
 
     this.startPing();
     this.startHealthCheck();
