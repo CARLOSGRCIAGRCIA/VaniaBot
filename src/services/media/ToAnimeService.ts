@@ -73,11 +73,7 @@ export class ToAnimeService {
     return {
       success: false,
       error:
-        'DeepAI API no disponible. Configura DEEPAI_API_KEY en .env para usar esta función.\n\n' +
-        '1. Regístrate en https://deepai.org\n' +
-        '2. Ve a https://deepai.org/dashboard\n' +
-        '3. Copia tu API key\n' +
-        '4. Agrégala en .env como DEEPAI_API_KEY=tu_key',
+        'API KEY no establecida, esta función se encuentra temporalmente inhabilitada hasta que se agregue una api key funcional',
     };
   }
 }

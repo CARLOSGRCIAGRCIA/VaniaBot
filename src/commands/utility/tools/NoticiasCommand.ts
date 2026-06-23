@@ -42,7 +42,7 @@ export class NoticiasCommand extends Command {
 
     if (articles.length === 0 || !articles[0].url) {
       await ctx.reply(
-        `❌ No encontré noticias. La API puede no estar configurada.\n\nAgrega *NEWSDATA_API_KEY* a tu archivo .env`,
+        `❌ API KEY no establecida, esta función se encuentra temporalmente inhabilitada hasta que se agregue una api key funcional`,
       );
       return;
     }
