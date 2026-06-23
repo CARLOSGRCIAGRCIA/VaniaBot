@@ -46,8 +46,6 @@ const CATEGORIES_LIST = [
   '🐍 python',
 ].join('\n');
 
-// ─── Local types ──────────────────────────────────────────────────────────────
-
 interface UserWithQuizStats {
   quizStats?: UserQuizStats;
 }
@@ -62,8 +60,6 @@ const DEFAULT_STATS: UserQuizStats = {
   lastPlayed: 0,
   sessionsPlayed: 0,
 };
-
-// ──────────────────────────────────────────────────────────────────────────────
 
 export class QuizCommand extends Command {
   name = 'quiz';

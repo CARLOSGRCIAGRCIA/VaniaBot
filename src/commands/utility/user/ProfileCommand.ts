@@ -155,7 +155,6 @@ export class ProfileCommand extends Command {
     progress: LevelProgress,
   ): Promise<void> {
     try {
-      // 1. Try to get the WhatsApp avatar URL within 2 s
       const avatarUrl = await Promise.race([
         this.getProfilePictureUrl(ctx, targetJid),
         new Promise<null>(resolve => setTimeout(() => resolve(null), 2000)),
@@ -169,11 +168,9 @@ export class ProfileCommand extends Command {
         resolvedAvatarUrl = fallback ? `data:image/png;base64,${fallback.toString('base64')}` : '';
       }
 
-      // 3. Generate the card
       const cardBuffer = await ProfileCardService.generate({
         avatarUrl: resolvedAvatarUrl,
         username: displayData.name,
-        // Use last 4 digits of the JID number as a Discord-style discriminator
         discriminator: targetJid.split('@')[0].slice(-4),
         money: displayData.money,
         xp: progress.currentXP,

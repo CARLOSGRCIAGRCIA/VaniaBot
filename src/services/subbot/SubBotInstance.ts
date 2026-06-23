@@ -35,24 +35,19 @@ import { cacheManager } from '@/core/CacheManager.js';
 
 const SILENT_LOGGER = pino({ level: 'silent' });
 
-// ─── Timing constants ────────────────────────────────────────────────────────
 const FIRST_RECONNECT_DELAY = 15_000;
 const MAX_RECONNECT_DELAY = 120_000;
 const MAX_RECONNECT_ATTEMPTS = 50;
 
-// 440 conflict: tiempo que WA necesita para cerrar la sesión conflictiva
 const CONFLICT_RECONNECT_DELAY = 20_000;
 
-// Health-check: intervalo entre revisiones y tiempo de confirmación antes
-// de reconectar (evita falsos positivos por prekey bundle / GC pause / RAM)
-const HEALTH_CHECK_INTERVAL = 10 * 60_000; // revisar cada 10 min
-const HEALTH_CHECK_CONFIRM_WAIT = 60_000; // esperar 60s antes de reconectar
-const RECENT_DISCONNECT_COOLDOWN = 90_000; // no interferir con reconexión de Baileys
+const HEALTH_CHECK_INTERVAL = 10 * 60_000;
+const HEALTH_CHECK_CONFIRM_WAIT = 60_000;
+const RECENT_DISCONNECT_COOLDOWN = 90_000;
 const PING_INTERVAL = 30_000;
 
 const MAX_TRUE_LOGOUTS = 2;
 
-// Códigos de error de red puros — nunca indican sesión inválida
 const NETWORK_CODES = new Set<number>([
   DisconnectReason.timedOut,
   DisconnectReason.connectionLost,
@@ -64,7 +59,6 @@ const NETWORK_CODES = new Set<number>([
   503,
 ]);
 
-// 440 = "Stream Errored (conflict)" — WA detecta dos conexiones del mismo número
 const CONFLICT_CODE = 440;
 
 export class SubBotInstance extends EventEmitter {
@@ -94,8 +88,6 @@ export class SubBotInstance extends EventEmitter {
     this.config = config;
   }
 
-  // ─── Keep-alive ──────────────────────────────────────────────────────────────
-
   private startPing(): void {
     if (this.pingInterval) return;
     this.pingInterval = setInterval(() => {
@@ -123,17 +115,12 @@ export class SubBotInstance extends EventEmitter {
     if (this.healthCheckTimer) return;
     this.healthCheckTimer = setInterval(() => {
       if (!this.sock || this.destroyed || this.isReconnecting) return;
-
-      // Primera lectura: socket parece caído
       if (!this.isSocketReallyConnected() && this.connectionEstablished) {
         logger.warn(
           `⚠️ SubBot[${this.config.id}] health-check: socket inestable, ` +
             `verificando en ${HEALTH_CHECK_CONFIRM_WAIT / 1000}s...`,
         );
 
-        // Segunda lectura tras HEALTH_CHECK_CONFIRM_WAIT:
-        // Si Baileys estaba en renegociación (prekey bundle, GC pause, RAM alta)
-        // ya se habrá recuperado solo y NO reconectamos innecesariamente.
         setTimeout(() => {
           if (this.destroyed || this.isReconnecting) return;
           if (!this.isSocketReallyConnected() && this.connectionEstablished) {
@@ -160,11 +147,8 @@ export class SubBotInstance extends EventEmitter {
   private isSocketReallyConnected(): boolean {
     if (!this.sock || this.destroyed) return false;
     try {
-      // Verificar múltiples condiciones para evitar falsos positivos
       if (!this.sock.user?.id) return false;
 
-      // Si Baileys reportó una desconexión reciente, está manejándola internamente.
-      // No interferir durante el cooldown (prekey renegotiation, reconnects, etc.)
       const timeSinceDisconnect = Date.now() - this.lastDisconnectTime;
       if (this.lastDisconnectTime > 0 && timeSinceDisconnect < RECENT_DISCONNECT_COOLDOWN) {
         logger.debug(
@@ -176,24 +160,18 @@ export class SubBotInstance extends EventEmitter {
       const ws = (this.sock as unknown as { ws?: { readyState?: number } }).ws;
       const readyState = ws?.readyState;
 
-      // readyState: 0=CONNECTING, 1=OPEN, 2=CLOSING, 3=CLOSED
-      // Solo confirmamos desconexión si está en CLOSED (3) o sin user.id
       if (readyState === 3) return false;
 
-      // Si está CONNECTING o CLOSING, esperamos - no reconectamos todavía
       if (readyState === 0 || readyState === 2) {
         logger.debug(`SubBot[${this.config.id}] socket en estado transitorio: ${readyState}`);
-        return true; // Consideramos conectado mientras transiciona
+        return true;
       }
 
-      // readyState === 1 (OPEN) y tenemos user.id = conectado
       return readyState === 1;
     } catch {
       return false;
     }
   }
-
-  // ─── Cerrar socket actual limpiamente ────────────────────────────────────────
 
   private async closeCurrentSocket(): Promise<void> {
     if (!this.sock) return;
@@ -214,8 +192,6 @@ export class SubBotInstance extends EventEmitter {
       /* ignore */
     }
   }
-
-  // ─── Reconexión con back-off ─────────────────────────────────────────────────
 
   private scheduleReconnect(fixedDelay?: number): void {
     if (this.destroyed || this.isReconnecting) return;
@@ -257,8 +233,6 @@ export class SubBotInstance extends EventEmitter {
       })();
     }, delay);
   }
-
-  // ─── Start ───────────────────────────────────────────────────────────────────
 
   async start(): Promise<void> {
     if (this.destroyed) return;
@@ -335,7 +309,6 @@ export class SubBotInstance extends EventEmitter {
       subBotDatabase.update(this.config.id, { status: 'connecting' });
       this.emit('status', 'connecting');
 
-      // Solo pedir código si NO hay sesión existente
       if (!hasExistingCreds) {
         logger.info(`🔑 SubBot[${this.config.id}] nueva sesión, solicitando código en 8s...`);
         this.pairingCodeTimer = setTimeout(() => {
@@ -354,8 +327,6 @@ export class SubBotInstance extends EventEmitter {
     }
   }
 
-  // ─── Manejador de conexión ───────────────────────────────────────────────────
-
   private async handleConnection(update: Partial<ConnectionState>): Promise<void> {
     const { connection, lastDisconnect } = update;
 
@@ -370,16 +341,10 @@ export class SubBotInstance extends EventEmitter {
       );
     }
 
-    // Track disconnect time for health check cooldown
     if (connection === 'close') {
       this.lastDisconnectTime = Date.now();
     }
 
-    // ── 440 Conflict ──────────────────────────────────────────────────────────
-    // WA detectó dos conexiones del mismo número.
-    // FIX: cerrar socket AHORA y esperar antes de reconectar.
-    // Esto corta el loop: sin closeCurrentSocket() el socket viejo seguía
-    // vivo y cada reconexión nueva generaba otro 440.
     if (statusCode === CONFLICT_CODE) {
       if (this.destroyed || this.isReconnecting) return;
       logger.warn(
@@ -394,7 +359,6 @@ export class SubBotInstance extends EventEmitter {
       return;
     }
 
-    // ── 401 loggedOut ─────────────────────────────────────────────────────────
     if (statusCode === DisconnectReason.loggedOut) {
       this.trueLogoutCount++;
       logger.warn(
@@ -408,7 +372,6 @@ export class SubBotInstance extends EventEmitter {
         return;
       }
 
-      // Primer logout: puede ser transitorio
       setTimeout(() => {
         if (!this.destroyed) {
           this.connectionEstablished = false;
@@ -418,21 +381,17 @@ export class SubBotInstance extends EventEmitter {
       return;
     }
 
-    // ── badSession (500) ──────────────────────────────────────────────────────
     if (statusCode === DisconnectReason.badSession) {
       logger.warn(`⚠️ SubBot[${this.config.id}] badSession — reconectando sin limpiar sesión`);
       if (connection === 'close') this.scheduleReconnect();
       return;
     }
 
-    // ── Errores de red puros ──────────────────────────────────────────────────
     if (statusCode !== undefined && NETWORK_CODES.has(statusCode)) {
       logger.info(`🌐 SubBot[${this.config.id}] error de red (${statusCode})`);
       if (connection === 'close') this.scheduleReconnect();
       return;
     }
-
-    // ── Estado de conexión ────────────────────────────────────────────────────
 
     if (connection === 'connecting') return;
 
@@ -470,8 +429,6 @@ export class SubBotInstance extends EventEmitter {
     }
   }
 
-  // ─── onFullyConnected ────────────────────────────────────────────────────────
-
   private async onFullyConnected(): Promise<void> {
     this.reconnectAttempts = 0;
     this.trueLogoutCount = 0;
@@ -492,16 +449,11 @@ export class SubBotInstance extends EventEmitter {
     runtimeStateRepository.setStartupTimestamp(this.config.id);
     this.emit('status', 'connected');
 
-    // 'ready' solo una vez por sesión vinculada.
-    // Reconexiones automáticas (440, red caída, etc.) NO disparan este evento
-    // y por tanto NO mandan mensajes al owner.
     if (!this.hasNotifiedReady) {
       this.hasNotifiedReady = true;
       this.emit('ready');
     }
   }
-
-  // ─── Pairing code (solo sesiones nuevas) ─────────────────────────────────────
 
   private async requestPairingCode(): Promise<void> {
     if (!this.sock || this.destroyed) return;
@@ -541,8 +493,6 @@ export class SubBotInstance extends EventEmitter {
     }
   }
 
-  // ─── Stop ────────────────────────────────────────────────────────────────────
-
   async stop(): Promise<void> {
     logger.info(`🛑 SubBot[${this.config.id}] stopping...`);
     this.destroyed = true;
@@ -560,7 +510,7 @@ export class SubBotInstance extends EventEmitter {
 
   clearSession(): void {
     logger.info(`🧹 SubBot[${this.config.id}] clearing session...`);
-    this.hasNotifiedReady = false; // al re-vincular debe notificar de nuevo
+    this.hasNotifiedReady = false;
     try {
       if (!existsSync(this.config.sessionPath)) return;
       const files = readdirSync(this.config.sessionPath);

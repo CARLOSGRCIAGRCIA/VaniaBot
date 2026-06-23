@@ -23,7 +23,6 @@ export class LevelService {
   async addXP(jid: string, amount: number): Promise<LevelUpResult> {
     const user = await this.userService.getUser(jid);
     const oldLevel = user.level;
-    // prefix with _ to satisfy no-unused-vars while keeping the declaration for clarity
     const _oldXP = user.xp;
 
     const updatedUser = await this.userService.addXP(jid, amount);

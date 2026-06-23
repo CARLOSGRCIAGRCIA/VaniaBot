@@ -44,8 +44,6 @@ const ERROR_515_WAIT_TIME = 3_000;
 
 let _cachedVersion: [number, number, number] | null = null;
 
-// ─── Interfaces ───────────────────────────────────────────────────────────────
-
 interface ErrorWithStatus {
   output?: {
     statusCode?: number;
@@ -56,8 +54,6 @@ interface ErrorWithStatus {
 interface PatchedStdout extends NodeJS.WriteStream {
   __baileysPatch?: boolean;
 }
-
-// ──────────────────────────────────────────────────────────────────────────────
 
 async function getWAVersion(): Promise<[number, number, number]> {
   if (_cachedVersion) return _cachedVersion;

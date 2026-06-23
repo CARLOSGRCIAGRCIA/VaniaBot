@@ -31,7 +31,6 @@ export class MobService {
 
   private registerMobs(): void {
     const allMobs: Mob[] = [
-      // Zona: Bosque
       {
         id: 'slime',
         name: 'Slime',
@@ -104,7 +103,6 @@ export class MobService {
         ],
         zone: 'bosque',
       },
-      // Zona: Cuevas
       {
         id: 'bat',
         name: 'Murciélago',
@@ -156,7 +154,6 @@ export class MobService {
         ],
         zone: 'cuevas',
       },
-      // Zona: Montañas
       {
         id: 'orc',
         name: 'Orco',
@@ -193,7 +190,6 @@ export class MobService {
         ],
         zone: 'montañas',
       },
-      // Zona: Volcan
       {
         id: 'fire_elemental',
         name: 'Elemental de Fuego',
@@ -230,7 +226,6 @@ export class MobService {
         ],
         zone: 'volcán',
       },
-      // Zona: Castillo
       {
         id: 'zombie',
         name: 'Zombi',
@@ -285,7 +280,6 @@ export class MobService {
         ],
         zone: 'castillo',
       },
-      // Bosses
       {
         id: 'dragon',
         name: 'Dragón',

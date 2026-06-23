@@ -34,7 +34,6 @@ export class CraftService {
 
   private registerRecipes(): void {
     const recipes: CraftRecipe[] = [
-      // Herramientas básicas
       {
         resultId: 'wooden_sword',
         quantity: 1,
@@ -52,7 +51,6 @@ export class CraftService {
         requiredLevel: 1,
         description: 'Craftea un arco de madera',
       },
-      // Herramientas intermedias
       {
         resultId: 'iron_sword',
         quantity: 1,
@@ -75,7 +73,6 @@ export class CraftService {
         requiredLevel: 10,
         description: 'Craftea una espada de acero',
       },
-      // Armadura
       {
         resultId: 'leather_armor',
         quantity: 1,
@@ -94,7 +91,6 @@ export class CraftService {
         requiredLevel: 8,
         description: 'Craftea armadura de hierro',
       },
-      // Consumibles
       {
         resultId: 'health_potion_small',
         quantity: 1,
@@ -126,7 +122,6 @@ export class CraftService {
         requiredLevel: 15,
         description: 'Craftea poción grande de vida',
       },
-      // Items valiosos
       {
         resultId: 'silver_sword',
         quantity: 1,
@@ -162,7 +157,6 @@ export class CraftService {
         requiredLevel: 50,
         description: 'Craftea espada de diamante',
       },
-      // Materiales especiales
       {
         resultId: 'magic_dust',
         quantity: 3,

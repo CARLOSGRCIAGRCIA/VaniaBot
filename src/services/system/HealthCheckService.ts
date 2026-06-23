@@ -68,19 +68,8 @@ export interface SystemMetrics {
 
 const START_TIME = Date.now();
 
-// ─── Umbrales de memoria ────────────────────────────────────────────────────
-//
-// IMPORTANTE: Node/V8 mantiene su heap casi lleno por diseño — heapUsed/heapTotal
-// siempre ronda 85-95% aunque la RAM del dispositivo esté libre. Ese número
-// NO indica presión real de memoria.
-//
-// La métrica correcta es: rss (RAM real del proceso) / os.totalmem()
-// Umbrales recomendados para Termux con 3-4 GB de RAM:
-//   warn:     rss > 40% de la RAM del sistema
-//   critical: rss > 60% de la RAM del sistema
-//
-const MEM_WARN_PCT = 40; // % de RAM del sistema
-const MEM_CRITICAL_PCT = 60; // % de RAM del sistema
+const MEM_WARN_PCT = 40;
+const MEM_CRITICAL_PCT = 60;
 
 export class HealthCheckService {
   private static instance: HealthCheckService;
@@ -162,7 +151,6 @@ export class HealthCheckService {
       });
     }
 
-    // Alerta basada en RAM real del sistema, no en heap de V8
     if (metrics.memory.systemPercentage > MEM_CRITICAL_PCT) {
       alerts.push({
         severity: 'critical',
@@ -333,7 +321,6 @@ export class HealthCheckService {
     const systemTot = totalmem();
     const sysPct = (rss / systemTot) * 100;
 
-    // Mantener también las métricas de heap para información, sin usarlas como umbral
     const heapUsedMB = (memUsage.heapUsed / 1024 / 1024).toFixed(1);
     const heapTotalMB = (memUsage.heapTotal / 1024 / 1024).toFixed(1);
     const rssMB = (rss / 1024 / 1024).toFixed(1);
@@ -414,10 +401,10 @@ export class HealthCheckService {
       memory: {
         used: memUsage.heapUsed,
         total: memUsage.heapTotal,
-        percentage: (memUsage.heapUsed / memUsage.heapTotal) * 100, // solo informativo
+        percentage: (memUsage.heapUsed / memUsage.heapTotal) * 100,
         rss,
         systemTotal: systemTot,
-        systemPercentage: (rss / systemTot) * 100, // el umbral real
+        systemPercentage: (rss / systemTot) * 100,
       },
       cpu: {
         usage: process.cpuUsage().user / 1_000_000,
@@ -464,8 +451,6 @@ export class HealthCheckService {
 
 export const healthCheckService = HealthCheckService.getInstance();
 
-// ─── AutoRestartService ──────────────────────────────────────────────────────
-
 export interface AutoRestartConfig {
   enabled: boolean;
   checkIntervalMs: number;
@@ -482,8 +467,6 @@ const DEFAULT_RESTART_CONFIG: AutoRestartConfig = {
   checkIntervalMs: 60_000,
   restartThreshold: {
     consecutiveFailures: 5,
-    // 70% de la RAM del sistema es un umbral real y significativo
-    // (antes era 95% del heap de V8, que siempre se disparaba)
     memoryPercentage: 70,
     errorRate: 20,
   },

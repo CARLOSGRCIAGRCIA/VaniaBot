@@ -84,7 +84,6 @@ export class ImageService {
 
     let results: ImageResult[] = [];
 
-    // 1. Intentar con Pixabay (más confiable)
     if (env.PIXABAY_API_KEY) {
       try {
         logger.info(`[ImageService] 🔍 Buscando en Pixabay: "${query}" (${perPage} resultados)`);
@@ -99,7 +98,6 @@ export class ImageService {
       }
     }
 
-    // 2. Intentar con Pexels si Pixabay no devolvió resultados
     if (!results.length && env.PEXELS_API_KEY) {
       try {
         logger.info(`[ImageService] 🔍 Buscando en Pexels: "${query}" (${perPage} resultados)`);
@@ -114,7 +112,6 @@ export class ImageService {
       }
     }
 
-    // 3. Intentar con Unsplash Source si los anteriores fallaron
     if (!results.length) {
       try {
         logger.info('[ImageService] 🔍 Buscando en Unsplash Source:', query);
@@ -129,7 +126,6 @@ export class ImageService {
       }
     }
 
-    // 4. Usar Lorem Picsum como último recurso
     if (!results.length) {
       logger.warn(`[ImageService] 📷 Usando Lorem Picsum fallback para: ${query}`);
       results = this.getPicsumFallback(query, perPage);

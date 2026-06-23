@@ -1815,7 +1815,6 @@
         refreshInterval = setInterval(loadAllData, 30000);
       });
 
-      // Counter animation function
       function animateCounter(elementId, targetValue, prefix = '', suffix = '') {
         const el = document.getElementById(elementId);
         if (!el) return;
@@ -1827,7 +1826,6 @@
           const elapsed = currentTime - startTime;
           const progress = Math.min(elapsed / duration, 1);
 
-          // Ease out cubic
           const eased = 1 - Math.pow(1 - progress, 3);
           const current = Math.floor(eased * targetValue);
 
@@ -1845,7 +1843,6 @@
         counterAnimations[elementId] = requestAnimationFrame(update);
       }
 
-      // Toast notification system
       function showToast(message, type = 'info') {
         let container = document.querySelector('.toast-container');
         if (!container) {
@@ -1870,7 +1867,6 @@
         }, 3000);
       }
 
-      // Add live indicator to header
       function addLiveIndicator() {
         const headerStatus = document.querySelector('.header-status');
         if (!headerStatus) return;
