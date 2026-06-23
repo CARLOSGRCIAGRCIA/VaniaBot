@@ -19,7 +19,15 @@
  */
 
 import { randomBytes } from 'crypto';
-import { rmSync, existsSync, mkdirSync, readFileSync, writeFileSync, renameSync } from 'fs';
+import {
+  rmSync,
+  existsSync,
+  mkdirSync,
+  readdirSync,
+  readFileSync,
+  writeFileSync,
+  renameSync,
+} from 'fs';
 import { EventEmitter } from 'events';
 import type { WAMessage, proto, WASocket } from '@whiskeysockets/baileys';
 import type {
@@ -100,14 +108,22 @@ export class SubBotManager extends EventEmitter {
   async initialize(): Promise<void> {
     logger.info('🌸 Iniciando SubBotManager (VaniaBot)...');
 
+    this.recoverOrphanedSessions();
+
     const activeSlots = subBotDatabase.getActiveSlots();
     logger.info(`📦 ${activeSlots.length} slots activos encontrados`);
 
     for (const slot of activeSlots) {
       if (slot.id) {
-        const subConfig = subBotDatabase.get(slot.id);
-        if (subConfig) {
-          await this.launchInstance(subConfig);
+        if (slot.status === 'connected' || slot.status === 'linking') {
+          const subConfig = subBotDatabase.get(slot.id);
+          if (subConfig) {
+            await this.launchInstance(subConfig);
+          }
+        } else if (slot.status === 'disconnected') {
+          logger.info(
+            `⏭️ SubBot[${slot.id}] slot ${slot.slot} disconnected — omitiendo auto-reconexión`,
+          );
         }
       }
     }
@@ -116,6 +132,49 @@ export class SubBotManager extends EventEmitter {
     this.startSettingsSync();
 
     logger.info('✅ SubBotManager inicializada correctamente');
+  }
+
+  private recoverOrphanedSessions(): void {
+    const sessionDir = SUBBOT_CONFIG.SESSION_BASE_PATH;
+    if (!existsSync(sessionDir)) return;
+
+    let recovered = 0;
+    try {
+      const entries = readdirSync(sessionDir);
+      const sessionIds = entries.filter(e => {
+        const dirPath = `${sessionDir}/${e}`;
+        if (!existsSync(dirPath)) return false;
+        const files = readdirSync(dirPath);
+        return files.some(f => f.endsWith('.json'));
+      });
+
+      const allSlots = subBotDatabase.getAllSlots();
+
+      for (const sessionId of sessionIds) {
+        const matchingSlot = allSlots.find(s => s.id === sessionId);
+
+        if (!matchingSlot) continue;
+
+        if (matchingSlot.status === 'free') {
+          logger.info(
+            `🔧 Session ${sessionId} found in free slot ${matchingSlot.slot}, recovering`,
+          );
+          subBotDatabase.updateSlotStatus(matchingSlot.slot, 'disconnected');
+          recovered++;
+        } else if (matchingSlot.status === 'disconnected') {
+          logger.info(
+            `⏭️ Session ${sessionId} slot ${matchingSlot.slot} disconnected — esperando acción manual`,
+          );
+        }
+      }
+    } catch (error) {
+      logError('Session recovery failed', error);
+      return;
+    }
+
+    if (recovered > 0) {
+      logger.info(`✅ Recovered ${recovered} orphaned session(s)`);
+    }
   }
 
   private startHealthCheck(): void {
@@ -129,6 +188,8 @@ export class SubBotManager extends EventEmitter {
 
         for (const slot of activeSlots) {
           if (!slot.id) continue;
+
+          if (slot.status === 'disconnected') continue;
 
           const instance = this.instances.get(slot.id);
           const runtimeState = this.runtimeStates.get(slot.id);
@@ -673,9 +734,19 @@ export class SubBotManager extends EventEmitter {
     instance.on('sessionInvalid', () => {
       void (async () => {
         if (!this.mainSock) return;
-        logger.warn(`⚠️ SubBot[${subConfig.id}] sesión inválida, notificando owner`);
+        logger.warn(`⚠️ SubBot[${subConfig.id}] sesión inválida, limpiando y notificando owner`);
 
         subBotDatabase.updateSlotStatus(subConfig.slot, 'disconnected');
+
+        const sessionPath = `${SUBBOT_CONFIG.SESSION_BASE_PATH}/${subConfig.id}`;
+        if (existsSync(sessionPath)) {
+          try {
+            rmSync(sessionPath, { recursive: true, force: true });
+            logger.info(`🗑️ SubBot[${subConfig.id}] sesión corrupta eliminada de ${sessionPath}`);
+          } catch (err) {
+            logger.warn(`SubBot[${subConfig.id}] no se pudo limpiar sesión: ${err}`);
+          }
+        }
 
         try {
           await this.mainSock.sendMessage(subConfig.ownerJid, {

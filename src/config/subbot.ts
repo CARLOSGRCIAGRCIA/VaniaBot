@@ -1,3 +1,9 @@
+const SESSION_BASE_PATH = process.env.SUBBOT_SESSIONS_PATH
+  ? process.env.SUBBOT_SESSIONS_PATH
+  : process.env.DOCKER_MODE === 'true'
+    ? '/app/subbot-sessions'
+    : './data/subbot-sessions';
+
 export const SUBBOT_CONFIG = {
   MAX_SLOTS: 50,
   DEFAULT_SLOTS: 15,
@@ -5,7 +11,7 @@ export const SUBBOT_CONFIG = {
   PUBLIC_REQUESTS: true,
   SLOT_STAGGER_MS: 700,
   SLOT_STAGGER_MAX_MS: 8000,
-  SESSION_BASE_PATH: './data/subbot-sessions',
+  SESSION_BASE_PATH,
   RUNTIME_STATE_DIR: './data/runtime/bot-states',
   BOT_RUNTIME_STATE_TTL_MS: 120000,
   RUNTIME_STATE_WRITE_DEBOUNCE_MS: 5000,

@@ -192,7 +192,7 @@ interface GroqError {
  */
 export class AIService {
   /** Groq SDK client instance. */
-  private client: Groq;
+  private client: Groq | null;
 
   /**
    * In-memory session store.
@@ -216,17 +216,16 @@ export class AIService {
    * Creates and initializes the AIService.
    * Loads existing sessions from database if available.
    *
-   * @throws {Error} If `GROQ_API_KEY` is not set in the environment.
    */
   constructor() {
     if (!env.GROQ_API_KEY) {
-      throw new Error(
-        'GROQ_API_KEY no está configurada en el .env\n' +
-          'Obtén tu key gratis en: https://console.groq.com/keys',
+      logger.warn(
+        'API KEY no establecida, esta función se encuentra temporalmente inhabilitada hasta que se agregue una api key funcional',
       );
+      this.client = null;
+    } else {
+      this.client = new Groq({ apiKey: env.GROQ_API_KEY });
     }
-
-    this.client = new Groq({ apiKey: env.GROQ_API_KEY });
 
     if (!fs.existsSync(TEMP_DIR)) {
       fs.mkdirSync(TEMP_DIR, { recursive: true });
@@ -588,6 +587,10 @@ export class AIService {
     userMessage: string,
     fast = false,
   ): Promise<AIResponse> {
+    if (!this.client) {
+      return left(new ServiceUnavailableError('API KEY no establecida, esta función se encuentra temporalmente inhabilitada hasta que se agregue una api key funcional'));
+    }
+    const client = this.client;
     if (!userMessage.trim()) {
       return left(new ValidationError('El mensaje no puede estar vacío'));
     }
@@ -627,7 +630,7 @@ export class AIService {
         return await retryManager.retryOperation(
           'ai-chat',
           async () => {
-            const completion = await this.client.chat.completions.create({
+            const completion = await client.chat.completions.create({
               model: fast ? GROQ_MODELS.fast : GROQ_MODELS.chat,
               messages,
               max_tokens: 1024,
@@ -689,6 +692,10 @@ export class AIService {
    * ```
    */
   async generate(prompt: string, maxTokens = 512): Promise<AIResponse> {
+    if (!this.client) {
+      return left(new ServiceUnavailableError('API KEY no establecida, esta función se encuentra temporalmente inhabilitada hasta que se agregue una api key funcional'));
+    }
+    const client = this.client;
     const cacheKey = this.generateCacheKey(prompt, 'generate', false);
     const cached = await this.getCachedResponse(cacheKey);
 
@@ -708,7 +715,7 @@ export class AIService {
         return await retryManager.retryOperation(
           'ai-generate',
           async () => {
-            const completion = await this.client.chat.completions.create({
+            const completion = await client.chat.completions.create({
               model: GROQ_MODELS.chat,
               messages: [
                 { role: 'system', content: getSystemPrompt('> VaniaBot💝', UserTier.USER) },
@@ -752,6 +759,10 @@ export class AIService {
     customSystemPrompt: string,
     _storeName?: string,
   ): Promise<string> {
+    if (!this.client) {
+      return 'API KEY no establecida, esta función se encuentra temporalmente inhabilitada hasta que se agregue una api key funcional';
+    }
+    const client = this.client;
     try {
       const circuitBreaker = circuitBreakerManager.getOrCreate('ai-store', {
         failureThreshold: 3,
@@ -764,7 +775,7 @@ export class AIService {
         return await retryManager.retryOperation(
           'ai-store-chat',
           async () => {
-            const completion = await this.client.chat.completions.create({
+            const completion = await client.chat.completions.create({
               model: GROQ_MODELS.chat,
               messages: [
                 { role: 'system', content: customSystemPrompt },
@@ -824,12 +835,16 @@ export class AIService {
     extension: string = 'ogg',
     language?: string,
   ): Promise<AIResponse> {
+    if (!this.client) {
+      return left(new ServiceUnavailableError('API KEY no establecida, esta función se encuentra temporalmente inhabilitada hasta que se agregue una api key funcional'));
+    }
+    const client = this.client;
     const tmpPath = path.join(TEMP_DIR, `voice_${Date.now()}.${extension}`);
 
     try {
       fs.writeFileSync(tmpPath, audioBuffer);
 
-      const transcription = await this.client.audio.transcriptions.create({
+      const transcription = await client.audio.transcriptions.create({
         file: fs.createReadStream(tmpPath),
         model: GROQ_MODELS.transcribe,
         ...(language ? { language } : {}),

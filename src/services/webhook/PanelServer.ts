@@ -27,6 +27,7 @@ import { healthCheckService } from '@/services/system/HealthCheckService.js';
 import { cacheManager } from '@/core/CacheManager.js';
 import type { WhatsAppClient } from '@/core/Client.js';
 import { logger } from '@/utils/logger.js';
+import { env } from '@/config/env.js';
 
 /**
  * Configuration interface for the Panel server.
@@ -55,7 +56,7 @@ export interface PanelConfig {
 const DEFAULT_CONFIG: PanelConfig = {
   port: process.env.PANEL_PORT ? parseInt(process.env.PANEL_PORT) : 3000,
   host: process.env.PANEL_HOST || '0.0.0.0',
-  webhookToken: process.env.PANEL_WEBHOOK_TOKEN || '',
+  webhookToken: env.PANEL_WEBHOOK_TOKEN || '',
   allowedOrigins: process.env.PANEL_ALLOWED_ORIGINS?.split(',') || ['*'],
   panelPath: process.env.PANEL_PATH || './panel',
   callbackSecret: process.env.PANEL_CALLBACK_SECRET,

@@ -1,7 +1,6 @@
 import axios, { type AxiosResponse } from 'axios';
 import { logger } from '@/utils/logger.js';
-import dotenv from 'dotenv';
-dotenv.config();
+import { env } from '@/config/env.js';
 
 interface ImageResult {
   id: number | string;
@@ -86,7 +85,7 @@ export class ImageService {
     let results: ImageResult[] = [];
 
     // 1. Intentar con Pixabay (más confiable)
-    if (process.env.PIXABAY_API_KEY) {
+    if (env.PIXABAY_API_KEY) {
       try {
         logger.info(`[ImageService] 🔍 Buscando en Pixabay: "${query}" (${perPage} resultados)`);
         results = await this.searchPixabay(query, perPage);
@@ -101,7 +100,7 @@ export class ImageService {
     }
 
     // 2. Intentar con Pexels si Pixabay no devolvió resultados
-    if (!results.length && process.env.PEXELS_API_KEY) {
+    if (!results.length && env.PEXELS_API_KEY) {
       try {
         logger.info(`[ImageService] 🔍 Buscando en Pexels: "${query}" (${perPage} resultados)`);
         results = await this.searchPexels(query, perPage);
@@ -173,7 +172,7 @@ export class ImageService {
   }
 
   private async searchPixabay(query: string, perPage: number): Promise<ImageResult[]> {
-    const apiKey = process.env.PIXABAY_API_KEY;
+    const apiKey = env.PIXABAY_API_KEY;
     if (!apiKey) {
       logger.warn('[ImageService] PIXABAY_API_KEY no está configurada');
       return [];

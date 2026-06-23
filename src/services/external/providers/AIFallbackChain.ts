@@ -19,9 +19,8 @@ export class AIFallbackChain {
       logger.info('[AI Chain] Groq provider registered');
     }
 
-    const geminiKey = process.env.GEMINI_API_KEY;
-    if (geminiKey) {
-      this.providers.push(new GeminiProvider(geminiKey));
+    if (env.GEMINI_API_KEY) {
+      this.providers.push(new GeminiProvider(env.GEMINI_API_KEY));
       logger.info('[AI Chain] Gemini provider registered');
     }
 

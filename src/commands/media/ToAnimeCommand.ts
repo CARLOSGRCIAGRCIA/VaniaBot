@@ -32,14 +32,7 @@ export class ToAnimeCommand extends Command {
 
     if (!env.DEEPAI_API_KEY) {
       await ctx.reply(
-        `˚₊· ͟͟͞͞➳ *API no configurada* ˚₊· ͟͟͞͞➳\n\n` +
-          `❌ No tienes configurada la API de DeepAI.\n\n` +
-          `Para activar esta función:\n` +
-          `1. Regístrate en https://deepai.org\n` +
-          `2. Ve a https://deepai.org/dashboard\n` +
-          `3. Copia tu API key\n` +
-          `4. Agrégala en .env como:\n` +
-          `DEEPAI_API_KEY=tu_key`,
+        `❌ API KEY no establecida, esta función se encuentra temporalmente inhabilitada hasta que se agregue una api key funcional`,
       );
       return;
     }

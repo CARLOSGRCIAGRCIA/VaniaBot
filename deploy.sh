@@ -275,6 +275,33 @@ check_persistence() {
   echo "$file_count"
 }
 
+migrate_subbot_sessions() {
+  info "${GHOST}verificando migración de sesiones de subbots...${NC}"
+  local OLD_PATH="/app/data/subbot-sessions"
+  local NEW_PATH="/app/subbot-sessions"
+
+  local old_count=$(docker run --rm -v vaniabot_database:/check alpine sh -c "ls -1 /check${OLD_PATH} 2>/dev/null | wc -l" 2>/dev/null || echo "0")
+  local new_count=$(docker run --rm -v vaniabot_subbot_sessions:/check alpine sh -c "ls -1 /check${NEW_PATH} 2>/dev/null | wc -l" 2>/dev/null || echo "0")
+
+  if [ "$old_count" -gt 2 ] && [ "$new_count" -le 2 ]; then
+    info "${NEON_YELLOW}Migrando sesiones de ${OLD_PATH} → ${NEW_PATH}${NC}"
+    docker run --rm \
+      -v vaniabot_database:/old \
+      -v vaniabot_subbot_sessions:/new \
+      alpine sh -c "
+        mkdir -p /new/subbot-sessions
+        cp -a /old${OLD_PATH}/. /new${NEW_PATH}/ 2>/dev/null || true
+        chown -R 1001:1001 /new${NEW_PATH} 2>/dev/null || true
+      " 2>/dev/null \
+      && ok "Sesiones migradas: ${NEON_GREEN}${BOLD}$((old_count-2)) sesiones${NC}" \
+      || warn "Migración falló — sesiones originales intactas"
+  elif [ "$new_count" -gt 2 ]; then
+    ok "Sesiones ya en ubicación correcta: ${NEON_GREEN}${BOLD}$((new_count-2)) sesiones${NC}"
+  else
+    info "${GHOST}Sin sesiones previas para migrar${NC}"
+  fi
+}
+
 fix_permissions() {
   local vol_name="$1"
   local mount_path="$2"
@@ -348,7 +375,14 @@ if $UPDATE_MODE; then
   SESSION_COUNT=$(check_persistence "vaniabot_session" "")
   DB_COUNT=$(check_persistence "vaniabot_database" "")
   STORAGE_COUNT=$(check_persistence "vaniabot_storage" "")
-  SUBBOT_COUNT=$(check_persistence "vaniabot_subbot_sessions" "")
+
+  OLD_SUBBOT_COUNT=$(check_persistence "vaniabot_database" "/data/subbot-sessions")
+  NEW_SUBBOT_COUNT=$(check_persistence "vaniabot_subbot_sessions" "")
+  if [ "$NEW_SUBBOT_COUNT" -gt 2 ]; then
+    SUBBOT_COUNT=$NEW_SUBBOT_COUNT
+  else
+    SUBBOT_COUNT=$OLD_SUBBOT_COUNT
+  fi
 
   if [ "$SESSION_COUNT" -gt 2 ]; then
     ok "Sesiones encontradas: ${NEON_GREEN}${BOLD}$((SESSION_COUNT-2)) archivos${NC}"
@@ -414,7 +448,9 @@ if $UPDATE_MODE; then
   docker stop vaniabot 2>/dev/null \
     && ok "vaniabot ${GHOST}detenido${NC}" \
     || warn "vaniabot no estaba corriendo"
-  sleep 2   
+  sleep 2
+
+  migrate_subbot_sessions
 
   fix_permissions "vaniabot_session"          "/app/vaniasession"
   fix_permissions "vaniabot_database"         "/app/data"

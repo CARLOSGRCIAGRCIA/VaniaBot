@@ -9,6 +9,7 @@
  */
 
 import { getDatabase } from '@/repositories/Database.js';
+import { SUBBOT_CONFIG } from '@/config/subbot.js';
 import type { SubBotConfig, SubBotSlot, SubBotSlotStatus } from '@/types/subbot.js';
 import { logger } from '@/utils/logger.js';
 
@@ -125,7 +126,7 @@ export class SubBotDatabase {
       ownerJid: slot.ownerJid || '',
       ownerName: slot.ownerName || '',
       phoneNumber: slot.phoneNumber || '',
-      sessionPath: `./data/subbot-sessions/${slot.id}`,
+      sessionPath: `${SUBBOT_CONFIG.SESSION_BASE_PATH}/${slot.id}`,
       prefix: '.',
       name: slot.name || `VaniaBot-${slot.slot}`,
       active: slot.status === 'connected',
