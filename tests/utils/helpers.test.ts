@@ -202,7 +202,6 @@ describe('Helpers', () => {
     });
 
     it('should handle code blocks', () => {
-      // Current implementation doesn't handle code blocks as expected
       expect(stripMarkdown('```js\ncode\n```').length).toBeLessThan(20);
     });
   });
@@ -215,8 +214,6 @@ describe('Helpers', () => {
     });
 
     it('should use custom characters', () => {
-      // Current implementation uses filledChar.repeat(filled) + emptyChar.repeat(empty)
-      // which doesn't add space between them
       const bar = createProgressBar(50, 100, 10, '=', '-');
       expect(bar).toBe('=====-----');
     });

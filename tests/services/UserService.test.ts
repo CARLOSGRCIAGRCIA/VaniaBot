@@ -33,10 +33,36 @@ describe('UserService', () => {
     level: 1,
     xp: 0,
     money: 0,
+    bank: 0,
+    lastDaily: undefined,
+    lastWeekly: undefined,
+    lastMonthly: undefined,
+    weeklyStreak: 0,
     totalCommands: 0,
     warnings: 0,
     inventory: [],
     achievements: [],
+    stats: {
+      hp: 100,
+      maxHp: 100,
+      energy: 100,
+      maxEnergy: 100,
+      stamina: 100,
+      maxStamina: 100,
+      atk: 10,
+      def: 10,
+      str: 10,
+      int: 10,
+      agi: 10,
+      vit: 10,
+      luck: 5,
+      critChance: 5,
+      dodgeChance: 5,
+    },
+    pets: [],
+    activeQuests: [],
+    completedQuests: [],
+    activeBuffs: [],
     createdAt: Date.now(),
     updatedAt: Date.now(),
     ...overrides,
@@ -55,6 +81,7 @@ describe('UserService', () => {
       findOne: vi.fn().mockResolvedValue(null),
       update: vi.fn().mockResolvedValue(undefined),
       getAll: vi.fn().mockResolvedValue([]),
+      keys: vi.fn().mockResolvedValue([]),
       getPaginated: vi.fn().mockResolvedValue({
         items: [],
         total: 0,
@@ -242,7 +269,7 @@ describe('UserService', () => {
 
     it('should not add duplicate items', async () => {
       const user = createMockUser({
-        inventory: [{ itemId: 'sword', name: 'sword', type: 'weapon', purchasedAt: Date.now() }],
+        inventory: [{ itemId: 'sword', name: 'sword', type: 'weapon', rarity: 'common', quantity: 1, stats: {}, purchasedAt: Date.now() }],
       });
       vi.mocked(mockDb.get).mockResolvedValueOnce(user);
 
@@ -253,7 +280,7 @@ describe('UserService', () => {
 
     it('should check if user has item', async () => {
       const user = createMockUser({
-        inventory: [{ itemId: 'sword', name: 'sword', type: 'weapon', purchasedAt: Date.now() }],
+        inventory: [{ itemId: 'sword', name: 'sword', type: 'weapon', rarity: 'common', quantity: 1, stats: {}, purchasedAt: Date.now() }],
       });
       vi.mocked(mockDb.get).mockResolvedValueOnce(user);
 
