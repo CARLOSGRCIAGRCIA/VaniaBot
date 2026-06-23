@@ -5,7 +5,7 @@
  * Handles conversational AI with per-user session history persistence,
  * one-shot text generation, and audio transcription.
  *
- * @author **Carlos G** ⭐
+ * @author **Carlos G**
  * @github CARLOSGRCIAGRCIA
  * @tiktok carlos.grcia0
  * @instagram carlos.gxv
@@ -185,7 +185,7 @@ interface GroqError {
  * const transcription = await aiService.transcribeAudio(buffer, "ogg");
  * ```
  *
- * @author **Carlos G** ⭐
+ * @author **Carlos G**
  * @github CARLOSGRCIAGRCIA
  * @see {@link https://github.com/CARLOSGRCIAGRCIA} GitHub
  * @see {@link https://www.tiktok.com/@carlos.grcia0} TikTok
@@ -588,7 +588,11 @@ export class AIService {
     fast = false,
   ): Promise<AIResponse> {
     if (!this.client) {
-      return left(new ServiceUnavailableError('API KEY no establecida, esta función se encuentra temporalmente inhabilitada hasta que se agregue una api key funcional'));
+      return left(
+        new ServiceUnavailableError(
+          'API KEY no establecida, esta función se encuentra temporalmente inhabilitada hasta que se agregue una api key funcional',
+        ),
+      );
     }
     const client = this.client;
     if (!userMessage.trim()) {
@@ -693,7 +697,11 @@ export class AIService {
    */
   async generate(prompt: string, maxTokens = 512): Promise<AIResponse> {
     if (!this.client) {
-      return left(new ServiceUnavailableError('API KEY no establecida, esta función se encuentra temporalmente inhabilitada hasta que se agregue una api key funcional'));
+      return left(
+        new ServiceUnavailableError(
+          'API KEY no establecida, esta función se encuentra temporalmente inhabilitada hasta que se agregue una api key funcional',
+        ),
+      );
     }
     const client = this.client;
     const cacheKey = this.generateCacheKey(prompt, 'generate', false);
@@ -836,7 +844,11 @@ export class AIService {
     language?: string,
   ): Promise<AIResponse> {
     if (!this.client) {
-      return left(new ServiceUnavailableError('API KEY no establecida, esta función se encuentra temporalmente inhabilitada hasta que se agregue una api key funcional'));
+      return left(
+        new ServiceUnavailableError(
+          'API KEY no establecida, esta función se encuentra temporalmente inhabilitada hasta que se agregue una api key funcional',
+        ),
+      );
     }
     const client = this.client;
     const tmpPath = path.join(TEMP_DIR, `voice_${Date.now()}.${extension}`);

@@ -133,9 +133,8 @@ export class QuizService {
       });
     }
 
-    // Safe access with type guard
     const player = session.players.get(senderJid);
-    if (!player) return null; // This should never happen, but TypeScript is happy
+    if (!player) return null;
 
     const isFirst =
       player.correct === 0 ||

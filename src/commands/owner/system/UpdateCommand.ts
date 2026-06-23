@@ -38,7 +38,6 @@ export class UpdateCommand extends Command {
     );
 
     try {
-      // Solo detecta cambios en archivos trackeados — ignora .vania-session y otros untracked
       const { stdout: status } = await execAsync('git status --short --untracked-files=no');
 
       if (status.trim()) {

@@ -70,10 +70,9 @@ export class MongoDatabase extends Database {
     const coll = this.getCollection(collection);
     const filter = this.createIdFilterDocument(key);
 
-    // Guardar el key original como _id
     const doc = {
       ...value,
-      _id: key, // Guardamos el key original como string siempre
+      _id: key,
     };
 
     await coll.updateOne(filter, { $set: doc }, { upsert: true });

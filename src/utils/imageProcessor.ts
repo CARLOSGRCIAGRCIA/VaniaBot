@@ -25,7 +25,6 @@ export class ImageProcessor {
   private static resvgAvailable: boolean | null = null;
   private static readonly TEMP_DIR = './data/temp';
 
-  // undefined = sin cachear, null = no encontrada, string = ruta válida
   private static fontPath: string | null | undefined = undefined;
 
   static async isSharpAvailable(): Promise<boolean> {
@@ -69,7 +68,6 @@ export class ImageProcessor {
   private static findFont(): string | null {
     if (this.fontPath !== undefined) return this.fontPath;
 
-    // 1. Fuente propia del proyecto (mayor prioridad)
     const ownFont = join(process.cwd(), 'data', 'assets', 'font.ttf');
     if (existsSync(ownFont)) {
       this.fontPath = ownFont;
@@ -77,7 +75,6 @@ export class ImageProcessor {
       return this.fontPath;
     }
 
-    // Directorios a escanear en orden de prioridad
     const scanDirs = [
       '/system/fonts',
       '/data/data/com.termux/files/usr/share/fonts/TTF',
@@ -88,7 +85,6 @@ export class ImageProcessor {
       '/usr/share/fonts/truetype/freefont',
     ];
 
-    // Nombres preferidos (sans-serif legible para memes/notas)
     const preferred = [
       'Roboto-Regular.ttf',
       'NotoSans-Regular.ttf',
@@ -111,7 +107,6 @@ export class ImageProcessor {
 
       if (files.length === 0) continue;
 
-      // Intentar primero los nombres preferidos
       for (const pref of preferred) {
         if (files.includes(pref)) {
           this.fontPath = join(dir, pref);
@@ -120,7 +115,6 @@ export class ImageProcessor {
         }
       }
 
-      // Cualquier .ttf disponible en el directorio
       this.fontPath = join(dir, files[0]);
       logger.warn(`[ImageProcessor] Fuente (primera disponible): ${this.fontPath}`);
       return this.fontPath;
@@ -197,16 +191,6 @@ export class ImageProcessor {
     return canvas.toBuffer('image/png');
   }
 
-  // ─────────────────────────────────────────────
-  //  Composite: imagen base + texto SVG
-  //
-  //  En Termux (sin sharp, sin librsvg):
-  //    1. FFmpeg drawtext  ← no necesita librsvg, solo una fuente TTF
-  //    2. resvg-js + Jimp  ← si está instalado
-  //    3. @napi-rs/canvas  ← parseo manual
-  //    4. imagen base sola ← último recurso
-  // ─────────────────────────────────────────────
-
   static async compositeText(
     imagePath: string,
     svgContent: string,
@@ -236,7 +220,6 @@ export class ImageProcessor {
   ): Promise<Buffer> {
     if (!existsSync(this.TEMP_DIR)) mkdirSync(this.TEMP_DIR, { recursive: true });
 
-    // 1. FFmpeg drawtext
     try {
       return await this.compositeTextFFmpegDrawtext(imagePath, svgContent);
     } catch (err) {
@@ -244,7 +227,6 @@ export class ImageProcessor {
       logger.warn(`[ImageProcessor] FFmpeg drawtext falló: ${msg}`);
     }
 
-    // 2. resvg-js + Jimp
     if (await this.isResvgAvailable()) {
       try {
         const { Resvg } = await import('@resvg/resvg-js');
@@ -260,7 +242,6 @@ export class ImageProcessor {
       }
     }
 
-    // 3. @napi-rs/canvas
     try {
       return await this.compositeTextCanvas(imagePath, svgContent);
     } catch (err) {
@@ -268,7 +249,6 @@ export class ImageProcessor {
       logger.warn(`[ImageProcessor] Canvas falló: ${msg}`);
     }
 
-    // 4. Imagen base sin texto
     logger.error('[ImageProcessor] Todos los métodos fallaron, enviando imagen base sin texto');
     return (await Jimp.read(imagePath)).getBuffer('image/png');
   }
@@ -342,8 +322,6 @@ export class ImageProcessor {
   private static buildDrawtextFilter(b: ParsedTextBlock, fontPath: string): string {
     if (!b.content) return '';
 
-    // Escapado para FFmpeg drawtext
-    // Los apóstrofes se eliminan porque escaparlos falla en algunas builds de FFmpeg
     const escaped = b.content
       .replace(/\\/g, '\\\\')
       .replace(/'/g, '')
@@ -353,7 +331,6 @@ export class ImageProcessor {
 
     if (!escaped.trim()) return '';
 
-    // Color SVG → FFmpeg (0xRRGGBBFF)
     let color = b.fill;
     if (color.startsWith('#')) {
       const hex = color.replace('#', '');
@@ -367,13 +344,11 @@ export class ImageProcessor {
       }FF`;
     }
 
-    // Posición X según text-anchor
     let xExpr: string;
     if (b.textAnchor === 'middle') xExpr = `${b.x}-text_w/2`;
     else if (b.textAnchor === 'end') xExpr = `${b.x}-text_w`;
     else xExpr = `${b.x}`;
 
-    // SVG baseline → FFmpeg top (aprox. 82% del font-size)
     const yVal = Math.max(0, Math.round(b.y - b.fontSize * 0.82));
 
     return (

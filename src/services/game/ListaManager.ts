@@ -217,7 +217,6 @@ function removerJugador(lista: Lista, jid: string): boolean {
       escuadra.jugadores.splice(idx, 1);
       logger.info(`[LISTA] ${jid} removido de escuadra`);
       if (lista.suplentes.length > 0) {
-        // Safe because we checked length > 0
         const promovido = lista.suplentes[0];
         lista.suplentes.shift();
         escuadra.jugadores.push(promovido);

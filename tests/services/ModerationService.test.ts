@@ -36,6 +36,7 @@ describe('ModerationService', () => {
       findOne: vi.fn().mockResolvedValue(null),
       update: vi.fn().mockResolvedValue(undefined),
       getAll: vi.fn().mockResolvedValue([]),
+      keys: vi.fn().mockResolvedValue([]),
       getPaginated: vi.fn().mockResolvedValue({
         items: [],
         total: 0,
@@ -127,7 +128,7 @@ describe('ModerationService', () => {
     const userName = 'Test User';
     const moderator = 'admin@test.com';
     const reason = 'Test mute reason';
-    const duration = 60 * 60 * 1000; // 1 hour
+    const duration = 60 * 60 * 1000; 
 
     it('should mute a user', async () => {
       await service.muteUser(groupId, userId, userName, moderator, reason, duration);

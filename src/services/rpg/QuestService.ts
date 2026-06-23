@@ -41,7 +41,6 @@ export class QuestService {
 
   private registerQuests(): void {
     const quests: Quest[] = [
-      // Quests Diarias
       {
         id: 'daily_hunter',
         name: 'Cazador Diario',
@@ -78,7 +77,6 @@ export class QuestService {
         repeatable: true,
         cooldown: 24 * 60 * 60 * 1000,
       },
-      // Quests Principales
       {
         id: 'tutorial_combat',
         name: 'Tu Primer Combate',
@@ -132,7 +130,6 @@ export class QuestService {
         requiredLevel: 10,
         repeatable: false,
       },
-      // Quests Secundarias
       {
         id: 'herb_gatherer',
         name: 'Recolector de Hierbas',

@@ -10,7 +10,6 @@ export interface Achievement {
 }
 
 const ACHIEVEMENTS: Achievement[] = [
-  // Level achievements
   {
     id: 'level_5',
     name: 'Novato',
@@ -51,8 +50,6 @@ const ACHIEVEMENTS: Achievement[] = [
     reward: 15000,
     category: 'level',
   },
-
-  // Money achievements
   {
     id: 'money_1000',
     name: 'Pobre',
@@ -85,8 +82,6 @@ const ACHIEVEMENTS: Achievement[] = [
     reward: 10000,
     category: 'money',
   },
-
-  // Crime achievements
   {
     id: 'crime_1',
     name: 'Delincuente Primerizo',
@@ -143,8 +138,6 @@ const ACHIEVEMENTS: Achievement[] = [
     reward: 3000,
     category: 'crime',
   },
-
-  // Casino achievements
   {
     id: 'casino_1',
     name: 'Apostador',
@@ -193,8 +186,6 @@ const ACHIEVEMENTS: Achievement[] = [
     reward: 500,
     category: 'casino',
   },
-
-  // Work achievements
   {
     id: 'work_1',
     name: 'Trabajador',
@@ -227,8 +218,6 @@ const ACHIEVEMENTS: Achievement[] = [
     reward: 10000,
     category: 'work',
   },
-
-  // Social achievements
   {
     id: 'daily_1',
     name: 'Consistente',
@@ -262,7 +251,6 @@ const ACHIEVEMENTS: Achievement[] = [
     category: 'social',
   },
 
-  // Collection achievements
   {
     id: 'items_5',
     name: 'Coleccionista Beginner',
