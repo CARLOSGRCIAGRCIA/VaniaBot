@@ -4,7 +4,7 @@
  * Centralized error handling for VaniaBot.
  * Provides user-friendly error messages, logging, and retry logic.
  *
- * @author **Carlos G** ⭐
+ * @author **Carlos G**
  */
 
 import { logger, logError } from '@/utils/logger.js';
@@ -90,7 +90,7 @@ export class ErrorHandler {
     const errorMessage = error instanceof Error ? error.message : String(error);
 
     if (errorMessage.includes('401') || errorMessage.includes('API key')) {
-      return '⚠️ Error de API AI. Verifica GROQ_API_KEY en .env';
+      return '⚠️ API KEY no establecida, esta función se encuentra temporalmente inhabilitada';
     }
 
     if (errorMessage.includes('429') || errorMessage.includes('rate_limit')) {

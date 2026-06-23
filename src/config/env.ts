@@ -131,6 +131,21 @@ const envSchema = z.object({
   /** DeepAI API key for image processing (get at https://deepai.org) */
   DEEPAI_API_KEY: z.string().optional(),
 
+  /** NewsData.io API key for news features (get at https://newsdata.io) */
+  NEWSDATA_API_KEY: z.string().optional(),
+
+  /** Pixabay API key for image search (get at https://pixabay.com/api/docs) */
+  PIXABAY_API_KEY: z.string().optional(),
+
+  /** Pexels API key for image search (get at https://pexels.com/api) */
+  PEXELS_API_KEY: z.string().optional(),
+
+  /** Gemini API key for AI fallback (get at https://makersuite.google.com/app/apikey) */
+  GEMINI_API_KEY: z.string().optional(),
+
+  /** Panel webhook token for API authentication */
+  PANEL_WEBHOOK_TOKEN: z.string().optional(),
+
   /** Log level: error | warn | info | debug */
   LOG_LEVEL: z
     .enum(['error', 'warn', 'info', 'debug'])

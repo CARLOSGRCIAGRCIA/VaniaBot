@@ -1,5 +1,6 @@
 import axios from 'axios';
 import { logError } from '@/utils/logger.js';
+import { env } from '@/config/env.js';
 
 interface NewsArticle {
   title: string;
@@ -12,7 +13,7 @@ interface NewsArticle {
 export class NewsService {
   private static instance: NewsService;
   private readonly NEWS_API = 'https://newsdata.io/api/1/news';
-  private readonly API_KEY = process.env.NEWSDATA_API_KEY;
+  private readonly API_KEY = env.NEWSDATA_API_KEY;
 
   static getInstance(): NewsService {
     if (!NewsService.instance) {
@@ -98,7 +99,8 @@ export class NewsService {
     return [
       {
         title: 'Noticias no disponibles',
-        description: 'La API de noticias no está configurada. Agrega NEWSDATA_API_KEY a tu .env',
+        description:
+          'API KEY no establecida, esta función se encuentra temporalmente inhabilitada hasta que se agregue una api key funcional',
         url: '',
         source: 'Sistema',
         publishedAt: '',
