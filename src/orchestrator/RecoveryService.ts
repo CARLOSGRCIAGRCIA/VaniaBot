@@ -149,11 +149,11 @@ export class RecoveryService {
   async recoverAll(): Promise<void> {
     const disconnectedBots = runtimeStateRepository.findDisconnected();
 
-    for (const bot of disconnectedBots) {
-      if (!runtimeStateRepository.isQuarantined(bot.bot_id)) {
-        await this.attemptRecovery(bot.bot_id);
-      }
-    }
+    await Promise.all(
+      disconnectedBots
+        .filter(bot => !runtimeStateRepository.isQuarantined(bot.bot_id))
+        .map(bot => this.attemptRecovery(bot.bot_id)),
+    );
   }
 
   isRecovering(botId: string): boolean {

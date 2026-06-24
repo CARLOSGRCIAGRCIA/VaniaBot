@@ -10,6 +10,7 @@
  */
 
 import type { WASocket, proto } from '@whiskeysockets/baileys';
+import { logError } from '@/utils/logger.js';
 import { serviceManager } from '@/services/system/Servicemanager.js';
 
 interface AudioTrigger {
@@ -134,13 +135,13 @@ export async function handleAudioResponse(
             ptt: true,
           });
         } catch (error) {
-          console.error('[AudioResponse] Error sending audio:', error);
+          logError('[AudioResponse] Error sending audio:', error);
         }
 
         return;
       }
     }
   } catch (error) {
-    console.error('[AudioResponse] Error:', error);
+    logError('[AudioResponse] Error:', error);
   }
 }

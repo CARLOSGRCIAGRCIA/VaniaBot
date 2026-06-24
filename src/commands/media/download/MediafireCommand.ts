@@ -10,6 +10,7 @@ import { Command } from '../../Command.js';
 import { CommandCategory, CommandContext, type MessageContext } from '@/types/index.js';
 import { mediafireDownloader } from '@/services/download/MediafireDownloader.js';
 import { isRight } from '@/utils/either.js';
+import { logError } from '@/utils/logger.js';
 
 export class MediafireCommand extends Command {
   name = 'mediafire';
@@ -106,7 +107,7 @@ export class MediafireCommand extends Command {
       mediafireDownloader.cleanup(downloadResult.filePath);
       await ctx.react('✅');
     } catch (error) {
-      console.error('MediafireCommand error:', error);
+      logError('MediafireCommand error:', error);
       await ctx.react('❌');
       await ctx.reply('❌ Error al descargar de Mediafire');
     }

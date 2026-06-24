@@ -1,4 +1,6 @@
 import type { WASocket } from '@whiskeysockets/baileys';
+import { logError } from '@/utils/logger.js';
+import type { MessageContext } from '@/types/index.js';
 
 class ContactsCache {
   private cache = new Map<string, string>();
@@ -11,6 +13,34 @@ class ContactsCache {
 
   get(jid: string): string | undefined {
     return this.cache.get(jid.split('@')[0].split(':')[0]);
+  }
+
+  async getContactName(ctx: MessageContext, jid: string): Promise<string> {
+    const cached = this.get(jid);
+    if (cached) return cached;
+
+    try {
+      const groupMeta = await ctx.sock.groupMetadata(ctx.chat.jid);
+      const targetBase = jid.split('@')[0].split(':')[0];
+
+      const participant = groupMeta.participants.find(p => {
+        const pBase = p.id.split('@')[0].split(':')[0];
+        return pBase === targetBase;
+      });
+
+      if (participant) {
+        const name = participant.notify || participant.name || participant.verifiedName;
+
+        if (name) {
+          this.set(participant.id, name);
+          return name;
+        }
+      }
+    } catch (error) {
+      logError('[ContactsCache]', error);
+    }
+
+    return `@${jid.split('@')[0]}`;
   }
 
   async warmGroup(sock: WASocket, groupJid: string): Promise<void> {
@@ -26,7 +56,9 @@ class ContactsCache {
           (p as { id: string; name?: string; verifiedName?: string })?.verifiedName;
         if (name) this.set(p.id, name);
       }
-    } catch {}
+    } catch (error) {
+      logError('ContactsCache.loadParticipants', error);
+    }
   }
 }
 

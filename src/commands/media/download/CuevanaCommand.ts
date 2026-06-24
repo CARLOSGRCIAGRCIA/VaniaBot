@@ -10,6 +10,7 @@
 import { Command } from '../../Command.js';
 import { CommandCategory, CommandContext, type MessageContext } from '@/types/index.js';
 import { cuevanaService } from '@/services/download/CuevanaService.js';
+import { logError } from '@/utils/logger.js';
 import axios from 'axios';
 import fs from 'fs';
 import path from 'path';
@@ -66,7 +67,7 @@ export class CuevanaCommand extends Command {
 
       await ctx.react('✅');
     } catch (error) {
-      console.error('CuevanaCommand error:', error);
+      logError('CuevanaCommand error:', error);
       await ctx.react('❌');
       await ctx.reply('❌ Error al buscar en Cuevana');
     }
@@ -119,7 +120,7 @@ export class CuevanaDLCommand extends Command {
 
       await ctx.react('✅');
     } catch (error) {
-      console.error('CuevanaDLCommand error:', error);
+      logError('CuevanaDLCommand error:', error);
       await ctx.react('❌');
       await ctx.reply('❌ Error al obtener opciones de descarga');
     }
@@ -223,7 +224,7 @@ export class CuevanaLinkCommand extends Command {
       fs.unlinkSync(tempPath);
       await ctx.react('✅');
     } catch (error) {
-      console.error('CuevanaLinkCommand error:', error);
+      logError('CuevanaLinkCommand error:', error);
       await ctx.react('❌');
       await ctx.reply('❌ Error al descargar el video');
     }

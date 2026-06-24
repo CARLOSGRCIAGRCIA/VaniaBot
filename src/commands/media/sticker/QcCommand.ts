@@ -3,33 +3,9 @@ import { CommandCategory, type MessageContext } from '@/types/index.js';
 import { StickerHelper } from '@/utils/StickerHelper.js';
 import { ImageProcessor } from '@/utils/imageProcessor.js';
 import { contactsCache } from '@/utils/ContactsCache.js';
+import { escapeXml, wrapText } from '@/utils/helpers.js';
+import { logError } from '@/utils/logger.js';
 import axios from 'axios';
-
-async function getContactName(ctx: MessageContext, jid: string): Promise<string> {
-  const cached = contactsCache.get(jid);
-  if (cached) return cached;
-
-  try {
-    const groupMeta = await ctx.sock.groupMetadata(ctx.chat.jid);
-    const targetBase = jid.split('@')[0].split(':')[0];
-
-    const participant = groupMeta.participants.find(p => {
-      const pBase = p.id.split('@')[0].split(':')[0];
-      return pBase === targetBase;
-    });
-
-    if (participant) {
-      const name = participant.notify || participant.name || participant.verifiedName;
-
-      if (name) {
-        contactsCache.set(participant.id, name);
-        return name;
-      }
-    }
-  } catch {}
-
-  return `@${jid.split('@')[0]}`;
-}
 
 export class QcCommand extends Command {
   name = 'qc';
@@ -78,11 +54,13 @@ export class QcCommand extends Command {
       try {
         const pic = await ctx.sock.profilePictureUrl(targetJid, 'image');
         if (pic) pp = pic;
-      } catch {}
+      } catch (error) {
+        logError('[QcCommand]', error);
+      }
 
       const nombre = mentionedJid
-        ? await getContactName(ctx, mentionedJid)
-        : ctx.sender.pushName || (await getContactName(ctx, ctx.sender.jid));
+        ? await contactsCache.getContactName(ctx, mentionedJid)
+        : ctx.sender.pushName || (await contactsCache.getContactName(ctx, ctx.sender.jid));
 
       let imageBuffer: Buffer | null = null;
 
@@ -109,7 +87,9 @@ export class QcCommand extends Command {
           timeout: 8000,
         });
         imageBuffer = Buffer.from(res.data.result.image, 'base64');
-      } catch {}
+      } catch (error) {
+        logError('[QcCommand]', error);
+      }
 
       if (!imageBuffer) {
         imageBuffer = await this.buildLocalQuoteImage(nombre, cleanText, pp);
@@ -137,10 +117,12 @@ export class QcCommand extends Command {
       const b64 = Buffer.from(resp.data as ArrayBuffer).toString('base64');
       const mime = (resp.headers['content-type'] as string) || 'image/jpeg';
       ppDataUri = `data:${mime};base64,${b64}`;
-    } catch {}
+    } catch (error) {
+      logError('[QcCommand]', error);
+    }
 
-    const eName = this.escapeXml(name);
-    const eText = this.escapeXml(text);
+    const eName = escapeXml(name);
+    const eText = escapeXml(text);
 
     const AV_CX = W / 2;
     const AV_CY = 115;
@@ -167,7 +149,7 @@ export class QcCommand extends Command {
     const TEXT_BASE = SEP_Y + 42;
     const LINE_H = 48;
 
-    const lines = this.wrapText(eText, 19);
+    const lines = wrapText(eText, 19);
     const textRows = lines
       .map(
         (line, i) =>
@@ -204,31 +186,5 @@ export class QcCommand extends Command {
     </svg>`;
 
     return await ImageProcessor.svgToBuffer(svg, W, H);
-  }
-
-  private wrapText(text: string, maxChars: number): string[] {
-    const words = text.split(' ');
-    const lines: string[] = [];
-    let current = '';
-    for (const word of words) {
-      const next = current ? `${current} ${word}` : word;
-      if (next.length <= maxChars) {
-        current = next;
-      } else {
-        if (current) lines.push(current);
-        current = word;
-      }
-    }
-    if (current) lines.push(current);
-    return lines.length > 0 ? lines : [text];
-  }
-
-  private escapeXml(text: string): string {
-    return text
-      .replace(/&/g, '&amp;')
-      .replace(/</g, '&lt;')
-      .replace(/>/g, '&gt;')
-      .replace(/"/g, '&quot;')
-      .replace(/'/g, '&apos;');
   }
 }

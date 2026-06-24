@@ -20,6 +20,8 @@ import type { BotConfig } from '@/types/index.js';
  * import { config } from '@/config/index.js';
  * console.log(config.name);
  */
+export const VANIA_TOGGLE_COMMANDS: readonly string[] = ['vaniaon', 'vaniaoff', 'vaniastatus'];
+
 export const config: BotConfig = {
   /** Bot display name */
   name: env.BOT_NAME,

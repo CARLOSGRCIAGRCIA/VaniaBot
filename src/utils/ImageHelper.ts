@@ -1,4 +1,5 @@
 import type { MessageContext } from '@/types/index.js';
+import { logError } from '@/utils/logger.js';
 
 export class ImageHelper {
   static async getProfileImage(ctx: MessageContext): Promise<string | null> {
@@ -9,7 +10,8 @@ export class ImageHelper {
     try {
       const profileUrl = await ctx.sock.profilePictureUrl(targetJid, 'image');
       return profileUrl || null;
-    } catch {
+    } catch (error) {
+      logError('[ImageHelper]', error);
       return null;
     }
   }
@@ -24,7 +26,8 @@ export class ImageHelper {
     try {
       const url1 = await ctx.sock.profilePictureUrl(ctx.sender.jid, 'image');
       image1 = url1 || null;
-    } catch {
+    } catch (error) {
+      logError('[ImageHelper]', error);
       image1 = null;
     }
 
@@ -32,7 +35,8 @@ export class ImageHelper {
       try {
         const url2 = await ctx.sock.profilePictureUrl(mentionedJid, 'image');
         image2 = url2 || null;
-      } catch {
+      } catch (error) {
+        logError('[ImageHelper]', error);
         image2 = null;
       }
     }
@@ -66,7 +70,8 @@ export class ImageHelper {
     try {
       const profileUrl = await ctx.sock.profilePictureUrl(targetJid, 'image');
       return profileUrl || null;
-    } catch {
+    } catch (error) {
+      logError('[ImageHelper]', error);
       return null;
     }
   }

@@ -4,6 +4,8 @@ import { ImageHelper } from '@/utils/ImageHelper.js';
 import { StickerHelper } from '@/utils/StickerHelper.js';
 import { findAssetFile } from '@/utils/assetHelper.js';
 import { contactsCache } from '@/utils/ContactsCache.js';
+import { uploadToTmpfiles } from '@/utils/helpers.js';
+import { logError } from '@/utils/logger.js';
 import {
   CommandCategory,
   CommandContext,
@@ -13,36 +15,6 @@ import {
 
 let cachedDefaultImageUrl: string | null = null;
 
-async function uploadToTmpfiles(buffer: Buffer): Promise<string | null> {
-  try {
-    const boundary = `----FormBoundary${Date.now()}`;
-    const CRLF = '\r\n';
-    const header =
-      `--${boundary}${CRLF}` +
-      `Content-Disposition: form-data; name="file"; filename="profileDefault.png"${CRLF}` +
-      `Content-Type: image/png${CRLF}` +
-      `${CRLF}`;
-    const footer = `${CRLF}--${boundary}--${CRLF}`;
-    const body = Buffer.concat([
-      Buffer.from(header, 'utf-8'),
-      buffer,
-      Buffer.from(footer, 'utf-8'),
-    ]);
-    const response = await fetch('https://tmpfiles.org/api/v1/upload', {
-      method: 'POST',
-      headers: { 'Content-Type': `multipart/form-data; boundary=${boundary}` },
-      body,
-    });
-    if (!response.ok) return null;
-    const data = (await response.json()) as { data?: { url?: string } };
-    const pageUrl = data?.data?.url;
-    if (!pageUrl) return null;
-    return pageUrl.replace('tmpfiles.org/', 'tmpfiles.org/dl/');
-  } catch {
-    return null;
-  }
-}
-
 async function getDefaultImageUrl(): Promise<string | null> {
   if (cachedDefaultImageUrl) return cachedDefaultImageUrl;
   const buffer = findAssetFile('profileDefault.png');
@@ -50,32 +22,6 @@ async function getDefaultImageUrl(): Promise<string | null> {
   const url = await uploadToTmpfiles(buffer);
   if (url) cachedDefaultImageUrl = url;
   return url;
-}
-
-async function getContactName(ctx: MessageContext, jid: string): Promise<string> {
-  const cached = contactsCache.get(jid);
-  if (cached) return cached;
-
-  try {
-    const groupMeta = await ctx.sock.groupMetadata(ctx.chat.jid);
-    const targetBase = jid.split('@')[0].split(':')[0];
-
-    const participant = groupMeta.participants.find(p => {
-      const pBase = p.id.split('@')[0].split(':')[0];
-      return pBase === targetBase;
-    });
-
-    if (participant) {
-      const name = participant.notify || participant?.name || participant?.verifiedName;
-
-      if (name) {
-        contactsCache.set(participant.id, name);
-        return name;
-      }
-    }
-  } catch {}
-
-  return `@${jid.split('@')[0]}`;
 }
 
 export class PhubCommand extends Command {
@@ -122,8 +68,8 @@ export class PhubCommand extends Command {
     const targetJid = mentioned ?? ctx.sender.jid;
 
     const username = mentioned
-      ? await getContactName(ctx, mentioned)
-      : ctx.sender.pushName || (await getContactName(ctx, ctx.sender.jid));
+      ? await contactsCache.getContactName(ctx, mentioned)
+      : ctx.sender.pushName || (await contactsCache.getContactName(ctx, ctx.sender.jid));
 
     await ctx.react('🔞');
 
@@ -131,7 +77,9 @@ export class PhubCommand extends Command {
     try {
       const pic = await ctx.sock.profilePictureUrl(targetJid, 'image');
       imageUrl = pic ?? null;
-    } catch {}
+    } catch (error) {
+      logError('[PhubCommand]', error);
+    }
 
     if (!imageUrl) imageUrl = await ImageHelper.getImageOrProfile(ctx);
     if (!imageUrl) imageUrl = await getDefaultImageUrl();

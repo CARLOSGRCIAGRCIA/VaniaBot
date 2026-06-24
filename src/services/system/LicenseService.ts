@@ -192,14 +192,18 @@ export class LicenseService {
     let disabled = 0;
     try {
       const groups = await this.groupService.getAllGroups();
-      for (const group of groups) {
-        if (group.isActive && group.license && this.isExpired(group.license)) {
-          await this.groupService.updateGroup(group.jid, { isActive: false });
-          this.licenseCache.set(group.jid, { valid: false, timestamp: Date.now() });
-          logger.info(`[License] Deshabilitada licencia vencida: ${group.jid}`);
-          disabled++;
-        }
-      }
+      const expiredGroups = groups.filter(
+        group => group.isActive && group.license && this.isExpired(group.license),
+      );
+      await Promise.all(
+        expiredGroups.map(group =>
+          this.groupService.updateGroup(group.jid, { isActive: false }).then(() => {
+            this.licenseCache.set(group.jid, { valid: false, timestamp: Date.now() });
+            logger.info(`[License] Deshabilitada licencia vencida: ${group.jid}`);
+            disabled++;
+          }),
+        ),
+      );
     } catch (error) {
       logger.error('[License] Error deshabilitando vencidas:', error);
     }

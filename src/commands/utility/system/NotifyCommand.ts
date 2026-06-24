@@ -18,6 +18,7 @@ import type { proto, WAMessage } from '@whiskeysockets/baileys';
 import { downloadMediaMessage } from '@whiskeysockets/baileys';
 import { cacheManager } from '@/core/CacheManager.js';
 import { primeService } from '@/services/system/PrimeService.js';
+import { logError } from '@/utils/logger.js';
 
 /** Timeout for downloading media (10 seconds) */
 const DOWNLOAD_TIMEOUT = 10000;
@@ -279,8 +280,10 @@ export class NotifyCommand extends Command {
         return;
       }
     } catch (_error) {
-      await ctx.react('❌').catch(() => {});
-      await ctx.reply('❌ Error al enviar la notificación.').catch(() => {});
+      await ctx.react('❌').catch((error: unknown) => logError('[NotifyCommand]', error));
+      await ctx
+        .reply('❌ Error al enviar la notificación.')
+        .catch((error: unknown) => logError('[NotifyCommand]', error));
     }
   }
 }

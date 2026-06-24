@@ -2,6 +2,7 @@ import { Command } from '../../Command.js';
 import { CommandCategory, CommandContext, type MessageContext } from '@/types/index.js';
 import type { Poll } from '@/services/system/PersistenceService.js';
 import { persistenceService } from '@/services/system/PersistenceService.js';
+import { formatTime } from '@/utils/helpers.js';
 
 export class PollCommand extends Command {
   name = 'encuesta';
@@ -38,13 +39,6 @@ export class PollCommand extends Command {
     const filled = Math.round(pct / 10);
     const empty = 10 - filled;
     return '▓'.repeat(filled) + '░'.repeat(empty);
-  }
-
-  private formatTimeLeft(ms: number): string {
-    const mins = Math.floor(ms / 60000);
-    const hours = Math.floor(mins / 60);
-    if (hours > 0) return `${hours}h ${mins % 60}m`;
-    return `${mins}m`;
   }
 
   private parseQuotedArgs(input: string): string[] {
@@ -177,7 +171,7 @@ export class PollCommand extends Command {
 
     const flags = [];
     if (allowMultiple) flags.push('✅ Múltiples votos permitidos');
-    if (endsAt) flags.push(`⏰ Cierra en ${this.formatTimeLeft(endsAt - Date.now())}`);
+    if (endsAt) flags.push(`⏰ Cierra en ${formatTime(endsAt - Date.now())}`);
 
     const msg =
       `📊 *Nueva encuesta*\n` +
@@ -285,7 +279,7 @@ export class PollCommand extends Command {
       `📌 *Total de votos:* ${totalVotes}\n` +
       `${status}` +
       (poll.endsAt && !poll.closed
-        ? `\n⏰ *Cierra en:* ${this.formatTimeLeft(poll.endsAt - Date.now())}`
+        ? `\n⏰ *Cierra en:* ${formatTime(poll.endsAt - Date.now())}`
         : '');
 
     await ctx.reply(msg);

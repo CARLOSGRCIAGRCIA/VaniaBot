@@ -3,6 +3,7 @@ import { CommandCategory, type MessageContext } from '@/types/index.js';
 import { StickerHelper } from '@/utils/StickerHelper.js';
 import { ImageProcessor } from '@/utils/imageProcessor.js';
 import { findAssetFile } from '@/utils/assetHelper.js';
+import { escapeXml, wrapText } from '@/utils/helpers.js';
 import path from 'path';
 import fs from 'fs';
 
@@ -53,14 +54,14 @@ export class PatCommand extends Command {
       const x = width / 2;
       const y = height - 100;
       const maxCharsPerLine = 20;
-      const lines = this.wrapText(text, maxCharsPerLine);
+      const lines = wrapText(text, maxCharsPerLine);
       const lineHeight = fontSize + 10;
       const startY = y - ((lines.length - 1) * lineHeight) / 2;
 
       let svgContent = `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}">`;
       lines.forEach((line, index) => {
         const currentY = startY + index * lineHeight;
-        const escaped = this.escapeXml(line);
+        const escaped = escapeXml(line);
         svgContent += `
           <text x="${x - shadowOffset}" y="${currentY}" font-family="Impact, Arial Black, sans-serif" font-size="${fontSize}" font-weight="bold" fill="${shadowColor}" text-anchor="middle">${escaped}</text>
           <text x="${x + shadowOffset}" y="${currentY}" font-family="Impact, Arial Black, sans-serif" font-size="${fontSize}" font-weight="bold" fill="${shadowColor}" text-anchor="middle">${escaped}</text>
@@ -83,32 +84,5 @@ export class PatCommand extends Command {
       await ctx.reply(`❌ Error: ${message}`);
       await ctx.react('❌');
     }
-  }
-
-  private wrapText(text: string, maxChars: number): string[] {
-    const words = text.split(' ');
-    const lines: string[] = [];
-    let currentLine = '';
-
-    words.forEach(word => {
-      if ((currentLine + word).length <= maxChars) {
-        currentLine += (currentLine ? ' ' : '') + word;
-      } else {
-        if (currentLine) lines.push(currentLine);
-        currentLine = word;
-      }
-    });
-
-    if (currentLine) lines.push(currentLine);
-    return lines.length > 0 ? lines : [text];
-  }
-
-  private escapeXml(text: string): string {
-    return text
-      .replace(/&/g, '&amp;')
-      .replace(/</g, '&lt;')
-      .replace(/>/g, '&gt;')
-      .replace(/"/g, '&quot;')
-      .replace(/'/g, '&apos;');
   }
 }

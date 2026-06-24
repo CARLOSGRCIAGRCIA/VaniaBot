@@ -16,7 +16,7 @@ import { logger, logError } from '@/utils/logger.js';
 import { BatchWriter } from './BatchWriter.js';
 import { cacheManager } from '@/core/CacheManager.js';
 import type { CachedUser } from '@/core/CacheManager.js';
-import { ErrorHandler } from '@/utils/ErrorHandler.js';
+import { withRetry } from '@/services/system/RetryService.js';
 import { databaseMigration } from './DatabaseMigration.js';
 
 type JsonDataCollection = Record<string, unknown>;
@@ -626,13 +626,13 @@ export class JsonDatabase extends Database {
     return this.cache.getStats();
   }
 
-  async retryOperation<T>(operation: () => Promise<T>, operationName: string): Promise<T> {
-    return ErrorHandler.retry(operation, {
-      maxRetries: 3,
-      delayMs: 500,
+  async retryOperation<T>(operation: () => Promise<T>, _operationName: string): Promise<T> {
+    return withRetry(operation, {
+      maxAttempts: 3,
+      baseDelay: 500,
       onRetry: (attempt, error) => {
         logger.warn(
-          `JsonDB ${operationName} retry ${attempt}: ${error instanceof Error ? error.message : 'unknown'}`,
+          `JsonDB ${_operationName} retry ${attempt}: ${error instanceof Error ? error.message : 'unknown'}`,
         );
       },
     });

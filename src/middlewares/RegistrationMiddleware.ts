@@ -2,6 +2,7 @@ import { Middleware } from './Middleware.js';
 import type { MessageContext } from '@/types/index.js';
 import type { ICommand } from '@/types/index.js';
 import { serviceManager } from '@/services/system/Servicemanager.js';
+import { logError } from '@/utils/logger.js';
 
 export class RegistrationMiddleware extends Middleware {
   name = 'registration';
@@ -31,7 +32,8 @@ export class RegistrationMiddleware extends Middleware {
       }
 
       await next();
-    } catch {
+    } catch (error) {
+      logError('[Registration]', error);
       await ctx.reply(
         `📝 *REGISTRO REQUERIDO*\n\n` +
           `Necesitas registrarte para usar este comando.\n\n` +

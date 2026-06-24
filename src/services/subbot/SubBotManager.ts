@@ -29,7 +29,7 @@ import {
   renameSync,
 } from 'fs';
 import { EventEmitter } from 'events';
-import type { WAMessage, proto, WASocket } from '@whiskeysockets/baileys';
+import type { WAMessage, WASocket, BaileysEventMap } from '@whiskeysockets/baileys';
 import type {
   SubBotConfig,
   SubBotSlot,
@@ -40,9 +40,6 @@ import { SUBBOT_CONFIG } from '@/config/subbot.js';
 import { SubBotInstance } from './SubBotInstance.js';
 import { subBotDatabase } from './SubBotDatabase.js';
 import { logger, logError } from '@/utils/logger.js';
-import { commandRegistry } from '@/core/CommandRegistry.js';
-import { MessageContext } from '@/core/MessageContext.js';
-import { cacheManager } from '@/core/CacheManager.js';
 import { config } from '@/config/index.js';
 import { ValidationMiddleware } from '@/middlewares/ValidationMiddleware.js';
 import { PermissionMiddleware } from '@/middlewares/PermissionMiddleware.js';
@@ -52,25 +49,10 @@ import { AutoRegisterMiddleware } from '@/middlewares/AutoRegisterMiddleware.js'
 import { MuteMiddleware } from '@/middlewares/MuteMiddleware.js';
 import { LoggerMiddleware } from '@/middlewares/LoggerMiddleware.js';
 import { VaniaToggleMiddleware } from '@/middlewares/VaniaToggleMiddleware.js';
-import { serviceManager } from '@/services/system/Servicemanager.js';
-import { handleReaccion } from '@/handlers/ReaccionHandler.js';
-import { quizAnswerHandler } from '@/handlers/QuizAnswerHandler.js';
-import { handleMention } from '@/handlers/AiMentionHandler.js';
-import { welcomeService } from '@/services/system/WelcomeService.js';
-import { CommandExecutionError } from '@/utils/errors.js';
-import type { IMiddleware } from '@/types/index.js';
-import type { BaileysEventMap } from '@whiskeysockets/baileys';
 import { AntiSpamService } from '@/services/system/AntiSpamService.js';
-import { runtimeStateRepository } from '@/repositories/RuntimeStateRepository.js';
-import { processedMessagesRepository } from '@/repositories/ProcessedMessagesRepository.js';
-
-interface MiddlewareConfig {
-  middleware: IMiddleware;
-  priority: number;
-  canRunParallel: boolean;
-}
-
-type GroupParticipantsUpdate = BaileysEventMap['group-participants.update'];
+import { serviceManager } from '@/services/system/Servicemanager.js';
+import { commandRegistry } from '@/core/CommandRegistry.js';
+import { SubBotMessageHandler, type MiddlewareConfig } from './SubBotMessageHandler.js';
 
 export class SubBotManager extends EventEmitter {
   private static instance: SubBotManager;
@@ -81,6 +63,7 @@ export class SubBotManager extends EventEmitter {
   private mainSock?: WASocket;
   private healthCheckInterval?: ReturnType<typeof setInterval>;
   private settingsSyncInterval?: ReturnType<typeof setInterval>;
+  private messageHandler!: SubBotMessageHandler;
 
   private constructor() {
     super();
@@ -97,7 +80,9 @@ export class SubBotManager extends EventEmitter {
   private ensureRuntimeDir(): void {
     try {
       mkdirSync(SUBBOT_CONFIG.RUNTIME_STATE_DIR, { recursive: true });
-    } catch {}
+    } catch {
+      logger.warn('Could not create runtime state directory');
+    }
   }
 
   setMainSocket(sock: WASocket): void {
@@ -108,13 +93,20 @@ export class SubBotManager extends EventEmitter {
   async initialize(): Promise<void> {
     logger.info('🌸 Iniciando SubBotManager (VaniaBot)...');
 
+    this.messageHandler = new SubBotMessageHandler(
+      id => this.middlewaresPerInstance.get(id) ?? [],
+      id => this.antiSpamPerInstance.get(id),
+      (id, msg) => this.markAndCheckRecentMessage(id, msg),
+    );
+
     this.recoverOrphanedSessions();
 
     const activeSlots = subBotDatabase.getActiveSlots();
     logger.info(`📦 ${activeSlots.length} slots activos encontrados`);
 
-    for (const slot of activeSlots) {
-      if (slot.id) {
+    await Promise.all(
+      activeSlots.map(async slot => {
+        if (!slot.id) return;
         if (slot.status === 'connected' || slot.status === 'linking') {
           const subConfig = subBotDatabase.get(slot.id);
           if (subConfig) {
@@ -125,8 +117,8 @@ export class SubBotManager extends EventEmitter {
             `⏭️ SubBot[${slot.id}] slot ${slot.slot} disconnected — omitiendo auto-reconexión`,
           );
         }
-      }
-    }
+      }),
+    );
 
     this.startHealthCheck();
     this.startSettingsSync();
@@ -646,7 +638,9 @@ export class SubBotManager extends EventEmitter {
                       `   Estoy aquí 💗\n` +
                       `╰━━━━━━━━━━━━━━━━━━━━╯`,
                   });
-                } catch {}
+                } catch (error) {
+                  logError('[SubBotManager]', error);
+                }
               }
             })();
           }, 180000);
@@ -769,7 +763,9 @@ export class SubBotManager extends EventEmitter {
               `   Estoy aquí 💗\n` +
               `╰━━━━━━━━━━━━━━━━━━━━╯`,
           });
-        } catch {}
+        } catch (error) {
+          logError('[SubBotManager]', error);
+        }
       })();
     });
 
@@ -778,16 +774,16 @@ export class SubBotManager extends EventEmitter {
     });
 
     instance.on('message', (msg: WAMessage, sock: WASocket) => {
-      void this.handleSubBotMessage(msg, sock, subConfig).catch(err =>
-        logError(`SubBotManager[${subConfig.id}].handleSubBotMessage`, err),
-      );
+      void this.messageHandler
+        .handleMessage(msg, sock, subConfig)
+        .catch(err => logError(`SubBotManager[${subConfig.id}].handleSubBotMessage`, err));
     });
 
-    instance.on('groupUpdate', (update: GroupParticipantsUpdate) => {
+    instance.on('groupUpdate', (update: BaileysEventMap['group-participants.update']) => {
       if (instance.sock) {
-        void this.handleGroupUpdate(update, instance.sock, toggleBotId).catch(err =>
-          logError(`SubBotManager[${subConfig.id}].handleGroupUpdate`, err),
-        );
+        void this.messageHandler
+          .handleGroupUpdate(update, instance.sock, toggleBotId)
+          .catch(err => logError(`SubBotManager[${subConfig.id}].handleGroupUpdate`, err));
       }
     });
 
@@ -795,196 +791,6 @@ export class SubBotManager extends EventEmitter {
     subBotDatabase.updateSlotStatus(subConfig.slot, 'linking');
     await instance.start();
     logger.info(`✅ SubBot[${subConfig.id}] instancia lanzada en slot ${subConfig.slot}`);
-  }
-
-  private async handleSubBotMessage(
-    msg: WAMessage,
-    sock: WASocket,
-    subConfig: SubBotConfig,
-  ): Promise<void> {
-    if (!msg?.message || msg.key.fromMe) return;
-
-    const messageId = msg.key.id;
-    if (!messageId) return;
-
-    if (this.markAndCheckRecentMessage(subConfig.id, msg)) return;
-
-    const lastStartup = runtimeStateRepository.getLastStartupAt(subConfig.id);
-    if (lastStartup) {
-      const rawTimestamp = msg.messageTimestamp;
-      const msgTimestamp =
-        rawTimestamp !== undefined && rawTimestamp !== null ? Number(rawTimestamp) * 1000 : 0;
-      const startupTime = new Date(lastStartup).getTime();
-      if (msgTimestamp > 0 && msgTimestamp < startupTime) {
-        logger.debug(`[SubBot:${subConfig.id}] Skipping pre-startup message ${messageId}`);
-        processedMessagesRepository.markProcessed(messageId, subConfig.id);
-        return;
-      }
-    }
-
-    const startTime = Date.now();
-
-    try {
-      if (msg.message?.reactionMessage) {
-        await handleReaccion(sock, msg).catch(err =>
-          logError(`SubBot[${subConfig.id}].handleReaccion`, err),
-        );
-        return;
-      }
-
-      const toggleBotId = `subbot${subConfig.slot}`;
-      const ctx = new MessageContext(sock, msg as proto.IWebMessageInfo, toggleBotId);
-
-      const isVaniaToggleCommand = ['vaniaon', 'vaniaoff', 'vaniastatus'].includes(ctx.command);
-
-      if (isVaniaToggleCommand && !ctx.args[0]) {
-        logger.debug(`📤 SubBot[${subConfig.id}] skipping non-slot toggle command: ${ctx.command}`);
-        return;
-      }
-
-      if (ctx.chat.isGroup && !isVaniaToggleCommand) {
-        const isEnabled = await serviceManager.vaniaToggleService.isEnabled(
-          ctx.chat.jid,
-          toggleBotId,
-        );
-        if (!isEnabled) return;
-      }
-
-      if (ctx.chat.isGroup) {
-        const isMuted = await serviceManager.moderationService.isMuted(
-          ctx.chat.jid,
-          ctx.sender.jid,
-        );
-
-        if (isMuted) {
-          if (ctx.chat.isBotAdmin) {
-            try {
-              await sock.sendMessage(ctx.chat.jid, { delete: msg.key });
-            } catch (error) {
-              logError('[MUTE] Error al eliminar mensaje en SubBot', error);
-            }
-          }
-          return;
-        }
-      }
-
-      if (ctx.chat.isGroup && !ctx.command) {
-        const quizHandled = await quizAnswerHandler.handle(ctx);
-        if (quizHandled) return;
-        const botJid = sock.user?.id ?? '';
-        await handleMention(ctx, botJid);
-        return;
-      }
-
-      if (!ctx.command) return;
-
-      const antiSpam = this.antiSpamPerInstance.get(subConfig.id);
-      if (antiSpam) {
-        const rateLimit = antiSpam.check(ctx.sender.jid);
-        if (!rateLimit.allowed) {
-          await ctx.reply(rateLimit.reason ?? '⚠️ Demasiados mensajes').catch(() => {});
-          return;
-        }
-      }
-
-      const fullCommand = ctx.args.length > 0 ? `${ctx.command} ${ctx.args[0]}` : null;
-      const command =
-        (fullCommand ? commandRegistry.get(fullCommand) : null) ?? commandRegistry.get(ctx.command);
-
-      if (!command) return;
-
-      if (fullCommand && commandRegistry.get(fullCommand)) {
-        ctx.args.shift();
-      }
-
-      if (command.permissions?.user || command.permissions?.bot) {
-        if (ctx.chat.isGroup) {
-          await Promise.all([ctx.loadSenderPermissions(), ctx.loadBotPermissions()]);
-        } else {
-          await ctx.loadSenderPermissions();
-        }
-      }
-
-      const middlewares = this.middlewaresPerInstance.get(subConfig.id) ?? [];
-      await this.executeWithMiddlewares(ctx, middlewares, async () => {
-        try {
-          await command.execute(ctx);
-          const processingTime = Date.now() - startTime;
-          logger.info(`✅ SubBot[${subConfig.id}] cmd=${ctx.command} time=${processingTime}ms`);
-          if (processingTime > 2000) {
-            logger.warn(`⚠️ SubBot[${subConfig.id}] ${ctx.command}: ${processingTime}ms (lento)`);
-          }
-        } catch (error) {
-          logError(`SubBot[${subConfig.id}]`, new CommandExecutionError(ctx.command, error));
-          await ctx.reply('Ocurrió un error al ejecutar el comando 💔').catch(() => {});
-        }
-      });
-
-      cacheManager.markMessageProcessed(messageId);
-    } catch (error) {
-      logError(`SubBot[${subConfig.id}].handleMessage`, error);
-    }
-  }
-
-  private async handleGroupUpdate(
-    update: GroupParticipantsUpdate,
-    sock: WASocket,
-    botId: string,
-  ): Promise<void> {
-    const { id: groupJid, participants, action } = update;
-    if (!groupJid || !participants) return;
-    try {
-      cacheManager.invalidateGroupMetadata(groupJid);
-      await serviceManager.groupService.getGroup(groupJid);
-      const isEnabled = await serviceManager.vaniaToggleService.isEnabled(groupJid, botId);
-      if (!isEnabled) return;
-      if (action === 'add') {
-        for (const participant of participants) {
-          welcomeService
-            .handleNewParticipant(sock, groupJid, participant)
-            .catch(err => logError('SubBot.handleNewParticipant', err));
-        }
-      }
-      if (action === 'remove') {
-        for (const participant of participants) {
-          welcomeService
-            .handleParticipantLeft(sock, groupJid, participant, botId)
-            .catch(err => logError('SubBot.handleParticipantLeft', err));
-        }
-      }
-    } catch (error) {
-      logError('SubBot.handleGroupUpdate', error);
-    }
-  }
-
-  private async executeWithMiddlewares(
-    ctx: MessageContext,
-    middlewares: MiddlewareConfig[],
-    handler: () => Promise<void>,
-  ): Promise<void> {
-    let index = 0;
-    const next = async (): Promise<void> => {
-      const parallelBatch: IMiddleware[] = [];
-      while (index < middlewares.length && middlewares[index].canRunParallel) {
-        parallelBatch.push(middlewares[index].middleware);
-        index++;
-      }
-      if (parallelBatch.length > 0) {
-        await Promise.all(parallelBatch.map(mw => mw.execute(ctx, async () => {})));
-      }
-      if (index < middlewares.length) {
-        const cfg = middlewares[index++];
-        try {
-          await cfg.middleware.execute(ctx, next);
-        } catch (error) {
-          logError(`SubBot.Middleware:${cfg.middleware.name}`, error);
-          throw error;
-        }
-      } else {
-        await handler();
-      }
-    };
-    await next();
   }
 
   async stopSubBot(ownerJid: string): Promise<void> {
@@ -1049,14 +855,18 @@ export class SubBotManager extends EventEmitter {
     if (existsSync(`${SUBBOT_CONFIG.SESSION_BASE_PATH}/${slot.id}`)) {
       try {
         rmSync(`${SUBBOT_CONFIG.SESSION_BASE_PATH}/${slot.id}`, { recursive: true, force: true });
-      } catch {}
+      } catch (error) {
+        logError('[SubBotManager]', error);
+      }
     }
 
     const runtimeFile = this.getRuntimeStateFile(slot.id);
     if (existsSync(runtimeFile)) {
       try {
         rmSync(runtimeFile, { force: true });
-      } catch {}
+      } catch (error) {
+        logError('[SubBotManager]', error);
+      }
     }
 
     const botState = this.runtimeStates.get(slot.id);
@@ -1138,13 +948,17 @@ export class SubBotManager extends EventEmitter {
 
     try {
       rmSync(`${SUBBOT_CONFIG.SESSION_BASE_PATH}/${slot.id}`, { recursive: true, force: true });
-    } catch {}
+    } catch (error) {
+      logError('[SubBotManager]', error);
+    }
 
     const runtimeFile = this.getRuntimeStateFile(slot.id);
     if (existsSync(runtimeFile)) {
       try {
         rmSync(runtimeFile, { force: true });
-      } catch {}
+      } catch (error) {
+        logError('[SubBotManager]', error);
+      }
     }
 
     const botState = this.runtimeStates.get(slot.id);

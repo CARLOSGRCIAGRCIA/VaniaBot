@@ -2,7 +2,6 @@ import { Command } from '../../Command.js';
 import { CommandCategory } from '@/types/index.js';
 import { logError } from '@/utils/logger.js';
 import type { MessageContext } from '@/types/index.js';
-// import { config } from '@/config/index.js';
 import { serviceManager } from '@/services/system/Servicemanager.js';
 
 export class OwnersCommand extends Command {

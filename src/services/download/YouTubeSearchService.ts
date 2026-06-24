@@ -1,6 +1,7 @@
 import { logError, logger } from '@/utils/logger.js';
 import { execFile } from 'child_process';
 import { promisify } from 'util';
+import { secondsToHMS } from '@/utils/helpers.js';
 
 const execFileAsync = promisify(execFile);
 
@@ -34,7 +35,7 @@ async function searchWithYtDlp(query: string): Promise<YouTubeVideo | null> {
     return {
       videoId: data.id,
       title: data.title,
-      duration: formatDuration(data.duration ?? 0),
+      duration: secondsToHMS(data.duration ?? 0),
       thumbnail: data.thumbnail ?? `https://i.ytimg.com/vi/${data.id}/hqdefault.jpg`,
       url: `https://youtu.be/${data.id}`,
       channel: data.uploader ?? data.channel ?? undefined,
@@ -62,7 +63,7 @@ async function getVideoInfoWithYtDlp(urlOrId: string): Promise<YouTubeVideo | nu
     return {
       videoId: data.id,
       title: data.title,
-      duration: formatDuration(data.duration ?? 0),
+      duration: secondsToHMS(data.duration ?? 0),
       thumbnail: data.thumbnail ?? `https://i.ytimg.com/vi/${data.id}/hqdefault.jpg`,
       url: `https://youtu.be/${data.id}`,
       channel: data.uploader ?? data.channel ?? undefined,
@@ -95,14 +96,4 @@ function extractVideoId(url: string): string | null {
     if (match) return match[1];
   }
   return null;
-}
-
-function formatDuration(seconds: number): string {
-  const hours = Math.floor(seconds / 3600);
-  const minutes = Math.floor((seconds % 3600) / 60);
-  const secs = Math.floor(seconds % 60);
-  if (hours > 0) {
-    return `${hours}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
-  }
-  return `${minutes}:${secs.toString().padStart(2, '0')}`;
 }

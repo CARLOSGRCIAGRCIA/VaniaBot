@@ -42,8 +42,8 @@ async function webmToAnimatedWebP(webmBuffer: Buffer): Promise<Buffer> {
     const webpBuffer = await readFile(outputPath);
     return webpBuffer;
   } finally {
-    await unlink(inputPath).catch(() => {});
-    await unlink(outputPath).catch(() => {});
+    await unlink(inputPath).catch((error: unknown) => logError('[CanvasBase]', error));
+    await unlink(outputPath).catch((error: unknown) => logError('[CanvasBase]', error));
   }
 }
 

@@ -53,11 +53,11 @@ export class QuizTopCommand extends Command {
 
       const entries: TopEntry[] = [];
 
-      for (const jid of memberJids) {
-        try {
+      const results = await Promise.allSettled(
+        memberJids.map(async jid => {
           const user = (await serviceManager.userService.getUser(jid)) as unknown as UserData;
           const stats = user?.quizStats;
-          if (!stats || stats.totalAnswered === 0) continue;
+          if (!stats || stats.totalAnswered === 0) return null;
 
           let score = stats.totalScore ?? stats.totalCorrect * 35;
           let correct = stats.totalCorrect;
@@ -68,23 +68,21 @@ export class QuizTopCommand extends Command {
             correct = cat.correct;
             answered = cat.answered;
             score = correct * 35;
-            if (answered === 0) continue;
+            if (answered === 0) return null;
           } else if (category) {
-            continue;
+            return null;
           }
 
           const accuracy = answered > 0 ? Math.round((correct / answered) * 100) : 0;
           const name = user?.pushName ?? jid.split('@')[0];
 
-          entries.push({
-            name,
-            score,
-            correct,
-            accuracy,
-            bestStreak: stats.bestStreak ?? 0,
-          });
-        } catch {
-          // Ignorar errores individuales
+          return { name, score, correct, accuracy, bestStreak: stats.bestStreak ?? 0 } as TopEntry;
+        }),
+      );
+
+      for (const result of results) {
+        if (result.status === 'fulfilled' && result.value) {
+          entries.push(result.value);
         }
       }
 

@@ -4,6 +4,7 @@ import type { MessageContext } from '@/types/index.js';
 import { serviceManager } from '@/services/system/Servicemanager.js';
 import { formatNumber, formatTime } from '@/utils/helpers.js';
 import { errorHandler } from '@/utils/ErrorHandler.js';
+import { logError } from '@/utils/logger.js';
 import { achievementService } from '@/services/rpg/AchievementService.js';
 
 export class DailyCommand extends Command {
@@ -60,8 +61,8 @@ export class DailyCommand extends Command {
         await achievementService.trackDaily(ctx.sender.jid);
         await achievementService.checkLevelAchievements(ctx.sender.jid);
         await achievementService.checkMoneyAchievements(ctx.sender.jid);
-      } catch {
-        // Achievement tracking is non-critical
+      } catch (error) {
+        logError('[DailyCommand]', error);
       }
 
       const xpGained = Math.floor(this.XP_REWARD * xpMultiplier);
@@ -88,7 +89,7 @@ export class DailyCommand extends Command {
         userId: ctx.sender.jid,
         groupId: ctx.chat.isGroup ? ctx.chat.jid : undefined,
       });
-      await ctx.reply(message).catch(() => {});
+      await ctx.reply(message).catch((error: unknown) => logError('[DailyCommand]', error));
     }
   }
 

@@ -10,6 +10,7 @@ import { Command } from '../../Command.js';
 import { CommandCategory, CommandContext, type MessageContext } from '@/types/index.js';
 import { megaDownloader } from '@/services/download/MegaDownloader.js';
 import { isRight } from '@/utils/either.js';
+import { logError } from '@/utils/logger.js';
 
 export class MegaCommand extends Command {
   name = 'mega';
@@ -118,7 +119,7 @@ export class MegaCommand extends Command {
       megaDownloader.cleanup(downloadResult.filePath);
       await ctx.react('✅');
     } catch (error) {
-      console.error('MegaCommand error:', error);
+      logError('MegaCommand error:', error);
       await ctx.react('❌');
       await ctx.reply('❌ Error al descargar de Mega.nz');
     }

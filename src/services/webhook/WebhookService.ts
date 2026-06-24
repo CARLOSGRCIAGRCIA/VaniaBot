@@ -297,7 +297,9 @@ export class WebhookService {
     if (status.status === 'ready' && status.subbotId) {
       try {
         await subBotManager.deleteSubBot(status.ownerJid || '', status.slot);
-      } catch {}
+      } catch (error) {
+        logError('[WebhookService]', error);
+      }
     }
 
     status.status = 'cancelled';

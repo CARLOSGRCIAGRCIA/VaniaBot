@@ -87,7 +87,6 @@ export class UnifiedCacheManager {
     this.messageIdCacheTimer = setInterval(
       () => {
         this.messageIdCache.clear();
-        if (global.gc) global.gc();
       },
       3 * 60 * 1000,
     );

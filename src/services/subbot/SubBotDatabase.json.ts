@@ -14,6 +14,7 @@
 import { existsSync, readFileSync, writeFileSync, mkdirSync, renameSync } from 'fs';
 import { SUBBOT_CONFIG } from '@/config/subbot.js';
 import type { SubBotConfig, SubBotSlot, SubBotSlotStatus } from '@/types/subbot.js';
+import { logger, logError } from '@/utils/logger.js';
 
 const DB_PATH = './data/subbots.json';
 
@@ -292,12 +293,12 @@ export class SubBotDatabase {
       writeFileSync(tmpPath, JSON.stringify(this.data, null, 2), 'utf8');
       renameSync(tmpPath, DB_PATH);
     } catch (error) {
-      console.error('[SubBotDatabase] Failed to save:', error);
+      logError('[SubBotDatabase] Failed to save:', error);
       try {
         const fallbackPath = DB_PATH + '.fallback';
         writeFileSync(fallbackPath, JSON.stringify(this.data, null, 2), 'utf8');
       } catch {
-        console.error('[SubBotDatabase] Fallback save also failed');
+        logger.error('[SubBotDatabase] Fallback save also failed');
       }
     }
   }

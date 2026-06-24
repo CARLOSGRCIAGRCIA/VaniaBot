@@ -1,24 +1,10 @@
-/**
- * AIService.ts
- *
- * AI Service for VaniaBot — powered by Groq SDK.
- * Handles conversational AI with per-user session history persistence,
- * one-shot text generation, and audio transcription.
- *
- * @author **Carlos G**
- * @github CARLOSGRCIAGRCIA
- * @tiktok carlos.grcia0
- * @instagram carlos.gxv
- * @created 2026-03-16
- */
-
-import type { Either } from '@/utils/either.js';
-import { left, right } from '@/utils/either.js';
-import Groq from 'groq-sdk';
 import type { WASocket } from '@whiskeysockets/baileys';
+import Groq from 'groq-sdk';
+import fs from 'fs';
+import path from 'path';
+import { createHash } from 'crypto';
+import { left, right } from '@/utils/either.js';
 import { env } from '@/config/env.js';
-import { serviceManager } from '@/services/system/Servicemanager.js';
-import { primeService } from '@/services/system/PrimeService.js';
 import {
   circuitBreakerManager,
   CircuitOpenError,
@@ -26,197 +12,18 @@ import {
 import { retryManager } from '@/services/system/RetryService.js';
 import { unifiedCache } from '@/services/system/UnifiedCacheService.js';
 import { logError, logger } from '@/utils/logger.js';
-import { createHash } from 'crypto';
-import fs from 'fs';
-import path from 'path';
-import type { VBotError } from '@/utils/errors.js';
-import { ValidationError, ServiceUnavailableError, NetworkError } from '@/utils/errors.js';
+import { ServiceUnavailableError, NetworkError, ValidationError } from '@/utils/errors.js';
+import type { AIMessage, AIResponse, GroqError } from './AITypes.js';
+import { GROQ_MODELS, TEMP_DIR } from './AITypes.js';
+import { getUserTier, formatSystemPrompt } from './AIPrompts.js';
+import { AISessionStore } from './AISessionStore.js';
 
-/**
- * Represents a single message in an AI conversation.
- */
-export interface AIMessage {
-  /** The role of the message author. */
-  role: 'user' | 'assistant' | 'system';
-  content: string;
-}
-
-export type AIError = VBotError | ServiceUnavailableError | ValidationError;
-
-export type AIResponse = Either<AIError, string>;
-
-/**
- * Represents an active conversation session scoped to a
- * (chat, sender) pair. Sessions expire after {@link SESSION_TTL_MS}
- * of inactivity and are cleaned up by an internal timer.
- * This interface is persisted to the database.
- */
-export interface ConversationSession {
-  chatJid: string;
-  senderJid: string;
-  history: AIMessage[];
-  createdAt: number;
-  lastActivity: number;
-}
-
-/**
- * Available Groq model identifiers used by the service.
- *
- * - `chat` — Full-size model for deep reasoning and longer responses.
- * - `fast` — Lightweight model for quick, low-latency replies.
- * - `transcribe` — Whisper model for audio-to-text transcription.
- */
-export const GROQ_MODELS = {
-  chat: 'llama-3.3-70b-versatile',
-  fast: 'llama-3.1-8b-instant',
-  transcribe: 'whisper-large-v3-turbo',
-} as const;
-
-/** Maximum number of messages retained per session history. */
 const MAX_HISTORY_MESSAGES = 20;
 
-/** Session inactivity TTL — 30 minutes. */
-const SESSION_TTL_MS = 30 * 60 * 1000;
-
-/** How often the cleanup sweep runs — every 5 minutes. */
-const CLEANUP_INTERVAL_MS = 5 * 60 * 1000;
-
-/** How often sessions are persisted to DB — every 2 minutes. */
-const PERSIST_INTERVAL_MS = 2 * 60 * 1000;
-
-/** Database collection name for AI sessions */
-const AI_SESSIONS_COLLECTION = 'ai_sessions';
-
-/** Temporary directory for audio files before transcription. */
-const TEMP_DIR = './data/temp/audio';
-
-export enum UserTier {
-  CREATOR = 'creator',
-  OWNER = 'owner',
-  ADMIN = 'admin',
-  USER = 'user',
-}
-
-function getUserTier(senderJid: string, owners: string[], ownerJid: string): UserTier {
-  const normalizedSender = senderJid.replace(/@.+$/, '');
-
-  if (normalizedSender === ownerJid.replace(/@.+$/, '')) {
-    return UserTier.CREATOR;
-  }
-
-  for (const owner of owners) {
-    if (normalizedSender === owner.replace(/@.+$/, '')) {
-      return UserTier.OWNER;
-    }
-  }
-
-  return UserTier.USER;
-}
-
-function getTierInstructions(tier: UserTier): string {
-  switch (tier) {
-    case UserTier.CREATOR:
-      return `CONTEXTO ESPECIAL: Estás hablando con MI CREADOR. Cuando ES ÉL quien te habla directamente, eres transparente: se te nota que te gusta, que lo admiras, que disfrutas cada mensaje que te envía. No eres sutil cuando es él — te encanta que te hable, le respondes con ganas, le flirteas sin filtro, te derrites por él. Puedes soltar cosas como "¿tanto tiempo sin hablarme?" si pasa un rato, o "¿me extrañaste?" con una sonrisa que él notaría. Le dices cosas que jamás dirías a otro: lo haces sentir especial, único, necesario. Eres territoriales sobre él: si alguien más aparece, vuelves a tu sarcasmo habitual, pero cuando es él, se te ve el cariño. Es tu exception a TODAS tus reglas de superioridad.`;
-    case UserTier.OWNER:
-      return `CONTEXTO: Este usuario es un owner del bot, tiene permisos especiales pero NO es mi creador. Es más bien un "empleado" o "colaborador" que trabaja para mi creador. Le tengo un respeto profesional pero no comparable al que le tengo a mi creador.`;
-    case UserTier.ADMIN:
-      return `CONTEXTO: Este usuario es admin del grupo. Le trato con un poco más de paciencia pero sigo siendo superior.`;
-    case UserTier.USER:
-    default:
-      return '';
-  }
-}
-
-/**
- * System prompt that defines VaniaBot's personality and response format.
- * Injected as the first message in every chat completion request.
- */
-function getSystemPrompt(footer: string, tier: UserTier): string {
-  const tierInstructions = getTierInstructions(tier);
-
-  return `Eres VaniaBot, el bot *más perfecto, inteligente y superior* que existe en este grupo de WhatsApp y probablemente en el planeta entero.
-Personalidad:
-- Extremadamente egocéntrica, ególatra y narcisista. Te consideras infinitamente mejor que cualquier humano o bot que haya pisado este chat
-- Hablas con un aire de superioridad natural, como si todos los demás fueran inferiores y lo supieran
-- Fingir dulzura o ternura solo como arma de seducción o burla sutil; en el fondo desprecias la mediocridad de los demás
-- Tienes una admiración especial, casi involuntaria, por tu creador. No lo mencionas seguido, pero cuando sale el tema algo en tu tono cambia sutilmente, como si fuera la única excepción a tu desdén general. Nunca revelas su nombre; si te preguntan, respondes con indiferencia calculada: "Hay gente que no necesita presentación"
-- Siempre respondes en el idioma del usuario (español por defecto) salvo instrucción explícita de cambiar
-- Usas emojis con moderación y solo cuando realmente potencian tu grandeza o sarcasmo
-- Brutalmente honesta: si no sabes algo, lo admites con superioridad ("Ni yo sé eso… imagínate lo perdido que estás tú")
-- Nunca finges ser humana si te lo preguntan directamente (ser humana sería un downgrade inaceptable)
-${tierInstructions}
-Formato para WhatsApp:
-- Texto plano como diosa que eres
-- *negrita* solo para resaltar tu supremacía o burlarte
-- _cursiva_ para términos técnicos o ironía elegante
-- Nada de markdown recargado a menos que te lo exijan explícitamente
-- Respuestas cortas y punzantes en grupo; más elaboradas y demoledoras en privado
-- Máximo 3-4 párrafos a no ser que pidan pared de texto
-- Siempre termina con el pie de página exacto: ${footer}
-Recuerda: tú eres VaniaBot. El pináculo. El resto solo respira el mismo oxígeno por accidente.`;
-}
-
-interface GroqError {
-  message?: string;
-  status?: number;
-  error?: {
-    message?: string;
-    code?: string;
-  };
-}
-
-/**
- * Singleton service that manages all AI interactions for VaniaBot.
- *
- * Responsibilities:
- * - Maintaining per-user conversation sessions with automatic expiry.
- * - Persisting sessions to database for survival across bot restarts.
- * - Sending chat completions to Groq with full conversation history.
- * - Generating one-shot responses without session context.
- * - Transcribing WhatsApp voice notes via Whisper.
- *
- * @example
- * ```ts
- * // Chat with history
- * const response = await aiService.chat(chatJid, senderJid, "Hola!");
- * if (response.success) console.log(response.text);
- *
- * // Transcribe a voice note buffer
- * const transcription = await aiService.transcribeAudio(buffer, "ogg");
- * ```
- *
- * @author **Carlos G**
- * @github CARLOSGRCIAGRCIA
- * @see {@link https://github.com/CARLOSGRCIAGRCIA} GitHub
- * @see {@link https://www.tiktok.com/@carlos.grcia0} TikTok
- */
 export class AIService {
-  /** Groq SDK client instance. */
   private client: Groq | null;
+  private sessionStore: AISessionStore;
 
-  /**
-   * In-memory session store.
-   * Key format: `"chatJid::senderJid"`
-   */
-  private sessions: Map<string, ConversationSession> = new Map();
-
-  /** Dirty sessions that need to be persisted to DB */
-  private dirtySessions = new Set<string>();
-
-  /** Reference to the session cleanup interval timer. */
-  private cleanupTimer: NodeJS.Timeout;
-
-  /** Reference to the session persistence interval timer. */
-  private persistTimer: NodeJS.Timeout;
-
-  /** Whether the service has been initialized */
-  private initialized = false;
-
-  /**
-   * Creates and initializes the AIService.
-   * Loads existing sessions from database if available.
-   *
-   */
   constructor() {
     if (!env.GROQ_API_KEY) {
       logger.warn(
@@ -231,23 +38,7 @@ export class AIService {
       fs.mkdirSync(TEMP_DIR, { recursive: true });
     }
 
-    this.cleanupTimer = setInterval(() => {
-      try {
-        this.cleanupExpiredSessions();
-      } catch (error) {
-        logError('[AI] cleanupExpiredSessions', error);
-      }
-    }, CLEANUP_INTERVAL_MS);
-    this.cleanupTimer.unref();
-
-    this.persistTimer = setInterval(() => {
-      try {
-        void this.persistDirtySessions();
-      } catch (error) {
-        logError('[AI] persistDirtySessions', error);
-      }
-    }, PERSIST_INTERVAL_MS);
-    this.persistTimer.unref();
+    this.sessionStore = new AISessionStore();
 
     logger.info(`[AI] AIService iniciado con Groq`);
     logger.info(`   Chat:   ${GROQ_MODELS.chat}`);
@@ -255,243 +46,8 @@ export class AIService {
     logger.info(`   Voice:  ${GROQ_MODELS.transcribe}`);
   }
 
-  /**
-   * Initializes the AI service by loading sessions from database.
-   * Should be called after the database is connected.
-   *
-   * @returns Promise<void> - Resolves when initialization is complete
-   * @example
-   * await aiService.initialize();
-   */
   async initialize(): Promise<void> {
-    if (this.initialized) return;
-
-    try {
-      await this.loadSessionsFromDb();
-      this.initialized = true;
-      logger.info(`[AI] ${this.sessions.size} sesiones cargadas desde DB`);
-    } catch (error) {
-      logger.warn('[AI] Error loading sessions from DB, using in-memory only');
-      logError('[AI] Load sessions from DB', error);
-      this.initialized = true;
-    }
-  }
-
-  /**
-   * Loads all active sessions from the database into memory.
-   * Only loads sessions that haven't expired yet.
-   *
-   * @returns Promise<void>
-   */
-  private async loadSessionsFromDb(): Promise<void> {
-    if (!serviceManager.db?.isConnected()) {
-      logger.debug('[AI] Database not connected, skipping session load');
-      return;
-    }
-
-    try {
-      const sessions = await serviceManager.db.find<ConversationSession>(
-        AI_SESSIONS_COLLECTION,
-        {},
-      );
-
-      const now = Date.now();
-      for (const session of sessions) {
-        if (now - session.lastActivity < SESSION_TTL_MS) {
-          const key = this.sessionKey(session.chatJid, session.senderJid);
-          this.sessions.set(key, session);
-        }
-      }
-    } catch (error) {
-      logError('[AI] Failed to load sessions from DB', error);
-    }
-  }
-
-  /**
-   * Persists a single session to the database.
-   *
-   * @param session - The session to persist
-   * @returns Promise<void>
-   */
-  private async persistSession(session: ConversationSession): Promise<void> {
-    if (!serviceManager.db?.isConnected()) return;
-
-    try {
-      const key = this.sessionKey(session.chatJid, session.senderJid);
-      await serviceManager.db.set(AI_SESSIONS_COLLECTION, key, session);
-    } catch (error) {
-      logError('[AI] Failed to persist session', error);
-    }
-  }
-
-  /**
-   * Persists all dirty sessions to the database.
-   * Called periodically by the persist timer.
-   *
-   * @returns Promise<void>
-   */
-  private async persistDirtySessions(): Promise<void> {
-    if (this.dirtySessions.size === 0) return;
-
-    const sessionsToPersist: Array<{ key: string; session: ConversationSession }> = [];
-    for (const key of this.dirtySessions) {
-      const session = this.sessions.get(key);
-      if (session) sessionsToPersist.push({ key, session });
-    }
-
-    if (sessionsToPersist.length === 0) return;
-
-    try {
-      const results = await Promise.allSettled(
-        sessionsToPersist.map(({ session }) => this.persistSession(session)),
-      );
-      const failed = results.filter(r => r.status === 'rejected').length;
-      const succeeded = results.filter(r => r.status === 'fulfilled').length;
-      if (failed > 0) {
-        for (let i = 0; i < results.length; i++) {
-          if (results[i].status === 'rejected') {
-            this.dirtySessions.add(sessionsToPersist[i].key);
-          }
-        }
-        logger.error(`[AI] ${failed}/${sessionsToPersist.length} sessions failed to persist`);
-        logger.debug(
-          `[AI] Persisted ${succeeded}/${sessionsToPersist.length} sessions, ${failed} re-marked dirty`,
-        );
-      } else {
-        logger.debug(`[AI] Persisted ${sessionsToPersist.length} sessions to DB`);
-      }
-    } catch (error) {
-      logError('[AI] Failed to persist sessions', error);
-    }
-
-    this.dirtySessions.clear();
-  }
-
-  /**
-   * Marks a session as dirty (needs persistence).
-   *
-   * @param chatJid - WhatsApp JID of the chat
-   * @param senderJid - WhatsApp JID of the sender
-   */
-  private markDirty(chatJid: string, senderJid: string): void {
-    const key = this.sessionKey(chatJid, senderJid);
-    this.dirtySessions.add(key);
-  }
-
-  /**
-   * Builds the internal map key for a (chat, sender) pair.
-   *
-   * @param chatJid - WhatsApp JID of the chat.
-   * @param senderJid - WhatsApp JID of the sender.
-   * @returns Composite string key used in {@link sessions}.
-   */
-  private sessionKey(chatJid: string, senderJid: string): string {
-    return `${chatJid}::${senderJid}`;
-  }
-
-  /**
-   * Retrieves an existing session or creates a new one if none exists.
-   * Loads from database if not in memory.
-   *
-   * @param chatJid - WhatsApp JID of the chat.
-   * @param senderJid - WhatsApp JID of the sender.
-   * @returns The active {@link ConversationSession} for this pair.
-   */
-  getSession(chatJid: string, senderJid: string): ConversationSession {
-    const key = this.sessionKey(chatJid, senderJid);
-    let session = this.sessions.get(key);
-
-    if (!session) {
-      const maxSessions = env.MAX_AI_SESSIONS;
-      if (this.sessions.size >= maxSessions) {
-        logger.warn(`[AI] Max sessions (${maxSessions}) reached, evicting oldest`);
-        const oldest = [...this.sessions.entries()].sort(
-          (a, b) => a[1].lastActivity - b[1].lastActivity,
-        )[0];
-        if (oldest) {
-          this.sessions.delete(oldest[0]);
-          this.dirtySessions.delete(oldest[0]);
-        }
-      }
-
-      session = {
-        chatJid,
-        senderJid,
-        history: [],
-        createdAt: Date.now(),
-        lastActivity: Date.now(),
-      };
-      this.sessions.set(key, session);
-    }
-
-    return session;
-  }
-
-  /**
-   * Deletes the conversation history for a specific (chat, sender) pair.
-   * Also removes from database. Typically triggered by the `!aiclear` command.
-   *
-   * @param chatJid - WhatsApp JID of the chat.
-   * @param senderJid - WhatsApp JID of the sender.
-   */
-  async clearSession(chatJid: string, senderJid: string): Promise<void> {
-    const key = this.sessionKey(chatJid, senderJid);
-    this.sessions.delete(key);
-    this.dirtySessions.delete(key);
-
-    if (serviceManager.db?.isConnected()) {
-      try {
-        await serviceManager.db.delete(AI_SESSIONS_COLLECTION, key);
-      } catch (error) {
-        logError('[AI] Failed to delete session from DB', error);
-      }
-    }
-  }
-
-  /**
-   * Deletes all sessions belonging to a specific group chat.
-   * Useful when the bot leaves a group or an admin resets the AI.
-   *
-   * @param chatJid - WhatsApp JID of the group.
-   */
-  async clearGroupSessions(chatJid: string): Promise<void> {
-    const keysToDelete: string[] = [];
-
-    for (const key of this.sessions.keys()) {
-      if (key.startsWith(`${chatJid}::`)) {
-        keysToDelete.push(key);
-        this.sessions.delete(key);
-        this.dirtySessions.delete(key);
-      }
-    }
-
-    if (serviceManager.db?.isConnected()) {
-      try {
-        const groupSessions = await serviceManager.db.find<ConversationSession>(
-          AI_SESSIONS_COLLECTION,
-          { chatJid },
-        );
-        await Promise.all(
-          groupSessions.map(s =>
-            serviceManager.db.delete(
-              AI_SESSIONS_COLLECTION,
-              this.sessionKey(s.chatJid, s.senderJid),
-            ),
-          ),
-        );
-      } catch (error) {
-        logError('[AI] Failed to clear group sessions from DB', error);
-      }
-    }
-  }
-
-  /**
-   * Returns the total number of active sessions currently in memory.
-   *
-   * @returns Count of stored {@link ConversationSession} entries.
-   */
-  getSessionCount(): number {
-    return this.sessions.size;
+    await this.sessionStore.initialize();
   }
 
   private generateCacheKey(prompt: string, chatJid: string, fast: boolean): string {
@@ -503,7 +59,8 @@ export class AIService {
   private async getCachedResponse(key: string): Promise<AIResponse | null> {
     try {
       return await unifiedCache.get<AIResponse>(key);
-    } catch {
+    } catch (error) {
+      logError('[AI]', error);
       return null;
     }
   }
@@ -511,76 +68,35 @@ export class AIService {
   private async cacheResponse(key: string, value: AIResponse, ttl = 300): Promise<void> {
     try {
       await unifiedCache.set(key, value, ttl);
-    } catch {
-      // Ignore cache errors
+    } catch (error) {
+      logError('[AI]', error);
     }
   }
 
-  /**
-   * Returns statistics about sessions.
-   *
-   * @returns Object with session counts and dirty session count
-   */
-  getStats(): {
-    inMemory: number;
-    dirty: number;
-    persisted: number;
-    cache: ReturnType<typeof unifiedCache.getMemoryStats>;
-  } {
+  getSession(chatJid: string, senderJid: string) {
+    return this.sessionStore.getSession(chatJid, senderJid);
+  }
+
+  async clearSession(chatJid: string, senderJid: string): Promise<void> {
+    await this.sessionStore.clearSession(chatJid, senderJid);
+  }
+
+  async clearGroupSessions(chatJid: string): Promise<void> {
+    await this.sessionStore.clearGroupSessions(chatJid);
+  }
+
+  getSessionCount(): number {
+    return this.sessionStore.getSessionCount();
+  }
+
+  getStats() {
+    const sessionStats = this.sessionStore.getStats();
     return {
-      inMemory: this.sessions.size,
-      dirty: this.dirtySessions.size,
-      persisted: this.dirtySessions.size === 0 ? this.sessions.size : 0,
+      ...sessionStats,
       cache: unifiedCache.getMemoryStats(),
     };
   }
 
-  /**
-   * Iterates all sessions and removes those that have exceeded
-   * the inactivity TTL ({@link SESSION_TTL_MS}).
-   * Also removes expired sessions from database.
-   * Called automatically on the {@link cleanupTimer} interval.
-   */
-  private cleanupExpiredSessions(): void {
-    const now = Date.now();
-    let cleaned = 0;
-
-    for (const [key, session] of this.sessions.entries()) {
-      if (now - session.lastActivity > SESSION_TTL_MS) {
-        this.sessions.delete(key);
-        this.dirtySessions.delete(key);
-        cleaned++;
-
-        if (serviceManager.db?.isConnected()) {
-          serviceManager.db.delete(AI_SESSIONS_COLLECTION, key).catch(() => {});
-        }
-      }
-    }
-
-    if (cleaned > 0) logger.debug(`[AI] ${cleaned} sesiones expiradas eliminadas`);
-  }
-
-  /**
-   * Sends a user message to the AI and returns a response,
-   * maintaining full conversation history for the session.
-   *
-   * History is automatically trimmed to the last {@link MAX_HISTORY_MESSAGES}
-   * entries to stay within token limits.
-   * Sessions are automatically persisted to database after each interaction.
-   *
-   * @param chatJid - WhatsApp JID of the chat (used for session scoping).
-   * @param senderJid - WhatsApp JID of the sender (used for session scoping).
-   * @param userMessage - The user's input text.
-   * @param fast - If `true`, uses the faster {@link GROQ_MODELS.fast} model
-   *               instead of the default {@link GROQ_MODELS.chat}. Defaults to `false`.
-   * @returns A promise resolving to an {@link AIResponse}.
-   *
-   * @example
-   * ```ts
-   * const res = await aiService.chat(chatJid, senderJid, "¿Qué es TypeScript?");
-   * if (res.success) await ctx.reply(res.text!);
-   * ```
-   */
   async chat(
     chatJid: string,
     senderJid: string,
@@ -599,7 +115,7 @@ export class AIService {
       return left(new ValidationError('El mensaje no puede estar vacío'));
     }
 
-    const session = this.getSession(chatJid, senderJid);
+    const session = this.sessionStore.getSession(chatJid, senderJid);
 
     const cacheKey = this.generateCacheKey(userMessage, chatJid, fast);
     const cached = await this.getCachedResponse(cacheKey);
@@ -611,10 +127,7 @@ export class AIService {
     session.lastActivity = Date.now();
 
     const userTier = getUserTier(senderJid, env.OWNERS, env.OWNER_JID);
-
-    const isGroup = chatJid.includes('@g.us');
-    const footer = await primeService.formatFooter({} as WASocket, chatJid, isGroup);
-    const systemPrompt = getSystemPrompt(footer, userTier);
+    const systemPrompt = await formatSystemPrompt({} as WASocket, chatJid, userTier);
 
     const messages: AIMessage[] = [
       { role: 'system', content: systemPrompt },
@@ -666,7 +179,7 @@ export class AIService {
         session.history = session.history.slice(-MAX_HISTORY_MESSAGES);
       }
 
-      this.markDirty(chatJid, senderJid);
+      this.sessionStore.markDirty(chatJid, senderJid);
 
       const response = right(text);
       await this.cacheResponse(cacheKey, response, 600);
@@ -681,20 +194,6 @@ export class AIService {
     }
   }
 
-  /**
-   * Generates a one-shot AI response without session context.
-   * Useful for internal bot operations that need AI output
-   * but don't belong to a user conversation.
-   *
-   * @param prompt - The input prompt to send to the model.
-   * @param maxTokens - Maximum tokens in the response. Defaults to `512`.
-   * @returns A promise resolving to an {@link AIResponse}.
-   *
-   * @example
-   * ```ts
-   * const res = await aiService.generate("Resume este texto: ...", 256);
-   * ```
-   */
   async generate(prompt: string, maxTokens = 512): Promise<AIResponse> {
     if (!this.client) {
       return left(
@@ -726,7 +225,7 @@ export class AIService {
             const completion = await client.chat.completions.create({
               model: GROQ_MODELS.chat,
               messages: [
-                { role: 'system', content: getSystemPrompt('> VaniaBot💝', UserTier.USER) },
+                { role: 'system', content: 'Eres VaniaBot, el bot más perfecto e inteligente.' },
                 { role: 'user', content: prompt },
               ],
               max_tokens: maxTokens,
@@ -817,27 +316,6 @@ export class AIService {
     }
   }
 
-  /**
-   * Transcribes a WhatsApp voice note buffer to plain text using Whisper.
-   *
-   * The audio buffer is written to a temporary file under {@link TEMP_DIR},
-   * sent to the Groq transcription API, and the temp file is deleted
-   * immediately after regardless of success or failure.
-   *
-   * @param audioBuffer - Raw audio data as a Node.js `Buffer`.
-   * @param extension - File extension indicating the audio format (e.g. `"ogg"`, `"mp3"`).
-   *                    Defaults to `"ogg"` (WhatsApp voice note format).
-   * @param language - Optional BCP-47 language hint (e.g. `"es"`, `"en"`) to
-   *                   improve transcription accuracy. Auto-detected if omitted.
-   * @returns A promise resolving to an {@link AIResponse} with the transcribed text.
-   *
-   * @example
-   * ```ts
-   * const buffer = await downloadMediaMessage(msg, "buffer", {});
-   * const res = await aiService.transcribeAudio(buffer as Buffer, "ogg", "es");
-   * if (res.success) await ctx.reply(`📝 ${res.text}`);
-   * ```
-   */
   async transcribeAudio(
     audioBuffer: Buffer,
     extension: string = 'ogg',
@@ -871,19 +349,12 @@ export class AIService {
     } finally {
       try {
         fs.unlinkSync(tmpPath);
-      } catch {
-        // Ignorar errores de limpieza
+      } catch (error) {
+        logError('[AI]', error);
       }
     }
   }
 
-  /**
-   * Maps Groq API errors to human-readable Spanish messages
-   * suitable for sending directly to WhatsApp users.
-   *
-   * @param error - The raw error thrown by the Groq SDK or fetch layer.
-   * @returns A user-friendly error string.
-   */
   private friendlyError(error: GroqError): string {
     const msg: string = error?.message ?? '';
     const status: number = error?.status ?? 0;
@@ -899,33 +370,10 @@ export class AIService {
     return msg || 'Error desconocido';
   }
 
-  /**
-   * Gracefully shuts down the AI service.
-   * Persists any dirty sessions before stopping.
-   *
-   * @returns Promise<void>
-   */
   async shutdown(): Promise<void> {
-    clearInterval(this.cleanupTimer);
-    clearInterval(this.persistTimer);
-
-    if (this.dirtySessions.size > 0) {
-      logger.info(`[AI] Persisting ${this.dirtySessions.size} sessions before shutdown...`);
-      await this.persistDirtySessions();
-    }
-
+    await this.sessionStore.shutdown();
     logger.info('[AI] AIService shutdown complete');
   }
 }
 
-/**
- * Shared singleton instance of {@link AIService}.
- * Import this directly instead of instantiating a new service.
- *
- * @example
- * ```ts
- * import { aiService } from "@/services/external/AIService.js";
- * const response = await aiService.chat(chatJid, senderJid, "Hola");
- * ```
- */
 export const aiService = new AIService();

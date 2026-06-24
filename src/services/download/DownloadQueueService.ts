@@ -1,6 +1,6 @@
 import pLimit, { type Limit } from 'p-limit';
 import { LRUCache } from 'lru-cache';
-import { logger } from '@/utils/logger.js';
+import { logError, logger } from '@/utils/logger.js';
 
 export interface DownloadTask<T = unknown> {
   id: string;
@@ -108,7 +108,7 @@ export class DownloadQueueService {
       .finally(() => {
         this.activeTasks.delete(task.id);
       })
-      .catch(() => {});
+      .catch((error: unknown) => logError('[DownloadQueue]', error));
 
     return taskPromise;
   }
@@ -133,7 +133,8 @@ export class DownloadQueueService {
         this.processing--;
         void this.processNext();
       }
-    }).catch(() => {
+    }).catch((error: unknown) => {
+      logError('[DownloadQueue]', error);
       this.processing--;
       void this.processNext();
     });

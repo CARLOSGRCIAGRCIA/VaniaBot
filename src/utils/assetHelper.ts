@@ -1,6 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { logger, logError } from '@/utils/logger.js';
 import type { MessageContext } from '@/types/index.js';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -24,15 +25,15 @@ export function findAssetFile(filename: string): Buffer | null {
   for (const imagePath of possiblePaths) {
     if (fs.existsSync(imagePath)) {
       try {
-        console.info(`Found asset: ${imagePath}`);
+        logger.debug(`Found asset: ${imagePath}`);
         return fs.readFileSync(imagePath);
       } catch (error) {
-        console.error(`Error reading file ${imagePath}:`, error);
+        logError(`Error reading file ${imagePath}:`, error);
       }
     }
   }
 
-  console.error(`Asset not found: ${filename}. Searched paths:`, possiblePaths);
+  logger.error(`Asset not found: ${filename}. Searched paths:`, possiblePaths);
   return null;
 }
 
@@ -59,7 +60,7 @@ export async function sendAssetImage(
     await ctx.sock.sendMessage(ctx.chat.jid, { image: imageBuffer }, { quoted: ctx.message });
     return true;
   } catch (error) {
-    console.error(`Error sending asset image ${filename}:`, error);
+    logError(`Error sending asset image ${filename}:`, error);
     await ctx.reply('❌ Error al enviar la imagen.');
     return false;
   }

@@ -1,3 +1,5 @@
+import { logError } from '@/utils/logger.js';
+
 const BASE_URL = 'https://api.delirius.store/canvas';
 const TIMEOUT_MS = 30000;
 
@@ -44,7 +46,8 @@ export class CanvasService {
         const data = JSON.parse(text) as { result?: string; image?: string; url?: string };
         const imageUrl = data.result ?? data.image ?? data.url;
         if (imageUrl) return { type: 'url', url: imageUrl };
-      } catch {
+      } catch (error) {
+        logError('[CanvasService]', error);
         return { type: 'buffer', buffer, contentType: contentType || 'application/octet-stream' };
       }
 

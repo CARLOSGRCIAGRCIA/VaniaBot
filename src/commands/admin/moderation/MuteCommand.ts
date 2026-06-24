@@ -10,6 +10,7 @@ import { logError } from '@/utils/logger.js';
 import { serviceManager } from '@/services/system/Servicemanager.js';
 import { getTargetUser, getErrorMessage } from '@/utils/moderationUtils.js';
 import { middlewareCache } from '@/middlewares/MiddlewareCache.js';
+import { formatTimeRemaining } from '@/utils/helpers.js';
 
 export class MuteCommand extends Command {
   name = 'mute';
@@ -97,7 +98,7 @@ export class MuteCommand extends Command {
       const cacheKey = `${ctx.chat.jid}:${mentionedJid}`;
       middlewareCache.userMuted.set(cacheKey, { value: true });
 
-      const durationText = this.formatDuration(duration);
+      const durationText = formatTimeRemaining(duration, 'en');
 
       await ctx.reply(
         `˚₊· ͟͟͞͞➳ *en silencio* ˚₊· ͟͟͞͞➳\n\n` +
@@ -134,15 +135,5 @@ export class MuteCommand extends Command {
       default:
         return null;
     }
-  }
-
-  private formatDuration(ms: number): string {
-    const minutes = Math.floor(ms / (60 * 1000));
-    const hours = Math.floor(ms / (60 * 60 * 1000));
-    const days = Math.floor(ms / (24 * 60 * 60 * 1000));
-
-    if (days > 0) return `${days} day${days > 1 ? 's' : ''}`;
-    if (hours > 0) return `${hours} hour${hours > 1 ? 's' : ''}`;
-    return `${minutes} minute${minutes > 1 ? 's' : ''}`;
   }
 }

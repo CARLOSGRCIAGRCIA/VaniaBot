@@ -9,6 +9,7 @@
 import { Command } from '../../Command.js';
 import { CommandCategory, CommandContext, type MessageContext } from '@/types/index.js';
 import { webSearchService } from '@/services/download/WebSearchService.js';
+import { logError } from '@/utils/logger.js';
 
 export class BuscarCommand extends Command {
   name = 'buscar';
@@ -52,7 +53,7 @@ export class BuscarCommand extends Command {
 
       await ctx.react('✅');
     } catch (error) {
-      console.error('BuscarCommand error:', error);
+      logError('BuscarCommand error:', error);
       await ctx.react('❌');
       await ctx.reply('❌ Error al realizar búsqueda');
     }

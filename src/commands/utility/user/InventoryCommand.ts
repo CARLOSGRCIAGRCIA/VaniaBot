@@ -3,7 +3,6 @@ import { CommandCategory } from '@/types/index.js';
 import { logError } from '@/utils/logger.js';
 import type { MessageContext } from '@/types/index.js';
 import { serviceManager } from '@/services/system/Servicemanager.js';
-// import type { User } from '@/services/database/UserService.js';
 
 export class InventoryCommand extends Command {
   name = 'inventory';

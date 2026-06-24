@@ -114,13 +114,17 @@ export class VaniaToggleService {
     const allKeys = await this.db.keys(this.COLLECTION);
     const subbots: Record<string, boolean> = {};
 
-    for (const key of allKeys) {
-      if (key.startsWith(normalizedJid + '|') && key !== mainKey) {
-        const botId = key.split('|')[1];
-        const record = await this.db.get<ToggleRecord>(this.COLLECTION, key);
-        if (record) {
-          subbots[botId] = record.enabled;
-        }
+    const matchingKeys = allKeys.filter(
+      key => key.startsWith(normalizedJid + '|') && key !== mainKey,
+    );
+    const records = await Promise.all(
+      matchingKeys.map(key => this.db.get<ToggleRecord>(this.COLLECTION, key)),
+    );
+    for (let i = 0; i < matchingKeys.length; i++) {
+      const record = records[i];
+      if (record) {
+        const botId = matchingKeys[i].split('|')[1];
+        subbots[botId] = record.enabled;
       }
     }
 

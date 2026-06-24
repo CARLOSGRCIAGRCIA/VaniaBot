@@ -9,6 +9,7 @@
 import { Command } from '../../Command.js';
 import { CommandCategory, CommandContext, type MessageContext } from '@/types/index.js';
 import { pinterestDownloader } from '@/services/download/PinterestDownloader.js';
+import { logError } from '@/utils/logger.js';
 
 export class PinterestCommand extends Command {
   name = 'pinterest';
@@ -76,7 +77,7 @@ export class PinterestCommand extends Command {
         await ctx.reply(`📌 *Pinterest Video*\n\n🔗 ${media.url}`);
       }
     } catch (error) {
-      console.error('PinterestCommand error:', error);
+      logError('PinterestCommand error:', error);
       await ctx.react('❌');
       await ctx.reply('❌ Error al descargar de Pinterest');
     }

@@ -4,6 +4,7 @@ import { left, right } from '@/utils/either.js';
 import { DownloadService, type DownloadResult } from './DownloadService.js';
 import { searchVideo, type YouTubeVideo } from './YouTubeSearchService.js';
 import { ValidationError, NetworkError } from '@/utils/errors.js';
+import { logger } from '@/utils/logger.js';
 
 export type { YouTubeVideo };
 
@@ -259,7 +260,7 @@ export class YouTubeDownloader extends DownloadService {
 
     for (const method of methods) {
       try {
-        console.info(`${tag} Trying ${method.name}...`);
+        logger.debug(`${tag} Trying ${method.name}...`);
 
         const result = spawnSync(method.cmd, method.args, {
           timeout: 180000,
@@ -289,7 +290,7 @@ export class YouTubeDownloader extends DownloadService {
             );
           }
 
-          console.info(`${tag} ${method.name} succeeded: ${sizeMB.toFixed(1)}MB`);
+          logger.debug(`${tag} ${method.name} succeeded: ${sizeMB.toFixed(1)}MB`);
 
           return right({
             filePath: resolvedPath,
@@ -300,7 +301,7 @@ export class YouTubeDownloader extends DownloadService {
       } catch (error) {
         const err = error as Error;
         lastError = new NetworkError(err.message, { method: method.name });
-        console.warn(`${tag} ${method.name} failed: ${err.message}`);
+        logger.warn(`${tag} ${method.name} failed: ${err.message}`);
         continue;
       }
     }

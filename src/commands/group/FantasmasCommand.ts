@@ -2,6 +2,7 @@ import { Command } from '../Command.js';
 import { CommandCategory, CommandContext } from '@/types/index.js';
 import type { MessageContext } from '@/types/index.js';
 import { serviceManager } from '@/services/system/Servicemanager.js';
+import { logError } from '@/utils/logger.js';
 
 const delay = (ms: number): Promise<void> => new Promise(resolve => setTimeout(resolve, ms));
 
@@ -78,7 +79,7 @@ export class FantasmasCommand extends Command {
         await ctx.reply(`˚₊· ͟͟͞͞➳ *listo* ˚₊· ͟͟͞͞➳\n\n` + `✅ Proceso de eliminación completado.`);
       }
     } catch (error) {
-      console.error('[FantasmasCommand] Error:', error);
+      logError('[FantasmasCommand] Error:', error);
       await ctx.reply(`˚₊· ͟͟͞͞➳ *ups* ˚₊· ͟͟͞͞➳\n\n` + `❌ Ocurrió un error al buscar fantasmas.`);
     }
   }

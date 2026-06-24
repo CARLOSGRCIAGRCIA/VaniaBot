@@ -1,6 +1,7 @@
 import { Command } from '../../Command.js';
 import { MediaCardService, type MediaCardOptions } from '@/services/creative/MediaCardService.js';
 import { CommandCategory, CommandContext, type MessageContext } from '@/types/index.js';
+import { logError } from '@/utils/logger.js';
 
 const THUMBNAILS = {
   youtube: 'https://i.ytimg.com/vi/dQw4w9WgXcQ/maxresdefault.jpg',
@@ -73,7 +74,7 @@ export class MediacardCommand extends Command {
 
       await ctx.react('✅');
     } catch (error) {
-      console.error('[MediaCard] Error:', error);
+      logError('[MediaCard] Error:', error);
       await ctx.react('❌');
       await ctx.reply(
         `❌ Error generando card: ${error instanceof Error ? error.message : 'Unknown error'}`,

@@ -3,6 +3,7 @@ import { CommandCategory, type MessageContext } from '@/types/index.js';
 import { serviceManager } from '@/services/system/Servicemanager.js';
 import { validateBetAmount } from '@/utils/validators.js';
 import { config } from '@/config/index.js';
+import { logError } from '@/utils/logger.js';
 
 interface BlackjackGame {
   playerCards: number[];
@@ -96,7 +97,9 @@ export class BlackjackCommand extends Command {
         if (!existingGame.bet || !ctx.sender.jid.startsWith('0')) {
           try {
             await serviceManager.userService.removeMoney(ctx.sender.jid, existingGame.bet);
-          } catch {}
+          } catch (error) {
+            logError('[Blackjack]', error);
+          }
         }
 
         activeGames.delete(ctx.sender.jid);
@@ -166,7 +169,9 @@ export class BlackjackCommand extends Command {
           } else if (profit < 0) {
             await serviceManager.userService.removeMoney(ctx.sender.jid, existingGame.bet);
           }
-        } catch {}
+        } catch (error) {
+          logError('[Blackjack]', error);
+        }
       }
 
       activeGames.delete(ctx.sender.jid);

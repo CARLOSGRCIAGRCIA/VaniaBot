@@ -2,6 +2,7 @@ import { createCanvas, loadImage } from '@napi-rs/canvas';
 import { writeFileSync } from 'fs';
 import path from 'path';
 import { findAssetFile } from '@/utils/assetHelper.js';
+import { logError } from '@/utils/logger.js';
 
 export interface MediaCardOptions {
   thumbnail?: string;
@@ -72,7 +73,8 @@ export class MediaCardService {
     if (!thumbnail) return null;
     try {
       return await loadImage(thumbnail);
-    } catch {
+    } catch (error) {
+      logError('[MediaCardService]', error);
       return null;
     }
   }
@@ -84,7 +86,8 @@ export class MediaCardService {
     if (!buf) return null;
     try {
       return await loadImage(buf);
-    } catch {
+    } catch (error) {
+      logError('[MediaCardService]', error);
       return null;
     }
   }

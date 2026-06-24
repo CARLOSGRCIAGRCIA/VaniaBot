@@ -3,6 +3,7 @@ import { CommandCategory, type MessageContext } from '@/types/index.js';
 import { StickerHelper } from '@/utils/StickerHelper.js';
 import { ImageProcessor } from '@/utils/imageProcessor.js';
 import { findAssetFile } from '@/utils/assetHelper.js';
+import { escapeXml, wrapText } from '@/utils/helpers.js';
 import path from 'path';
 import fs from 'fs';
 
@@ -48,7 +49,7 @@ export class NotaCommand extends Command {
       const x = width / 2;
       const centerY = height / 2;
       const maxCharsPerLine = 15;
-      const lines = this.wrapText(text, maxCharsPerLine);
+      const lines = wrapText(text, maxCharsPerLine);
       const lineHeight = fontSize + 15;
       const totalHeight = lines.length * lineHeight;
       const startY = centerY - totalHeight / 2 + fontSize / 2;
@@ -65,7 +66,7 @@ export class NotaCommand extends Command {
             font-weight="bold" 
             fill="${textColor}" 
             text-anchor="middle"
-          >${this.escapeXml(line)}</text>
+          >${escapeXml(line)}</text>
         `;
       });
       svgContent += `</svg>`;
@@ -82,32 +83,5 @@ export class NotaCommand extends Command {
       await ctx.reply(`❌ Error: ${message}`);
       await ctx.react('❌');
     }
-  }
-
-  private wrapText(text: string, maxChars: number): string[] {
-    const words = text.split(' ');
-    const lines: string[] = [];
-    let currentLine = '';
-
-    words.forEach(word => {
-      if ((currentLine + word).length <= maxChars) {
-        currentLine += (currentLine ? ' ' : '') + word;
-      } else {
-        if (currentLine) lines.push(currentLine);
-        currentLine = word;
-      }
-    });
-
-    if (currentLine) lines.push(currentLine);
-    return lines.length > 0 ? lines : [text];
-  }
-
-  private escapeXml(text: string): string {
-    return text
-      .replace(/&/g, '&amp;')
-      .replace(/</g, '&lt;')
-      .replace(/>/g, '&gt;')
-      .replace(/"/g, '&quot;')
-      .replace(/'/g, '&apos;');
   }
 }

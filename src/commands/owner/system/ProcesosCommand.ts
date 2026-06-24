@@ -15,6 +15,7 @@ import {
 } from '@/types/index.js';
 import { exec } from 'child_process';
 import { promisify } from 'util';
+import { logError } from '@/utils/logger.js';
 
 const execAsync = promisify(exec);
 
@@ -85,7 +86,7 @@ export class ProcesosCommand extends Command {
         await ctx.reply(text || 'No se encontraron procesos');
       }
     } catch (error) {
-      console.error('ProcesosCommand error:', error);
+      logError('ProcesosCommand error:', error);
       await ctx.reply('❌ Error al obtener procesos');
     }
   }
