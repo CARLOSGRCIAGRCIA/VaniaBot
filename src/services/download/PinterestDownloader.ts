@@ -7,7 +7,7 @@
  */
 
 import axios from 'axios';
-import { logger } from '@/utils/logger.js';
+import { logger, logError } from '@/utils/logger.js';
 import fs from 'fs';
 import path from 'path';
 import os from 'os';
@@ -85,7 +85,9 @@ export class PinterestDownloader {
               media.unshift({ type: 'video', url: vidUrl });
             }
           }
-        } catch {}
+        } catch (error) {
+          logError('[PinterestDownloader]', error);
+        }
       }
 
       if (media.length === 0) {
@@ -141,7 +143,9 @@ export class PinterestDownloader {
       if (fs.existsSync(filePath)) {
         fs.unlinkSync(filePath);
       }
-    } catch {}
+    } catch (error) {
+      logError('[PinterestDownloader]', error);
+    }
   }
 }
 

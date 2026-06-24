@@ -1,28 +1,5 @@
-/**
- * ErrorHandler.ts
- *
- * Centralized error handling for VaniaBot.
- * Provides user-friendly error messages, logging, and retry logic.
- *
- * @author **Carlos G**
- */
-
 import { logger, logError } from '@/utils/logger.js';
-
-export enum ErrorCode {
-  UNKNOWN = 'UNKNOWN',
-  DATABASE_ERROR = 'DATABASE_ERROR',
-  NETWORK_ERROR = 'NETWORK_ERROR',
-  VALIDATION_ERROR = 'VALIDATION_ERROR',
-  PERMISSION_ERROR = 'PERMISSION_ERROR',
-  NOT_FOUND = 'NOT_FOUND',
-  RATE_LIMIT_ERROR = 'RATE_LIMIT_ERROR',
-  AI_ERROR = 'AI_ERROR',
-  DOWNLOAD_ERROR = 'DOWNLOAD_ERROR',
-  MEDIA_ERROR = 'MEDIA_ERROR',
-  USER_BANNED = 'USER_BANNED',
-  INSUFFICIENT_FUNDS = 'INSUFFICIENT_FUNDS',
-}
+import { VBotError, ErrorCode } from '@/utils/errors.js';
 
 export interface ErrorContext {
   command?: string;
@@ -32,30 +9,11 @@ export interface ErrorContext {
   metadata?: Record<string, unknown>;
 }
 
-export class BotError extends Error {
-  code: ErrorCode;
-  context: ErrorContext;
-  isRetryable: boolean;
-
-  constructor(
-    message: string,
-    code: ErrorCode = ErrorCode.UNKNOWN,
-    context: ErrorContext = {},
-    isRetryable: boolean = false,
-  ) {
-    super(message);
-    this.name = 'BotError';
-    this.code = code;
-    this.context = context;
-    this.isRetryable = isRetryable;
-  }
-}
-
 export class ErrorHandler {
   static handleCommandError(error: unknown, command: string, ctx?: ErrorContext): string {
     const contextStr = ctx ? JSON.stringify(ctx) : '';
 
-    if (error instanceof BotError) {
+    if (error instanceof VBotError) {
       logError(`Command ${command} ${contextStr}`, error);
       return this.getUserMessage(error);
     }
@@ -151,7 +109,7 @@ export class ErrorHandler {
     return '❌ Error de moderación. Intenta de nuevo.';
   }
 
-  static getUserMessage(error: BotError): string {
+  static getUserMessage(error: VBotError): string {
     switch (error.code) {
       case ErrorCode.USER_BANNED:
         return '⛔ Has sido baneado del uso del bot.';
@@ -159,10 +117,10 @@ export class ErrorHandler {
       case ErrorCode.INSUFFICIENT_FUNDS:
         return '❌ Fondos insuficientes.';
 
-      case ErrorCode.RATE_LIMIT_ERROR:
+      case ErrorCode.RATE_LIMITED:
         return '⚠️ Estás excediendo el límite. Espera un momento.';
 
-      case ErrorCode.PERMISSION_ERROR:
+      case ErrorCode.PERMISSION_DENIED:
         return '❌ No tienes permiso para esto.';
 
       case ErrorCode.NOT_FOUND:
@@ -186,8 +144,8 @@ export class ErrorHandler {
   }
 
   static isRetryable(error: unknown): boolean {
-    if (error instanceof BotError) {
-      return error.isRetryable;
+    if (error instanceof VBotError) {
+      return error.recoverable;
     }
 
     const errorMessage = error instanceof Error ? error.message : String(error);
@@ -205,44 +163,6 @@ export class ErrorHandler {
     return retryablePatterns.some(pattern =>
       errorMessage.toLowerCase().includes(pattern.toLowerCase()),
     );
-  }
-
-  static async retry<T>(
-    fn: () => Promise<T>,
-    options: {
-      maxRetries?: number;
-      delayMs?: number;
-      backoffMultiplier?: number;
-      onRetry?: (attempt: number, error: unknown) => void;
-    } = {},
-  ): Promise<T> {
-    const { maxRetries = 3, delayMs = 1000, backoffMultiplier = 2, onRetry } = options;
-
-    let lastError: unknown;
-    let currentDelay = delayMs;
-
-    for (let attempt = 1; attempt <= maxRetries; attempt++) {
-      try {
-        return await fn();
-      } catch (error) {
-        lastError = error;
-
-        if (attempt === maxRetries || !this.isRetryable(error)) {
-          throw error;
-        }
-
-        if (onRetry) {
-          onRetry(attempt, error);
-        }
-
-        logger.warn(`Retry ${attempt}/${maxRetries} after ${currentDelay}ms`);
-
-        await new Promise(resolve => setTimeout(resolve, currentDelay));
-        currentDelay *= backoffMultiplier;
-      }
-    }
-
-    throw lastError;
   }
 }
 

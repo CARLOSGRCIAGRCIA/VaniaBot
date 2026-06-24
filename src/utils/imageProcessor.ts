@@ -2,7 +2,7 @@ import { Jimp } from 'jimp';
 import { readFileSync, existsSync, mkdirSync, unlinkSync, readdirSync } from 'fs';
 import { join } from 'path';
 import { spawn } from 'child_process';
-import { logger } from '@/utils/logger.js';
+import { logger, logError } from '@/utils/logger.js';
 
 export interface ImageProcessorResult {
   buffer: Buffer;
@@ -439,7 +439,9 @@ export class ImageProcessor {
     files.forEach(f => {
       try {
         if (existsSync(f)) unlinkSync(f);
-      } catch {}
+      } catch (error) {
+        logError('[ImageProcessor]', error);
+      }
     });
   }
 }

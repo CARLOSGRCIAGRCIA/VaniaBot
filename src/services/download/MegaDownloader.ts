@@ -9,7 +9,7 @@
 import { File } from 'megajs';
 import type { Either } from '@/utils/either.js';
 import { left, right } from '@/utils/either.js';
-import { logger } from '@/utils/logger.js';
+import { logger, logError } from '@/utils/logger.js';
 import { NetworkError, ValidationError } from '@/utils/errors.js';
 import fs from 'fs';
 import path from 'path';
@@ -132,7 +132,9 @@ export class MegaDownloader {
       if (fs.existsSync(filePath)) {
         fs.unlinkSync(filePath);
       }
-    } catch {}
+    } catch (error) {
+      logError('[MegaDownloader]', error);
+    }
   }
 }
 

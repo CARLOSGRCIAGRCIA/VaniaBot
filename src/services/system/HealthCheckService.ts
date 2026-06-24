@@ -3,7 +3,7 @@ import { serviceManager } from './Servicemanager.js';
 import { existsSync, statSync } from 'fs';
 import { join } from 'path';
 import { totalmem } from 'os';
-import { logger } from '@/utils/logger.js';
+import { logger, logError } from '@/utils/logger.js';
 
 export interface HealthCheckResult {
   healthy: boolean;
@@ -430,8 +430,8 @@ export class HealthCheckService {
           avgProcessingTime: stats.avgProcessingTime,
         };
       }
-    } catch {
-      // Client not available
+    } catch (error) {
+      logError('[HealthCheckService]', error);
     }
 
     return metrics;

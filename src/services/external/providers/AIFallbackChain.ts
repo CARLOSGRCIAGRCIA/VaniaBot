@@ -85,9 +85,9 @@ export class AIFallbackChain {
   async getProviderStatus(): Promise<Array<{ name: string; available: boolean }>> {
     const status: Array<{ name: string; available: boolean }> = [];
 
-    for (const provider of this.providers) {
-      const available = await provider.isAvailable();
-      status.push({ name: provider.name, available });
+    const results = await Promise.all(this.providers.map(provider => provider.isAvailable()));
+    for (let i = 0; i < this.providers.length; i++) {
+      status.push({ name: this.providers[i].name, available: results[i] });
     }
 
     return status;

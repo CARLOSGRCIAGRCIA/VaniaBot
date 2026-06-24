@@ -29,6 +29,26 @@ export function truncate(str: string, maxLength: number, suffix: string = '...')
   return str.substring(0, maxLength - suffix.length) + suffix;
 }
 
+export function formatTimeRemaining(ms: number, locale: 'es' | 'en' = 'es'): string {
+  if (ms <= 0) return locale === 'es' ? 'Expira inmediatamente' : 'Expires immediately';
+
+  const l =
+    locale === 'es'
+      ? { day: 'día', hour: 'hora', minute: 'minuto', second: 'segundo' }
+      : { day: 'day', hour: 'hour', minute: 'minute', second: 'second' };
+  const plural = (n: number, s: string) => `${n} ${s}${n > 1 ? (locale === 'es' ? 's' : 's') : ''}`;
+
+  const seconds = Math.floor(ms / 1000);
+  const minutes = Math.floor(seconds / 60);
+  const hours = Math.floor(minutes / 60);
+  const days = Math.floor(hours / 24);
+
+  if (days > 0) return plural(days, l.day);
+  if (hours > 0) return plural(hours, l.hour);
+  if (minutes > 0) return plural(minutes, l.minute);
+  return plural(seconds, l.second);
+}
+
 export function sleep(ms: number): Promise<void> {
   return new Promise(resolve => setTimeout(resolve, ms));
 }
@@ -149,6 +169,70 @@ export function secondsToHMS(seconds: number): string {
   const s = Math.floor(seconds % 60);
 
   return [h, m, s].map(v => (v < 10 ? '0' + v : v)).join(':');
+}
+
+export function escapeXml(text: string): string {
+  return text
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&apos;');
+}
+
+export function wrapText(text: string, maxChars: number): string[] {
+  const words = text.split(' ');
+  const lines: string[] = [];
+  let currentLine = '';
+
+  words.forEach(word => {
+    if ((currentLine + word).length <= maxChars) {
+      currentLine += (currentLine ? ' ' : '') + word;
+    } else {
+      if (currentLine) lines.push(currentLine);
+      currentLine = word;
+    }
+  });
+
+  if (currentLine) lines.push(currentLine);
+  return lines.length > 0 ? lines : [text];
+}
+
+export async function uploadToTmpfiles(buffer: Buffer): Promise<string | null> {
+  try {
+    const boundary = `----FormBoundary${Date.now()}`;
+    const CRLF = '\r\n';
+
+    const header =
+      `--${boundary}${CRLF}` +
+      `Content-Disposition: form-data; name="file"; filename="profileDefault.png"${CRLF}` +
+      `Content-Type: image/png${CRLF}` +
+      `${CRLF}`;
+
+    const footer = `${CRLF}--${boundary}--${CRLF}`;
+
+    const body = Buffer.concat([
+      Buffer.from(header, 'utf-8'),
+      buffer,
+      Buffer.from(footer, 'utf-8'),
+    ]);
+
+    const response = await fetch('https://tmpfiles.org/api/v1/upload', {
+      method: 'POST',
+      headers: { 'Content-Type': `multipart/form-data; boundary=${boundary}` },
+      body,
+    });
+
+    if (!response.ok) return null;
+
+    const data = (await response.json()) as { data?: { url?: string } };
+    const pageUrl = data?.data?.url;
+    if (!pageUrl) return null;
+
+    return pageUrl.replace('tmpfiles.org/', 'tmpfiles.org/dl/');
+  } catch {
+    return null;
+  }
 }
 
 export function parseDuration(str: string): number {

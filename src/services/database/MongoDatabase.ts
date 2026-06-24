@@ -3,7 +3,7 @@ import { MongoClient, ObjectId } from 'mongodb';
 import { Database } from './Database.js';
 import type { PaginatedResult } from './Database.js';
 import { logger, logError } from '@/utils/logger.js';
-import { ErrorHandler } from '@/utils/ErrorHandler.js';
+import { withRetry } from '@/services/system/RetryService.js';
 
 export class MongoDatabase extends Database {
   private client: MongoClient | null = null;
@@ -185,13 +185,13 @@ export class MongoDatabase extends Database {
     await coll.deleteMany({});
   }
 
-  async retryOperation<T>(operation: () => Promise<T>, operationName: string): Promise<T> {
-    return ErrorHandler.retry(operation, {
-      maxRetries: 3,
-      delayMs: 1000,
+  async retryOperation<T>(operation: () => Promise<T>, _operationName: string): Promise<T> {
+    return withRetry(operation, {
+      maxAttempts: 3,
+      baseDelay: 1000,
       onRetry: (attempt, error) => {
         logger.warn(
-          `MongoDB ${operationName} retry ${attempt}: ${error instanceof Error ? error.message : 'unknown'}`,
+          `MongoDB ${_operationName} retry ${attempt}: ${error instanceof Error ? error.message : 'unknown'}`,
         );
       },
     });

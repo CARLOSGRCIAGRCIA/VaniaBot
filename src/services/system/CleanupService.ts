@@ -46,15 +46,17 @@ export class CleanupService {
       const users = await serviceManager.userService.getAllUsers();
       let removedCount = 0;
 
-      for (const user of users) {
-        if (user.isOwner) continue;
-        const inactiveTime = now - user.updatedAt;
-        if (inactiveTime > this.INACTIVITY_THRESHOLD) {
-          await serviceManager.db.delete('users', user.jid);
-          removedCount++;
-          logger.debug(`🗑️ Usuario inactivo eliminado: ${user.name}`);
-        }
-      }
+      const inactiveUsers = users.filter(
+        user => !user.isOwner && now - user.updatedAt > this.INACTIVITY_THRESHOLD,
+      );
+      await Promise.all(
+        inactiveUsers.map(user =>
+          serviceManager.db.delete('users', user.jid).then(() => {
+            removedCount++;
+            logger.debug(`🗑️ Usuario inactivo eliminado: ${user.name}`);
+          }),
+        ),
+      );
 
       try {
         const licensesDisabled = await serviceManager.licenseService.disableExpiredLicenses();
@@ -81,14 +83,16 @@ export class CleanupService {
     const users = await serviceManager.userService.getAllUsers();
     let removedCount = 0;
 
-    for (const user of users) {
-      if (user.isOwner) continue;
-      const inactiveTime = now - user.updatedAt;
-      if (inactiveTime > this.INACTIVITY_THRESHOLD) {
-        await serviceManager.db.delete('users', user.jid);
-        removedCount++;
-      }
-    }
+    const inactiveUsers = users.filter(
+      user => !user.isOwner && now - user.updatedAt > this.INACTIVITY_THRESHOLD,
+    );
+    await Promise.all(
+      inactiveUsers.map(user =>
+        serviceManager.db.delete('users', user.jid).then(() => {
+          removedCount++;
+        }),
+      ),
+    );
 
     logger.info(`🧹 Limpieza manual completada: ${removedCount} usuario(s) eliminado(s)`);
     return removedCount;

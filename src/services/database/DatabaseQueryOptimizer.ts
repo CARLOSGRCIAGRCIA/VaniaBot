@@ -28,7 +28,12 @@ export class DatabaseQueryOptimizer {
   private cache: LruMemoryCache<unknown>;
   private batchQueues: Map<
     string,
-    Array<{ resolve: (value: unknown) => void; reject: (reason: unknown) => void; key: string }>
+    Array<{
+      resolve: (value: unknown) => void;
+      reject: (reason: unknown) => void;
+      key: string;
+      queryFn: () => Promise<unknown>;
+    }>
   > = new Map();
   private batchTimeouts: Map<string, NodeJS.Timeout> = new Map();
   private stats: QueryStats = {
@@ -96,6 +101,7 @@ export class DatabaseQueryOptimizer {
 
       queue.push({
         key,
+        queryFn: queryFn as () => Promise<unknown>,
         resolve: resolve as (value: unknown) => void,
         reject,
       });
@@ -121,29 +127,50 @@ export class DatabaseQueryOptimizer {
     this.batchQueues.delete(batchKey);
     this.batchTimeouts.delete(batchKey);
 
-    const uniqueKeys = [...new Set(queue.map(q => q.key))];
-
-    const promises = uniqueKeys.map(async key => {
-      const cached = this.cache.get(key);
-      if (cached !== undefined) {
-        return { key, result: cached, fromCache: true };
+    const entriesByKey = new Map<string, typeof queue>();
+    for (const entry of queue) {
+      const group = entriesByKey.get(entry.key);
+      if (group) {
+        group.push(entry);
+      } else {
+        entriesByKey.set(entry.key, [entry]);
       }
-      return null;
-    });
-
-    const cachedResults = await Promise.all(promises);
-    const uncachedKeys = cachedResults.filter(r => r === null).map((_, i) => uniqueKeys[i]);
-
-    if (uncachedKeys.length > 0) {
-      this.stats.batchedQueries += uncachedKeys.length;
     }
 
-    for (const item of queue) {
-      const cached = this.cache.get(item.key);
-      if (cached !== undefined) {
-        item.resolve(cached);
-      } else {
-        item.reject(new Error(`Query not found: ${item.key}`));
+    const promises: Array<Promise<void>> = [];
+    for (const [key, entries] of entriesByKey) {
+      promises.push(this.resolveBatchEntries(key, entries));
+    }
+    await Promise.all(promises);
+  }
+
+  private async resolveBatchEntries(
+    key: string,
+    entries: Array<{
+      resolve: (value: unknown) => void;
+      reject: (reason: unknown) => void;
+      key: string;
+      queryFn: () => Promise<unknown>;
+    }>,
+  ): Promise<void> {
+    const cached = this.cache.get(key);
+    if (cached !== undefined) {
+      for (const entry of entries) {
+        entry.resolve(cached);
+      }
+      return;
+    }
+
+    this.stats.batchedQueries++;
+    try {
+      const result = await entries[0].queryFn();
+      this.cache.set(key, result);
+      for (const entry of entries) {
+        entry.resolve(result);
+      }
+    } catch (error) {
+      for (const entry of entries) {
+        entry.reject(error);
       }
     }
   }

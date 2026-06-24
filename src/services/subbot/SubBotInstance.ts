@@ -32,12 +32,13 @@ import { useEncryptedMultiFileAuthState } from './EncryptedAuthState.js';
 import { logger, logError } from '@/utils/logger.js';
 import { runtimeStateRepository } from '@/repositories/RuntimeStateRepository.js';
 import { cacheManager } from '@/core/CacheManager.js';
+import {
+  FIRST_RECONNECT_DELAY,
+  MAX_RECONNECT_DELAY,
+  MAX_RECONNECT_ATTEMPTS,
+} from '@/utils/constants.js';
 
 const SILENT_LOGGER = pino({ level: 'silent' });
-
-const FIRST_RECONNECT_DELAY = 15_000;
-const MAX_RECONNECT_DELAY = 120_000;
-const MAX_RECONNECT_ATTEMPTS = 50;
 
 const CONFLICT_RECONNECT_DELAY = 20_000;
 

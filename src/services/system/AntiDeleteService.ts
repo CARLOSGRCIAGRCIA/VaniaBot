@@ -3,6 +3,7 @@ import { downloadContentFromMessage } from '@whiskeysockets/baileys';
 import type { proto } from '@whiskeysockets/baileys';
 import fs from 'fs';
 import path from 'path';
+import { logError } from '@/utils/logger.js';
 
 export interface StoredMessage {
   id: string;
@@ -136,7 +137,9 @@ export class AntiDeleteService {
           chunks.push(Buffer.from(chunk));
         }
         mediaBuffer = Buffer.concat(chunks);
-      } catch {}
+      } catch (error) {
+        logError('[AntiDeleteService]', error);
+      }
     } else if (message.message?.videoMessage) {
       mediaType = 'video';
       content = message.message.videoMessage.caption || '';
@@ -147,7 +150,9 @@ export class AntiDeleteService {
           chunks.push(Buffer.from(chunk));
         }
         mediaBuffer = Buffer.concat(chunks);
-      } catch {}
+      } catch (error) {
+        logError('[AntiDeleteService]', error);
+      }
     } else if (message.message?.stickerMessage) {
       mediaType = 'sticker';
       try {
@@ -157,7 +162,9 @@ export class AntiDeleteService {
           chunks.push(Buffer.from(chunk));
         }
         mediaBuffer = Buffer.concat(chunks);
-      } catch {}
+      } catch (error) {
+        logError('[AntiDeleteService]', error);
+      }
     } else if (message.message?.audioMessage) {
       mediaType = 'audio';
       try {
@@ -167,7 +174,9 @@ export class AntiDeleteService {
           chunks.push(Buffer.from(chunk));
         }
         mediaBuffer = Buffer.concat(chunks);
-      } catch {}
+      } catch (error) {
+        logError('[AntiDeleteService]', error);
+      }
     }
 
     const stored: StoredMessage = {

@@ -5,7 +5,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import { subBotManager } from '@/services/subbot/SubBotManager.js';
 import { subBotDatabase } from '@/services/subbot/SubBotDatabase.js';
-import { logger } from '@/utils/logger.js';
+import { logger, logError } from '@/utils/logger.js';
 import { serviceManager } from '@/services/system/Servicemanager.js';
 import { healthCheckService } from '@/services/system/HealthCheckService.js';
 import { cacheManager } from '@/core/CacheManager.js';
@@ -197,7 +197,9 @@ export class DashboardService {
             });
           }
         }
-      } catch {}
+      } catch (error) {
+        logError('[DashboardService]', error);
+      }
     }
 
     return bots;
@@ -242,7 +244,9 @@ export class DashboardService {
               misses: stats.misses || 0,
             };
           }
-        } catch {}
+        } catch (error) {
+          logError('[DashboardService]', error);
+        }
 
         res.json({
           dashboard: snapshot.dashboard,
