@@ -1,6 +1,7 @@
 import { Command } from '../Command.js';
 import { CommandCategory, CommandContext } from '@/types/index.js';
 import type { MessageContext } from '@/types/index.js';
+import { logError } from '@/utils/logger.js';
 
 export class LinkCommand extends Command {
   name = 'link';
@@ -23,7 +24,7 @@ export class LinkCommand extends Command {
           `✿ Comparte este enlace para invitar a otros ✩`,
       );
     } catch (error) {
-      console.error('[LinkCommand] Error:', error);
+      logError('[LinkCommand] Error:', error);
       await ctx.reply(
         '˚₊· ͟͟͞͞➳ *ups, algo salió mal* ˚₊· ͟͟͞͞➳\n\n' +
           '❌ No pude obtener el enlace. Asegúrate de que soy administrador del grupo.',

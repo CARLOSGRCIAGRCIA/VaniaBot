@@ -2,6 +2,7 @@ import { Command } from '../Command.js';
 import { CommandCategory } from '@/types/index.js';
 import type { MessageContext } from '@/types/index.js';
 import axios from 'axios';
+import { logError } from '@/utils/logger.js';
 
 const formatDate = (dateStr: string): string => {
   const date = new Date(dateStr);
@@ -81,7 +82,7 @@ export class GitHubSearchCommand extends Command {
 
       await ctx.react('✅');
     } catch (error) {
-      console.error('[GitHubSearchCommand] Error:', error);
+      logError('[GitHubSearchCommand] Error:', error);
       await ctx.react('❌');
       await ctx.reply(`˚₊· ͟͟͞͞➳ *error* ˚₊· ͟͟͞͞➳\n\n` + `❌ No pude buscar en GitHub.`);
     }

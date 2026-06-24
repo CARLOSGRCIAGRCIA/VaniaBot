@@ -2,38 +2,13 @@ import { Command } from '../../Command.js';
 import { CanvasBase } from './CanvasBase.js';
 import { ImageHelper } from '@/utils/ImageHelper.js';
 import { contactsCache } from '@/utils/ContactsCache.js';
+import { logError } from '@/utils/logger.js';
 import {
   CommandCategory,
   CommandContext,
   PermissionLevel,
   type MessageContext,
 } from '@/types/index.js';
-
-async function getContactName(ctx: MessageContext, jid: string): Promise<string> {
-  const cached = contactsCache.get(jid);
-  if (cached) return cached;
-
-  try {
-    const groupMeta = await ctx.sock.groupMetadata(ctx.chat.jid);
-    const targetBase = jid.split('@')[0].split(':')[0];
-
-    const participant = groupMeta.participants.find(p => {
-      const pBase = p.id.split('@')[0].split(':')[0];
-      return pBase === targetBase;
-    });
-
-    if (participant) {
-      const name = participant.notify || participant?.name || participant?.verifiedName;
-
-      if (name) {
-        contactsCache.set(participant.id, name);
-        return name;
-      }
-    }
-  } catch {}
-
-  return `@${jid.split('@')[0]}`;
-}
 
 function generateRank(jid: string): string {
   const seed = jid.split('').reduce((sum, char) => sum + char.charCodeAt(0), 0);
@@ -65,14 +40,16 @@ export class GaycardCommand extends Command {
 
     if (mentioned) {
       targetJid = mentioned;
-      name = await getContactName(ctx, mentioned);
+      name = await contactsCache.getContactName(ctx, mentioned);
       try {
         const pic = await ctx.sock.profilePictureUrl(mentioned, 'image');
         imageUrl = pic ?? null;
-      } catch {}
+      } catch (error) {
+        logError('[GaycardCommand]', error);
+      }
     } else {
       targetJid = ctx.sender.jid;
-      name = ctx.sender.pushName || (await getContactName(ctx, ctx.sender.jid));
+      name = ctx.sender.pushName || (await contactsCache.getContactName(ctx, ctx.sender.jid));
       imageUrl = await ImageHelper.getProfileImage(ctx);
     }
 

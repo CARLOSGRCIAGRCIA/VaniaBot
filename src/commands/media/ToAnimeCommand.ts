@@ -4,6 +4,7 @@ import type { MessageContext } from '@/types/index.js';
 import { downloadMediaMessage, type proto } from '@whiskeysockets/baileys';
 import axios from 'axios';
 import { env } from '@/config/env.js';
+import { logError } from '@/utils/logger.js';
 
 export class ToAnimeCommand extends Command {
   name = 'toanime';
@@ -71,7 +72,7 @@ export class ToAnimeCommand extends Command {
         throw new Error('No se pudo obtener la imagen');
       }
     } catch (error: unknown) {
-      console.error('[ToAnimeCommand] Error:', error);
+      logError('[ToAnimeCommand] Error:', error);
       await ctx.react('❌');
       await ctx.reply(
         `˚₊· ͟͟͞͞➳ *error* ˚₊· ͟͟͞͞➳\n\n` + `❌ No pude convertir la imagen. Intenta con otra.`,

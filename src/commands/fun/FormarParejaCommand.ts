@@ -1,6 +1,7 @@
 import { Command } from '../Command.js';
 import { CommandCategory, CommandContext } from '@/types/index.js';
 import type { MessageContext } from '@/types/index.js';
+import { logError } from '@/utils/logger.js';
 
 const R = Math.random;
 const Fl = Math.floor;
@@ -72,7 +73,7 @@ ${couples
         mentions: couples.flat(),
       });
     } catch (error) {
-      console.error('[FormarParejaCommand] Error:', error);
+      logError('[FormarParejaCommand] Error:', error);
       await ctx.reply(`˚₊· ͟͟͞͞➳ *ups* ˚₊· ͟͟͞͞➳\n\n` + `❌ Ocurrió un error al formar las parejas.`);
     }
   }

@@ -1,6 +1,7 @@
 import { Command } from '../Command.js';
 import { CommandCategory, CommandContext } from '@/types/index.js';
 import type { MessageContext } from '@/types/index.js';
+import { logError } from '@/utils/logger.js';
 
 export class InviteCommand extends Command {
   name = 'invite';
@@ -53,7 +54,7 @@ export class InviteCommand extends Command {
         `˚₊· ͟͟͞͞➳ *enviado* ˚₊· ͟͟͞͞➳\n\n` + `✅ Se envió el enlace de invitación al número.`,
       );
     } catch (error: unknown) {
-      console.error('[InviteCommand] Error:', error);
+      logError('[InviteCommand] Error:', error);
       await ctx.reply(
         `˚₊· ͟͟͞͞➳ *ups* ˚₊· ͟͟͞͞➳\n\n` +
           `❌ No pude enviar la invitación. Puede que el número no exista o no tenga WhatsApp.`,

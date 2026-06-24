@@ -9,32 +9,6 @@ import {
   type MessageContext,
 } from '@/types/index.js';
 
-async function getContactName(ctx: MessageContext, jid: string): Promise<string> {
-  const cached = contactsCache.get(jid);
-  if (cached) return cached;
-
-  try {
-    const groupMeta = await ctx.sock.groupMetadata(ctx.chat.jid);
-    const targetBase = jid.split('@')[0].split(':')[0];
-
-    const participant = groupMeta.participants.find(p => {
-      const pBase = p.id.split('@')[0].split(':')[0];
-      return pBase === targetBase;
-    });
-
-    if (participant) {
-      const name = participant.notify || participant?.name || participant?.verifiedName;
-
-      if (name) {
-        contactsCache.set(participant.id, name);
-        return name;
-      }
-    }
-  } catch {}
-
-  return `@${jid.split('@')[0]}`;
-}
-
 export class BratCommand extends Command {
   name = 'brat';
   description = 'Genera imagen estilo Brat';
@@ -52,7 +26,7 @@ export class BratCommand extends Command {
     let text: string;
 
     if (mentioned) {
-      text = await getContactName(ctx, mentioned);
+      text = await contactsCache.getContactName(ctx, mentioned);
     } else {
       text =
         ctx.args

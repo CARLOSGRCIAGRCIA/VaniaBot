@@ -3,6 +3,8 @@ import { ImageHelper } from '@/utils/ImageHelper.js';
 import { StickerHelper } from '@/utils/StickerHelper.js';
 import { findAssetFile } from '@/utils/assetHelper.js';
 import { canvasService } from '@/services/external/CanvasService.js';
+import { uploadToTmpfiles } from '@/utils/helpers.js';
+import { logger } from '@/utils/logger.js';
 import {
   CommandCategory,
   CommandContext,
@@ -11,43 +13,6 @@ import {
 } from '@/types/index.js';
 
 let cachedDefaultImageUrl: string | null = null;
-
-async function uploadToTmpfiles(buffer: Buffer): Promise<string | null> {
-  try {
-    const boundary = `----FormBoundary${Date.now()}`;
-    const CRLF = '\r\n';
-
-    const header =
-      `--${boundary}${CRLF}` +
-      `Content-Disposition: form-data; name="file"; filename="profileDefault.png"${CRLF}` +
-      `Content-Type: image/png${CRLF}` +
-      `${CRLF}`;
-
-    const footer = `${CRLF}--${boundary}--${CRLF}`;
-
-    const body = Buffer.concat([
-      Buffer.from(header, 'utf-8'),
-      buffer,
-      Buffer.from(footer, 'utf-8'),
-    ]);
-
-    const response = await fetch('https://tmpfiles.org/api/v1/upload', {
-      method: 'POST',
-      headers: { 'Content-Type': `multipart/form-data; boundary=${boundary}` },
-      body,
-    });
-
-    if (!response.ok) return null;
-
-    const data = (await response.json()) as { data?: { url?: string } };
-    const pageUrl = data?.data?.url;
-    if (!pageUrl) return null;
-
-    return pageUrl.replace('tmpfiles.org/', 'tmpfiles.org/dl/');
-  } catch {
-    return null;
-  }
-}
 
 async function getDefaultImageUrl(): Promise<string | null> {
   if (cachedDefaultImageUrl) return cachedDefaultImageUrl;
@@ -105,7 +70,7 @@ export class XnxxcardCommand extends Command {
       const pic = await ctx.sock.profilePictureUrl(targetJid, 'image');
       imageUrl = pic ?? null;
     } catch (e) {
-      console.info(
+      logger.info(
         '[XnxxcardCommand][execute] profilePictureUrl failed:',
         e instanceof Error ? e.message : e,
       );

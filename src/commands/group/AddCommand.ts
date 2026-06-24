@@ -1,6 +1,7 @@
 import { Command } from '../Command.js';
 import { CommandCategory, CommandContext } from '@/types/index.js';
 import type { MessageContext } from '@/types/index.js';
+import { logError } from '@/utils/logger.js';
 
 export class AddCommand extends Command {
   name = 'add';
@@ -52,7 +53,7 @@ export class AddCommand extends Command {
       await ctx.reply(`*Listo*\n${number} agregado exitosamente.`);
     } catch (error: unknown) {
       const errorMessage = error instanceof Error ? error.message : String(error);
-      console.error('[AddCommand] Error:', error);
+      logError('[AddCommand] Error:', error);
 
       if (errorMessage.includes('403')) {
         await ctx.reply('*Error*\nEl usuario tiene privacidad configurada para no ser agregado.');

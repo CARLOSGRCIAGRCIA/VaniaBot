@@ -1,6 +1,7 @@
 import { Command } from '../../Command.js';
 import { CommandCategory, CommandContext, type MessageContext } from '@/types/index.js';
 import { persistenceService } from '@/services/system/PersistenceService.js';
+import { formatTime } from '@/utils/helpers.js';
 
 export class ReminderCommand extends Command {
   name = 'recordatorio';
@@ -43,18 +44,6 @@ export class ReminderCommand extends Command {
     return value * (multipliers[unit] || 0);
   }
 
-  private formatTimeLeft(ms: number): string {
-    const seconds = Math.floor(ms / 1000);
-    const minutes = Math.floor(seconds / 60);
-    const hours = Math.floor(minutes / 60);
-    const days = Math.floor(hours / 24);
-
-    if (days > 0) return `${days}d ${hours % 24}h`;
-    if (hours > 0) return `${hours}h ${minutes % 60}m`;
-    if (minutes > 0) return `${minutes}m ${seconds % 60}s`;
-    return `${seconds}s`;
-  }
-
   async execute(ctx: MessageContext): Promise<void> {
     const sub = ctx.args[0]?.toLowerCase();
 
@@ -67,7 +56,7 @@ export class ReminderCommand extends Command {
       }
 
       const lines = userReminders.map(r => {
-        const left = this.formatTimeLeft(r.triggerAt - Date.now());
+        const left = formatTime(r.triggerAt - Date.now());
         return `🔔 *[${r.id}]* — ${r.message}\n   ⏳ En: ${left}`;
       });
 
@@ -163,7 +152,7 @@ export class ReminderCommand extends Command {
         `﹒﹒﹒﹒﹒﹒﹒﹒﹒﹒﹒﹒﹒﹒﹒﹒﹒\n` +
         `✩ ID: *${id}*\n` +
         `✿ mensaje: ${messageText}\n` +
-        `⏳ te aviso en: *${this.formatTimeLeft(delayMs)}*\n` +
+        `⏳ te aviso en: *${formatTime(delayMs)}*\n` +
         `🕐 será a las: ${new Date(triggerAt).toLocaleTimeString('es-MX')}\n` +
         `﹒﹒﹒﹒﹒﹒﹒﹒﹒﹒﹒﹒﹒﹒﹒﹒﹒\n` +
         `♡ si quieres cancelar: *!recordatorio cancelar ${id}* ♡`,

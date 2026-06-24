@@ -59,18 +59,13 @@ export class BroadcastCommand extends Command {
 
       const groups = await ctx.sock.groupFetchAllParticipating();
 
-      for (const groupId of Object.keys(groups)) {
-        try {
-          await ctx.sock.sendMessage(groupId, { text: sanitizedMessage });
-          sent++;
-
-          if (sent % 10 === 0) {
-            await ctx.reply(`Progreso: ${sent} grupos...`);
-          }
-        } catch {
-          failed++;
-        }
-      }
+      const results = await Promise.allSettled(
+        Object.keys(groups).map(groupId =>
+          ctx.sock.sendMessage(groupId, { text: sanitizedMessage }),
+        ),
+      );
+      sent = results.filter(r => r.status === 'fulfilled').length;
+      failed = results.filter(r => r.status === 'rejected').length;
 
       logger.info(`[Broadcast] Completed: ${sent} sent, ${failed} failed`);
       await ctx.reply(`Broadcast completado\n\nEnviados: ${sent}\nFallidos: ${failed}`);

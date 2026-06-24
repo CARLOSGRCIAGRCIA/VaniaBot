@@ -1,6 +1,7 @@
 import { Command } from '../Command.js';
 import { CommandCategory, PermissionLevel } from '@/types/index.js';
 import type { MessageContext } from '@/types/index.js';
+import { logError } from '@/utils/logger.js';
 
 const TEST_HOST = 'https://speed.cloudflare.com';
 const TRACE_HOST = 'https://1.1.1.1/cdn-cgi/trace';
@@ -115,7 +116,9 @@ async function readResponseBytesLimited(response: Response, limitBytes: number):
     if (total >= limitBytes) {
       try {
         await reader.cancel();
-      } catch {}
+      } catch (error) {
+        logError('[Speedtest]', error);
+      }
       break;
     }
   }
@@ -162,7 +165,8 @@ async function measurePing(): Promise<{
       await readResponseBytesLimited(response, 8192);
       const endedAt = process.hrtime.bigint();
       samples.push(Number(endedAt - startedAt) / 1_000_000);
-    } catch {
+    } catch (error) {
+      logError('[Speedtest]', error);
       useFallback = true;
       break;
     }
@@ -181,7 +185,8 @@ async function measurePing(): Promise<{
         await readResponseBytesLimited(response, 8192);
         const endedAt = process.hrtime.bigint();
         samples.push(Number(endedAt - startedAt) / 1_000_000);
-      } catch {
+      } catch (error) {
+        logError('[Speedtest]', error);
         break;
       }
     }
@@ -227,7 +232,8 @@ async function measureDownload(bytesToDownload: number): Promise<{
         elapsedMs,
         speedLabel: formatMbps(bytes, elapsedMs),
       };
-    } catch {
+    } catch (error) {
+      logError('[Speedtest]', error);
       continue;
     }
   }
@@ -279,7 +285,8 @@ async function measureUpload(bytesToUpload: number): Promise<{
         elapsedMs,
         speedLabel: formatMbps(payload.length, elapsedMs),
       };
-    } catch {
+    } catch (error) {
+      logError('[Speedtest]', error);
       continue;
     }
   }

@@ -1,7 +1,6 @@
 import { Command } from '../../Command.js';
 import { CommandCategory, CommandContext, type MessageContext } from '@/types/index.js';
 import { logError } from '@/utils/logger.js';
-// import { createCanvas } from 'canvas';
 
 export class QrCommand extends Command {
   name = 'qr';

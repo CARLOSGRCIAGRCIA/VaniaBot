@@ -4,6 +4,7 @@ import type { MessageContext } from '@/types/index.js';
 import { downloadContentFromMessage } from '@whiskeysockets/baileys';
 import { createWriteStream, unlinkSync, existsSync, mkdirSync } from 'fs';
 import path from 'path';
+import { logError } from '@/utils/logger.js';
 
 const TMP_DIR = path.join(process.cwd(), 'tmp');
 
@@ -47,7 +48,8 @@ async function downloadImageFromMessage(ctx: MessageContext): Promise<Buffer | n
     }
 
     return Buffer.concat(chunks);
-  } catch {
+  } catch (error) {
+    logError('[SetBotPhoto]', error);
     return null;
   }
 }
@@ -116,7 +118,9 @@ export class SetBotPhotoCommand extends Command {
           if (existsSync(tempFile)) {
             unlinkSync(tempFile);
           }
-        } catch {}
+        } catch (error) {
+          logError('[SetBotPhoto]', error);
+        }
       }
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);

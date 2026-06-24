@@ -9,6 +9,7 @@
 import { Command } from '../../Command.js';
 import { CommandCategory, CommandContext, type MessageContext } from '@/types/index.js';
 import { apkSearchService } from '@/services/download/APKSearchService.js';
+import { logError } from '@/utils/logger.js';
 
 export class APKCommand extends Command {
   name = 'apk';
@@ -52,7 +53,7 @@ export class APKCommand extends Command {
 
       await ctx.react('✅');
     } catch (error) {
-      console.error('APKCommand error:', error);
+      logError('APKCommand error:', error);
       await ctx.react('❌');
       await ctx.reply('❌ Error al buscar APK');
     }
@@ -115,7 +116,7 @@ export class APKDLCommand extends Command {
         );
       }
     } catch (error) {
-      console.error('APKDLCommand error:', error);
+      logError('APKDLCommand error:', error);
       await ctx.react('❌');
       await ctx.reply('❌ Error al procesar APK');
     }
