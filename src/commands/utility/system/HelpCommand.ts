@@ -2,6 +2,7 @@ import { Command } from '../../Command.js';
 import { CommandCategory, PermissionLevel } from '@/types/index.js';
 import type { MessageContext } from '@/types/index.js';
 import { commandRegistry } from '@/core/CommandRegistry.js';
+import { pluginLoader } from '@/core/PluginLoader.js';
 import { serviceManager } from '@/services/system/Servicemanager.js';
 import { primeService } from '@/services/system/PrimeService.js';
 import { logError } from '@/utils/logger.js';
@@ -89,6 +90,16 @@ export class HelpCommand extends Command {
   }
 
   private async showFullMenu(ctx: MessageContext): Promise<void> {
+    const registeredCommands = commandRegistry.getAll();
+    if (registeredCommands.length < pluginLoader.getCommandCount().total) {
+      const allLoaded = await pluginLoader.getAllCommands();
+      for (const cmd of allLoaded) {
+        if (!commandRegistry.get(cmd.name)) {
+          commandRegistry.register(cmd);
+        }
+      }
+    }
+
     const allCommands = commandRegistry.getAll();
     const isPrime = ctx.chat.isGroup ? await primeService.isPrimeEnabled(ctx.chat.jid) : false;
     const botName =
