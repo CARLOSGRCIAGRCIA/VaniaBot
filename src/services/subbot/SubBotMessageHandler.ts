@@ -1,6 +1,7 @@
 import type { WAMessage, proto, WASocket } from '@whiskeysockets/baileys';
 import type { SubBotConfig } from '@/types/subbot.js';
 import { commandRegistry } from '@/core/CommandRegistry.js';
+import { pluginLoader } from '@/core/PluginLoader.js';
 import { MessageContext } from '@/core/MessageContext.js';
 import { cacheManager } from '@/core/CacheManager.js';
 import { serviceManager } from '@/services/system/Servicemanager.js';
@@ -121,8 +122,16 @@ export class SubBotMessageHandler {
       }
 
       const fullCommand = ctx.args.length > 0 ? `${ctx.command} ${ctx.args[0]}` : null;
-      const command =
+      let command =
         (fullCommand ? commandRegistry.get(fullCommand) : null) ?? commandRegistry.get(ctx.command);
+
+      if (!command) {
+        const lazyCmd = await pluginLoader.getCommand(ctx.command);
+        if (lazyCmd) {
+          commandRegistry.register(lazyCmd);
+          command = lazyCmd;
+        }
+      }
 
       if (!command) return;
 
