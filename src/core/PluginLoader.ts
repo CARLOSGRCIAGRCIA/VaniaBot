@@ -194,7 +194,7 @@ export class PluginLoader {
           }
         }
 
-        return this.loadedCommands.get(name) ?? null;
+        return this.loadedCommands.get(name) ?? this.lazyCache.get(name) ?? null;
       } catch (error) {
         logError(`PluginLoader.getCommand(${name})`, error);
       }
@@ -257,6 +257,28 @@ export class PluginLoader {
   }
 
   getLoadedCommands(): ICommand[] {
+    return Array.from(this.loadedCommands.values());
+  }
+
+  async getAllCommands(): Promise<ICommand[]> {
+    if (this.commandFiles.size > 0) {
+      const filePaths = [...new Set(this.commandFiles.values())];
+      await Promise.all(
+        filePaths.map(async filePath => {
+          try {
+            const loaded = await this.loadCommandFile(filePath);
+            for (const cmd of loaded) {
+              if (!this.loadedCommands.has(cmd.name)) {
+                this.loadedCommands.set(cmd.name, cmd);
+              }
+            }
+          } catch (error) {
+            logError('[PluginLoader] getAllCommands', error);
+          }
+        }),
+      );
+      this.commandFiles.clear();
+    }
     return Array.from(this.loadedCommands.values());
   }
 
