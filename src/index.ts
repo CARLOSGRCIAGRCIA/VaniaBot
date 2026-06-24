@@ -33,7 +33,6 @@ async function main(): Promise<void> {
   }
 
   client = new WhatsAppClient();
-  global.client = client;
   await client.initialize();
   logger.info('Bot iniciado correctamente');
 
@@ -45,18 +44,24 @@ async function main(): Promise<void> {
 
 async function shutdown(reason: string): Promise<void> {
   logger.info(`Deteniendo bot (${reason})...`);
-  if (client) {
-    await client.shutdown();
+  try {
+    if (client) {
+      await client.shutdown();
+    }
+    await panelServer.stop();
+    await logger.flush();
+  } catch (error) {
+    logError('shutdown', error);
   }
-  await panelServer.stop();
-  process.exit(0);
+
+  setTimeout(() => process.exit(0), 5000).unref();
 }
 
 process.on('SIGINT', () => {
-  void shutdown('SIGINT');
+  shutdown('SIGINT').catch(err => logError('SIGINT handler', err));
 });
 process.on('SIGTERM', () => {
-  void shutdown('SIGTERM');
+  shutdown('SIGTERM').catch(err => logError('SIGTERM handler', err));
 });
 
 process.on('uncaughtException', error => {

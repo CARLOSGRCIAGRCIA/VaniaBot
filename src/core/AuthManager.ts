@@ -23,6 +23,11 @@ import pino from 'pino';
 import { config } from '@/config/index.js';
 import { logger, logError } from '@/utils/logger.js';
 import { displayQR, displayPairingCode, validatePhoneNumber } from '@/utils/qr.js';
+import {
+  MAX_RECONNECT_ATTEMPTS,
+  RECONNECT_BASE_DELAY,
+  MAX_RECONNECT_DELAY,
+} from '@/utils/constants.js';
 import { unlinkSync, readdirSync, existsSync, mkdirSync } from 'fs';
 import { join } from 'path';
 
@@ -31,10 +36,7 @@ const WA_BROWSER_QR: [string, string, string] = ['VaniaBot', 'Chrome', '120.0.0'
 const SILENT_LOGGER = pino({ level: 'silent' });
 
 const MAX_QR_RETRIES = 10;
-const MAX_RECONNECT_ATTEMPTS = 20;
 const CONNECTION_TIMEOUT = 120_000;
-const RECONNECT_BASE_DELAY = 1000;
-const MAX_RECONNECT_DELAY = 60_000;
 const PAIRING_CODE_TIMEOUT = 180_000;
 const PING_INTERVAL_MS = 15000;
 const HEALTH_CHECK_INTERVAL_MS = 60000;
@@ -277,7 +279,7 @@ export class AuthManager {
     });
 
     sock.ev.on('creds.update', () => {
-      saveCreds().catch(() => {});
+      saveCreds().catch((error: unknown) => logError('[AuthManager]', error));
     });
 
     sock.ev.on('connection.update', update => {
@@ -601,7 +603,9 @@ export class AuthManager {
       for (const file of files) {
         try {
           unlinkSync(join(config.sessionPath, file));
-        } catch {}
+        } catch (error) {
+          logError('[AuthManager]', error);
+        }
       }
 
       logger.info('✅ Sesión limpiada');
@@ -618,7 +622,9 @@ export class AuthManager {
     if (this.currentSocket) {
       try {
         await this.currentSocket.ws.close();
-      } catch {}
+      } catch (error) {
+        logError('[AuthManager]', error);
+      }
       this.currentSocket = null;
     }
 

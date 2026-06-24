@@ -4,6 +4,7 @@ import { logError } from '@/utils/logger.js';
 import { middlewareCache } from './MiddlewareCache.js';
 import { PermissionService } from '@/services/PermissionService.js';
 import { serviceManager } from '@/services/system/Servicemanager.js';
+import { formatTimeRemaining } from '@/utils/helpers.js';
 
 export class MuteMiddleware extends Middleware {
   name = 'mute';
@@ -60,37 +61,25 @@ export class MuteMiddleware extends Middleware {
         ctx.sender.jid,
       );
 
-      const timeText = this.formatTimeRemaining(timeRemaining);
+      const timeText = formatTimeRemaining(timeRemaining);
 
-      for (const adminJid of adminJids) {
-        try {
-          await ctx.sock.sendMessage(adminJid, {
-            text:
-              `🔇 *Aviso de Mute*\n\n` +
-              `El usuario *${ctx.sender.pushName || 'Desconocido'}* está muteado pero intentó enviar un mensaje.\n\n` +
-              `📝 Razón: ${muteInfo?.reason || 'No especificada'}\n` +
-              `⏱️ Tiempo restante: ${timeText}\n` +
-              `💬 Mensaje: ${ctx.text.slice(0, 100)}${ctx.text.length > 100 ? '...' : ''}\n\n` +
-              `⚠️ El bot necesita ser admin para eliminar automáticamente los mensajes muteados.`,
-          });
-        } catch {}
-      }
+      await Promise.allSettled(
+        adminJids.map(adminJid =>
+          ctx.sock
+            .sendMessage(adminJid, {
+              text:
+                `🔇 *Aviso de Mute*\n\n` +
+                `El usuario *${ctx.sender.pushName || 'Desconocido'}* está muteado pero intentó enviar un mensaje.\n\n` +
+                `📝 Razón: ${muteInfo?.reason || 'No especificada'}\n` +
+                `⏱️ Tiempo restante: ${timeText}\n` +
+                `💬 Mensaje: ${ctx.text.slice(0, 100)}${ctx.text.length > 100 ? '...' : ''}\n\n` +
+                `⚠️ El bot necesita ser admin para eliminar automáticamente los mensajes muteados.`,
+            })
+            .catch(() => {}),
+        ),
+      );
     } catch (error) {
       logError('[MUTE] Error notifyAdmins', error);
     }
-  }
-
-  private formatTimeRemaining(ms: number): string {
-    if (ms <= 0) return 'Expira inmediatamente';
-
-    const seconds = Math.floor(ms / 1000);
-    const minutes = Math.floor(seconds / 60);
-    const hours = Math.floor(minutes / 60);
-    const days = Math.floor(hours / 24);
-
-    if (days > 0) return `${days} día${days > 1 ? 's' : ''}`;
-    if (hours > 0) return `${hours} hora${hours > 1 ? 's' : ''}`;
-    if (minutes > 0) return `${minutes} minuto${minutes > 1 ? 's' : ''}`;
-    return `${seconds} segundo${seconds > 1 ? 's' : ''}`;
   }
 }

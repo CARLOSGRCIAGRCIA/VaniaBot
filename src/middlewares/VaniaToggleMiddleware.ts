@@ -1,6 +1,8 @@
 import { Middleware } from './Middleware.js';
 import type { MessageContext } from '@/types/index.js';
 import { serviceManager } from '@/services/system/Servicemanager.js';
+import { logError } from '@/utils/logger.js';
+import { VANIA_TOGGLE_COMMANDS } from '@/config/index.js';
 
 export class VaniaToggleMiddleware extends Middleware {
   name = 'vania-toggle';
@@ -11,7 +13,7 @@ export class VaniaToggleMiddleware extends Middleware {
       return;
     }
 
-    if (['vaniaon', 'vaniaoff', 'vaniastatus'].includes(ctx.command)) {
+    if (VANIA_TOGGLE_COMMANDS.includes(ctx.command)) {
       await next();
       return;
     }
@@ -21,7 +23,8 @@ export class VaniaToggleMiddleware extends Middleware {
       if (!isEnabled) {
         return;
       }
-    } catch {
+    } catch (error) {
+      logError('[VaniaToggle]', error);
       await next();
       return;
     }

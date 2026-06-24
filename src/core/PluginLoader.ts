@@ -108,43 +108,45 @@ export class PluginLoader {
   ): Promise<void> {
     const files = await readdir(dir);
 
-    for (const file of files) {
-      const filePath = join(dir, file);
-      const fileStat = await stat(filePath);
+    await Promise.all(
+      files.map(async file => {
+        const filePath = join(dir, file);
+        const fileStat = await stat(filePath);
 
-      if (fileStat.isDirectory()) {
-        const currentCategory = parentCategory || file;
-        await this.loadFromDirectory(filePath, commands, currentCategory);
-      } else if (file.endsWith('Command.ts') || file.endsWith('Command.js')) {
-        const relativePath = filePath.replace(join(__dirname, '../commands') + '/', '');
-        const category = relativePath.split('/')[0];
+        if (fileStat.isDirectory()) {
+          const currentCategory = parentCategory || file;
+          await this.loadFromDirectory(filePath, commands, currentCategory);
+        } else if (file.endsWith('Command.ts') || file.endsWith('Command.js')) {
+          const relativePath = filePath.replace(join(__dirname, '../commands') + '/', '');
+          const category = relativePath.split('/')[0];
 
-        if (
-          this.preloadCategories.has(category) ||
-          this.preloadCategories.has(parentCategory || category)
-        ) {
-          try {
-            const loaded = await this.loadCommandFile(filePath);
-            commands.push(...loaded);
-          } catch (error) {
-            logError('PluginLoader.loadFromDirectory', error);
-          }
-        } else {
-          try {
-            const loaded = await this.loadCommandFile(filePath);
-            for (const cmd of loaded) {
-              this.commandFiles.set(cmd.name, filePath);
-              cmd.aliases?.forEach(alias => {
-                this.commandFiles.set(alias, filePath);
-              });
+          if (
+            this.preloadCategories.has(category) ||
+            this.preloadCategories.has(parentCategory || category)
+          ) {
+            try {
+              const loaded = await this.loadCommandFile(filePath);
+              commands.push(...loaded);
+            } catch (error) {
+              logError('PluginLoader.loadFromDirectory', error);
             }
-          } catch {
-            const fileName = file.replace(/\.(ts|js)$/, '');
-            this.commandFiles.set(fileName, filePath);
+          } else {
+            try {
+              const loaded = await this.loadCommandFile(filePath);
+              for (const cmd of loaded) {
+                this.commandFiles.set(cmd.name, filePath);
+                cmd.aliases?.forEach(alias => {
+                  this.commandFiles.set(alias, filePath);
+                });
+              }
+            } catch {
+              const fileName = file.replace(/\.(ts|js)$/, '');
+              this.commandFiles.set(fileName, filePath);
+            }
           }
         }
-      }
-    }
+      }),
+    );
   }
 
   private async scanDirectory(dir: string): Promise<void> {
@@ -157,8 +159,8 @@ export class PluginLoader {
           this.commandFiles.set(commandName, filePath);
         }
       }
-    } catch {
-      // Ignore scan errors
+    } catch (error) {
+      logError('[PluginLoader]', error);
     }
   }
 
@@ -178,16 +180,21 @@ export class PluginLoader {
       try {
         const loaded = await this.loadCommandFile(filePath);
 
-        if (loaded.length > 0) {
-          const cmd = loaded[0];
+        for (const cmd of loaded) {
           this.loadedCommands.set(cmd.name, cmd);
           this.lazyCache.set(cmd.name, cmd);
           cmd.aliases?.forEach(alias => {
             this.lazyCache.set(alias, cmd);
           });
-          this.commandFiles.delete(name);
-          return cmd;
         }
+
+        for (const [key, path] of this.commandFiles) {
+          if (path === filePath) {
+            this.commandFiles.delete(key);
+          }
+        }
+
+        return this.loadedCommands.get(name) ?? null;
       } catch (error) {
         logError(`PluginLoader.getCommand(${name})`, error);
       }
@@ -236,8 +243,8 @@ export class PluginLoader {
           if (isValidCommand(instance)) {
             results.push(instance);
           }
-        } catch {
-          // Skip classes that require arguments
+        } catch (error) {
+          logError('[PluginLoader]', error);
         }
       }
     }

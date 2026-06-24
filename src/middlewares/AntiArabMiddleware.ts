@@ -1,7 +1,7 @@
 import { Middleware } from './Middleware.js';
 import type { MessageContext } from '@/types/index.js';
 import { antiArabService } from '@/services/moderation/AntiArabService.js';
-import { logger } from '@/utils/logger.js';
+import { logError, logger } from '@/utils/logger.js';
 
 export class AntiArabMiddleware extends Middleware {
   name = 'antiarab';
@@ -61,7 +61,8 @@ export class AntiArabMiddleware extends Middleware {
     try {
       const botNumber = (sock?.user?.id || '').replace(/@.*$/, '').replace(/[^\d]/g, '');
       return number === botNumber;
-    } catch {
+    } catch (error) {
+      logError('[AntiArab]', error);
       return false;
     }
   }
