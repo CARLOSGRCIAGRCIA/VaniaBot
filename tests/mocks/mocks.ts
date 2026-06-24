@@ -11,6 +11,7 @@ import { vi, type Mock } from 'vitest';
 import type { WASocket, proto } from '@whiskeysockets/baileys';
 import type { MessageContext } from '../../src/types/index.js';
 import type { User } from '../../src/services/database/UserService.js';
+import type { GroupSettings } from '../../src/services/database/GroupService.js';
 import type { IDatabase } from '../../src/services/database/Database.js';
 
 export const createMockUser = (overrides: Partial<User> = {}): User => ({
@@ -153,6 +154,38 @@ export const createMockServices = (user?: User): MockServices => {
     },
   };
 };
+
+export const createMockGroup = (overrides: Partial<GroupSettings> = {}): GroupSettings => ({
+  jid: 'group@test.com',
+  name: 'Test Group',
+  isActive: true,
+  onlyAdmin: false,
+  welcome: { enabled: false },
+  goodbye: { enabled: false },
+  antiSpam: { enabled: false, maxMessages: 10, timeWindow: 60 },
+  antiLink: { enabled: false, allowedDomains: [] },
+  antiWords: { enabled: false, words: [] },
+  levels: { enabled: true, announceOnLevelUp: true },
+  economy: { enabled: true },
+  audios: false,
+  nsfw: false,
+  prime: { enabled: false },
+  license: {
+    planType: 'permanent',
+    paymentType: 'single',
+    activatedAt: Date.now(),
+    expiresAt: null,
+    renewAt: null,
+    lastRenewAt: null,
+    autoRenew: false,
+    pricePaid: '0',
+  },
+  autoMod: { enabled: false, deleteLinks: false, deleteBadWords: false, warnOnViolation: true },
+  stats: { totalMessages: 0, totalCommands: 0 },
+  createdAt: Date.now(),
+  updatedAt: Date.now(),
+  ...overrides,
+});
 
 export const mockServiceManager = (services: MockServices): void => {
   vi.mock('../../src/services/system/Servicemanager.js', () => ({

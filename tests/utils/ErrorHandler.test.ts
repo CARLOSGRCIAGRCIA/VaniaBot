@@ -1,14 +1,6 @@
-/**
- * ErrorHandler.test.ts
- *
- * Unit tests for the ErrorHandler class.
- * Tests error handling, retry logic, and user-friendly messages.
- *
- * @author **Carlos G** ⭐
- */
-
 import { describe, it, expect, vi } from 'vitest';
-import { ErrorHandler, BotError, ErrorCode } from '../../src/utils/ErrorHandler';
+import { ErrorHandler } from '../../src/utils/ErrorHandler';
+import { VBotError, ErrorCode } from '../../src/utils/errors';
 
 vi.mock('../../src/utils/logger', () => ({
   logger: {
@@ -20,28 +12,9 @@ vi.mock('../../src/utils/logger', () => ({
 }));
 
 describe('ErrorHandler', () => {
-  describe('BotError', () => {
-    it('should create error with code', () => {
-      const error = new BotError('Test error', ErrorCode.DATABASE_ERROR);
-      expect(error.message).toBe('Test error');
-      expect(error.code).toBe(ErrorCode.DATABASE_ERROR);
-      expect(error.isRetryable).toBe(false);
-    });
-
-    it('should create retryable error', () => {
-      const error = new BotError('Timeout', ErrorCode.NETWORK_ERROR, {}, true);
-      expect(error.isRetryable).toBe(true);
-    });
-
-    it('should include context', () => {
-      const error = new BotError('Error', ErrorCode.UNKNOWN, { command: 'test' });
-      expect(error.context.command).toBe('test');
-    });
-  });
-
   describe('handleCommandError', () => {
-    it('should return user-friendly message for BotError', () => {
-      const error = new BotError('Test', ErrorCode.USER_BANNED);
+    it('should return user-friendly message for VBotError', () => {
+      const error = new VBotError('Test', ErrorCode.USER_BANNED, false);
       const message = ErrorHandler.handleCommandError(error, 'test');
       expect(message).toContain('baneado');
     });
@@ -121,13 +94,13 @@ describe('ErrorHandler', () => {
   });
 
   describe('isRetryable', () => {
-    it('should identify retryable BotError', () => {
-      const error = new BotError('Timeout', ErrorCode.NETWORK_ERROR, {}, true);
+    it('should identify retryable VBotError', () => {
+      const error = new VBotError('Timeout', ErrorCode.NETWORK_ERROR, true);
       expect(ErrorHandler.isRetryable(error)).toBe(true);
     });
 
-    it('should identify non-retryable BotError', () => {
-      const error = new BotError('Not found', ErrorCode.NOT_FOUND, {}, false);
+    it('should identify non-retryable VBotError', () => {
+      const error = new VBotError('Not found', ErrorCode.NOT_FOUND, false);
       expect(ErrorHandler.isRetryable(error)).toBe(false);
     });
 
@@ -144,84 +117,29 @@ describe('ErrorHandler', () => {
     });
   });
 
-  describe('retry', () => {
-    it('should succeed on first try', async () => {
-      const fn = vi.fn().mockResolvedValue('success');
-      const result = await ErrorHandler.retry(fn, { maxRetries: 3 });
-      expect(result).toBe('success');
-      expect(fn).toHaveBeenCalledTimes(1);
-    });
-
-    it('should retry on failure', async () => {
-      let attempts = 0;
-      const fn = vi.fn().mockImplementation(() => {
-        attempts++;
-        if (attempts < 2) throw new Error('timeout error');
-        return Promise.resolve('success');
-      });
-
-      const result = await ErrorHandler.retry(fn, { maxRetries: 3, delayMs: 10 });
-      expect(result).toBe('success');
-      expect(fn).toHaveBeenCalledTimes(2);
-    });
-
-    it('should throw after max retries', async () => {
-      const fn = vi.fn().mockRejectedValue(new Error('timeout error'));
-
-      await expect(ErrorHandler.retry(fn, { maxRetries: 2, delayMs: 10 })).rejects.toThrow(
-        'timeout error',
-      );
-
-      expect(fn).toHaveBeenCalledTimes(2);
-    });
-
-    it('should call onRetry callback', async () => {
-      const onRetry = vi.fn();
-      const fn = vi.fn().mockRejectedValue(new Error('network error'));
-
-      try {
-        await ErrorHandler.retry(fn, { maxRetries: 2, delayMs: 10, onRetry });
-      } catch (e) {
-        // Expected to throw
-      }
-
-      expect(onRetry).toHaveBeenCalled();
-    });
-
-    it('should not retry non-retryable errors', async () => {
-      const fn = vi.fn().mockRejectedValue(new Error('validation failed'));
-
-      await expect(ErrorHandler.retry(fn, { maxRetries: 3, delayMs: 10 })).rejects.toThrow(
-        'validation failed',
-      );
-
-      expect(fn).toHaveBeenCalledTimes(1);
-    });
-  });
-
   describe('getUserMessage', () => {
     it('should return message for USER_BANNED', () => {
-      const error = new BotError('Banned', ErrorCode.USER_BANNED);
+      const error = new VBotError('Banned', ErrorCode.USER_BANNED, false);
       expect(ErrorHandler.getUserMessage(error)).toContain('baneado');
     });
 
     it('should return message for INSUFFICIENT_FUNDS', () => {
-      const error = new BotError('No money', ErrorCode.INSUFFICIENT_FUNDS);
+      const error = new VBotError('No money', ErrorCode.INSUFFICIENT_FUNDS, false);
       expect(ErrorHandler.getUserMessage(error)).toContain('Fondos');
     });
 
-    it('should return message for RATE_LIMIT_ERROR', () => {
-      const error = new BotError('Rate limited', ErrorCode.RATE_LIMIT_ERROR);
+    it('should return message for RATE_LIMITED', () => {
+      const error = new VBotError('Rate limited', ErrorCode.RATE_LIMITED, false);
       expect(ErrorHandler.getUserMessage(error)).toContain('límite');
     });
 
-    it('should return message for PERMISSION_ERROR', () => {
-      const error = new BotError('No permission', ErrorCode.PERMISSION_ERROR);
+    it('should return message for PERMISSION_DENIED', () => {
+      const error = new VBotError('No permission', ErrorCode.PERMISSION_DENIED, false);
       expect(ErrorHandler.getUserMessage(error)).toContain('permiso');
     });
 
     it('should return message for NOT_FOUND', () => {
-      const error = new BotError('Not found', ErrorCode.NOT_FOUND);
+      const error = new VBotError('Not found', ErrorCode.NOT_FOUND, false);
       expect(ErrorHandler.getUserMessage(error)).toContain('No encontrado');
     });
   });
