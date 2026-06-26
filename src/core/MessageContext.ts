@@ -72,10 +72,11 @@ export class MessageContext implements IMessageContext {
    * @returns Object with command name and arguments
    */
   private parseCommand() {
-    if (!this.text.startsWith(config.prefix)) {
+    const prefix = [config.prefix, '.', '!'].find(p => this.text.startsWith(p));
+    if (!prefix) {
       return { command: '', args: [] };
     }
-    const args = this.text.slice(config.prefix.length).trim().split(/\s+/);
+    const args = this.text.slice(prefix.length).trim().split(/\s+/);
     const command = args.shift()?.toLowerCase() || '';
     return { command, args };
   }
