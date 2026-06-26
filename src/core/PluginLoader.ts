@@ -244,7 +244,7 @@ export class PluginLoader {
             results.push(instance);
           }
         } catch (error) {
-          logError('[PluginLoader]', error);
+          logError(`[PluginLoader] ${__filename}`, error);
         }
       }
     }
