@@ -97,7 +97,7 @@ export class PersistenceService {
       const stored = await this.db.get<Record<string, Reminder>>(this.DB_REMINDERS_KEY, 'data');
       if (stored) {
         for (const [id, reminder] of Object.entries(stored)) {
-          if (reminder.triggerAt > Date.now()) {
+          if (reminder && reminder.triggerAt > Date.now()) {
             this.reminders.set(id, reminder);
           }
         }
@@ -113,7 +113,7 @@ export class PersistenceService {
       const stored = await this.db.get<Record<string, Poll>>(this.DB_POLLS_KEY, 'data');
       if (stored) {
         for (const [chatJid, poll] of Object.entries(stored)) {
-          if (!poll.closed && (!poll.endsAt || poll.endsAt > Date.now())) {
+          if (poll && !poll.closed && (!poll.endsAt || poll.endsAt > Date.now())) {
             this.polls.set(chatJid, poll);
           }
         }
@@ -130,6 +130,7 @@ export class PersistenceService {
       if (stored) {
         const now = Date.now();
         for (const [messageId, lista] of Object.entries(stored)) {
+          if (!lista) continue;
           const ttl = this.getListaTTL();
           if (lista.activa && now - lista.creadoEn < ttl) {
             this.listas.set(messageId, lista);
