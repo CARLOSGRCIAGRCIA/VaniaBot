@@ -1,4 +1,4 @@
-import type { WASocket } from '@whiskeysockets/baileys';
+import type { WASocket } from 'baileys';
 import type { GroupService } from '../database/GroupService.js';
 import { cacheManager } from '@/core/CacheManager.js';
 

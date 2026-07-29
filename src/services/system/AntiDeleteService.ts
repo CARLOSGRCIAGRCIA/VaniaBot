@@ -1,6 +1,6 @@
-import type { WASocket } from '@whiskeysockets/baileys';
-import { downloadContentFromMessage } from '@whiskeysockets/baileys';
-import type { proto } from '@whiskeysockets/baileys';
+import type { WASocket } from 'baileys';
+import { downloadContentFromMessage } from 'baileys';
+import type { proto } from 'baileys';
 import fs from 'fs';
 import path from 'path';
 import { logError } from '@/utils/logger.js';
@@ -108,15 +108,15 @@ export class AntiDeleteService {
   }
 
   async storeMessage(sock: WASocket, message: proto.IWebMessageInfo): Promise<void> {
-    const groupJid = message.key.remoteJid?.endsWith('@g.us') ? message.key.remoteJid : undefined;
+    const groupJid = message.key?.remoteJid?.endsWith('@g.us') ? message.key.remoteJid : undefined;
 
     if (groupJid && !this.isEnabled(groupJid)) return;
     if (!this.isEnabled() && !groupJid) return;
 
-    const messageId = message.key.id;
+    const messageId = message.key?.id;
     if (!messageId) return;
 
-    const sender = message.key.participant || message.key.remoteJid || '';
+    const sender = message.key?.participant || message.key?.remoteJid || '';
     const senderName = message.pushName || sender.split('@')[0];
 
     let content = '';

@@ -1,4 +1,4 @@
-import type { WASocket } from '@whiskeysockets/baileys';
+import type { WASocket } from 'baileys';
 import type { Database } from '../database/Database.js';
 import { randomUUID } from 'crypto';
 import { logger, logError } from '@/utils/logger.js';

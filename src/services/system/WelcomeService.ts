@@ -1,4 +1,4 @@
-import type { WASocket } from '@whiskeysockets/baileys';
+import type { WASocket } from 'baileys';
 import { serviceManager } from './Servicemanager.js';
 import { logger, logError } from '@/utils/logger.js';
 import { circuitBreakerManager } from './CircuitBreakerService.js';
