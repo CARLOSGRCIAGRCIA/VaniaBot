@@ -1,8 +1,11 @@
 import { Jimp } from 'jimp';
-import { readFileSync, existsSync, mkdirSync, unlinkSync, readdirSync } from 'fs';
+import { readFileSync, existsSync, mkdirSync, unlinkSync, readdirSync, writeFileSync } from 'fs';
 import { join } from 'path';
-import { spawn } from 'child_process';
+import { spawn, exec } from 'child_process';
+import { promisify } from 'util';
 import { logger, logError } from '@/utils/logger.js';
+
+const execAsync = promisify(exec);
 
 export interface ImageProcessorResult {
   buffer: Buffer;
@@ -21,27 +24,22 @@ interface ParsedTextBlock {
 }
 
 export class ImageProcessor {
-  private static sharpAvailable: boolean | null = null;
+  private static ffmpegAvailable: boolean | null = null;
   private static resvgAvailable: boolean | null = null;
   private static readonly TEMP_DIR = './data/temp';
 
   private static fontPath: string | null | undefined = undefined;
 
-  static async isSharpAvailable(): Promise<boolean> {
-    if (this.sharpAvailable !== null) return this.sharpAvailable;
+  static async isFFmpegAvailable(): Promise<boolean> {
+    if (this.ffmpegAvailable !== null) return this.ffmpegAvailable;
     try {
-      const sharp = (await import('sharp')).default;
-      await sharp({
-        create: { width: 1, height: 1, channels: 4, background: { r: 0, g: 0, b: 0, alpha: 0 } },
-      })
-        .png()
-        .toBuffer();
-      this.sharpAvailable = true;
+      await execAsync('ffmpeg -version');
+      this.ffmpegAvailable = true;
     } catch {
-      this.sharpAvailable = false;
-      logger.warn('[ImageProcessor] Sharp no disponible, usando FFmpeg drawtext como fallback');
+      this.ffmpegAvailable = false;
+      logger.warn('[ImageProcessor] FFmpeg no disponible, usando Jimp como fallback');
     }
-    return this.sharpAvailable;
+    return this.ffmpegAvailable;
   }
 
   static async isResvgAvailable(): Promise<boolean> {
@@ -130,18 +128,43 @@ export class ImageProcessor {
   }
 
   static async loadImage(imagePath: string): Promise<ImageProcessorResult> {
-    const useSharp = await this.isSharpAvailable();
-    if (useSharp) return await this.loadImageSharp(imagePath);
+    const useFFmpeg = await this.isFFmpegAvailable();
+    if (useFFmpeg) {
+      try {
+        return await this.loadImageFFmpeg(imagePath);
+      } catch (error) {
+        logError('[ImageProcessor] loadImageFFmpeg', error);
+      }
+    }
     return await this.loadImageJimp(imagePath);
   }
 
-  private static async loadImageSharp(imagePath: string): Promise<ImageProcessorResult> {
-    const sharp = (await import('sharp')).default;
-    const metadata = await sharp(imagePath).metadata();
-    const width = metadata.width || 512;
-    const height = metadata.height || 512;
-    const buffer = await sharp(imagePath).png().toBuffer();
+  private static async loadImageFFmpeg(imagePath: string): Promise<ImageProcessorResult> {
+    const { width, height } = await this.probeDimensions(imagePath);
+
+    if (!this.TEMP_DIR_exists()) mkdirSync(this.TEMP_DIR, { recursive: true });
+    const outPath = join(this.TEMP_DIR, `load-${Date.now()}.png`);
+
+    await this.runFFmpeg(['-y', '-i', imagePath, outPath]);
+    const buffer = readFileSync(outPath);
+    this.cleanup(outPath);
+
     return { buffer, width, height };
+  }
+
+  private static async probeDimensions(
+    imagePath: string,
+  ): Promise<{ width: number; height: number }> {
+    try {
+      const { stdout } = await execAsync(
+        `ffprobe -v error -select_streams v:0 -show_entries stream=width,height -of csv=s=x:p=0 "${imagePath}"`,
+      );
+      const [w, h] = stdout.trim().split('x').map(Number);
+      if (w && h) return { width: w, height: h };
+    } catch (error) {
+      logError('[ImageProcessor] probeDimensions (ffprobe)', error);
+    }
+    return { width: 512, height: 512 };
   }
 
   private static async loadImageJimp(imagePath: string): Promise<ImageProcessorResult> {
@@ -195,30 +218,9 @@ export class ImageProcessor {
     imagePath: string,
     svgContent: string,
     width: number,
-    height: number,
-  ): Promise<Buffer> {
-    const useSharp = await this.isSharpAvailable();
-    if (useSharp) return await this.compositeTextSharp(imagePath, svgContent);
-    return await this.compositeTextFallback(imagePath, svgContent, width, height);
-  }
-
-  private static async compositeTextSharp(imagePath: string, svgContent: string): Promise<Buffer> {
-    const sharp = (await import('sharp')).default;
-    const svgBuffer = Buffer.from(svgContent);
-    const pngFromSvg = await sharp(svgBuffer).png().toBuffer();
-    return await sharp(imagePath)
-      .composite([{ input: pngFromSvg, top: 0, left: 0 }])
-      .png()
-      .toBuffer();
-  }
-
-  private static async compositeTextFallback(
-    imagePath: string,
-    svgContent: string,
-    width: number,
     _height: number,
   ): Promise<Buffer> {
-    if (!existsSync(this.TEMP_DIR)) mkdirSync(this.TEMP_DIR, { recursive: true });
+    if (!this.TEMP_DIR_exists()) mkdirSync(this.TEMP_DIR, { recursive: true });
 
     try {
       return await this.compositeTextFFmpegDrawtext(imagePath, svgContent);
@@ -290,20 +292,7 @@ export class ImageProcessor {
       `[ImageProcessor] FFmpeg drawtext: ${filters.length} bloque(s) | font: ${fontPath}`,
     );
 
-    await new Promise<void>((resolve, reject) => {
-      const args = ['-y', '-i', imagePath, '-vf', vfArg, outPath];
-      const proc = spawn('ffmpeg', args);
-      let stderr = '';
-      proc.stderr.on('data', d => (stderr += d.toString()));
-      proc.on('close', code => {
-        if (code === 0) {
-          resolve();
-        } else {
-          reject(new Error(`FFmpeg exit ${code}: ${stderr.slice(-800)}`));
-        }
-      });
-      proc.on('error', err => reject(new Error(`FFmpeg spawn error: ${err.message}`)));
-    });
+    await this.runFFmpeg(['-y', '-i', imagePath, '-vf', vfArg, outPath]);
 
     const result = readFileSync(outPath);
     this.cleanup(outPath);
@@ -407,10 +396,13 @@ export class ImageProcessor {
    * Resize con COVER (recorta para rellenar el cuadro).
    */
   static async resizeImage(buffer: Buffer, width: number, height: number): Promise<Buffer> {
-    const useSharp = await this.isSharpAvailable();
-    if (useSharp) {
-      const sharp = (await import('sharp')).default;
-      return await sharp(buffer).resize(width, height, { fit: 'cover' }).png().toBuffer();
+    const useFFmpeg = await this.isFFmpegAvailable();
+    if (useFFmpeg) {
+      try {
+        return await this.ffmpegResize(buffer, width, height, 'cover');
+      } catch (error) {
+        logError('[ImageProcessor] resizeImage (ffmpeg)', error);
+      }
     }
     const image = await Jimp.read(buffer);
     image.cover({ w: width, h: height });
@@ -422,17 +414,67 @@ export class ImageProcessor {
    * Usar para stickers donde no se puede recortar el contenido.
    */
   static async resizeContain(buffer: Buffer, width: number, height: number): Promise<Buffer> {
-    const useSharp = await this.isSharpAvailable();
-    if (useSharp) {
-      const sharp = (await import('sharp')).default;
-      return await sharp(buffer)
-        .resize(width, height, { fit: 'contain', background: { r: 0, g: 0, b: 0, alpha: 0 } })
-        .png()
-        .toBuffer();
+    const useFFmpeg = await this.isFFmpegAvailable();
+    if (useFFmpeg) {
+      try {
+        return await this.ffmpegResize(buffer, width, height, 'contain');
+      } catch (error) {
+        logError('[ImageProcessor] resizeContain (ffmpeg)', error);
+      }
     }
     const image = await Jimp.read(buffer);
     image.contain({ w: width, h: height });
     return await image.getBuffer('image/png');
+  }
+
+  private static async ffmpegResize(
+    buffer: Buffer,
+    width: number,
+    height: number,
+    mode: 'cover' | 'contain',
+  ): Promise<Buffer> {
+    if (!this.TEMP_DIR_exists()) mkdirSync(this.TEMP_DIR, { recursive: true });
+
+    const tempInput = join(this.TEMP_DIR, `rz-in-${Date.now()}.img`);
+    const tempOutput = join(this.TEMP_DIR, `rz-out-${Date.now()}.png`);
+
+    try {
+      writeFileSync(tempInput, buffer);
+
+      const filter =
+        mode === 'cover'
+          ? `scale=${width}:${height}:force_original_aspect_ratio=increase,crop=${width}:${height}`
+          : `scale=${width}:${height}:force_original_aspect_ratio=decrease,` +
+            `pad=${width}:${height}:(ow-iw)/2:(oh-ih)/2:color=0x00000000`;
+
+      await this.runFFmpeg(['-y', '-i', tempInput, '-vf', filter, tempOutput]);
+      const result = readFileSync(tempOutput);
+      this.cleanup(tempInput, tempOutput);
+      return result;
+    } catch (error) {
+      this.cleanup(tempInput, tempOutput);
+      throw error;
+    }
+  }
+
+  private static async runFFmpeg(args: string[]): Promise<void> {
+    return new Promise((resolve, reject) => {
+      const proc = spawn('ffmpeg', args);
+      let stderr = '';
+      proc.stderr.on('data', d => (stderr += d.toString()));
+      proc.on('close', code => {
+        if (code === 0) {
+          resolve();
+        } else {
+          reject(new Error(`FFmpeg exit ${code}: ${stderr.slice(-800)}`));
+        }
+      });
+      proc.on('error', err => reject(new Error(`FFmpeg spawn error: ${err.message}`)));
+    });
+  }
+
+  private static TEMP_DIR_exists(): boolean {
+    return existsSync(this.TEMP_DIR);
   }
 
   private static cleanup(...files: string[]): void {

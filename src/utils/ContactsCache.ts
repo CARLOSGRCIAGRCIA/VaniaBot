@@ -1,4 +1,4 @@
-import type { WASocket } from '@whiskeysockets/baileys';
+import type { WASocket } from 'baileys';
 import { logError } from '@/utils/logger.js';
 import type { MessageContext } from '@/types/index.js';
 

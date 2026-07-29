@@ -1,6 +1,6 @@
 import { pinVerificationService } from '@/services/system/PinVerificationService.js';
 import type { MessageContext } from '@/types/index.js';
-import type { WASocket } from '@whiskeysockets/baileys';
+import type { WASocket } from 'baileys';
 
 export const PIN_PROTECTED_COMMANDS = ['eval', 'exec', 'grant', 'setowner', 'restart'];
 
