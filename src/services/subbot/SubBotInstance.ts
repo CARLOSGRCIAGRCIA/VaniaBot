@@ -18,10 +18,10 @@
 import makeWASocket, {
   makeCacheableSignalKeyStore,
   DisconnectReason,
-  fetchLatestBaileysVersion,
   type WASocket,
   type ConnectionState,
-} from '@whiskeysockets/baileys';
+  type SignalKeyStore,
+} from 'baileys';
 import pino from 'pino';
 import { mkdirSync, existsSync, readdirSync, unlinkSync } from 'fs';
 import { join } from 'path';
@@ -62,6 +62,18 @@ const NETWORK_CODES = new Set<number>([
 
 const CONFLICT_CODE = 440;
 
+// IMPORTANTE (jul 2026): fetchLatestBaileysVersion() consulta un endpoint que
+// viene devolviendo versiones desactualizadas (reportado en issues #2376 y
+// #2485 de WhiskeySockets/Baileys). WhatsApp rechaza esas versiones con 405
+// "Connection Failure". Por eso forzamos manualmente la última versión
+// verificada en vez de depender de ese fetch remoto.
+// Fuente para actualizar cuando vuelva a fallar: https://wppconnect.io/whatsapp-versions/
+//   (tomar el primer número de la lista "stable")
+// Última actualización: 28/07/2026
+const FORCED_WA_VERSION: [number, number, number] = [2, 3000, 1043984129];
+
+let _cachedVersion: [number, number, number] | null = null;
+
 export class SubBotInstance extends EventEmitter {
   public sock?: WASocket;
   public config: SubBotConfig;
@@ -87,6 +99,19 @@ export class SubBotInstance extends EventEmitter {
   constructor(config: SubBotConfig) {
     super();
     this.config = config;
+  }
+
+  /**
+   * Obtiene la versión de WhatsApp Web a usar.
+   * Usa versión forzada en lugar de fetchLatestBaileysVersion() que está desactualizado.
+   */
+  private async getWAVersion(): Promise<[number, number, number]> {
+    if (_cachedVersion) return _cachedVersion;
+    _cachedVersion = FORCED_WA_VERSION;
+    logger.debug(
+      `[SubBot ${this.config.id}] Usando versión WA forzada: ${_cachedVersion.join('.')}`,
+    );
+    return _cachedVersion;
   }
 
   private startPing(): void {
@@ -245,23 +270,26 @@ export class SubBotInstance extends EventEmitter {
 
     try {
       mkdirSync(this.config.sessionPath, { recursive: true });
-      const { version } = await fetchLatestBaileysVersion();
+      const version = await this.getWAVersion();
       const { state, saveCreds } = await useEncryptedMultiFileAuthState(this.config.sessionPath);
       const hasExistingCreds = !!state.creds.registered;
 
       logger.debug(
-        `🌸 SubBot[${this.config.id}] session: ${hasExistingCreds ? 'existing ✅' : 'new 🆕'}`,
+        `🌸 SubBot[${this.config.id}] session: ${hasExistingCreds ? 'existing ✅' : 'new 🆕'}` +
+          ` | versión WA: ${version.join('.')}`,
       );
+
+      const keyStore = makeCacheableSignalKeyStore(state.keys, SILENT_LOGGER);
 
       this.sock = makeWASocket({
         version,
         auth: {
           creds: state.creds,
-          keys: makeCacheableSignalKeyStore(state.keys, SILENT_LOGGER),
+          keys: keyStore as SignalKeyStore,
         },
         logger: SILENT_LOGGER,
         printQRInTerminal: false,
-        browser: ['Ubuntu', 'Chrome', '120.0.0'],
+        browser: ['Ubuntu', 'Chrome', '131.0.6778.0'],
         defaultQueryTimeoutMs: 60_000,
         connectTimeoutMs: 120_000,
         keepAliveIntervalMs: 15_000,
@@ -272,7 +300,6 @@ export class SubBotInstance extends EventEmitter {
         retryRequestDelayMs: 250,
         shouldIgnoreJid: (jid: string) => jid?.endsWith('@broadcast'),
         emitOwnEvents: false,
-        cachedGroupMetadata: async () => undefined,
       });
 
       this.sock.ev.on('creds.update', () => {
@@ -332,8 +359,7 @@ export class SubBotInstance extends EventEmitter {
     const { connection, lastDisconnect } = update;
 
     const err = lastDisconnect?.error as
-      | { output?: { statusCode?: number }; message?: string }
-      | undefined;
+      { output?: { statusCode?: number }; message?: string } | undefined;
     const statusCode = err?.output?.statusCode as number | undefined;
 
     if (statusCode !== undefined) {
