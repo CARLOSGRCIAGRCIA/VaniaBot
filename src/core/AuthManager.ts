@@ -15,10 +15,10 @@ import makeWASocket, {
   useMultiFileAuthState,
   makeCacheableSignalKeyStore,
   DisconnectReason,
-  fetchLatestBaileysVersion,
   type WASocket,
   type ConnectionState,
-} from '@whiskeysockets/baileys';
+  type SignalKeyStore,
+} from 'baileys';
 import pino from 'pino';
 import { config } from '@/config/index.js';
 import { logger, logError } from '@/utils/logger.js';
@@ -31,8 +31,8 @@ import {
 import { unlinkSync, readdirSync, existsSync, mkdirSync } from 'fs';
 import { join } from 'path';
 
-const WA_BROWSER_PAIRING: [string, string, string] = ['Ubuntu', 'Chrome', '120.0.0'];
-const WA_BROWSER_QR: [string, string, string] = ['VaniaBot', 'Chrome', '120.0.0'];
+const WA_BROWSER_PAIRING: [string, string, string] = ['Ubuntu', 'Chrome', '131.0.6778.0'];
+const WA_BROWSER_QR: [string, string, string] = ['VaniaBot', 'Chrome', '131.0.6778.0'];
 const SILENT_LOGGER = pino({ level: 'silent' });
 
 const MAX_QR_RETRIES = 10;
@@ -43,6 +43,16 @@ const HEALTH_CHECK_INTERVAL_MS = 60000;
 
 const ERROR_515_MAX_RETRIES = 3;
 const ERROR_515_WAIT_TIME = 3_000;
+
+// IMPORTANTE (jul 2026): fetchLatestBaileysVersion() consulta un endpoint que
+// viene devolviendo versiones desactualizadas (reportado en issues #2376 y
+// #2485 de WhiskeySockets/Baileys). WhatsApp rechaza esas versiones con 405
+// "Connection Failure". Por eso forzamos manualmente la última versión
+// verificada en vez de depender de ese fetch remoto.
+// Fuente para actualizar cuando vuelva a fallar: https://wppconnect.io/whatsapp-versions/
+//   (tomar el primer número de la lista "stable")
+// Última actualización: 28/07/2026
+const FORCED_WA_VERSION: [number, number, number] = [2, 3000, 1043984129];
 
 let _cachedVersion: [number, number, number] | null = null;
 
@@ -59,17 +69,9 @@ interface PatchedStdout extends NodeJS.WriteStream {
 
 async function getWAVersion(): Promise<[number, number, number]> {
   if (_cachedVersion) return _cachedVersion;
-
-  try {
-    const { version } = await fetchLatestBaileysVersion();
-    _cachedVersion = version as [number, number, number];
-    return _cachedVersion;
-  } catch (error) {
-    logger.warn('No se pudo obtener la última versión, usando fallback');
-    logError('[AuthManager] getWAVersion error', error);
-    _cachedVersion = [2, 3000, 1015901307];
-    return _cachedVersion;
-  }
+  _cachedVersion = FORCED_WA_VERSION;
+  logger.debug(`[AuthManager] Usando versión WA forzada: ${_cachedVersion.join('.')}`);
+  return _cachedVersion;
 }
 
 function patchStdout(): void {
@@ -255,11 +257,14 @@ export class AuthManager {
 
     const browser = config.auth.usePairingCode ? WA_BROWSER_PAIRING : WA_BROWSER_QR;
 
+    // Crear SignalKeyStore correctamente tipado
+    const keyStore = makeCacheableSignalKeyStore(state.keys, SILENT_LOGGER);
+
     const sock = makeWASocket({
       version,
       auth: {
         creds: state.creds,
-        keys: makeCacheableSignalKeyStore(state.keys, SILENT_LOGGER),
+        keys: keyStore as SignalKeyStore,
       },
       logger: SILENT_LOGGER,
       printQRInTerminal: false,
@@ -274,7 +279,6 @@ export class AuthManager {
       retryRequestDelayMs: 150,
       shouldIgnoreJid: (jid: string) => jid?.endsWith('@broadcast'),
       emitOwnEvents: false,
-      cachedGroupMetadata: async () => undefined,
       qrTimeout: 60_000,
     });
 
