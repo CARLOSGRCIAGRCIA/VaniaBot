@@ -4,11 +4,11 @@
  * Mock utilities for command testing.
  * Provides mocks for MessageContext, services, and database.
  *
- * @author **Carlos G** ⭐
+ * @author **Carlos G**
  */
 
 import { vi, type Mock } from 'vitest';
-import type { WASocket, proto } from '@whiskeysockets/baileys';
+import type { WASocket, proto } from 'baileys';
 import type { MessageContext } from '../../src/types/index.js';
 import type { User } from '../../src/services/database/UserService.js';
 import type { GroupSettings } from '../../src/services/database/GroupService.js';
