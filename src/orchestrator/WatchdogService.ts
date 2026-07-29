@@ -12,12 +12,7 @@ import { logger } from '@/utils/logger.js';
 import { runtimeStateRepository } from '@/repositories/RuntimeStateRepository.js';
 
 export type BotHealthStatus =
-  | 'healthy'
-  | 'degraded'
-  | 'connecting'
-  | 'disconnected'
-  | 'quarantined'
-  | 'error';
+  'healthy' | 'degraded' | 'connecting' | 'disconnected' | 'quarantined' | 'error';
 
 export interface HealthReport {
   botId: string;

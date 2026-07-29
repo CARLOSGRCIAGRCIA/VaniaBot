@@ -49,12 +49,7 @@ export interface CreateRuntimeStateInput {
 }
 
 export type ConnectionState =
-  | 'disconnected'
-  | 'connecting'
-  | 'connected'
-  | 'reconnecting'
-  | 'quarantined'
-  | 'error';
+  'disconnected' | 'connecting' | 'connected' | 'reconnecting' | 'quarantined' | 'error';
 
 export class RuntimeStateRepository {
   private static instance: RuntimeStateRepository;
