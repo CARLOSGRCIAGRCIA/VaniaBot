@@ -1,4 +1,4 @@
-import type { WASocket, GroupParticipant } from '@whiskeysockets/baileys';
+import type { WASocket, GroupParticipant } from 'baileys';
 import { logError } from '@/utils/logger.js';
 import { cacheManager } from '@/core/CacheManager.js';
 

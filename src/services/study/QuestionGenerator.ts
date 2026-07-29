@@ -139,17 +139,15 @@ Reglas:
             obj.acceptableAnswers.every((a: unknown) => typeof a === 'string')
           );
         })
-        .map(
-          (q): QuizQuestion => ({
-            question: q.question.trim(),
-            answer: q.answer.toLowerCase().trim(),
-            acceptableAnswers: q.acceptableAnswers.map(a => a.toLowerCase().trim()),
-            explanation: q.explanation.trim(),
-            hint: q.hint.trim(),
-            difficulty,
-            category,
-          }),
-        );
+        .map((q): QuizQuestion => ({
+          question: q.question.trim(),
+          answer: q.answer.toLowerCase().trim(),
+          acceptableAnswers: q.acceptableAnswers.map(a => a.toLowerCase().trim()),
+          explanation: q.explanation.trim(),
+          hint: q.hint.trim(),
+          difficulty,
+          category,
+        }));
     } catch (err) {
       logError('[QuizGen] Error parseando preguntas', err);
       return [];

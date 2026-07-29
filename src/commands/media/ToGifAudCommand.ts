@@ -1,7 +1,7 @@
 import { Command } from '../Command.js';
 import { CommandCategory } from '@/types/index.js';
 import type { MessageContext } from '@/types/index.js';
-import { downloadMediaMessage, type WAMessage } from '@whiskeysockets/baileys';
+import { downloadMediaMessage, type WAMessage } from 'baileys';
 import { exec } from 'child_process';
 import { promisify } from 'util';
 import fs from 'fs';
@@ -22,14 +22,18 @@ export class ToGifAudCommand extends Command {
   cooldown = 30_000;
 
   async execute(ctx: MessageContext): Promise<void> {
-    if (!ctx.quoted) {
+    const quotedMsg = ctx.message.message?.extendedTextMessage?.contextInfo?.quotedMessage;
+    const quotedMsgId = ctx.message.message?.extendedTextMessage?.contextInfo?.stanzaId;
+    const quotedParticipant = ctx.message.message?.extendedTextMessage?.contextInfo?.participant;
+
+    if (!quotedMsg || !quotedMsg.videoMessage) {
       await ctx.reply(
         `˚₊· ͟͟͞͞➳ *falta el video* ˚₊· ͟͟͞͞➳\n\n` + `✿ Responde a un *video* con *!togifaud*`,
       );
       return;
     }
 
-    const mime = ctx.quoted.videoMessage?.mimetype || '';
+    const mime = quotedMsg.videoMessage.mimetype || '';
     if (!mime.includes('video')) {
       await ctx.reply(`˚₊· ͟͟͞͞➳ *no es video* ˚₊· ͟͟͞͞➳\n\n` + `✿ Necesito que respondas a un *video*.`);
       return;
@@ -42,12 +46,22 @@ export class ToGifAudCommand extends Command {
         fs.mkdirSync(TMP_DIR, { recursive: true });
       }
 
-      const quotedAsMessage: WAMessage = {
-        key: ctx.message.key,
-        message: ctx.quoted,
-      } as WAMessage;
+      const messageToDownload: WAMessage = {
+        key: {
+          id: quotedMsgId || '',
+          remoteJid: quotedParticipant || ctx.chat.jid,
+          fromMe: false,
+        },
+        message: {
+          videoMessage: quotedMsg.videoMessage,
+        },
+        messageTimestamp: Date.now(),
+        pushName: '',
+        status: 0,
+      };
 
-      const mediaBuffer = await downloadMediaMessage(quotedAsMessage, 'buffer', {});
+      const mediaBuffer = (await downloadMediaMessage(messageToDownload, 'buffer', {})) as Buffer;
+
       const inputFile = path.join(TMP_DIR, `input_${Date.now()}.mp4`);
       const outputFile = path.join(TMP_DIR, `output_${Date.now()}.gif`);
 

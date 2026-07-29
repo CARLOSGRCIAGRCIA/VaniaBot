@@ -1,4 +1,4 @@
-import type { WASocket } from '@whiskeysockets/baileys';
+import type { WASocket } from 'baileys';
 import { extractPhone } from './JidService.js';
 import { logger } from '@/utils/logger.js';
 

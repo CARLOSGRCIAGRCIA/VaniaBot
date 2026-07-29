@@ -1,4 +1,4 @@
-import type { WASocket, proto, AnyMessageContent } from '@whiskeysockets/baileys';
+import type { WASocket, proto, AnyMessageContent, WAMessage } from 'baileys';
 
 export interface ICommand {
   name: string;
@@ -57,7 +57,7 @@ export enum CommandContext {
 
 export interface MessageContext {
   sock: WASocket;
-  message: proto.IWebMessageInfo;
+  message: WAMessage;
   text: string;
   args: string[];
   command: string;

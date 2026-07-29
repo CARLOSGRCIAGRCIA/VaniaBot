@@ -1,4 +1,4 @@
-import type { WASocket } from '@whiskeysockets/baileys';
+import type { WASocket } from 'baileys';
 import Groq from 'groq-sdk';
 import fs from 'fs';
 import path from 'path';

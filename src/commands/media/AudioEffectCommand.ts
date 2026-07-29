@@ -1,7 +1,7 @@
 import { Command } from '../Command.js';
 import { CommandCategory } from '@/types/index.js';
 import type { MessageContext } from '@/types/index.js';
-import { downloadMediaMessage, type WAMessage } from '@whiskeysockets/baileys';
+import { downloadMediaMessage, type WAMessage } from 'baileys';
 import { exec } from 'child_process';
 import { promisify } from 'util';
 import fs from 'fs';
@@ -55,7 +55,11 @@ export class AudioEffectCommand extends Command {
       return;
     }
 
-    if (!ctx.quoted) {
+    const quotedMsg = ctx.message.message?.extendedTextMessage?.contextInfo?.quotedMessage;
+    const quotedMsgId = ctx.message.message?.extendedTextMessage?.contextInfo?.stanzaId;
+    const quotedParticipant = ctx.message.message?.extendedTextMessage?.contextInfo?.participant;
+
+    if (!quotedMsg || !quotedMsg.audioMessage) {
       await ctx.reply(
         `˚₊· ͟͟͞͞➳ *falta el audio* ˚₊· ͟͟͞͞➳\n\n` +
           `✿ Responde a un *audio/nota de voz* con *!${commandName}*`,
@@ -63,7 +67,7 @@ export class AudioEffectCommand extends Command {
       return;
     }
 
-    const mime = ctx.quoted.audioMessage?.mimetype ?? '';
+    const mime = quotedMsg.audioMessage.mimetype ?? '';
     if (!mime.includes('audio')) {
       await ctx.reply(
         `˚₊· ͟͟͞͞➳ *no es audio* ˚₊· ͟͟͞͞➳\n\n` + `✿ Necesito que respondas a un *audio/nota de voz*.`,
@@ -79,23 +83,23 @@ export class AudioEffectCommand extends Command {
     try {
       fs.mkdirSync(TMP_DIR, { recursive: true });
 
-      const contextInfo =
-        ctx.message.message?.extendedTextMessage?.contextInfo ??
-        ctx.message.message?.audioMessage?.contextInfo ??
-        ctx.message.message?.imageMessage?.contextInfo;
-
-      const quotedAsMessage: WAMessage = {
+      const messageToDownload: WAMessage = {
         key: {
-          remoteJid: ctx.message.key.remoteJid,
-          id: contextInfo?.stanzaId,
-          fromMe: contextInfo?.participant === ctx.sock.user?.id,
-          participant: contextInfo?.participant,
+          id: quotedMsgId || '',
+          remoteJid: quotedParticipant || ctx.chat.jid,
+          fromMe: false,
         },
-        message: ctx.quoted,
-      } as WAMessage;
+        message: {
+          audioMessage: quotedMsg.audioMessage,
+        },
+        messageTimestamp: Date.now(),
+        pushName: '',
+        status: 0,
+      };
 
-      const mediaBuffer = await downloadMediaMessage(quotedAsMessage, 'buffer', {});
-      fs.writeFileSync(inputFile, mediaBuffer as Buffer);
+      const mediaBuffer = (await downloadMediaMessage(messageToDownload, 'buffer', {})) as Buffer;
+
+      fs.writeFileSync(inputFile, mediaBuffer);
 
       const ffmpegCommand = `ffmpeg -y -i "${inputFile}" ${effect.filter} -c:a libopus -b:a 64k "${outputFile}"`;
       logger.info(`[AudioEffectCommand] Running: ${ffmpegCommand}`);

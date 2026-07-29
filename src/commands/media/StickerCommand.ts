@@ -1,9 +1,8 @@
 import { Command } from '../Command.js';
 import { CommandCategory, CommandContext, type MessageContext } from '@/types/index.js';
 import { logError } from '@/utils/logger.js';
-import { downloadMediaMessage } from '@whiskeysockets/baileys';
+import { downloadMediaMessage, type WAMessage } from 'baileys';
 import { StickerHelper } from '@/utils/StickerHelper.js';
-import type { proto } from '@whiskeysockets/baileys';
 
 export class StickerCommand extends Command {
   name = 'sticker';
@@ -15,13 +14,14 @@ export class StickerCommand extends Command {
   contexts = [CommandContext.BOTH];
 
   async execute(ctx: MessageContext): Promise<void> {
-    const quotedMsg = ctx.message.message?.extendedTextMessage?.contextInfo?.quotedMessage;
+    const contextInfo = ctx.message.message?.extendedTextMessage?.contextInfo;
+    const quotedMsg = contextInfo?.quotedMessage;
     const directMsg = ctx.message.message;
 
-    const hasQuotedMedia = quotedMsg?.imageMessage || quotedMsg?.videoMessage;
-    const hasDirectMedia = directMsg?.imageMessage || directMsg?.videoMessage;
+    const isQuoted = !!(quotedMsg?.imageMessage || quotedMsg?.videoMessage);
+    const message = isQuoted ? quotedMsg : directMsg;
 
-    if (!hasQuotedMedia && !hasDirectMedia) {
+    if (!message || !(message.imageMessage || message.videoMessage)) {
       await ctx.reply(
         `˚₊· ͟͟͞͞➳ *oops, necesito una imagen o video* ˚₊· ͟͟͞͞➳\n\n` +
           `✿ responde a una foto/video con *!sticker*\n` +
@@ -33,12 +33,29 @@ export class StickerCommand extends Command {
     await ctx.react('⏳');
 
     try {
-      const targetMsg: proto.IWebMessageInfo = hasQuotedMedia
-        ? ({ message: quotedMsg } as proto.IWebMessageInfo)
-        : ctx.message;
+      const msgId = isQuoted ? contextInfo?.stanzaId : ctx.message.key?.id;
 
-      const buffer = await downloadMediaMessage(targetMsg, 'buffer', {});
-      const stickerBuffer = await StickerHelper.createSticker(buffer as Buffer);
+      const remoteJid = isQuoted
+        ? contextInfo?.participant || ctx.chat.jid
+        : ctx.message.key?.remoteJid || ctx.chat.jid;
+
+      const messageToDownload: WAMessage = {
+        key: {
+          id: msgId || '',
+          remoteJid: remoteJid,
+          fromMe: isQuoted ? false : ctx.message.key?.fromMe || false,
+        },
+        message: {
+          imageMessage: message.imageMessage || undefined,
+          videoMessage: message.videoMessage || undefined,
+        },
+        messageTimestamp: Date.now(),
+        pushName: '',
+        status: 0,
+      };
+
+      const buffer = (await downloadMediaMessage(messageToDownload, 'buffer', {})) as Buffer;
+      const stickerBuffer = await StickerHelper.createSticker(buffer);
 
       await ctx.sock.sendMessage(ctx.chat.jid, { sticker: stickerBuffer });
       await ctx.react('✅');

@@ -1,4 +1,4 @@
-import type { WASocket, GroupParticipant } from '@whiskeysockets/baileys';
+import type { WASocket, GroupParticipant } from 'baileys';
 import { logError } from '@/utils/logger.js';
 import { normalizeJid, getBotPhone, getBotLid, extractPhone } from './JidService.js';
 import { GroupMetadataCache } from './GroupMetadataCache.js';

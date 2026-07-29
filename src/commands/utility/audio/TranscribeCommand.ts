@@ -7,7 +7,7 @@ import {
   PermissionLevel,
   type MessageContext,
 } from '@/types/index.js';
-import { downloadMediaMessage, type WAMessage } from '@whiskeysockets/baileys';
+import { downloadMediaMessage, type WAMessage } from 'baileys';
 
 const WHISPER_LANGS: Record<string, string> = {
   es: 'es',

@@ -1,4 +1,4 @@
-import type { WASocket, GroupParticipant } from '@whiskeysockets/baileys';
+import type { WASocket, GroupParticipant } from 'baileys';
 import { config } from '@/config/index.js';
 import { normalizeJid, extractPhone, isLidJid } from './JidService.js';
 import { GroupMetadataCache } from './GroupMetadataCache.js';

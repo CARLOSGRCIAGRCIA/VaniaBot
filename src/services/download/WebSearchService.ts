@@ -20,8 +20,7 @@ export interface SearchResult {
 }
 
 export type WebSearchError =
-  | { code: 'NETWORK_ERROR'; message: string }
-  | { code: 'NO_RESULTS'; message: string };
+  { code: 'NETWORK_ERROR'; message: string } | { code: 'NO_RESULTS'; message: string };
 
 export type WebSearchResult = Either<WebSearchError, SearchResult[]>;
 

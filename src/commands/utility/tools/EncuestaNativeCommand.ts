@@ -1,4 +1,4 @@
-import type { proto } from '@whiskeysockets/baileys';
+import type { proto } from 'baileys';
 import { Command } from '../../Command.js';
 import { CommandCategory, CommandContext, type MessageContext } from '@/types/index.js';
 

@@ -1,39 +1,20 @@
 import { Jimp } from 'jimp';
-import { exec } from 'child_process';
+import { exec, spawn } from 'child_process';
 import { promisify } from 'util';
 import { writeFileSync, unlinkSync, existsSync, mkdirSync, readFileSync } from 'fs';
 import { join } from 'path';
 import { logError, logger } from '@/utils/logger.js';
-import { spawn } from 'child_process';
 
 const execAsync = promisify(exec);
 
 export class ConverterService {
   private static readonly TEMP_DIR = './data/temp';
-  private static sharpAvailable: boolean | null = null;
   private static ffmpegAvailable: boolean | null = null;
 
   constructor() {
     if (!existsSync(ConverterService.TEMP_DIR)) {
       mkdirSync(ConverterService.TEMP_DIR, { recursive: true });
     }
-  }
-
-  private static async isSharpAvailable(): Promise<boolean> {
-    if (this.sharpAvailable !== null) return this.sharpAvailable;
-    try {
-      const sharp = (await import('sharp')).default;
-      await sharp({
-        create: { width: 1, height: 1, channels: 4, background: { r: 0, g: 0, b: 0, alpha: 0 } },
-      })
-        .png()
-        .toBuffer();
-      this.sharpAvailable = true;
-    } catch {
-      this.sharpAvailable = false;
-      logger.warn('[ConverterService] Sharp not available, using Jimp fallback');
-    }
-    return this.sharpAvailable;
   }
 
   static async isFFmpegAvailable(): Promise<boolean> {
@@ -48,44 +29,75 @@ export class ConverterService {
     return ConverterService.ffmpegAvailable;
   }
 
-  private static async isFFmpegAvailableAsync(): Promise<boolean> {
-    return ConverterService.isFFmpegAvailable();
-  }
-
   async convertImage(
     buffer: Buffer,
     format: 'jpeg' | 'png' | 'webp',
     options?: { quality?: number },
   ): Promise<Buffer> {
-    const useSharp = await ConverterService.isSharpAvailable();
+    const ffmpegAvailable = await ConverterService.isFFmpegAvailable();
 
-    if (useSharp) {
+    if (ffmpegAvailable) {
       try {
-        const sharp = (await import('sharp')).default;
-        const image = sharp(buffer);
-
-        switch (format) {
-          case 'jpeg':
-            return await image.jpeg({ quality: options?.quality || 90 }).toBuffer();
-          case 'png':
-            return await image.png({ compressionLevel: 9 }).toBuffer();
-          case 'webp':
-            return await image.webp({ quality: options?.quality || 90 }).toBuffer();
-          default:
-            throw new Error(`Formato no soportado: ${format}`);
-        }
+        return await this.ffmpegConvertImage(buffer, format, options?.quality ?? 90);
       } catch (error) {
-        logError('ConverterService.convertImage (sharp)', error);
+        logError('ConverterService.convertImage (ffmpeg)', error);
       }
     }
 
     return this.convertImageJimp(buffer, format, options?.quality);
   }
 
+  private async ffmpegConvertImage(
+    buffer: Buffer,
+    format: 'jpeg' | 'png' | 'webp',
+    quality: number,
+  ): Promise<Buffer> {
+    const tempInput = join(ConverterService.TEMP_DIR, `conv-in-${Date.now()}.img`);
+    const ext = format === 'jpeg' ? 'jpg' : format;
+    const tempOutput = join(ConverterService.TEMP_DIR, `conv-out-${Date.now()}.${ext}`);
+
+    try {
+      writeFileSync(tempInput, buffer);
+
+      let args: string[];
+      switch (format) {
+        case 'jpeg':
+          args = [
+            '-y',
+            '-i',
+            tempInput,
+            '-qscale:v',
+            String(this.qualityToJpegQScale(quality)),
+            tempOutput,
+          ];
+          break;
+        case 'png':
+          args = ['-y', '-i', tempInput, '-compression_level', '9', tempOutput];
+          break;
+        case 'webp':
+          args = ['-y', '-i', tempInput, '-quality', String(quality), tempOutput];
+          break;
+      }
+
+      await this.runFFmpeg(args);
+      const result = readFileSync(tempOutput);
+      this.cleanup(tempInput, tempOutput);
+      return result;
+    } catch (error) {
+      this.cleanup(tempInput, tempOutput);
+      throw error;
+    }
+  }
+
+  private qualityToJpegQScale(quality: number): number {
+    const q = Math.max(0, Math.min(100, quality));
+    return Math.round(31 - (q / 100) * 29);
+  }
+
   private async convertImageJimp(
     buffer: Buffer,
     format: 'jpeg' | 'png' | 'webp',
-    quality: number = 90,
+    _quality: number = 90,
   ): Promise<Buffer> {
     const image = await Jimp.read(buffer);
 
@@ -94,20 +106,9 @@ export class ConverterService {
         return await image.getBuffer('image/jpeg');
       case 'png':
         return await image.getBuffer('image/png');
-      case 'webp': {
-        const tempPath = join(ConverterService.TEMP_DIR, `convert-${Date.now()}.webp`);
-        try {
-          const pngBuffer = await image.getBuffer('image/png');
-          writeFileSync(tempPath, pngBuffer);
-          await this.ffmpegConvertToWebp(tempPath, quality);
-          const result = readFileSync(tempPath);
-          this.cleanup(tempPath);
-          return result;
-        } catch {
-          this.cleanup(tempPath);
-          return await image.getBuffer('image/png');
-        }
-      }
+      case 'webp':
+        logger.warn('[ConverterService] webp sin ffmpeg no soportado, devolviendo PNG');
+        return await image.getBuffer('image/png');
       default:
         return await image.getBuffer('image/png');
     }
@@ -119,22 +120,61 @@ export class ConverterService {
     height?: number,
     options?: { fit?: 'cover' | 'contain' | 'fill' | 'inside' | 'outside' },
   ): Promise<Buffer> {
-    const useSharp = await ConverterService.isSharpAvailable();
+    const ffmpegAvailable = await ConverterService.isFFmpegAvailable();
 
-    if (useSharp) {
+    if (ffmpegAvailable) {
       try {
-        const sharp = (await import('sharp')).default;
-        return await sharp(buffer)
-          .resize(width, height, {
-            fit: options?.fit || 'inside',
-          })
-          .toBuffer();
+        return await this.ffmpegResizeImage(buffer, width, height, options?.fit ?? 'inside');
       } catch (error) {
-        logError('ConverterService.resizeImage (sharp)', error);
+        logError('ConverterService.resizeImage (ffmpeg)', error);
       }
     }
 
     return this.resizeImageJimp(buffer, width, height);
+  }
+
+  private async ffmpegResizeImage(
+    buffer: Buffer,
+    width: number | undefined,
+    height: number | undefined,
+    fit: 'cover' | 'contain' | 'fill' | 'inside' | 'outside',
+  ): Promise<Buffer> {
+    const tempInput = join(ConverterService.TEMP_DIR, `resize-in-${Date.now()}.img`);
+    const tempOutput = join(ConverterService.TEMP_DIR, `resize-out-${Date.now()}.png`);
+
+    try {
+      writeFileSync(tempInput, buffer);
+
+      const w = width ?? -1;
+      const h = height ?? -1;
+
+      let scaleFilter: string;
+      switch (fit) {
+        case 'fill':
+          scaleFilter = `scale=${w}:${h}`;
+          break;
+        case 'cover':
+          scaleFilter = `scale=${w}:${h}:force_original_aspect_ratio=increase,crop=${w}:${h}`;
+          break;
+        case 'contain':
+        case 'inside':
+          scaleFilter = `scale=${w}:${h}:force_original_aspect_ratio=decrease`;
+          break;
+        case 'outside':
+          scaleFilter = `scale=${w}:${h}:force_original_aspect_ratio=increase`;
+          break;
+        default:
+          scaleFilter = `scale=${w}:${h}`;
+      }
+
+      await this.runFFmpeg(['-y', '-i', tempInput, '-vf', scaleFilter, tempOutput]);
+      const result = readFileSync(tempOutput);
+      this.cleanup(tempInput, tempOutput);
+      return result;
+    } catch (error) {
+      this.cleanup(tempInput, tempOutput);
+      throw error;
+    }
   }
 
   private async resizeImageJimp(buffer: Buffer, width?: number, height?: number): Promise<Buffer> {
@@ -152,37 +192,26 @@ export class ConverterService {
   }
 
   async compressImage(buffer: Buffer, quality: number = 80): Promise<Buffer> {
-    const useSharp = await ConverterService.isSharpAvailable();
+    const ffmpegAvailable = await ConverterService.isFFmpegAvailable();
 
-    if (useSharp) {
+    if (ffmpegAvailable) {
       try {
-        const sharp = (await import('sharp')).default;
-        const metadata = await sharp(buffer).metadata();
-
-        if (metadata.format === 'jpeg' || metadata.format === 'jpg') {
-          return await sharp(buffer).jpeg({ quality }).toBuffer();
-        } else if (metadata.format === 'png') {
-          return await sharp(buffer)
-            .png({ compressionLevel: Math.floor((100 - quality) / 10) })
-            .toBuffer();
-        } else {
-          return await sharp(buffer).webp({ quality }).toBuffer();
-        }
+        return await this.ffmpegConvertImage(buffer, 'jpeg', quality);
       } catch (error) {
-        logError('ConverterService.compressImage (sharp)', error);
+        logError('ConverterService.compressImage (ffmpeg)', error);
       }
     }
 
-    return this.compressImageJimp(buffer, quality);
+    return this.compressImageJimp(buffer);
   }
 
-  private async compressImageJimp(buffer: Buffer, _quality: number): Promise<Buffer> {
+  private async compressImageJimp(buffer: Buffer): Promise<Buffer> {
     const image = await Jimp.read(buffer);
     return await image.getBuffer('image/jpeg');
   }
 
   async convertVideoToMP4(buffer: Buffer): Promise<Buffer> {
-    const ffmpegAvailable = await ConverterService.isFFmpegAvailableAsync();
+    const ffmpegAvailable = await ConverterService.isFFmpegAvailable();
     if (!ffmpegAvailable) {
       throw new Error('FFmpeg no está instalado. No se puede convertir video.');
     }
@@ -192,9 +221,20 @@ export class ConverterService {
 
     try {
       writeFileSync(tempInput, buffer);
-
-      const cmd = `ffmpeg -y -i ${tempInput} -c:v libx264 -preset fast -c:a aac -b:a 128k ${tempOutput}`;
-      await execAsync(cmd);
+      await this.runFFmpeg([
+        '-y',
+        '-i',
+        tempInput,
+        '-c:v',
+        'libx264',
+        '-preset',
+        'fast',
+        '-c:a',
+        'aac',
+        '-b:a',
+        '128k',
+        tempOutput,
+      ]);
 
       const result = readFileSync(tempOutput);
       this.cleanup(tempInput, tempOutput);
@@ -207,7 +247,7 @@ export class ConverterService {
   }
 
   async extractAudioFromVideo(buffer: Buffer, format: 'mp3' | 'ogg' = 'mp3'): Promise<Buffer> {
-    const ffmpegAvailable = await ConverterService.isFFmpegAvailableAsync();
+    const ffmpegAvailable = await ConverterService.isFFmpegAvailable();
     if (!ffmpegAvailable) {
       throw new Error('FFmpeg no está instalado. No se puede extraer audio.');
     }
@@ -218,12 +258,12 @@ export class ConverterService {
     try {
       writeFileSync(tempInput, buffer);
 
-      const cmd =
+      const args =
         format === 'mp3'
-          ? `ffmpeg -y -i ${tempInput} -vn -ar 44100 -ac 2 -b:a 192k ${tempOutput}`
-          : `ffmpeg -y -i ${tempInput} -vn -c:a libvorbis ${tempOutput}`;
+          ? ['-y', '-i', tempInput, '-vn', '-ar', '44100', '-ac', '2', '-b:a', '192k', tempOutput]
+          : ['-y', '-i', tempInput, '-vn', '-c:a', 'libvorbis', tempOutput];
 
-      await execAsync(cmd);
+      await this.runFFmpeg(args);
 
       const result = readFileSync(tempOutput);
       this.cleanup(tempInput, tempOutput);
@@ -236,7 +276,7 @@ export class ConverterService {
   }
 
   async convertAudio(buffer: Buffer, format: 'mp3' | 'ogg' | 'wav'): Promise<Buffer> {
-    const ffmpegAvailable = await ConverterService.isFFmpegAvailableAsync();
+    const ffmpegAvailable = await ConverterService.isFFmpegAvailable();
     if (!ffmpegAvailable) {
       throw new Error('FFmpeg no está instalado. No se puede convertir audio.');
     }
@@ -247,22 +287,34 @@ export class ConverterService {
     try {
       writeFileSync(tempInput, buffer);
 
-      let cmd: string;
+      let args: string[];
       switch (format) {
         case 'mp3':
-          cmd = `ffmpeg -y -i ${tempInput} -vn -ar 44100 -ac 2 -b:a 192k ${tempOutput}`;
+          args = [
+            '-y',
+            '-i',
+            tempInput,
+            '-vn',
+            '-ar',
+            '44100',
+            '-ac',
+            '2',
+            '-b:a',
+            '192k',
+            tempOutput,
+          ];
           break;
         case 'ogg':
-          cmd = `ffmpeg -y -i ${tempInput} -vn -c:a libvorbis ${tempOutput}`;
+          args = ['-y', '-i', tempInput, '-vn', '-c:a', 'libvorbis', tempOutput];
           break;
         case 'wav':
-          cmd = `ffmpeg -y -i ${tempInput} -acodec pcm_s16le ${tempOutput}`;
+          args = ['-y', '-i', tempInput, '-acodec', 'pcm_s16le', tempOutput];
           break;
         default:
-          throw new Error(`Formato no soportado: ${format}`);
+          throw new Error(`Formato no soportado: ${format as string}`);
       }
 
-      await execAsync(cmd);
+      await this.runFFmpeg(args);
 
       const result = readFileSync(tempOutput);
       this.cleanup(tempInput, tempOutput);
@@ -275,7 +327,7 @@ export class ConverterService {
   }
 
   async createVideoThumbnail(buffer: Buffer, timestamp: string = '00:00:01'): Promise<Buffer> {
-    const ffmpegAvailable = await ConverterService.isFFmpegAvailableAsync();
+    const ffmpegAvailable = await ConverterService.isFFmpegAvailable();
     if (!ffmpegAvailable) {
       throw new Error('FFmpeg no está instalado. No se puede crear thumbnail.');
     }
@@ -286,8 +338,7 @@ export class ConverterService {
     try {
       writeFileSync(tempInput, buffer);
 
-      const cmd = `ffmpeg -y -i ${tempInput} -ss ${timestamp} -vframes 1 ${tempOutput}`;
-      await execAsync(cmd);
+      await this.runFFmpeg(['-y', '-i', tempInput, '-ss', timestamp, '-vframes', '1', tempOutput]);
 
       const result = readFileSync(tempOutput);
       this.cleanup(tempInput, tempOutput);
@@ -299,21 +350,8 @@ export class ConverterService {
     }
   }
 
-  private async ffmpegConvertToWebp(inputPath: string, quality: number): Promise<void> {
+  private async runFFmpeg(args: string[]): Promise<void> {
     return new Promise((resolve, reject) => {
-      const outputPath = inputPath.replace('.webp', '-converted.webp');
-      const args = [
-        '-y',
-        '-i',
-        inputPath,
-        '-vf',
-        `scale=512:-1:flags=lanczos`,
-        '-f',
-        'webp',
-        '-quality',
-        String(quality),
-        outputPath,
-      ];
       const ffmpeg = spawn('ffmpeg', args);
       let stderr = '';
       ffmpeg.stderr.on('data', data => {
@@ -321,14 +359,9 @@ export class ConverterService {
       });
       ffmpeg.on('close', code => {
         if (code === 0) {
-          if (existsSync(outputPath)) {
-            const converted = readFileSync(outputPath);
-            writeFileSync(inputPath, converted);
-            this.cleanup(outputPath);
-          }
           resolve();
         } else {
-          reject(new Error(`FFmpeg webp conversion failed: ${stderr}`));
+          reject(new Error(`FFmpeg exited with code ${code}: ${stderr}`));
         }
       });
       ffmpeg.on('error', reject);

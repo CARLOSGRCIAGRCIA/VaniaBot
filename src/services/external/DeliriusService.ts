@@ -1,12 +1,5 @@
 type DeliriusCategory =
-  | 'anime'
-  | 'nsfw'
-  | 'canvas'
-  | 'download'
-  | 'random'
-  | 'reactions'
-  | 'search'
-  | 'ia';
+  'anime' | 'nsfw' | 'canvas' | 'download' | 'random' | 'reactions' | 'search' | 'ia';
 
 const TIMEOUT_MS = 30000;
 

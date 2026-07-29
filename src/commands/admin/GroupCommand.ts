@@ -1,7 +1,7 @@
 import { Command } from '../Command.js';
 import { CommandCategory, CommandContext, PermissionLevel } from '@/types/index.js';
 import type { MessageContext } from '@/types/index.js';
-import type { GroupParticipant, WASocket } from '@whiskeysockets/baileys';
+import type { GroupParticipant, WASocket } from 'baileys';
 import { cacheManager } from '@/core/CacheManager.js';
 
 type GroupSocket = WASocket & {
@@ -320,7 +320,7 @@ export class SetpicCommand extends Command {
     }
 
     try {
-      const { downloadContentFromMessage } = await import('@whiskeysockets/baileys');
+      const { downloadContentFromMessage } = await import('baileys');
       const stream = await downloadContentFromMessage(imageMessage, 'image');
       let buffer = Buffer.from([]);
       for await (const chunk of stream) {

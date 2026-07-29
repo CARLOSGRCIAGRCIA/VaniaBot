@@ -32,8 +32,7 @@ export interface SpotifySearchResult {
 }
 
 export type SpotifyError =
-  | { code: 'NETWORK_ERROR'; message: string }
-  | { code: 'API_ERROR'; message: string };
+  { code: 'NETWORK_ERROR'; message: string } | { code: 'API_ERROR'; message: string };
 
 export type SpotifyResult = Either<SpotifyError, SpotifySearchResult>;
 

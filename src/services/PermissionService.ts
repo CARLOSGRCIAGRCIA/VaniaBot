@@ -1,4 +1,4 @@
-import type { WASocket, GroupParticipant } from '@whiskeysockets/baileys';
+import type { WASocket, GroupParticipant } from 'baileys';
 import {
   normalizeJid,
   isLidJid,

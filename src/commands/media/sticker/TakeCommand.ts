@@ -1,9 +1,8 @@
 import { Command } from '../../Command.js';
 import { CommandCategory, type MessageContext } from '@/types/index.js';
 import { logError } from '@/utils/logger.js';
-import { downloadMediaMessage } from '@whiskeysockets/baileys';
+import { downloadMediaMessage, type WAMessage } from 'baileys';
 import { StickerService } from '@/services/media/StickerService.js';
-import type { proto } from '@whiskeysockets/baileys';
 
 export class TakeCommand extends Command {
   name = 'take';
@@ -23,6 +22,8 @@ export class TakeCommand extends Command {
 
   async execute(ctx: MessageContext): Promise<void> {
     const quotedMsg = ctx.message.message?.extendedTextMessage?.contextInfo?.quotedMessage;
+    const quotedMsgId = ctx.message.message?.extendedTextMessage?.contextInfo?.stanzaId;
+    const quotedParticipant = ctx.message.message?.extendedTextMessage?.contextInfo?.participant;
 
     if (!quotedMsg || !quotedMsg.stickerMessage) {
       await ctx.reply('⚠️ *Reply to a sticker!*');
@@ -36,16 +37,29 @@ export class TakeCommand extends Command {
     await ctx.react('⏳');
 
     try {
-      const fakeMsg = { message: quotedMsg } as proto.IWebMessageInfo;
-      const buffer = await downloadMediaMessage(fakeMsg, 'buffer', {});
+      const messageToDownload: WAMessage = {
+        key: {
+          id: quotedMsgId || '',
+          remoteJid: quotedParticipant || ctx.chat.jid,
+          fromMe: false,
+        },
+        message: {
+          stickerMessage: quotedMsg.stickerMessage,
+        },
+        messageTimestamp: Date.now(),
+        pushName: '',
+        status: 0,
+      };
 
-      const stiker = await this.stickerService.addExif(buffer, packname.trim(), author.trim());
+      const buffer = (await downloadMediaMessage(messageToDownload, 'buffer', {})) as Buffer;
 
-      await ctx.sock.sendMessage(ctx.chat.jid, { sticker: stiker });
+      const sticker = await this.stickerService.addExif(buffer, packname.trim(), author.trim());
+
+      await ctx.sock.sendMessage(ctx.chat.jid, { sticker: sticker });
       await ctx.react('✅');
     } catch (error) {
       logError('[TakeCommand] Error', error);
-      await ctx.reply('Could not modify sticker');
+      await ctx.reply('❌ Could not modify sticker');
       await ctx.react('❌');
     }
   }

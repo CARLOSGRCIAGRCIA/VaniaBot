@@ -1,7 +1,7 @@
 import { Command } from '../Command.js';
 import { CommandCategory, PermissionLevel } from '@/types/index.js';
 import type { MessageContext } from '@/types/index.js';
-import { downloadContentFromMessage } from '@whiskeysockets/baileys';
+import { downloadContentFromMessage } from 'baileys';
 import { createWriteStream, unlinkSync, existsSync, mkdirSync } from 'fs';
 import path from 'path';
 import { logError } from '@/utils/logger.js';

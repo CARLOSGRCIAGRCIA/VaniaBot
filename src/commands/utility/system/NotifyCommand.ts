@@ -14,8 +14,8 @@
 import { Command } from '../../Command.js';
 import { CommandCategory, CommandContext } from '@/types/index.js';
 import type { MessageContext } from '@/types/index.js';
-import type { proto, WAMessage } from '@whiskeysockets/baileys';
-import { downloadMediaMessage } from '@whiskeysockets/baileys';
+import type { proto, WAMessage } from 'baileys';
+import { downloadMediaMessage } from 'baileys';
 import { cacheManager } from '@/core/CacheManager.js';
 import { primeService } from '@/services/system/PrimeService.js';
 import { logError } from '@/utils/logger.js';

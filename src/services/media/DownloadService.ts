@@ -39,8 +39,16 @@ export class DownloadService {
       });
 
       const buffer = Buffer.from(response.data);
-      const filename = this.extractFilename(url, response.headers['content-type']);
-      const mimeType = response.headers['content-type'] || 'application/octet-stream';
+
+      let mimeType: string = 'application/octet-stream';
+      const contentType = response.headers['content-type'];
+      if (typeof contentType === 'string') {
+        mimeType = contentType;
+      } else if (Array.isArray(contentType) && contentType.length > 0) {
+        mimeType = contentType[0];
+      }
+
+      const filename = this.extractFilename(url, mimeType);
 
       return right({
         data: buffer,
@@ -157,7 +165,7 @@ export class DownloadService {
         },
       });
 
-      const size = parseInt(response.headers['content-length'] || '0', 10);
+      const size = parseInt((response.headers['content-length'] as string) || '0', 10);
       return size > 0 ? size : null;
     } catch {
       return null;

@@ -1,7 +1,7 @@
 import { Command } from '../Command.js';
 import { CommandCategory } from '@/types/index.js';
 import type { MessageContext } from '@/types/index.js';
-import { downloadMediaMessage, type proto } from '@whiskeysockets/baileys';
+import { downloadMediaMessage, type WAMessage } from 'baileys';
 import axios from 'axios';
 import { env } from '@/config/env.js';
 import { logError } from '@/utils/logger.js';
@@ -16,14 +16,19 @@ export class ToAnimeCommand extends Command {
   cooldown = 30_000;
 
   async execute(ctx: MessageContext): Promise<void> {
-    if (!ctx.quoted || !ctx.quoted.imageMessage) {
+    const contextInfo = ctx.message.message?.extendedTextMessage?.contextInfo;
+    const quotedMsg = contextInfo?.quotedMessage;
+    const quotedMsgId = contextInfo?.stanzaId;
+    const quotedParticipant = contextInfo?.participant;
+
+    if (!quotedMsg || !quotedMsg.imageMessage) {
       await ctx.reply(
         `˚₊· ͟͟͞͞➳ *falta la imagen* ˚₊· ͟͟͞͞➳\n\n` + `✿ Responde a una *imagen* con *!toanime*`,
       );
       return;
     }
 
-    const mime = ctx.quoted.imageMessage.mimetype || '';
+    const mime = quotedMsg.imageMessage.mimetype || '';
     if (!mime.startsWith('image/')) {
       await ctx.reply(
         `˚₊· ͟͟͞͞➳ *no es imagen* ˚₊· ͟͟͞͞➳\n\n` + `✿ Necesito que respondas a una *imagen*.`,
@@ -42,8 +47,21 @@ export class ToAnimeCommand extends Command {
     await ctx.reply(`˚₊· ͟͟͞͞➳ *convirtiendo a anime...* ˚₊· ͟͟͞͞➳`);
 
     try {
-      const fakeMsg = { message: ctx.quoted } as unknown as proto.IWebMessageInfo;
-      const imageBuffer = await downloadMediaMessage(fakeMsg, 'buffer', {});
+      const messageToDownload: WAMessage = {
+        key: {
+          id: quotedMsgId || '',
+          remoteJid: quotedParticipant || ctx.chat.jid,
+          fromMe: false,
+        },
+        message: {
+          imageMessage: quotedMsg.imageMessage,
+        },
+        messageTimestamp: Date.now(),
+        pushName: '',
+        status: 0,
+      };
+
+      const imageBuffer = (await downloadMediaMessage(messageToDownload, 'buffer', {})) as Buffer;
 
       const tempPath = `/tmp/toanime_${Date.now()}.jpg`;
       const fs = await import('fs');

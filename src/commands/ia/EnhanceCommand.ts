@@ -1,7 +1,7 @@
 import { Command } from '../Command.js';
 import { deliriusService } from '@/services/external/DeliriusService.js';
 import { logError } from '@/utils/logger.js';
-import { downloadMediaMessage, type proto } from '@whiskeysockets/baileys';
+import { downloadMediaMessage, type WAMessage } from 'baileys';
 import { CommandCategory, type MessageContext } from '@/types/index.js';
 import axios from 'axios';
 
@@ -82,24 +82,54 @@ export class EnhanceCommand extends Command {
       }
     }
 
-    if (ctx.quoted?.imageMessage) {
+    const quotedMsg = ctx.message.message?.extendedTextMessage?.contextInfo?.quotedMessage;
+    const quotedMsgId = ctx.message.message?.extendedTextMessage?.contextInfo?.stanzaId;
+    const quotedParticipant = ctx.message.message?.extendedTextMessage?.contextInfo?.participant;
+
+    if (quotedMsg?.imageMessage && quotedMsgId) {
       try {
-        const fakeMsg = { message: ctx.quoted } as unknown as proto.IWebMessageInfo;
-        const buffer = await downloadMediaMessage(fakeMsg, 'buffer', {});
+        const messageToDownload: WAMessage = {
+          key: {
+            id: quotedMsgId,
+            remoteJid: quotedParticipant || ctx.chat.jid,
+            fromMe: false,
+          },
+          message: {
+            imageMessage: quotedMsg.imageMessage,
+          },
+          messageTimestamp: Date.now(),
+          pushName: '',
+          status: 0,
+        };
+        const buffer = (await downloadMediaMessage(messageToDownload, 'buffer', {})) as Buffer;
         const uploaded = await this.uploadToImgbb(buffer);
         return uploaded;
-      } catch {
+      } catch (error) {
+        logError('[EnhanceCommand] getImageUrl (quoted)', error);
         return null;
       }
     }
 
     if (ctx.message.message?.imageMessage) {
       try {
-        const fakeMsg = { message: ctx.message } as unknown as proto.IWebMessageInfo;
-        const buffer = await downloadMediaMessage(fakeMsg, 'buffer', {});
+        const messageToDownload: WAMessage = {
+          key: {
+            id: ctx.message.key?.id || '',
+            remoteJid: ctx.message.key?.remoteJid || ctx.chat.jid,
+            fromMe: ctx.message.key?.fromMe || false,
+          },
+          message: {
+            imageMessage: ctx.message.message.imageMessage,
+          },
+          messageTimestamp: Date.now(),
+          pushName: '',
+          status: 0,
+        };
+        const buffer = (await downloadMediaMessage(messageToDownload, 'buffer', {})) as Buffer;
         const uploaded = await this.uploadToImgbb(buffer);
         return uploaded;
-      } catch {
+      } catch (error) {
+        logError('[EnhanceCommand] getImageUrl (message)', error);
         return null;
       }
     }

@@ -1,6 +1,6 @@
 import { Command } from '../../Command.js';
 import { CommandCategory, CommandContext, type MessageContext } from '@/types/index.js';
-import { downloadMediaMessage, type proto } from '@whiskeysockets/baileys';
+import { downloadMediaMessage, type WAMessage } from 'baileys';
 import { logger } from '@/utils/logger.js';
 
 export class VerCommand extends Command {
@@ -35,16 +35,26 @@ export class VerCommand extends Command {
     await ctx.react('⏳');
 
     try {
-      const mediaBuffer = await downloadMediaMessage(
-        { message: { imageMessage: imageMsg } } as proto.IWebMessageInfo,
-        'buffer',
-        {},
-      );
+      const messageToDownload: WAMessage = {
+        key: {
+          id: quotedMsgId,
+          remoteJid: ctx.chat.jid,
+          fromMe: false,
+        },
+        message: {
+          imageMessage: imageMsg,
+        },
+        messageTimestamp: Date.now(),
+        pushName: '',
+        status: 0,
+      };
+
+      const mediaBuffer = (await downloadMediaMessage(messageToDownload, 'buffer', {})) as Buffer;
 
       const caption = imageMsg.caption || '🖼️ Imagen';
 
       await ctx.sock.sendMessage(ctx.chat.jid, {
-        image: Buffer.from(mediaBuffer),
+        image: mediaBuffer,
         caption,
       });
 

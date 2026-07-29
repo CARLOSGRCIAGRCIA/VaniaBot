@@ -1,4 +1,4 @@
-import type { WASocket } from '@whiskeysockets/baileys';
+import type { WASocket } from 'baileys';
 
 export function normalizeJid(jid: string): string {
   if (!jid) return jid;

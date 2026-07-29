@@ -1,15 +1,9 @@
-import type { WASocket, AnyMessageContent } from '@whiskeysockets/baileys';
+import type { WASocket, AnyMessageContent } from 'baileys';
 import { logger, logError } from '@/utils/logger.js';
 import { persistenceService } from '@/services/system/PersistenceService.js';
 
 export type ListaTipo =
-  | 'clk'
-  | 'vv2'
-  | 'cuadrilatero'
-  | 'trilatero'
-  | 'hexagonal'
-  | 'ascenso'
-  | 'scrim';
+  'clk' | 'vv2' | 'cuadrilatero' | 'trilatero' | 'hexagonal' | 'ascenso' | 'scrim';
 
 interface Jugador {
   jid: string;

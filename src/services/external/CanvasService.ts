@@ -4,8 +4,7 @@ const BASE_URL = 'https://api.delirius.store/canvas';
 const TIMEOUT_MS = 30000;
 
 export type CanvasResult =
-  | { type: 'url'; url: string }
-  | { type: 'buffer'; buffer: Buffer; contentType: string };
+  { type: 'url'; url: string } | { type: 'buffer'; buffer: Buffer; contentType: string };
 
 export class CanvasService {
   async getResult(endpoint: string, params?: Record<string, string>): Promise<CanvasResult> {

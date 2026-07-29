@@ -30,8 +30,7 @@ export interface APKSearchResponseInternal {
 }
 
 export type APKError =
-  | { code: 'NETWORK_ERROR'; message: string }
-  | { code: 'NOT_FOUND'; message: string };
+  { code: 'NETWORK_ERROR'; message: string } | { code: 'NOT_FOUND'; message: string };
 
 export type APKSearchResult = Either<APKError, APKApp[]>;
 
