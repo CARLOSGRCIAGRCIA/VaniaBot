@@ -7,12 +7,11 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     make \
     g++ \
     pkg-config \
-    libglib2.0-dev \
-    libvips-dev \
- && rm -rf /var/lib/apt/lists/*
+    && rm -rf /var/lib/apt/lists/*
 
 COPY package.json package-lock.json* ./
 
+ENV SHARP_IGNORE_GLOBAL_LIBVIPS=1
 RUN npm ci
 
 FROM node:20-bookworm-slim AS runner
@@ -27,6 +26,10 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     ca-certificates \
     ffmpeg \
     python3 \
+    python3-pip \
+    libreoffice-writer \
+    libreoffice-impress \
+    poppler-utils \
     libcairo2 \
     libpango1.0-0 \
     libgif7 \
@@ -39,19 +42,20 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     fonts-noto-color-emoji \
     tzdata \
     curl \
- && curl -L https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp \
+    && curl -L https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp \
     -o /usr/local/bin/yt-dlp \
- && chmod a+rx /usr/local/bin/yt-dlp \
- && rm -rf /var/lib/apt/lists/*
+    && chmod a+rx /usr/local/bin/yt-dlp \
+    && pip3 install --no-cache-dir pymupdf --break-system-packages \
+    && rm -rf /var/lib/apt/lists/*
 
 ENV TZ=America/Mexico_City
 
 RUN groupadd --system --gid 1001 vaniabot \
- && useradd --system --uid 1001 --gid vaniabot --create-home vaniabot \
- && mkdir -p /home/vaniabot/.cache/fontconfig /var/cache/fontconfig \
- && chown -R vaniabot:vaniabot /home/vaniabot/.cache \
- && chmod 777 /var/cache/fontconfig \
- && fc-cache -f
+    && useradd --system --uid 1001 --gid vaniabot --create-home vaniabot \
+    && mkdir -p /home/vaniabot/.cache/fontconfig /var/cache/fontconfig \
+    && chown -R vaniabot:vaniabot /home/vaniabot/.cache \
+    && chmod 777 /var/cache/fontconfig \
+    && fc-cache -f
 
 COPY --from=deps /app/node_modules ./node_modules
 COPY tsconfig.json ./
@@ -62,7 +66,7 @@ COPY data/ ./data/
 COPY data/assets/ ./static/assets/
 
 RUN mkdir -p vaniasession data/temp logs \
- && chown -R vaniabot:vaniabot /app
+    && chown -R vaniabot:vaniabot /app
 
 USER vaniabot
 
