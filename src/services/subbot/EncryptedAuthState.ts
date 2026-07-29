@@ -4,7 +4,8 @@ import {
   type AuthenticationCreds,
   makeCacheableSignalKeyStore,
   type SignalDataTypeMap,
-} from '@whiskeysockets/baileys';
+  type SignalKeyStore,
+} from 'baileys';
 import pino from 'pino';
 import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync, unlinkSync } from 'fs';
 import { join } from 'path';
@@ -121,7 +122,7 @@ export async function useEncryptedMultiFileAuthState(sessionPath: string): Promi
   return {
     state: {
       creds: result.state.creds,
-      keys: cacheableKeys,
+      keys: cacheableKeys as SignalKeyStore,
     },
     saveCreds: result.saveCreds,
   };

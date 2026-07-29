@@ -1,4 +1,4 @@
-import type { WAMessage, proto, WASocket } from '@whiskeysockets/baileys';
+import type { WAMessage, WASocket } from 'baileys';
 import type { SubBotConfig } from '@/types/subbot.js';
 import { commandRegistry } from '@/core/CommandRegistry.js';
 import { pluginLoader } from '@/core/PluginLoader.js';
@@ -15,7 +15,7 @@ import { VANIA_TOGGLE_COMMANDS } from '@/config/index.js';
 import { CommandExecutionError } from '@/utils/errors.js';
 import { logger, logError } from '@/utils/logger.js';
 import type { IMiddleware } from '@/types/index.js';
-import type { BaileysEventMap } from '@whiskeysockets/baileys';
+import type { BaileysEventMap } from 'baileys';
 import type { AntiSpamService } from '@/services/system/AntiSpamService.js';
 
 type GroupParticipantsUpdate = BaileysEventMap['group-participants.update'];
@@ -65,7 +65,7 @@ export class SubBotMessageHandler {
       }
 
       const toggleBotId = `subbot${subConfig.slot}`;
-      const ctx = new MessageContext(sock, msg as proto.IWebMessageInfo, toggleBotId);
+      const ctx = new MessageContext(sock, msg, toggleBotId);
 
       const isVaniaToggleCommand = VANIA_TOGGLE_COMMANDS.includes(ctx.command);
 
@@ -182,18 +182,26 @@ export class SubBotMessageHandler {
       await serviceManager.groupService.getGroup(groupJid);
       const isEnabled = await serviceManager.vaniaToggleService.isEnabled(groupJid, botId);
       if (!isEnabled) return;
+
       if (action === 'add') {
         for (const participant of participants) {
-          welcomeService
-            .handleNewParticipant(sock, groupJid, participant)
-            .catch(err => logError('SubBot.handleNewParticipant', err));
+          const participantId = typeof participant === 'string' ? participant : participant.id;
+          if (participantId) {
+            welcomeService
+              .handleNewParticipant(sock, groupJid, participantId)
+              .catch(err => logError('SubBot.handleNewParticipant', err));
+          }
         }
       }
+
       if (action === 'remove') {
         for (const participant of participants) {
-          welcomeService
-            .handleParticipantLeft(sock, groupJid, participant, botId)
-            .catch(err => logError('SubBot.handleParticipantLeft', err));
+          const participantId = typeof participant === 'string' ? participant : participant.id;
+          if (participantId) {
+            welcomeService
+              .handleParticipantLeft(sock, groupJid, participantId, botId)
+              .catch(err => logError('SubBot.handleParticipantLeft', err));
+          }
         }
       }
     } catch (error) {

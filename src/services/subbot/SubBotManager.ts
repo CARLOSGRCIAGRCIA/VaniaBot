@@ -29,7 +29,7 @@ import {
   renameSync,
 } from 'fs';
 import { EventEmitter } from 'events';
-import type { WAMessage, WASocket, BaileysEventMap } from '@whiskeysockets/baileys';
+import type { WAMessage, WASocket, BaileysEventMap } from 'baileys';
 import type {
   SubBotConfig,
   SubBotSlot,

@@ -1,10 +1,5 @@
 export type SubBotSlotStatus =
-  | 'free'
-  | 'reserved'
-  | 'pending'
-  | 'linking'
-  | 'connected'
-  | 'disconnected';
+  'free' | 'reserved' | 'pending' | 'linking' | 'connected' | 'disconnected';
 
 export type SubBotLegacyStatus = 'pending' | 'connecting' | 'connected' | 'disconnected' | 'error';
 
