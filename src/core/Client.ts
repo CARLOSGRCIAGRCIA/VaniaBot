@@ -1,4 +1,4 @@
-import type { WASocket } from '@whiskeysockets/baileys';
+import type { WASocket } from 'baileys';
 import { commandRegistry } from './CommandRegistry.js';
 import { pluginLoader } from './PluginLoader.js';
 import { AuthManager } from './AuthManager.js';

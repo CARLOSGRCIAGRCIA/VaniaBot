@@ -1,4 +1,5 @@
-import type { WASocket, WAMessage, proto } from '@whiskeysockets/baileys';
+import type { WASocket, WAMessage } from 'baileys';
+import { mediaGroupBuffer } from './MediaGroupBuffer.js';
 import { commandRegistry } from './CommandRegistry.js';
 import { pluginLoader } from './PluginLoader.js';
 import { MessageContext } from './MessageContext.js';
@@ -86,6 +87,10 @@ export class MainMessagePipeline {
             .catch((error: unknown) => logError('[MainMessagePipeline]', error));
         }
 
+        if (msg.message?.imageMessage) {
+          mediaGroupBuffer.add(chatJid, senderJid, msg);
+        }
+
         if (msg.message?.reactionMessage) {
           handleReaccion(this.sock, msg).catch(err => logError('handleReaccion', err));
           continue;
@@ -156,7 +161,7 @@ export class MainMessagePipeline {
           messageId,
           async () => {
             try {
-              const ctx = new MessageContext(this.sock, message as proto.IWebMessageInfo, 'main');
+              const ctx = new MessageContext(this.sock, message, 'main');
 
               if (ctx.chat.isGroup) {
                 await ctx.loadBotPermissions();

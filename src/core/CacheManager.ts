@@ -12,7 +12,7 @@
  */
 
 import { LRUCache } from 'lru-cache';
-import type { GroupMetadata, WASocket } from '@whiskeysockets/baileys';
+import type { GroupMetadata, WASocket } from 'baileys';
 import type { UserPermissions, BotPermissions } from '@/services/PermissionService.js';
 
 export interface CacheEntry<T> {

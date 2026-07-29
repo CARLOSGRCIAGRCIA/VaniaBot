@@ -11,7 +11,7 @@
  * @created 2026-03-16
  */
 
-import type { WASocket, proto, AnyMessageContent } from '@whiskeysockets/baileys';
+import type { WASocket, proto, AnyMessageContent, WAMessage } from 'baileys';
 import type { MessageContext as IMessageContext } from '@/types/index.js';
 import { config } from '@/config/index.js';
 import { PermissionService, normalizeJid } from '@/services/PermissionService.js';
@@ -41,7 +41,7 @@ export class MessageContext implements IMessageContext {
    */
   constructor(
     public sock: WASocket,
-    public message: proto.IWebMessageInfo,
+    public message: WAMessage,
     public botId: string = 'main',
   ) {
     this.text = this.extractText();

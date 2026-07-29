@@ -1,4 +1,4 @@
-import type { WASocket, BaileysEventMap } from '@whiskeysockets/baileys';
+import type { WASocket, BaileysEventMap } from 'baileys';
 import type { MessageContext } from './MessageContext.js';
 import { serviceManager } from '@/services/system/Servicemanager.js';
 import { antiDeleteService } from '@/services/system/AntiDeleteService.js';
@@ -120,25 +120,40 @@ export class ClientEventHandlers {
       await serviceManager.groupService.getGroup(groupJid);
       const botJid = getBotJid(sock);
       const botPhone = botJid.split('@')[0];
+
       const isBotAffected = participants.some(p => {
-        const pPhone = p.split('@')[0];
-        return pPhone === botPhone || p === botJid;
+        const participantId = p.id || p;
+        const participantIdStr =
+          typeof participantId === 'string' ? participantId : participantId.id || '';
+        const pPhone = participantIdStr.split('@')[0];
+        return pPhone === botPhone || participantIdStr === botJid;
       });
+
       if (isBotAffected) {
         cacheManager.invalidatePermissions(groupJid);
       }
+
       if (action === 'add') {
         for (const participant of participants) {
-          welcomeService
-            .handleNewParticipant(sock, groupJid, participant)
-            .catch(err => logError('handleNewParticipant', err));
+          const participantId =
+            typeof participant === 'string' ? participant : participant.id || '';
+          if (participantId) {
+            welcomeService
+              .handleNewParticipant(sock, groupJid, participantId)
+              .catch(err => logError('handleNewParticipant', err));
+          }
         }
       }
+
       if (action === 'remove') {
         for (const participant of participants) {
-          welcomeService
-            .handleParticipantLeft(sock, groupJid, participant, 'main')
-            .catch(err => logError('handleParticipantLeft', err));
+          const participantId =
+            typeof participant === 'string' ? participant : participant.id || '';
+          if (participantId) {
+            welcomeService
+              .handleParticipantLeft(sock, groupJid, participantId, 'main')
+              .catch(err => logError('handleParticipantLeft', err));
+          }
         }
       }
     } catch (error) {
