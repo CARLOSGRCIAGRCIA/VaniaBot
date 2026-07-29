@@ -66,7 +66,7 @@ export class PermissionMiddleware extends Middleware {
       if (onlyAdmin) {
         await ctx.loadSenderPermissions();
         if (!ctx.sender.isOwner && !ctx.sender.isAdmin) {
-          await ctx.reply('❌ Solo los admins pueden usar comandos en este grupo');
+          await ctx.react('❌');
           return;
         }
       } else {

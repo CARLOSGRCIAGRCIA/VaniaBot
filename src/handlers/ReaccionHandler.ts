@@ -12,7 +12,7 @@
  * @created 2026-03-16
  */
 
-import type { WASocket, proto } from '@whiskeysockets/baileys';
+import type { WASocket, proto } from 'baileys';
 import { logger } from '@/utils/logger.js';
 import { listaManager } from '@/services/game/ListaManager.js';
 import { normalizeJid } from '@/services/PermissionService.js';
@@ -45,8 +45,10 @@ export async function handleReaccion(
     if (!targetKey?.id) return;
 
     const messageId = targetKey.id;
-    const chatJid = message.key.remoteJid ?? '';
-    const senderRaw = message.key.participant ?? message.key.remoteJid ?? '';
+    if (!message.key?.remoteJid) return;
+    const chatJid = message.key.remoteJid;
+    const senderRaw = message.key?.participant ?? message.key?.remoteJid ?? '';
+    if (!senderRaw) return;
     const senderJid = normalizeJid(senderRaw);
     const senderNombre = message.pushName || 'User';
     const emoji = reaccionMsg.text ?? '';

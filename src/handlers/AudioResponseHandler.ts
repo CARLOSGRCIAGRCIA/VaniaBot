@@ -4,12 +4,12 @@
  * Handles automatic audio responses based on keyword triggers.
  * This handler listens for specific words/phrases and responds with audio.
  *
- * @author **Carlos G** ⭐
+ * @author **Carlos G**
  * @github CARLOSGRCIAGRCIA
  * @created 2026-04-04
  */
 
-import type { WASocket, proto } from '@whiskeysockets/baileys';
+import type { WASocket, proto } from 'baileys';
 import { logError } from '@/utils/logger.js';
 import { serviceManager } from '@/services/system/Servicemanager.js';
 
@@ -103,8 +103,10 @@ export async function handleAudioResponse(
 
     if (!msgText) return;
 
+    if (!message.key?.remoteJid) return;
+
     const chatJid = message.key.remoteJid;
-    if (!chatJid || !chatJid.endsWith('@g.us')) return;
+    if (!chatJid.endsWith('@g.us')) return;
 
     let groupSettings;
     try {
@@ -115,8 +117,10 @@ export async function handleAudioResponse(
 
     if (!groupSettings.audios) return;
 
+    if (!message.key.id) return;
+
     const msgId = message.key.id;
-    if (!msgId || processedMessages.has(msgId)) return;
+    if (processedMessages.has(msgId)) return;
 
     if (processedMessages.size > 1000) {
       processedMessages.clear();
