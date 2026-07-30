@@ -198,9 +198,7 @@ export class ProfileCommand extends Command {
         ProfileCommand.logoLoaded = true;
         return ProfileCommand.logoBuffer;
       }
-    } catch {
-      // ignore
-    }
+    } catch {}
 
     ProfileCommand.logoLoaded = true;
     return null;

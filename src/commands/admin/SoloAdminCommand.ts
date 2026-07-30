@@ -23,13 +23,8 @@ import { serviceManager } from '@/services/system/Servicemanager.js';
  *
  * @example
  * ```typescript
- * // Activate admin-only mode
  * .soloadmin on
- *
- * // Deactivate admin-only mode
  * .soloadmin off
- *
- * // Check current status
  * .soloadmin status
  * ```
  */

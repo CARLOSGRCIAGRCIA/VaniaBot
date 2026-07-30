@@ -44,14 +44,21 @@ const HEALTH_CHECK_INTERVAL_MS = 60000;
 const ERROR_515_MAX_RETRIES = 3;
 const ERROR_515_WAIT_TIME = 3_000;
 
-// IMPORTANTE (jul 2026): fetchLatestBaileysVersion() consulta un endpoint que
-// viene devolviendo versiones desactualizadas (reportado en issues #2376 y
-// #2485 de WhiskeySockets/Baileys). WhatsApp rechaza esas versiones con 405
-// "Connection Failure". Por eso forzamos manualmente la última versión
-// verificada en vez de depender de ese fetch remoto.
-// Fuente para actualizar cuando vuelva a fallar: https://wppconnect.io/whatsapp-versions/
-//   (tomar el primer número de la lista "stable")
-// Última actualización: 28/07/2026
+/**
+ * IMPORTANT (July 2026): fetchLatestBaileysVersion() queries an endpoint
+ * that has been returning outdated versions (reported in issues #2376 and
+ * #2485 of WhiskeySockets/Baileys). WhatsApp rejects these versions with
+ * a 405 "Connection Failure" error.
+ *
+ * As a workaround, we manually hardcode the latest verified version instead
+ * of relying on that remote fetch.
+ *
+ * Source for updating when it fails again: https://wppconnect.io/whatsapp-versions/
+ *   (take the first number from the "stable" list)
+ *
+ * Last updated: July 28, 2026
+ */
+
 const FORCED_WA_VERSION: [number, number, number] = [2, 3000, 1043984129];
 
 let _cachedVersion: [number, number, number] | null = null;
@@ -257,7 +264,6 @@ export class AuthManager {
 
     const browser = config.auth.usePairingCode ? WA_BROWSER_PAIRING : WA_BROWSER_QR;
 
-    // Crear SignalKeyStore correctamente tipado
     const keyStore = makeCacheableSignalKeyStore(state.keys, SILENT_LOGGER);
 
     const sock = makeWASocket({

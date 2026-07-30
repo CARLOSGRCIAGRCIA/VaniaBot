@@ -63,11 +63,13 @@ export class QrCommand extends Command {
 
       const isUrl = this.isValidUrl(content);
       const caption =
-        `📱 *Código QR generado*\n` +
-        `━━━━━━━━━━━━━━\n` +
-        `${isUrl ? '🔗' : '📝'} *Contenido:* ${content.length > 60 ? content.substring(0, 57) + '...' : content}\n` +
-        `📐 *Tamaño:* 400×400px\n` +
-        `🛡️ *Corrección de error:* Alta (30%)`;
+        `┏━━━━━━━━━━━━━━━━━━┓\n` +
+        ` ⌬ *CÓDIGO QR GENERADO* ⌬\n` +
+        `┗━━━━━━━━━━━━━━━━━━┛\n\n` +
+        `${isUrl ? '➤ ✧ *Enlace*' : '➤ ✧ *Contenido*'} ﹕${content.length > 60 ? content.substring(0, 57) + '...' : content}\n` +
+        `➤ ✧ *Resolución* ﹕400×400 px\n` +
+        `➤ ✧ *Corrección* ﹕Alta ( 30% )\n\n` +
+        `˚ ༘ ⋆｡ ⋆｡˚ ✦ ˚｡⋆｡ ⋆˚ ༘ ˚`;
 
       await ctx.sock.sendMessage(ctx.chat.jid, {
         image: buffer,

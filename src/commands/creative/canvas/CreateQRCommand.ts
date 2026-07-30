@@ -11,7 +11,7 @@ export class CreateQRCommand extends Command {
   name = 'createqr';
   description = 'Genera un código QR con tu texto';
   category = CommandCategory.CREATIVE;
-  aliases = ['qr', 'qrcode'];
+  aliases = [];
   cooldown = 10000;
   contexts = [CommandContext.BOTH];
   usage = '!createqr <texto>';

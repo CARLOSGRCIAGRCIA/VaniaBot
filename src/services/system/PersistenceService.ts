@@ -276,9 +276,7 @@ export class PersistenceService {
               mentions: [reminder.userJid],
             });
           }
-        } catch {
-          // Ignorar errores de envío
-        }
+        } catch {}
         this.reminders.delete(reminder.id);
         this.reminderTimers.delete(reminder.id);
         void this.saveReminders();

@@ -236,9 +236,7 @@ export class ImageService {
             height: 800,
           });
         }
-      } catch {
-        // Silenciamos errores de Unsplash
-      }
+      } catch {}
     }
 
     return results;

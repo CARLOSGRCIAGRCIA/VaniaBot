@@ -55,7 +55,7 @@ flowchart LR
 
     subgraph CB1["Groq / LLaMA 3"]
         direction TB
-        G1{Circuit\nBreaker} 
+        G1{Circuit\nBreaker}
     end
 
     subgraph CB2["Provider 2"]
@@ -109,6 +109,64 @@ Each SubBot instance is independently recoverable. When `HeartbeatService` detec
 
 ---
 
+### Document Pipeline: Bidirectional Conversion Bridge
+
+Most WhatsApp bots that "convert files" only go one direction (usually _something_ → PDF) using a single engine for everything. VaniaBot's converter is bidirectional and picks a different engine per format, because forcing every conversion through the same tool (typically LibreOffice) produces visibly worse output for some formats than others.
+
+```mermaid
+flowchart LR
+    subgraph IN["Input formats"]
+        IMG[Images]
+        DOCX[DOCX]
+        PPTX[PPTX]
+    end
+
+    subgraph PDF["PDF"]
+        P[PDF]
+    end
+
+    subgraph OUT["Output formats"]
+        JPG[JPG/PNG]
+        DOCX2[DOCX]
+        PPTX2[PPTX]
+    end
+
+    IMG -->|pdf-lib + ffmpeg| P
+    DOCX -->|LibreOffice headless| P
+    PPTX -->|LibreOffice headless| P
+
+    P -->|PyMuPDF| JPG
+    P -->|pdf2docx| DOCX2
+    P -->|PyMuPDF + python-pptx| PPTX2
+```
+
+**Engine selection per conversion:**
+
+| Conversion      | Engine                     | Why                                                                                                      |
+| --------------- | -------------------------- | -------------------------------------------------------------------------------------------------------- |
+| Image → PDF     | ffmpeg + pdf-lib (pure JS) | No heavyweight subprocess needed                                                                         |
+| PDF → Image     | PyMuPDF (fitz)             | Native page rendering, fast                                                                              |
+| DOCX/PPTX → PDF | LibreOffice headless       | Only engine that preserves real Office fidelity                                                          |
+| PDF → DOCX      | `pdf2docx` (PyMuPDF-based) | Reconstructs editable text/tables far better than LibreOffice                                            |
+| PDF → PPTX      | PyMuPDF + `python-pptx`    | Renders pages as slide images — pragmatic fallback where no reliable slide-reconstruction library exists |
+
+**Node ↔ Python contract:** rather than treating the Python bridge as a black box that returns success/failure, the bridge script communicates structured results back over stdout (`OK:<count>:<type>`) and uses semantic exit codes:
+
+| Exit code | Meaning                                               |
+| --------- | ----------------------------------------------------- |
+| `0`       | Success                                               |
+| `1`       | Generic failure                                       |
+| `2`       | Scanned PDF — no extractable text (blocks `pdf2docx`) |
+| `3`       | Page count exceeds limit                              |
+
+Node parses these into typed errors (`ScannedPdfError`, `TooManyPagesError`) that each command surfaces as a specific, actionable message instead of a generic failure.
+
+**Graceful degradation, not silent failure:** when a conversion can't be perfect, the bot says so — a scanned PDF gets a clear "no extractable text" reply instead of an empty DOCX, and `pdf2ppt` output is explicitly labeled as image-based, non-editable slides.
+
+**Media grouping for `img2pdf`:** WhatsApp delivers multi-image sends as separate messages with no native grouping. `MediaGroupBuffer` debounces incoming images per `chat:sender` (settle window + max wait), deduplicates by message ID, and only then triggers conversion — turning "send 5 photos, then the command" into one PDF instead of five.
+
+---
+
 ### Data Flow
 
 ```mermaid
@@ -142,24 +200,30 @@ flowchart TD
         Game --> SQLite3["SQLite"]
     end
 ```
+
 ---
 
 ## Tech Stack
 
-| Layer | Technology | Why |
-|---|---|---|
-| Language | TypeScript 5 | Type safety across 60+ services |
-| Runtime | Node.js 20+ | |
-| WhatsApp | Baileys v7 | Low-level WA Web protocol |
-| AI | Groq SDK (LLaMA 3, Whisper) | Primary provider in fallback chain |
-| Primary DB | SQLite | Zero-config, per-instance isolation |
-| DB Backup | MongoDB | Optional redundancy layer |
-| Cache | Redis / in-memory fallback | Rate limiting, AI response cache |
-| Queue | Bull | Background job processing |
-| Logging | Pino | Structured, low-overhead logging |
-| Validation | Zod | Runtime schema validation |
-| Testing | Vitest | Unit + end-to-end |
-| Containers | Docker + Compose | Multi-stage builds |
+| Layer              | Technology                  | Why                                           |
+| ------------------ | --------------------------- | --------------------------------------------- |
+| Language           | TypeScript 5                | Type safety across 60+ services               |
+| Runtime            | Node.js 20+                 |                                               |
+| WhatsApp           | Baileys v7                  | Low-level WA Web protocol                     |
+| AI                 | Groq SDK (LLaMA 3, Whisper) | Primary provider in fallback chain            |
+| Primary DB         | SQLite                      | Zero-config, per-instance isolation           |
+| DB Backup          | MongoDB                     | Optional redundancy layer                     |
+| Cache              | Redis / in-memory fallback  | Rate limiting, AI response cache              |
+| Queue              | Bull                        | Background job processing                     |
+| Document rendering | PyMuPDF (fitz)              | PDF page rendering, text extraction           |
+| Office conversion  | LibreOffice headless        | DOCX/PPTX ↔ PDF fidelity                      |
+| PDF → DOCX         | `pdf2docx`                  | Editable text/table reconstruction            |
+| PDF → PPTX         | `python-pptx`               | Slide generation from rendered pages          |
+| Image → PDF        | pdf-lib + ffmpeg            | Lightweight, no subprocess for common formats |
+| Logging            | Pino                        | Structured, low-overhead logging              |
+| Validation         | Zod                         | Runtime schema validation                     |
+| Testing            | Vitest                      | Unit + end-to-end                             |
+| Containers         | Docker + Compose            | Multi-stage builds                            |
 
 ---
 
@@ -177,9 +241,15 @@ VaniaBot/
 │   │   └── utility/
 │   │
 │   ├── core/               # Client bootstrap + CommandRegistry
+│   │   └── MediaGroupBuffer.ts   # Debounced multi-image grouping for img2pdf
 │   ├── middlewares/        # Auth, rate limit, anti-spam, context
 │   ├── services/
 │   │   ├── ai/             # Fallback chain + Circuit Breaker
+│   │   ├── convert/         # Document conversion bridge (PDF ↔ Office/Image)
+│   │   │   ├── ConversionService.ts
+│   │   │   ├── PythonBridge.ts
+│   │   │   ├── ImageToPdfService.ts
+│   │   │   └── scripts/bridge.py
 │   │   ├── database/       # SQLite + MongoDB adapters
 │   │   ├── cache/          # Redis + in-memory fallback
 │   │   └── external/       # Third-party API wrappers
@@ -251,23 +321,23 @@ npm run dev    # hot-reload
 
 ### Required
 
-| Variable | Description | Example |
-|---|---|---|
-| `OWNERS` | Your WhatsApp number (LID format) | `5215512345678@c.us` |
-| `GROQ_API_KEY` | Groq API key | `gsk_...` |
+| Variable       | Description                       | Example              |
+| -------------- | --------------------------------- | -------------------- |
+| `OWNERS`       | Your WhatsApp number (LID format) | `5215512345678@c.us` |
+| `GROQ_API_KEY` | Groq API key                      | `gsk_...`            |
 
 ### Optional
 
-| Variable | Description | Default |
-|---|---|---|
-| `BOT_NAME` | Bot display name | `VaniaBot` |
-| `BOT_PREFIX` | Command prefix | `.` |
-| `DB_TYPE` | `sqlite` or `mongodb` | `sqlite` |
-| `MONGODB_URI` | MongoDB connection string | — |
-| `USE_REDIS` | Enable Redis cache | `false` |
-| `REDIS_URL` | Redis connection string | `redis://localhost:6379` |
-| `NODE_ENV` | `development` / `production` | `development` |
-| `TZ` | Timezone | `America/Mexico_City` |
+| Variable      | Description                  | Default                  |
+| ------------- | ---------------------------- | ------------------------ |
+| `BOT_NAME`    | Bot display name             | `VaniaBot`               |
+| `BOT_PREFIX`  | Command prefix               | `.`                      |
+| `DB_TYPE`     | `sqlite` or `mongodb`        | `sqlite`                 |
+| `MONGODB_URI` | MongoDB connection string    | —                        |
+| `USE_REDIS`   | Enable Redis cache           | `false`                  |
+| `REDIS_URL`   | Redis connection string      | `redis://localhost:6379` |
+| `NODE_ENV`    | `development` / `production` | `development`            |
+| `TZ`          | Timezone                     | `America/Mexico_City`    |
 
 ---
 
@@ -275,15 +345,16 @@ npm run dev    # hot-reload
 
 VaniaBot has 90+ commands across these domains. Full reference available in the [wiki](../../wiki).
 
-| Domain | Examples |
-|---|---|
-| AI & Chat | `.ai`, `.transcribe`, `.aiclear` |
-| Moderation | `.ban`, `.kick`, `.mute`, `.warn`, `.antispam` |
-| Economy | `.daily`, `.work`, `.shop`, `.casino`, `.balance` |
-| Games | `.coinflip`, `.slots`, `.quiz` |
-| Media | `.sticker`, `.ytmp3`, `.ytmp4`, `.tiktok`, `.instagram` |
-| Utilities | `.translate`, `.currency`, `.qr`, `.poll` |
-| SubBots | `.subbot create`, `.subbot list`, `.subbot start` |
+| Domain             | Examples                                                                 |
+| ------------------ | ------------------------------------------------------------------------ |
+| AI & Chat          | `.ai`, `.transcribe`, `.aiclear`                                         |
+| Moderation         | `.ban`, `.kick`, `.mute`, `.warn`, `.antispam`                           |
+| Economy            | `.daily`, `.work`, `.shop`, `.casino`, `.balance`                        |
+| Games              | `.coinflip`, `.slots`, `.quiz`                                           |
+| Media              | `.sticker`, `.ytmp3`, `.ytmp4`, `.tiktok`, `.instagram`                  |
+| Document Converter | `.img2pdf`, `.pdf2img`, `.docx2pdf`, `.ppt2pdf`, `.pdf2docx`, `.pdf2ppt` |
+| Utilities          | `.translate`, `.currency`, `.qr`, `.poll`                                |
+| SubBots            | `.subbot create`, `.subbot list`, `.subbot start`                        |
 
 ---
 
@@ -295,6 +366,7 @@ VaniaBot has 90+ commands across these domains. Full reference available in the 
 1. Make sure the bot is an **admin** in the group.
 2. Check the prefix in `.env` matches what you're using (default: `.`).
 3. Run `.help` to confirm the bot is alive.
+
 </details>
 
 <details>
@@ -309,6 +381,7 @@ Delete the `vaniasession/` folder and restart to re-scan the pairing QR.
 1. Check network stability.
 2. In Docker, ensure sufficient CPU/RAM allocation.
 3. Enabling Redis improves stability for rate limiting and cache.
+
 </details>
 
 <details>
@@ -318,6 +391,17 @@ Delete the `vaniasession/` folder and restart to re-scan the pairing QR.
 DB_TYPE=mongodb
 MONGODB_URI=mongodb://localhost:27017/vaniabot
 ```
+
+</details>
+
+<details>
+<summary>Document converter fails or times out</summary>
+
+1. Make sure `libreoffice`, `python3`, and `ffmpeg` are installed and on `PATH`.
+2. Install Python dependencies: `pip install pymupdf pdf2docx python-pptx`.
+3. Very large or high-page-count PDFs are rejected by design (`MAX_PAGES` limit) — split the file and try again.
+4. Scanned PDFs (no extractable text) can't be converted to editable DOCX; use `.pdf2img` instead.
+
 </details>
 
 ---

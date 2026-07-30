@@ -39,9 +39,7 @@ export class WorkCommand extends Command {
     try {
       await achievementService.trackWork(ctx.sender.jid);
       await achievementService.checkLevelAchievements(ctx.sender.jid);
-    } catch {
-      // Achievement tracking is non-critical
-    }
+    } catch {}
 
     const xpBuff = user.activeBuffs?.find(b => b.buffId === 'xp_boost' && b.expiresAt > Date.now());
     const xpMultiplier = xpBuff ? 1 + xpBuff.value / 100 : 1;

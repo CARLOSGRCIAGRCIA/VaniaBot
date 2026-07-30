@@ -405,9 +405,7 @@ export class ResolveReportCommand extends Command {
           `Gracias por tu paciencia ✿`;
 
         await ctx.sock.sendMessage(report.fromJid, { text: resolvedMsg });
-      } catch {
-        // User might not be reachable
-      }
+      } catch {}
     } catch (error) {
       logError('[ResolveReportCommand] Error', error);
       await ctx.reply('❌ Error al resolver el reporte.');

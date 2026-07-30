@@ -95,25 +95,19 @@ class QuizAnswerHandler {
         await serviceManager.userService.updateUser(jid, {
           quizStats: updated,
         } as Parameters<typeof serviceManager.userService.updateUser>[1]);
-      } catch {
-        // best-effort
-      }
+      } catch {}
     };
 
     const awardCoins = async (jid: string, amount: number): Promise<void> => {
       try {
         await serviceManager.userService.addMoney(jid, amount);
-      } catch {
-        // best-effort
-      }
+      } catch {}
     };
 
     const awardXP = async (jid: string, amount: number): Promise<void> => {
       try {
         await serviceManager.userService.addXP(jid, amount);
-      } catch {
-        // best-effort
-      }
+      } catch {}
     };
 
     const result = await quizService.processAnswer(

@@ -45,9 +45,7 @@ export class DevCommand extends Command {
   async execute(ctx: MessageContext): Promise<void> {
     try {
       await ctx.react('👑');
-    } catch {
-      // Ignore reaction errors
-    }
+    } catch {}
 
     const devText =
       `⧼⋆꙳• *CREADOR* ⋆꙳•⧽\n\n` +

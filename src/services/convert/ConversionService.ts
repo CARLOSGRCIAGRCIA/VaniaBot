@@ -29,30 +29,59 @@ export class ConversionService {
   }
 
   async pdfToImages(pdfBuffer: Buffer, format: ImageFormat = 'jpeg'): Promise<ConversionResult> {
-    const data = await this.pythonBridge.execute('pdf2img', pdfBuffer, { format });
-    const ext = format === 'png' ? 'png' : 'jpg';
+    const result = await this.pythonBridge.execute('pdf2img', pdfBuffer, { format });
+
+    if (result.outputType === 'zip') {
+      return {
+        data: result.data,
+        fileName: `paginas.zip`,
+        mimeType: 'application/zip',
+      };
+    }
+
+    const ext = result.outputType === 'png' ? 'png' : 'jpg';
+    const mimeType = ext === 'png' ? 'image/png' : 'image/jpeg';
+
     return {
-      data,
-      fileName: `paginas.${ext === 'png' ? 'zip' : 'zip'}`,
-      mimeType: 'application/zip',
+      data: result.data,
+      fileName: `pagina.${ext}`,
+      mimeType,
     };
   }
 
   async pptToPdf(pptBuffer: Buffer): Promise<ConversionResult> {
-    const data = await this.pythonBridge.execute('ppt2pdf', pptBuffer);
+    const result = await this.pythonBridge.execute('ppt2pdf', pptBuffer);
     return {
-      data,
+      data: result.data,
       fileName: `presentacion.pdf`,
       mimeType: 'application/pdf',
     };
   }
 
   async docxToPdf(docxBuffer: Buffer): Promise<ConversionResult> {
-    const data = await this.pythonBridge.execute('docx2pdf', docxBuffer);
+    const result = await this.pythonBridge.execute('docx2pdf', docxBuffer);
     return {
-      data,
+      data: result.data,
       fileName: `documento.pdf`,
       mimeType: 'application/pdf',
+    };
+  }
+
+  async pdfToDocx(pdfBuffer: Buffer): Promise<ConversionResult> {
+    const result = await this.pythonBridge.execute('pdf2docx', pdfBuffer);
+    return {
+      data: result.data,
+      fileName: `documento.docx`,
+      mimeType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    };
+  }
+
+  async pdfToPpt(pdfBuffer: Buffer): Promise<ConversionResult> {
+    const result = await this.pythonBridge.execute('pdf2ppt', pdfBuffer);
+    return {
+      data: result.data,
+      fileName: `presentacion.pptx`,
+      mimeType: 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
     };
   }
 }

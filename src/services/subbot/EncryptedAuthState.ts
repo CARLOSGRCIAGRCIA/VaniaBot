@@ -134,12 +134,8 @@ export function clearSession(sessionPath: string): void {
       for (const file of readdirSync(sessionPath)) {
         try {
           unlinkSync(join(sessionPath, file));
-        } catch {
-          // ignore
-        }
+        } catch {}
       }
     }
-  } catch {
-    // ignore
-  }
+  } catch {}
 }

@@ -105,7 +105,6 @@ const ANIME_COMMANDS: AnimeCommandDef[] = [
     enabled: false,
   },
 
-  // ── DeliriusAnimeBase (delirius anime prefix) ───────────────
   {
     name: 'foxgirl',
     description: 'Obtiene una imagen de foxgirl',
@@ -163,7 +162,6 @@ const ANIME_COMMANDS: AnimeCommandDef[] = [
     service: 'deliriusbase',
   },
 
-  // ── Reactions (deliriusService.getReactionsImage → video) ──
   {
     name: 'hug',
     description: 'Muestra una imagen de anime abrazando',
@@ -429,7 +427,6 @@ const ANIME_COMMANDS: AnimeCommandDef[] = [
     service: 'reactions',
   },
 
-  // ── Reactions + gifPlayback (NSFW) ──────────────────────────
   {
     name: 'anal',
     description: 'Imagen NSFW de anal',
@@ -521,7 +518,6 @@ const ANIME_COMMANDS: AnimeCommandDef[] = [
     gifPlayback: true,
   },
 
-  // ── Random (deliriusService.getRandomImage → image) ─────────
   {
     name: 'coffee',
     description: 'Obtiene una imagen de cafe aleatoria',
@@ -559,7 +555,6 @@ const ANIME_COMMANDS: AnimeCommandDef[] = [
     cooldown: 10000,
   },
 
-  // ── NSFW (deliriusService.getNsfwImage → image) ─────────────
   {
     name: 'boobs',
     description: 'Obtiene una imagen de tetinas',
@@ -601,7 +596,6 @@ const ANIME_COMMANDS: AnimeCommandDef[] = [
     enabled: false,
   },
 
-  // ── Anime (deliriusService.getAnimeImage → image) ───────────
   {
     name: 'avatar',
     description: 'Obtiene un avatar anime aleatorio',

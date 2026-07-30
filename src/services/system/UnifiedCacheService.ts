@@ -64,9 +64,7 @@ export class UnifiedCacheService {
         if (result !== null) {
           return result;
         }
-      } catch {
-        // Fall through to memory cache
-      }
+      } catch {}
     }
 
     return this.memoryCache.get(fullKey) as T | null;
@@ -80,9 +78,7 @@ export class UnifiedCacheService {
     if (this.redisReady) {
       try {
         await redisCache.set(fullKey, value, ttl);
-      } catch {
-        // Ignore Redis errors
-      }
+      } catch {}
     }
   }
 
@@ -94,9 +90,7 @@ export class UnifiedCacheService {
     if (this.redisReady) {
       try {
         await redisCache.delete(fullKey);
-      } catch {
-        // Ignore Redis errors
-      }
+      } catch {}
     }
   }
 
@@ -126,9 +120,7 @@ export class UnifiedCacheService {
     if (this.redisReady) {
       try {
         await redisCache.clear(fullPattern);
-      } catch {
-        // Ignore Redis errors
-      }
+      } catch {}
     }
   }
 

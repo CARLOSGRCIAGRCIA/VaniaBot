@@ -67,8 +67,6 @@ export class PayRandomCommand extends Command {
           `🎉 *¡Felicidades!*\n\n` +
           `> _*VaniaBot💝*_`,
       });
-    } catch {
-      // User might not be reachable
-    }
+    } catch {}
   }
 }

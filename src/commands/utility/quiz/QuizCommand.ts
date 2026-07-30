@@ -165,17 +165,13 @@ export class QuizCommand extends Command {
     const awardCoins = async (jid: string, amount: number): Promise<void> => {
       try {
         await serviceManager.userService.addMoney(jid, amount);
-      } catch {
-        // Ignore reward errors - don't block quiz for reward failures
-      }
+      } catch {}
     };
 
     const awardXP = async (jid: string, amount: number): Promise<void> => {
       try {
         await serviceManager.userService.addXP(jid, amount);
-      } catch {
-        // Ignore XP reward errors - don't block quiz for reward failures
-      }
+      } catch {}
     };
 
     await ctx.reply(`Generando preguntas de *${category}*...`);

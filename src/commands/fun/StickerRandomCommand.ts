@@ -71,9 +71,7 @@ export class StickerRandomCommand extends Command {
             imageUrl = randomMeme?.url || null;
           }
         }
-      } catch {
-        // Fallback to hardcoded URLs
-      }
+      } catch {}
 
       if (!imageUrl) {
         imageUrl = this.MEME_IMAGES[Math.floor(Math.random() * this.MEME_IMAGES.length)];

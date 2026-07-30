@@ -236,9 +236,7 @@ export class SessionBackupService {
           size += stats.size;
         }
       }
-    } catch {
-      // Ignore errors
-    }
+    } catch {}
 
     return size;
   }

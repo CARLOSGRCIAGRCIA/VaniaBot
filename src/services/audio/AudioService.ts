@@ -179,14 +179,10 @@ class AudioService {
     } finally {
       try {
         fs.unlinkSync(tmpIn);
-      } catch {
-        // Ignore cleanup errors
-      }
+      } catch {}
       try {
         fs.unlinkSync(tmpOut);
-      } catch {
-        // Ignore cleanup errors
-      }
+      } catch {}
     }
   }
 

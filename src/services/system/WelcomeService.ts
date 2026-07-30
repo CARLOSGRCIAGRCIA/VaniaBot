@@ -71,9 +71,7 @@ async function getRandomFact(): Promise<string> {
       const validFacts = results.filter((f): f is string => f !== null);
       cachedFacts.push(...validFacts);
       lastFactCacheTime = now;
-    } catch {
-      // Keep existing cached facts
-    }
+    } catch {}
   }
 
   const roll = Math.random();

@@ -212,9 +212,7 @@ export class StickerService {
     files.forEach(file => {
       try {
         if (existsSync(file)) unlinkSync(file);
-      } catch {
-        // Ignore cleanup errors
-      }
+      } catch {}
     });
   }
 

@@ -29,7 +29,6 @@ import { logError } from '@/utils/logger.js';
  *
  * @example
  * ```typescript
- * // Called when a reaction message is received
  * await handleReaccion(sock, message);
  * ```
  */
@@ -73,7 +72,6 @@ export async function handleReaccion(
     });
 
     if (!result.success) {
-      // Silencioso - no enviar feedback cuando falla
     }
   } catch (error) {
     logError('[REACCION ERROR]', error);
