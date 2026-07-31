@@ -1,5 +1,6 @@
 import { CommandContext, PermissionLevel } from '@/types/index.js';
 import type { ICommand, MessageContext, CommandCategory, BotPermission } from '@/types/index.js';
+import { logError } from '@/utils/logger.js';
 
 export abstract class Command implements ICommand {
   abstract name: string;
@@ -55,5 +56,22 @@ export abstract class Command implements ICommand {
     }
 
     return true;
+  }
+
+  protected async guardedExecute(
+    ctx: MessageContext,
+    fn: () => Promise<void>,
+    errorMsg?: string,
+  ): Promise<boolean> {
+    try {
+      await fn();
+      await ctx.react('✅');
+      return true;
+    } catch (error) {
+      logError(`[${this.name}] Error:`, error);
+      await ctx.react('❌');
+      await ctx.reply(errorMsg || '❌ Error. Intenta de nuevo.');
+      return false;
+    }
   }
 }

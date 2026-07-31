@@ -15,10 +15,9 @@ export class Ppt2PdfCommand extends Command {
   contexts = [CommandContext.BOTH];
 
   async execute(ctx: MessageContext): Promise<void> {
-    const contextInfo = ctx.message.message?.extendedTextMessage?.contextInfo;
-    const quotedMsg = contextInfo?.quotedMessage;
-    const quotedMsgId = contextInfo?.stanzaId;
-    const quotedParticipant = contextInfo?.participant;
+    const quotedMsg = ctx.quoted;
+    const quotedMsgId = ctx.quotedMessageId;
+    const quotedParticipant = ctx.quotedParticipant;
     const directMsg = ctx.message.message;
 
     const hasQuotedMedia = quotedMsg?.documentMessage;

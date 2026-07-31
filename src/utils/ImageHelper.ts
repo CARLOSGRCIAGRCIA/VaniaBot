@@ -3,8 +3,7 @@ import { logError } from '@/utils/logger.js';
 
 export class ImageHelper {
   static async getProfileImage(ctx: MessageContext): Promise<string | null> {
-    const msg = ctx.message.message;
-    const mentionedJid = msg?.extendedTextMessage?.contextInfo?.mentionedJid?.[0];
+    const mentionedJid = ctx.mentionedJid;
     const targetJid = mentionedJid || ctx.sender.jid;
 
     try {
@@ -17,8 +16,7 @@ export class ImageHelper {
   }
 
   static async getTwoProfileImages(ctx: MessageContext): Promise<[string | null, string | null]> {
-    const msg = ctx.message.message;
-    const mentionedJid = msg?.extendedTextMessage?.contextInfo?.mentionedJid?.[0];
+    const mentionedJid = ctx.mentionedJid;
 
     let image1: string | null = null;
     let image2: string | null = null;
@@ -51,12 +49,10 @@ export class ImageHelper {
   static async getImageOrProfile(ctx: MessageContext): Promise<string | null> {
     const msg = ctx.message.message;
     const directImage = msg?.imageMessage;
-    const quotedMsg = msg?.extendedTextMessage?.contextInfo?.quotedMessage;
+    const quotedMsg = ctx.contextInfo?.quotedMessage;
     const quotedImage = quotedMsg?.imageMessage;
-    const mentionedJid = msg?.extendedTextMessage?.contextInfo?.mentionedJid?.[0];
-    const quotedSender = msg?.extendedTextMessage?.contextInfo?.quotedMessage
-      ? msg.extendedTextMessage.contextInfo.participant
-      : null;
+    const mentionedJid = ctx.mentionedJid;
+    const quotedSender = ctx.contextInfo?.quotedMessage ? ctx.quotedParticipant : null;
 
     if (directImage?.url) {
       return directImage.url;

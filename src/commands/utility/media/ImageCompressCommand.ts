@@ -17,8 +17,7 @@ export class ImageCompressCommand extends Command {
   contexts = [CommandContext.BOTH];
 
   async execute(ctx: MessageContext): Promise<void> {
-    const contextInfo = ctx.message.message?.extendedTextMessage?.contextInfo;
-    const quotedMsg = contextInfo?.quotedMessage;
+    const quotedMsg = ctx.quoted;
     const directMsg = ctx.message.message;
 
     const isQuoted = !!(quotedMsg?.imageMessage || quotedMsg?.stickerMessage);
@@ -39,9 +38,9 @@ export class ImageCompressCommand extends Command {
     await ctx.react('⏳');
 
     try {
-      const msgId = isQuoted ? contextInfo?.stanzaId : ctx.message.key?.id;
+      const msgId = isQuoted ? ctx.quotedMessageId : ctx.message.key?.id;
       const remoteJid = isQuoted
-        ? contextInfo?.participant || ctx.chat.jid
+        ? ctx.quotedParticipant || ctx.chat.jid
         : ctx.message.key?.remoteJid || ctx.chat.jid;
 
       const messageToDownload: WAMessage = {

@@ -24,7 +24,7 @@ export class FriendshipCommand extends Command {
 
     const [image1, image2] = await ImageHelper.getTwoProfileImages(ctx);
 
-    const mentionedJid = ctx.message.message?.extendedTextMessage?.contextInfo?.mentionedJid?.[0];
+    const mentionedJid = ctx.mentionedJid;
 
     const name1 = ctx.sender.pushName || 'User 1';
     const name2 = mentionedJid ? (await this.getPushName(mentionedJid, ctx)) || 'User 2' : 'User 2';

@@ -15,6 +15,7 @@
 import { aiService } from '@/services/external/AIService.js';
 import { isRight } from '@/utils/either.js';
 import type { MessageContext } from '@/types/index.js';
+import { getContextInfo } from '@/utils/getContextInfo.js';
 import { serviceManager } from '@/services/system/Servicemanager.js';
 import { PermissionService } from '@/services/PermissionService.js';
 
@@ -97,7 +98,7 @@ export async function handleMention(ctx: MessageContext, botJid: string): Promis
     }
   }
 
-  const mentionedJids: string[] = message?.extendedTextMessage?.contextInfo?.mentionedJid ?? [];
+  const mentionedJids: string[] = getContextInfo(message)?.mentionedJid ?? [];
 
   const sockUser = ctx.sock.user as { id?: string; lid?: string } | undefined;
   const botLid: string | undefined = sockUser?.lid;

@@ -15,7 +15,7 @@ export class BalanceCommand extends Command {
   parallelizable = true;
 
   async execute(ctx: MessageContext): Promise<void> {
-    const mentionedJid = ctx.message.message?.extendedTextMessage?.contextInfo?.mentionedJid?.[0];
+    const mentionedJid = ctx.mentionedJid;
 
     const targetJid = mentionedJid || ctx.sender.jid;
     const targetUser = await serviceManager.userService.getUser(targetJid);

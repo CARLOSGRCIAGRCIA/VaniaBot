@@ -21,7 +21,7 @@ export class BratCommand extends Command {
   permissions = { user: [PermissionLevel.USER], bot: [] };
 
   async execute(ctx: MessageContext): Promise<void> {
-    const mentioned = ctx.message.message?.extendedTextMessage?.contextInfo?.mentionedJid?.[0];
+    const mentioned = ctx.mentionedJid;
 
     let text: string;
 

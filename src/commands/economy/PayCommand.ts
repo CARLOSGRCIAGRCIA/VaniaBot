@@ -17,7 +17,7 @@ export class PayCommand extends Command {
   cooldown = 5000;
 
   async execute(ctx: MessageContext): Promise<void> {
-    const mentionedJid = ctx.message.message?.extendedTextMessage?.contextInfo?.mentionedJid?.[0];
+    const mentionedJid = ctx.mentionedJid;
 
     if (!mentionedJid) {
       await ctx.reply('You must mention a user.\n\nUsage: !pay @user <quantity>');

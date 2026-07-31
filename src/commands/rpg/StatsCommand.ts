@@ -14,7 +14,7 @@ export class StatsCommand extends Command {
 
   async execute(ctx: MessageContext): Promise<void> {
     try {
-      const mentionedJid = ctx.message.message?.extendedTextMessage?.contextInfo?.mentionedJid?.[0];
+      const mentionedJid = ctx.mentionedJid;
       const targetJid = mentionedJid || ctx.sender.jid;
 
       const user = await serviceManager.userService.getUser(targetJid);

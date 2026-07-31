@@ -7,10 +7,9 @@ import type { MessageContext } from '@/types/index.js';
  * Devuelve null si no hay ningún documento presente.
  */
 export function extractDocumentMessage(ctx: MessageContext): WAMessage | null {
-  const contextInfo = ctx.message.message?.extendedTextMessage?.contextInfo;
-  const quotedMsg = contextInfo?.quotedMessage;
-  const quotedMsgId = contextInfo?.stanzaId;
-  const quotedParticipant = contextInfo?.participant;
+  const quotedMsg = ctx.quoted;
+  const quotedMsgId = ctx.quotedMessageId;
+  const quotedParticipant = ctx.quotedParticipant;
   const directMsg = ctx.message.message;
 
   const quotedDocument = quotedMsg?.documentMessage;

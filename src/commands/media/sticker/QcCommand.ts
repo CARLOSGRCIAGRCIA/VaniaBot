@@ -17,7 +17,7 @@ export class QcCommand extends Command {
   cooldown = 5000;
 
   async execute(ctx: MessageContext): Promise<void> {
-    const mentionedJid = ctx.message.message?.extendedTextMessage?.contextInfo?.mentionedJid?.[0];
+    const mentionedJid = ctx.mentionedJid;
     const targetJid = mentionedJid || ctx.sender.jid;
 
     let text: string;

@@ -21,9 +21,9 @@ export class TakeCommand extends Command {
   }
 
   async execute(ctx: MessageContext): Promise<void> {
-    const quotedMsg = ctx.message.message?.extendedTextMessage?.contextInfo?.quotedMessage;
-    const quotedMsgId = ctx.message.message?.extendedTextMessage?.contextInfo?.stanzaId;
-    const quotedParticipant = ctx.message.message?.extendedTextMessage?.contextInfo?.participant;
+    const quotedMsg = ctx.quoted;
+    const quotedMsgId = ctx.quotedMessageId;
+    const quotedParticipant = ctx.quotedParticipant;
 
     if (!quotedMsg || !quotedMsg.stickerMessage) {
       await ctx.reply('⚠️ *Reply to a sticker!*');

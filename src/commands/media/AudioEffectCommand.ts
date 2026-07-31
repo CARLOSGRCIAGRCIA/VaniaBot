@@ -55,9 +55,9 @@ export class AudioEffectCommand extends Command {
       return;
     }
 
-    const quotedMsg = ctx.message.message?.extendedTextMessage?.contextInfo?.quotedMessage;
-    const quotedMsgId = ctx.message.message?.extendedTextMessage?.contextInfo?.stanzaId;
-    const quotedParticipant = ctx.message.message?.extendedTextMessage?.contextInfo?.participant;
+    const quotedMsg = ctx.quoted;
+    const quotedMsgId = ctx.quotedMessageId;
+    const quotedParticipant = ctx.quotedParticipant;
 
     if (!quotedMsg || !quotedMsg.audioMessage) {
       await ctx.reply(

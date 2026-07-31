@@ -32,7 +32,7 @@ export class GaycardCommand extends Command {
   async execute(ctx: MessageContext): Promise<void> {
     await ctx.react('🌈');
 
-    const mentioned = ctx.message.message?.extendedTextMessage?.contextInfo?.mentionedJid?.[0];
+    const mentioned = ctx.mentionedJid;
 
     let imageUrl: string | null = null;
     let name: string;

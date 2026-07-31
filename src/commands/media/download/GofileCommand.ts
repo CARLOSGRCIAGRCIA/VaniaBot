@@ -20,7 +20,7 @@ export class GofileCommand extends Command {
   permissions = { user: [PermissionLevel.USER], bot: [] };
 
   async execute(ctx: MessageContext): Promise<void> {
-    const quotedMsg = ctx.message.message?.extendedTextMessage?.contextInfo?.quotedMessage;
+    const quotedMsg = ctx.quoted;
     const documentMsg = ctx.message.message?.documentMessage;
 
     if (!documentMsg && !quotedMsg?.documentMessage) {

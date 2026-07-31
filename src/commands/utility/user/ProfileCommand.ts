@@ -34,7 +34,7 @@ export class ProfileCommand extends Command {
   private static logoBuffer: Buffer | null = null;
   private static logoLoaded = false;
   async execute(ctx: MessageContext): Promise<void> {
-    const mentionedJid = ctx.message.message?.extendedTextMessage?.contextInfo?.mentionedJid?.[0];
+    const mentionedJid = ctx.mentionedJid;
     const targetJid = mentionedJid || ctx.sender.jid;
     const isSelf = targetJid === ctx.sender.jid;
     try {

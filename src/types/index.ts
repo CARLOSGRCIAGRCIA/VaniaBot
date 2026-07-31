@@ -74,6 +74,10 @@ export interface MessageContext {
     isBotAdmin: boolean;
   };
   quoted?: proto.IMessage;
+  quotedMessageId?: string;
+  quotedParticipant?: string;
+  mentionedJid?: string;
+  contextInfo?: proto.IContextInfo;
   media?: Buffer;
   reply(text: string): Promise<void>;
   react(emoji: string): Promise<void>;

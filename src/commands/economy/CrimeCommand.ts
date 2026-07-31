@@ -206,7 +206,7 @@ export class CrimeCommand extends Command {
       return;
     }
 
-    const mentionedJid = ctx.message.message?.extendedTextMessage?.contextInfo?.mentionedJid?.[0];
+    const mentionedJid = ctx.mentionedJid;
 
     if (!mentionedJid) {
       await ctx.reply(

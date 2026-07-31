@@ -53,7 +53,7 @@ export class XnxxcardCommand extends Command {
       return;
     }
 
-    const mentioned = ctx.message.message?.extendedTextMessage?.contextInfo?.mentionedJid?.[0];
+    const mentioned = ctx.mentionedJid;
     const targetJid = mentioned ?? ctx.sender.jid;
 
     const userTag = mentioned

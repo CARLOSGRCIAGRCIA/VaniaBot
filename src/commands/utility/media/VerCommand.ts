@@ -14,8 +14,8 @@ export class VerCommand extends Command {
   contexts = [CommandContext.BOTH];
 
   async execute(ctx: MessageContext): Promise<void> {
-    const quotedMsg = ctx.message.message?.extendedTextMessage?.contextInfo?.quotedMessage;
-    const quotedMsgId = ctx.message.message?.extendedTextMessage?.contextInfo?.stanzaId;
+    const quotedMsg = ctx.quoted;
+    const quotedMsgId = ctx.quotedMessageId;
 
     if (!quotedMsg || !quotedMsgId) {
       await ctx.reply(

@@ -44,7 +44,7 @@ export class GrantCommand extends Command {
     }
 
     const type = args[0].toLowerCase();
-    const mentionedJid = ctx.message.message?.extendedTextMessage?.contextInfo?.mentionedJid?.[0];
+    const mentionedJid = ctx.mentionedJid;
 
     if (!mentionedJid) {
       await ctx.reply(' Debes mencionar a un usuario');

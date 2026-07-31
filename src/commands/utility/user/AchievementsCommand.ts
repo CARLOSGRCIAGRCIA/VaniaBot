@@ -122,7 +122,7 @@ export class AchievementsCommand extends Command {
   ];
 
   async execute(ctx: MessageContext): Promise<void> {
-    const mentionedJid = ctx.message.message?.extendedTextMessage?.contextInfo?.mentionedJid?.[0];
+    const mentionedJid = ctx.mentionedJid;
     const targetJid = mentionedJid || ctx.sender.jid;
     const isSelf = targetJid === ctx.sender.jid;
 

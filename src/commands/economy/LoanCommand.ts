@@ -54,7 +54,7 @@ export class LoanCommand extends Command {
   }
 
   private async giveLoan(ctx: MessageContext): Promise<void> {
-    const mentionedJid = ctx.message.message?.extendedTextMessage?.contextInfo?.mentionedJid?.[0];
+    const mentionedJid = ctx.mentionedJid;
     const amountStr = ctx.args[2];
     const amount = parseInt(amountStr);
 

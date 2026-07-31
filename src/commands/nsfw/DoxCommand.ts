@@ -48,10 +48,8 @@ export class DoxCommand extends Command {
       return;
     }
 
-    const mentionedJid = ctx.message.message?.extendedTextMessage?.contextInfo?.mentionedJid?.[0];
-    const quotedSender = ctx.message.message?.extendedTextMessage?.contextInfo?.quotedMessage
-      ? ctx.message.message.extendedTextMessage.contextInfo.participant
-      : null;
+    const mentionedJid = ctx.mentionedJid;
+    const quotedSender = ctx.contextInfo?.quotedMessage ? ctx.quotedParticipant : null;
 
     const targetJid = mentionedJid || quotedSender;
 

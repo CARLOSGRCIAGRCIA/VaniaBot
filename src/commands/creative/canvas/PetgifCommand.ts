@@ -27,7 +27,7 @@ export class PetgifCommand extends Command {
 
     let imageUrl: string | null = null;
 
-    const mentioned = ctx.message.message?.extendedTextMessage?.contextInfo?.mentionedJid?.[0];
+    const mentioned = ctx.mentionedJid;
 
     if (mentioned) {
       try {

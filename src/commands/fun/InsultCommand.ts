@@ -59,10 +59,8 @@ export class InsultCommand extends Command {
   permissions = { user: [PermissionLevel.USER], bot: [] };
 
   async execute(ctx: MessageContext): Promise<void> {
-    const mentionedJid = ctx.message.message?.extendedTextMessage?.contextInfo?.mentionedJid?.[0];
-    const quotedSender = ctx.message.message?.extendedTextMessage?.contextInfo?.quotedMessage
-      ? ctx.message.message.extendedTextMessage.contextInfo.participant
-      : null;
+    const mentionedJid = ctx.mentionedJid;
+    const quotedSender = ctx.contextInfo?.quotedMessage ? ctx.quotedParticipant : null;
 
     const targetJid = mentionedJid || quotedSender || ctx.sender.jid;
     const targetName = targetJid.split('@')[0];

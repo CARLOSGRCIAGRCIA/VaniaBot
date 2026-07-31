@@ -111,7 +111,7 @@ export class ShipCommand extends Command {
   permissions = { user: [PermissionLevel.USER], bot: [] };
 
   async execute(ctx: MessageContext): Promise<void> {
-    const mentioned = ctx.message.message?.extendedTextMessage?.contextInfo?.mentionedJid;
+    const mentioned = ctx.contextInfo?.mentionedJid;
     if (!mentioned || mentioned.length < 2) {
       await ctx.reply(
         `˚₊· ͟͟͞͞➳ *shippeo* ˚₊· ͟͟͞͞➳\n\n` +

@@ -16,10 +16,9 @@ export class ToAnimeCommand extends Command {
   cooldown = 30_000;
 
   async execute(ctx: MessageContext): Promise<void> {
-    const contextInfo = ctx.message.message?.extendedTextMessage?.contextInfo;
-    const quotedMsg = contextInfo?.quotedMessage;
-    const quotedMsgId = contextInfo?.stanzaId;
-    const quotedParticipant = contextInfo?.participant;
+    const quotedMsg = ctx.quoted;
+    const quotedMsgId = ctx.quotedMessageId;
+    const quotedParticipant = ctx.quotedParticipant;
 
     if (!quotedMsg || !quotedMsg.imageMessage) {
       await ctx.reply(

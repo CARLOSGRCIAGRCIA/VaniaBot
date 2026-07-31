@@ -16,6 +16,7 @@ import type { MessageContext as IMessageContext } from '@/types/index.js';
 import { config } from '@/config/index.js';
 import { PermissionService, normalizeJid } from '@/services/PermissionService.js';
 import { cacheManager } from '@/core/CacheManager.js';
+import { getContextInfo } from '@/utils/getContextInfo.js';
 
 /**
  * MessageContext class that wraps a WhatsApp message.
@@ -158,8 +159,24 @@ export class MessageContext implements IMessageContext {
     this._botPermissions = { isAdmin: perms.isAdmin };
   }
 
+  get contextInfo(): proto.IContextInfo | undefined {
+    return getContextInfo(this.message.message);
+  }
+
   get quoted(): proto.IMessage | undefined {
-    return this.message.message?.extendedTextMessage?.contextInfo?.quotedMessage || undefined;
+    return this.contextInfo?.quotedMessage || undefined;
+  }
+
+  get mentionedJid(): string | undefined {
+    return this.contextInfo?.mentionedJid?.[0] ?? undefined;
+  }
+
+  get quotedParticipant(): string | undefined {
+    return this.contextInfo?.participant ?? undefined;
+  }
+
+  get quotedMessageId(): string | undefined {
+    return this.contextInfo?.stanzaId ?? undefined;
   }
 
   async reply(text: string): Promise<void> {

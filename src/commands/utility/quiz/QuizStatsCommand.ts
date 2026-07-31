@@ -30,7 +30,7 @@ export class QuizStatsCommand extends Command {
     let targetJid = ctx.sender.jid;
     let targetName = ctx.sender.pushName ?? 'Tú';
 
-    const mentioned = ctx.message?.message?.extendedTextMessage?.contextInfo?.mentionedJid?.[0];
+    const mentioned = ctx.mentionedJid;
     if (mentioned && (ctx.sender.isAdmin || ctx.sender.isOwner)) {
       targetJid = mentioned;
       targetName = mentioned.split('@')[0];

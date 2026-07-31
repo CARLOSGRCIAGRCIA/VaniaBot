@@ -17,7 +17,7 @@ export class Img2PdfCommand extends Command {
   contexts = [CommandContext.BOTH];
 
   async execute(ctx: MessageContext): Promise<void> {
-    const quotedMsg = ctx.message.message?.extendedTextMessage?.contextInfo?.quotedMessage;
+    const quotedMsg = ctx.quoted;
     const chatJid = ctx.chat.jid;
     const senderJid = ctx.sender.jid;
 

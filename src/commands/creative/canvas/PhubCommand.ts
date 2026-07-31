@@ -5,6 +5,7 @@ import { StickerHelper } from '@/utils/StickerHelper.js';
 import { findAssetFile } from '@/utils/assetHelper.js';
 import { contactsCache } from '@/utils/ContactsCache.js';
 import { uploadToTmpfiles } from '@/utils/helpers.js';
+import { getContextInfo } from '@/utils/getContextInfo.js';
 import { logError } from '@/utils/logger.js';
 import {
   CommandCategory,
@@ -54,15 +55,7 @@ export class PhubCommand extends Command {
     }
 
     const msg = ctx.message.message;
-    const contextInfo =
-      msg?.extendedTextMessage?.contextInfo ||
-      msg?.imageMessage?.contextInfo ||
-      msg?.videoMessage?.contextInfo ||
-      msg?.documentMessage?.contextInfo ||
-      msg?.audioMessage?.contextInfo ||
-      msg?.viewOnceMessage?.message?.extendedTextMessage?.contextInfo ||
-      msg?.ephemeralMessage?.message?.extendedTextMessage?.contextInfo ||
-      null;
+    const contextInfo = getContextInfo(msg);
 
     const mentioned = contextInfo?.mentionedJid?.[0];
     const targetJid = mentioned ?? ctx.sender.jid;

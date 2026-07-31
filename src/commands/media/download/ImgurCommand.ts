@@ -20,7 +20,7 @@ export class ImgurCommand extends Command {
   permissions = { user: [PermissionLevel.USER], bot: [] };
 
   async execute(ctx: MessageContext): Promise<void> {
-    const quotedMsg = ctx.message.message?.extendedTextMessage?.contextInfo?.quotedMessage;
+    const quotedMsg = ctx.quoted;
     const imageMsg = ctx.message.message?.imageMessage;
 
     if (!imageMsg && !quotedMsg?.imageMessage) {

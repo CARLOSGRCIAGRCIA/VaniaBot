@@ -18,6 +18,7 @@ import type { proto, WAMessage } from 'baileys';
 import { downloadMediaMessage } from 'baileys';
 import { cacheManager } from '@/core/CacheManager.js';
 import { primeService } from '@/services/system/PrimeService.js';
+import { getContextInfo } from '@/utils/getContextInfo.js';
 import { logError } from '@/utils/logger.js';
 
 /** Timeout for downloading media (10 seconds) */
@@ -50,13 +51,7 @@ export class NotifyCommand extends Command {
 
   private getQuotedMessageInfo(ctx: MessageContext): WAMessage | null {
     try {
-      const contextInfo =
-        ctx.message.message?.extendedTextMessage?.contextInfo ||
-        ctx.message.message?.imageMessage?.contextInfo ||
-        ctx.message.message?.videoMessage?.contextInfo ||
-        ctx.message.message?.stickerMessage?.contextInfo ||
-        ctx.message.message?.audioMessage?.contextInfo ||
-        ctx.message.message?.documentMessage?.contextInfo;
+      const contextInfo = getContextInfo(ctx.message.message);
 
       if (!contextInfo?.quotedMessage || !contextInfo.stanzaId) return null;
 

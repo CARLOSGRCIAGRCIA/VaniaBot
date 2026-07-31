@@ -22,9 +22,9 @@ export class ToGifAudCommand extends Command {
   cooldown = 30_000;
 
   async execute(ctx: MessageContext): Promise<void> {
-    const quotedMsg = ctx.message.message?.extendedTextMessage?.contextInfo?.quotedMessage;
-    const quotedMsgId = ctx.message.message?.extendedTextMessage?.contextInfo?.stanzaId;
-    const quotedParticipant = ctx.message.message?.extendedTextMessage?.contextInfo?.participant;
+    const quotedMsg = ctx.quoted;
+    const quotedMsgId = ctx.quotedMessageId;
+    const quotedParticipant = ctx.quotedParticipant;
 
     if (!quotedMsg || !quotedMsg.videoMessage) {
       await ctx.reply(

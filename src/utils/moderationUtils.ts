@@ -6,8 +6,8 @@ interface TargetUserResult {
 }
 
 export function getTargetUser(ctx: MessageContext): TargetUserResult | null {
-  const mentionedJid = ctx.message.message?.extendedTextMessage?.contextInfo?.mentionedJid?.[0];
-  const quotedJid = ctx.message.message?.extendedTextMessage?.contextInfo?.participant;
+  const mentionedJid = ctx.mentionedJid;
+  const quotedJid = ctx.quotedParticipant;
 
   if (mentionedJid) {
     return { jid: mentionedJid, fromQuoted: false };

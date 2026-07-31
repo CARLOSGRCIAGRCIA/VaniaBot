@@ -13,6 +13,8 @@ import type { proto } from 'baileys';
  *  - document (reply)         -> documentMessage.contextInfo
  *  - document with caption    -> documentWithCaptionMessage.message.documentMessage.contextInfo
  *  - audio (reply)            -> audioMessage.contextInfo
+ *  - viewOnce (reply)         -> viewOnceMessage.message.extendedTextMessage.contextInfo
+ *  - ephemeral (reply)        -> ephemeralMessage.message.extendedTextMessage.contextInfo
  */
 
 export function getContextInfo(
@@ -28,6 +30,8 @@ export function getContextInfo(
     msg.documentMessage?.contextInfo ??
     msg.audioMessage?.contextInfo ??
     msg.documentWithCaptionMessage?.message?.documentMessage?.contextInfo ??
+    msg.viewOnceMessage?.message?.extendedTextMessage?.contextInfo ??
+    msg.ephemeralMessage?.message?.extendedTextMessage?.contextInfo ??
     undefined
   );
 }
