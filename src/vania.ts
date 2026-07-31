@@ -14,6 +14,8 @@ const RESTART_WINDOW_MS = env.RESTART_WINDOW_MS;
 const MAX_RESTART_DELAY_MS = env.MAX_RESTART_DELAY_MS;
 const FORCE_RESTART_WAIT_MS = env.FORCE_RESTART_WAIT_MS;
 
+const IS_DOCKER = process.env.DOCKER === 'true';
+
 let isRunning = false;
 let childProcess: ChildProcess | null = null;
 let restartCount = 0;
@@ -21,7 +23,11 @@ let firstRestartTime: number | null = null;
 let isAuthenticated = false;
 let shutdownRegistered = false;
 
-logger.info(chalk.bold.hex('#FF1493')('\n🦋─ Iniciando VaniaBot IA ─🦋\n'));
+if (IS_DOCKER) {
+  console.info(chalk.bold.hex('#FF1493')('\n🦋─ Iniciando VaniaBot IA ─🦋\n'));
+} else {
+  logger.info(chalk.bold.hex('#FF1493')('\n🦋─ Iniciando VaniaBot IA ─🦋\n'));
+}
 
 function hasExistingSession(): boolean {
   return existsSync(SESSION_CREDS);
@@ -64,13 +70,27 @@ function startBot(authMode: 'qr' | 'code'): void {
   }
 
   isRunning = true;
-  logger.info(chalk.cyan('▶ Iniciando VaniaBot...\n'));
+  if (IS_DOCKER) {
+    console.info(chalk.cyan('▶ Iniciando VaniaBot...\n'));
+  } else {
+    logger.info(chalk.cyan('▶ Iniciando VaniaBot...\n'));
+  }
+
+  const dockerEnv: Record<string, string> = {};
+  if (IS_DOCKER) {
+    const categories = ['LOG_SYSTEM', 'LOG_AI', 'LOG_DATABASE', 'LOG_MODERATION', 'LOG_NETWORK'];
+    for (const cat of categories) {
+      dockerEnv[cat] = process.env[cat] || 'warn';
+    }
+  }
 
   childProcess = spawn('node_modules/.bin/tsx', ['src/index.ts'], {
     stdio: 'inherit',
     env: {
       ...process.env,
+      ...dockerEnv,
       USE_PAIRING_CODE: authMode === 'code' ? 'true' : 'false',
+      LOG_LEVEL: IS_DOCKER ? process.env.LOG_LEVEL || 'warn' : process.env.LOG_LEVEL || 'info',
     },
   });
 
@@ -233,12 +253,16 @@ async function main(): Promise<void> {
 
   let selectedAuthMode: 'qr' | 'code';
 
+  const logInfo = IS_DOCKER
+    ? (msg: string) => console.info(msg)
+    : (msg: string) => logger.info(msg);
+
   if (cliAuthMode === 'qr') {
     selectedAuthMode = 'qr';
-    logger.info(chalk.cyan('Usando método: ') + chalk.bold.green('Código QR'));
+    logInfo(chalk.cyan('Usando método: ') + chalk.bold.green('Código QR'));
   } else if (cliAuthMode === 'code') {
     selectedAuthMode = 'code';
-    logger.info(chalk.cyan('Usando método: ') + chalk.bold.green('Código de Pareamiento'));
+    logInfo(chalk.cyan('Usando método: ') + chalk.bold.green('Código de Pareamiento'));
   } else if (cliAuthMode) {
     logger.info(
       chalk.red(
@@ -251,7 +275,10 @@ async function main(): Promise<void> {
     );
     process.exit(1);
   } else if (hasExistingSession()) {
-    logger.info(chalk.yellow('⚡ Sesión existente detectada, arrancando directamente...\n'));
+    logInfo(chalk.yellow('⚡ Sesión existente detectada, arrancando directamente...\n'));
+    selectedAuthMode = 'qr';
+  } else if (IS_DOCKER) {
+    logInfo(chalk.cyan('Usando método: ') + chalk.bold.green('Código QR'));
     selectedAuthMode = 'qr';
   } else {
     if (!existsSync(BOOT_FLAG)) {

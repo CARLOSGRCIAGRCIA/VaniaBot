@@ -1,6 +1,13 @@
 import { createInterface } from 'readline';
 import chalk from 'chalk';
 
+export interface StartupProgress {
+  begin(stage: string): void;
+  done(stage: string, detail?: string): void;
+  fail(stage: string, error?: string): void;
+  finalize(): void;
+}
+
 const FRAMES_VANIA = [
   chalk.hex('#FF69B4')(`
 ⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
@@ -150,6 +157,76 @@ export async function seleccionarMetodoAuth(): Promise<'qr' | 'code'> {
       }
     });
   });
+}
+
+export function createStartupProgress(): StartupProgress {
+  const overallStart = Date.now();
+  const stageTimes: Record<string, number> = {};
+  let completed = 0;
+  let total = 0;
+  let started = false;
+
+  function printBanner(): void {
+    console.info(
+      chalk.hex('#FF1493')(`
+    ╔═══════════════════════════════════════╗
+    ║                                       ║
+    ║   ██╗   ██╗ █████╗ ███╗   ██╗██╗ █████╗
+    ║   ██║   ██║██╔══██╗████╗  ██║██║██╔══██╗
+    ║   ██║   ██║███████║██╔██╗ ██║██║███████║
+    ║   ╚██╗ ██╔╝██╔══██║██║╚██╗██║██║██╔══██║
+    ║    ╚████╔╝ ██║  ██║██║ ╚████║██║██║  ██║
+    ║     ╚═══╝  ╚═╝  ╚═╝╚═╝  ╚═══╝╚═╝╚═╝  ╚═╝
+    ║                                       ║
+    ╚═══════════════════════════════════════╝
+      `),
+    );
+  }
+
+  return {
+    begin(stage: string): void {
+      if (!started) {
+        started = true;
+        console.info(chalk.bold.magentaBright('\n  🦋  VaniaBot — Inicializando  🦋\n'));
+      }
+      stageTimes[stage] = Date.now();
+      total++;
+      process.stdout.write(chalk.cyan(`  ⚙️  ${stage.padEnd(22)} `) + chalk.yellow('⋯  '));
+    },
+
+    done(stage: string, detail?: string): void {
+      const elapsed = ((Date.now() - (stageTimes[stage] ?? overallStart)) / 1000).toFixed(1);
+      completed++;
+      const line =
+        chalk.cyan(`  ⚙️  ${stage.padEnd(22)} `) +
+        chalk.green('✅') +
+        chalk.gray(`  (${elapsed}s)`) +
+        (detail ? chalk.gray(`  ${detail}`) : '');
+      console.info(line);
+    },
+
+    fail(stage: string, error?: string): void {
+      const elapsed = ((Date.now() - (stageTimes[stage] ?? overallStart)) / 1000).toFixed(1);
+      const line =
+        chalk.cyan(`  ⚙️  ${stage.padEnd(22)} `) +
+        chalk.red('❌') +
+        chalk.gray(`  (${elapsed}s)`) +
+        (error ? chalk.red(`  ${error}`) : '');
+      console.info(line);
+    },
+
+    finalize(): void {
+      const totalTime = ((Date.now() - overallStart) / 1000).toFixed(1);
+
+      console.info(
+        chalk.magentaBright(`\n  ─── ${completed}/${total} etapas · ${totalTime}s ───\n`),
+      );
+
+      printBanner();
+
+      console.info(chalk.bold.hex('#FF69B4')('      🦋  VANIABOT LISTA PARA OPERAR  🦋\n'));
+    },
+  };
 }
 
 export function mostrarAyuda(): void {

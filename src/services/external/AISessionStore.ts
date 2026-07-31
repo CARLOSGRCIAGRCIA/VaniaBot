@@ -45,7 +45,7 @@ export class AISessionStore {
     try {
       await this.loadSessionsFromDb();
       this.initialized = true;
-      logger.info(`[AI] ${this.sessions.size} sesiones cargadas desde DB`);
+      logger.debug(`[AI] ${this.sessions.size} sesiones cargadas desde DB`);
     } catch (error) {
       logger.warn('[AI] Error loading sessions from DB, using in-memory only');
       logError('[AI] Load sessions from DB', error);

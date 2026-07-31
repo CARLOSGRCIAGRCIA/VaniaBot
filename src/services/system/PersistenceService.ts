@@ -86,7 +86,7 @@ export class PersistenceService {
     this.rescheduleReminders();
     this.startCleanup();
 
-    logger.info(
+    logger.debug(
       `PersistenceService: ${this.reminders.size} reminders, ${this.polls.size} polls, ${this.listas.size} listas loaded`,
     );
   }
@@ -137,7 +137,7 @@ export class PersistenceService {
           }
         }
       }
-      logger.info(`[Persistence] ${this.listas.size} listas loaded from DB`);
+      logger.debug(`[Persistence] ${this.listas.size} listas loaded from DB`);
     } catch (error) {
       logError('PersistenceService.loadListas', error);
     }

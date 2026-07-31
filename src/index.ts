@@ -4,6 +4,7 @@ import { panelServer } from './services/webhook/PanelServer.js';
 import { initializeDatabase } from './repositories/Database.js';
 import { subBotDatabase } from './services/subbot/SubBotDatabase.js';
 import { databaseSwitcher } from './services/system/DatabaseSwitcher.js';
+import { createStartupProgress } from './utils/cli.js';
 
 const originalConsoleError = console.error;
 console.error = function (...args: unknown[]) {
@@ -20,21 +21,36 @@ console.error = function (...args: unknown[]) {
 let client: WhatsAppClient;
 
 async function main(): Promise<void> {
-  logger.info('Iniciando WhatsApp Bot...');
+  const isDocker = process.env.DOCKER === 'true';
+  const startupProgress = isDocker ? createStartupProgress() : null;
+
+  if (!isDocker) {
+    logger.info('Iniciando WhatsApp Bot...');
+  }
 
   try {
-    logger.info('Inicializando sistema de base de datos...');
+    if (startupProgress) startupProgress.begin('Base de datos');
     await databaseSwitcher.initialize();
     await initializeDatabase();
     await subBotDatabase.initialize();
-    logger.info('✅ Base de datos inicializada');
+    if (startupProgress) startupProgress.done('Base de datos');
   } catch (error) {
+    if (startupProgress) {
+      startupProgress.fail('Base de datos', error instanceof Error ? error.message : String(error));
+    }
     logger.warn('⚠️ Error inicializando base de datos, continuando sin ella:', error);
+  }
+
+  if (startupProgress) {
+    startupProgress.finalize();
   }
 
   client = new WhatsAppClient();
   await client.initialize();
-  logger.info('Bot iniciado correctamente');
+
+  if (!isDocker) {
+    logger.info('Bot iniciado correctamente');
+  }
 
   const disablePanel = process.env.PANEL_DISABLED === 'true';
   if (!disablePanel) {

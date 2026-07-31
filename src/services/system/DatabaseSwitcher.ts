@@ -64,7 +64,7 @@ export class DatabaseSwitcher {
       await this.initializeRedis();
     } else {
       useRedis = false;
-      logger.info('[DatabaseSwitcher] Modo SQLite local');
+      logger.debug('[DatabaseSwitcher] Modo SQLite local');
     }
 
     this.initialized = true;
@@ -89,7 +89,7 @@ export class DatabaseSwitcher {
 
             if (ping === 'PONG') {
               url = testUrl;
-              logger.info(`[DatabaseSwitcher] ✅ Redis encontrado en ${host}`);
+              logger.debug(`[DatabaseSwitcher] ✅ Redis encontrado en ${host}`);
               break;
             }
           } catch {
@@ -104,7 +104,7 @@ export class DatabaseSwitcher {
         url = 'redis://localhost:6379';
       }
 
-      logger.info(`[DatabaseSwitcher] Conectando a Redis: ${url}`);
+      logger.debug(`[DatabaseSwitcher] Conectando a Redis: ${url}`);
 
       redisClient = createClient({
         url,
@@ -124,13 +124,13 @@ export class DatabaseSwitcher {
       });
 
       redisClient.on('connect', () => {
-        logger.info('[DatabaseSwitcher] ✅ Redis conectado');
+        logger.debug('[DatabaseSwitcher] ✅ Redis conectado');
       });
 
       await redisClient.connect();
       useRedis = true;
 
-      logger.info('[DatabaseSwitcher] ✅ Modo Redis activo');
+      logger.debug('[DatabaseSwitcher] ✅ Modo Redis activo');
     } catch (error) {
       logger.warn('[DatabaseSwitcher] Redis no disponible, usando SQLite:', error);
       useRedis = false;

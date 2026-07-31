@@ -46,7 +46,7 @@ export class ServiceManager {
 
   async initialize(): Promise<void> {
     try {
-      logger.info('🔧 Inicializando servicios...');
+      logger.debug('🔧 Inicializando servicios...');
 
       await this.initializeDatabase();
 
@@ -74,7 +74,7 @@ export class ServiceManager {
 
       await this.sessionBackupService.start();
 
-      logger.info('Servicios inicializados correctamente');
+      logger.debug('Servicios inicializados correctamente');
     } catch (error) {
       logError('ServiceManager.initialize', error);
       throw error;
@@ -94,12 +94,12 @@ export class ServiceManager {
         if (!config.database.uri) {
           throw new Error('MongoDB URI no configurada');
         }
-        logger.info('Usando base de datos MongoDB');
+        logger.debug('Usando base de datos MongoDB');
         this.db = new MongoDatabase(config.database.uri);
         break;
 
       case 'sqlite':
-        logger.info('Usando base de datos SQLite');
+        logger.debug('Usando base de datos SQLite');
         await initializeDatabase();
         this.db = new SQLiteAdapter();
         break;

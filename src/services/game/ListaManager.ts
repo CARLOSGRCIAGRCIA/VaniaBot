@@ -182,25 +182,25 @@ function estaEnLista(lista: Lista, jid: string): boolean {
 
 function agregarJugador(lista: Lista, jid: string, nombre: string): boolean {
   if (estaEnLista(lista, jid)) {
-    logger.info(`[LISTA] ${jid} ya está en la lista, ignorando`);
+    logger.debug(`[LISTA] ${jid} ya está en la lista, ignorando`);
     return false;
   }
 
   for (const escuadra of lista.escuadras) {
     if (escuadra.jugadores.length < escuadra.capacidad) {
       escuadra.jugadores.push({ jid, nombre });
-      logger.info(`[LISTA] ${jid} (${nombre}) agregado a escuadra`);
+      logger.debug(`[LISTA] ${jid} (${nombre}) agregado a escuadra`);
       return true;
     }
   }
 
   if (lista.suplentes.length < lista.maxSuplentes) {
     lista.suplentes.push({ jid, nombre });
-    logger.info(`[LISTA] ${jid} (${nombre}) agregado como suplente`);
+    logger.debug(`[LISTA] ${jid} (${nombre}) agregado como suplente`);
     return true;
   }
 
-  logger.info(`[LISTA] Lista llena, no se pudo agregar ${jid}`);
+  logger.debug(`[LISTA] Lista llena, no se pudo agregar ${jid}`);
   return false;
 }
 
@@ -209,12 +209,12 @@ function removerJugador(lista: Lista, jid: string): boolean {
     const idx = escuadra.jugadores.findIndex(j => j.jid === jid);
     if (idx !== -1) {
       escuadra.jugadores.splice(idx, 1);
-      logger.info(`[LISTA] ${jid} removido de escuadra`);
+      logger.debug(`[LISTA] ${jid} removido de escuadra`);
       if (lista.suplentes.length > 0) {
         const promovido = lista.suplentes[0];
         lista.suplentes.shift();
         escuadra.jugadores.push(promovido);
-        logger.info(`[LISTA] ${promovido.jid} promovido de suplente a escuadra`);
+        logger.debug(`[LISTA] ${promovido.jid} promovido de suplente a escuadra`);
       }
       return true;
     }
@@ -223,11 +223,11 @@ function removerJugador(lista: Lista, jid: string): boolean {
   const idxSup = lista.suplentes.findIndex(s => s.jid === jid);
   if (idxSup !== -1) {
     lista.suplentes.splice(idxSup, 1);
-    logger.info(`[LISTA] ${jid} removido de suplentes`);
+    logger.debug(`[LISTA] ${jid} removido de suplentes`);
     return true;
   }
 
-  logger.info(`[LISTA] ${jid} no encontrado en la lista para remover`);
+  logger.debug(`[LISTA] ${jid} no encontrado en la lista para remover`);
   return false;
 }
 
@@ -252,7 +252,7 @@ export class ListaManager {
 
   async initialize(): Promise<void> {
     await this.loadFromPersistence();
-    logger.info(`[LISTA] ${this.listas.size} listas cargadas desde persistencia`);
+    logger.debug(`[LISTA] ${this.listas.size} listas cargadas desde persistencia`);
   }
 
   private async loadFromPersistence(): Promise<void> {
@@ -315,7 +315,7 @@ export class ListaManager {
     this.syncToPersistence(lista).catch(err =>
       logError('[LISTA] Error guardando en persistencia', err),
     );
-    logger.info(
+    logger.debug(
       `[LISTA] Creada: tipo=${params.tipo} messageId=${params.messageId} chatJid=${params.chatJid}`,
     );
     return lista;

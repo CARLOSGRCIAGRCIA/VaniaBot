@@ -90,7 +90,7 @@ export class SessionBackupService {
     this.backupInterval.unref();
 
     this.isRunning = true;
-    logger.info(
+    logger.debug(
       `📦 Session backup service started (every ${this.options.intervalMinutes} minutes)`,
     );
   }
@@ -149,7 +149,7 @@ export class SessionBackupService {
 
       const size = this.getDirectorySize(backupDir);
 
-      logger.info(
+      logger.debug(
         `📦 Backup created: ${backupName} (${(size / 1024).toFixed(2)} KB, ${files.length} files)`,
       );
 
@@ -211,7 +211,7 @@ export class SessionBackupService {
         for (const backup of toDelete) {
           try {
             rmSync(backup.path, { recursive: true, force: true });
-            logger.info(`🗑️ Old backup deleted: ${backup.name}`);
+            logger.debug(`🗑️ Old backup deleted: ${backup.name}`);
           } catch (error) {
             logger.error(`Failed to delete old backup: ${backup.name}`, { error });
           }

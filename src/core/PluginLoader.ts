@@ -5,7 +5,7 @@
  * Supports both instantiated command objects and command classes.
  * Implements lazy loading for improved performance.
  *
- * @author **Carlos G** ⭐
+ * @author **Carlos G**
  * @github CARLOSGRCIAGRCIA
  * @tiktok carlos.grcia0
  * @instagram carlos.gxv
@@ -70,7 +70,7 @@ export class PluginLoader {
     const commands: ICommand[] = [];
     const commandsPath = join(__dirname, '../commands');
 
-    logger.info(`Buscando comandos en: ${commandsPath}`);
+    logger.debug(`Buscando comandos en: ${commandsPath}`);
 
     for (const category of preload) {
       this.preloadCategories.add(category);

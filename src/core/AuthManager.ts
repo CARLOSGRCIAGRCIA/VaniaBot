@@ -250,7 +250,7 @@ export class AuthManager {
     const credsMe = state.creds.me;
 
     logger.info(`WhatsApp Web v${version.join('.')}`);
-    logger.info(isRegistered ? '✅ Sesión existente' : '🆕 Nueva sesión');
+    logger.debug(isRegistered ? '✅ Sesión existente' : '🆕 Nueva sesión');
 
     if (isRegistered && credsMe) {
       logger.debug(

@@ -46,7 +46,7 @@ export class SubBotDatabase {
     this.loadSettings();
     this.loadSlots();
     this.initialized = true;
-    logger.info('[SubBotDatabase] SQLite-based database initialized');
+    logger.debug('[SubBotDatabase] SQLite-based database initialized');
   }
 
   private loadSettings(): void {
@@ -80,7 +80,7 @@ export class SubBotDatabase {
       this.configCache.clear();
 
       if (slots.length === 0) {
-        logger.warn('[SubBotDatabase] No slots in DB, creating defaults');
+        logger.debug('[SubBotDatabase] No slots in DB, creating defaults');
         for (let i = 1; i <= MAX_SLOTS_LIMIT; i++) {
           const slot: SubBotSlot = {
             slot: i,
@@ -93,7 +93,7 @@ export class SubBotDatabase {
           );
         }
         getDatabase().forceSave();
-        logger.info('[SubBotDatabase] Created 50 default slots');
+        logger.debug('[SubBotDatabase] Created 50 default slots');
         return;
       }
 

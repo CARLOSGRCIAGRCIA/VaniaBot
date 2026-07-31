@@ -161,7 +161,7 @@ export class WhatsAppClient {
     this.startMaintenance();
     await this.warmup();
     this.isReady = true;
-    logger.info('🚀 Bot ready for instant response');
+    logger.debug(`WhatsAppClient initialized in ${Date.now() - startTime}ms`);
   }
 
   private setupPipeline(sock: WASocket): void {
@@ -191,7 +191,7 @@ export class WhatsAppClient {
   }
 
   private async warmup(): Promise<void> {
-    logger.info('🔥 Warming up cache...');
+    logger.debug('🔥 Warming up cache...');
     try {
       const cachedGroups = Array.from(cacheManager['groupMetadataCache'].keys()).slice(0, 10);
       for (const groupJid of cachedGroups) {

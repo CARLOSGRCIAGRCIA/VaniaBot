@@ -500,16 +500,16 @@ class DatabaseManager {
       if (existsSync(dbPath)) {
         const buffer = readFileSync(dbPath);
         this.db = new SQL.Database(buffer);
-        logger.info('📂 Database loaded from disk');
+        logger.debug('📂 Database loaded from disk');
       } else {
         this.db = new SQL.Database();
-        logger.info('🆕 New database created');
+        logger.debug('🆕 New database created');
       }
 
       await this.runMigrations();
       this.startAutoSave();
       this._initialized = true;
-      logger.info('✅ Database initialized');
+      logger.debug('✅ Database initialized');
     } catch (error) {
       logError('[Database] Initialization failed', error);
       throw error;
@@ -536,7 +536,7 @@ class DatabaseManager {
 
       for (const migration of MIGRATIONS) {
         if (!appliedVersions.includes(migration.version)) {
-          logger.info(`🔄 Running migration v${migration.version}: ${migration.name}`);
+          logger.debug(`🔄 Running migration v${migration.version}: ${migration.name}`);
           this.db.run(migration.up);
           this.db.run('INSERT INTO _migrations (version, name, applied_at) VALUES (?, ?, ?)', [
             migration.version,
@@ -544,7 +544,7 @@ class DatabaseManager {
             new Date().toISOString(),
           ]);
           this.markDirty();
-          logger.info(`✅ Migration v${migration.version} applied successfully`);
+          logger.debug(`✅ Migration v${migration.version} applied successfully`);
         }
       }
     } catch (error) {

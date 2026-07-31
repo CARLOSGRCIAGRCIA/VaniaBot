@@ -40,10 +40,10 @@ export class AIService {
 
     this.sessionStore = new AISessionStore();
 
-    logger.info(`[AI] AIService iniciado con Groq`);
-    logger.info(`   Chat:   ${GROQ_MODELS.chat}`);
-    logger.info(`   Fast:   ${GROQ_MODELS.fast}`);
-    logger.info(`   Voice:  ${GROQ_MODELS.transcribe}`);
+    logger.debug(`[AI] AIService iniciado con Groq`);
+    logger.debug(`   Chat:   ${GROQ_MODELS.chat}`);
+    logger.debug(`   Fast:   ${GROQ_MODELS.fast}`);
+    logger.debug(`   Voice:  ${GROQ_MODELS.transcribe}`);
   }
 
   async initialize(): Promise<void> {
@@ -372,7 +372,7 @@ export class AIService {
 
   async shutdown(): Promise<void> {
     await this.sessionStore.shutdown();
-    logger.info('[AI] AIService shutdown complete');
+    logger.debug('[AI] AIService shutdown complete');
   }
 }
 

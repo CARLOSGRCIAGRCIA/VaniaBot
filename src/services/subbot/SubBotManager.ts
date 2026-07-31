@@ -87,11 +87,11 @@ export class SubBotManager extends EventEmitter {
 
   setMainSocket(sock: WASocket): void {
     this.mainSock = sock;
-    logger.info('🌸 SubBotManager: socket principal registrado');
+    logger.debug('🌸 SubBotManager: socket principal registrado');
   }
 
   async initialize(): Promise<void> {
-    logger.info('🌸 Iniciando SubBotManager (VaniaBot)...');
+    logger.debug('🌸 Iniciando SubBotManager (VaniaBot)...');
 
     this.messageHandler = new SubBotMessageHandler(
       id => this.middlewaresPerInstance.get(id) ?? [],
@@ -102,7 +102,7 @@ export class SubBotManager extends EventEmitter {
     this.recoverOrphanedSessions();
 
     const activeSlots = subBotDatabase.getActiveSlots();
-    logger.info(`📦 ${activeSlots.length} slots activos encontrados`);
+    logger.debug(`📦 ${activeSlots.length} slots activos encontrados`);
 
     await Promise.all(
       activeSlots.map(async slot => {
@@ -123,7 +123,7 @@ export class SubBotManager extends EventEmitter {
     this.startHealthCheck();
     this.startSettingsSync();
 
-    logger.info('✅ SubBotManager inicializada correctamente');
+    logger.debug('✅ SubBotManager inicializada correctamente');
   }
 
   private recoverOrphanedSessions(): void {

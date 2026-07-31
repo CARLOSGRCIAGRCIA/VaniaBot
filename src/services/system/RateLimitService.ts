@@ -34,7 +34,7 @@ export class RateLimitService {
 
   constructor() {
     this.startCleanup();
-    logger.info('[RateLimit] Service initialized');
+    logger.debug('[RateLimit] Service initialized');
   }
 
   checkGroupRateLimit(groupJid: string): RateLimitResult {

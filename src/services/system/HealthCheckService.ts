@@ -501,7 +501,7 @@ export class AutoRestartService {
       logger.info('Auto-restart service disabled');
       return;
     }
-    logger.info('🚀 Auto-restart service started');
+    logger.debug('🚀 Auto-restart service started');
     this.restartTimer = setInterval(() => void this.checkAndRestart(), this.config.checkIntervalMs);
   }
 

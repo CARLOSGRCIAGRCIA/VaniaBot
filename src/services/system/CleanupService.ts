@@ -12,7 +12,7 @@ export class CleanupService {
       return;
     }
 
-    logger.info('🧹 Servicio de limpieza iniciado');
+    logger.debug('🧹 Servicio de limpieza iniciado');
 
     setTimeout(
       () => {
