@@ -1,6 +1,7 @@
 import { Command } from '../../Command.js';
 import { CommandCategory, CommandContext, type MessageContext } from '@/types/index.js';
 import { logError } from '@/utils/logger.js';
+import { isValidUrl } from '@/utils/validators.js';
 
 export class QrCommand extends Command {
   name = 'qr';
@@ -15,15 +16,6 @@ export class QrCommand extends Command {
   ];
   cooldown = 5000;
   contexts = [CommandContext.BOTH];
-
-  private isValidUrl(text: string): boolean {
-    try {
-      new URL(text);
-      return true;
-    } catch {
-      return false;
-    }
-  }
 
   async execute(ctx: MessageContext): Promise<void> {
     if (!ctx.args.length) {
@@ -61,7 +53,7 @@ export class QrCommand extends Command {
 
       const buffer = Buffer.from(await res.arrayBuffer());
 
-      const isUrl = this.isValidUrl(content);
+      const isUrl = isValidUrl(content);
       const caption =
         `┏━━━━━━━━━━━━━━━━━━┓\n` +
         ` ⌬ *CÓDIGO QR GENERADO* ⌬\n` +

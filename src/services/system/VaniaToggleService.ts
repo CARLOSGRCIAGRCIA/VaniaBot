@@ -1,4 +1,5 @@
 import type { IDatabase } from '../database/Database';
+import { normalizeJid } from '../PermissionService.js';
 
 export interface ToggleRecord {
   key: string;
@@ -19,12 +20,8 @@ export class VaniaToggleService {
     this.db = db;
   }
 
-  private normalizeJid(jid: string): string {
-    return jid.split('@')[0].split(':')[0] + '@s.whatsapp.net';
-  }
-
   private makeKey(chatJid: string, botId: string): string {
-    return `${this.normalizeJid(chatJid)}|${botId}`;
+    return `${normalizeJid(chatJid)}|${botId}`;
   }
 
   isEnabledSync(_chatJid: string): boolean {
@@ -42,7 +39,7 @@ export class VaniaToggleService {
 
   async enable(chatJid: string, enabledBy: string, botId: string = 'main'): Promise<void> {
     const key = this.makeKey(chatJid, botId);
-    const normalizedJid = this.normalizeJid(chatJid);
+    const normalizedJid = normalizeJid(chatJid);
     const existing = await this.db.get<ToggleRecord>(this.COLLECTION, key);
 
     const record: ToggleRecord = {
@@ -62,7 +59,7 @@ export class VaniaToggleService {
 
   async disable(chatJid: string, disabledBy: string, botId: string = 'main'): Promise<void> {
     const key = this.makeKey(chatJid, botId);
-    const normalizedJid = this.normalizeJid(chatJid);
+    const normalizedJid = normalizeJid(chatJid);
     const existing = await this.db.get<ToggleRecord>(this.COLLECTION, key);
 
     const record: ToggleRecord = {
@@ -106,7 +103,7 @@ export class VaniaToggleService {
   async getBotsStatus(
     chatJid: string,
   ): Promise<{ main: boolean; subbots: Record<string, boolean> }> {
-    const normalizedJid = this.normalizeJid(chatJid);
+    const normalizedJid = normalizeJid(chatJid);
 
     const mainKey = this.makeKey(normalizedJid, 'main');
     const mainRecord = await this.db.get<ToggleRecord>(this.COLLECTION, mainKey);

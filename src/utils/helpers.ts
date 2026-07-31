@@ -101,10 +101,6 @@ export function extractMentions(text: string): string[] {
   return mentions ? mentions.map(m => m.substring(1) + '@s.whatsapp.net') : [];
 }
 
-export function sanitize(str: string): string {
-  return str.replace(/[^\w\s]/gi, '');
-}
-
 export function parseKeyValueArgs(args: string[]): Record<string, string> {
   const result: Record<string, string> = {};
 
@@ -127,15 +123,6 @@ export function formatBytes(bytes: number, decimals: number = 2): string {
   const i = Math.floor(Math.log(bytes) / Math.log(k));
 
   return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + ' ' + sizes[i];
-}
-
-export function isValidUrl(str: string): boolean {
-  try {
-    new URL(str);
-    return true;
-  } catch {
-    return false;
-  }
 }
 
 export function stripMarkdown(text: string): string {

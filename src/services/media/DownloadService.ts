@@ -147,15 +147,6 @@ export class DownloadService {
     return mimeMap[mimeType] || 'bin';
   }
 
-  static isValidUrl(url: string): boolean {
-    try {
-      new URL(url);
-      return true;
-    } catch {
-      return false;
-    }
-  }
-
   static async getFileSize(url: string): Promise<number | null> {
     try {
       const response = await axios.head(url, {
