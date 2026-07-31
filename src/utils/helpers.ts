@@ -101,6 +101,10 @@ export function extractMentions(text: string): string[] {
   return mentions ? mentions.map(m => m.substring(1) + '@s.whatsapp.net') : [];
 }
 
+export function sanitize(str: string): string {
+  return str.replace(/[^\w\s]/gi, '');
+}
+
 export function parseKeyValueArgs(args: string[]): Record<string, string> {
   const result: Record<string, string> = {};
 
@@ -124,6 +128,8 @@ export function formatBytes(bytes: number, decimals: number = 2): string {
 
   return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + ' ' + sizes[i];
 }
+
+export { isValidUrl } from './validators.js';
 
 export function stripMarkdown(text: string): string {
   return text

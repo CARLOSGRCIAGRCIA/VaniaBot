@@ -66,6 +66,10 @@ export function isValidTime(time: string): boolean {
   return timeRegex.test(time);
 }
 
+export function sanitizeInput(input: string): string {
+  return input.replace(/[<>]/g, '').replace(/['"]/g, '').trim();
+}
+
 export function isNonEmptyArray<T>(arr: T[]): boolean {
   return Array.isArray(arr) && arr.length > 0;
 }
@@ -284,6 +288,15 @@ export function validateWeeklyCooldown(lastWeekly: number | undefined): {
   }
 
   return { allowed: true };
+}
+
+export function sanitizeTextInput(input: string, maxLength: number = 500): string {
+  return input
+    .replace(/[<>]/g, '')
+    .replace(/['"]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .slice(0, maxLength);
 }
 
 export function validateMention(jid: string): boolean {
